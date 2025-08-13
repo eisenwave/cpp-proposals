@@ -1,0 +1,276 @@
+\cowel_actions{
+\cowel_include{libwg21.cow}
+\cowel_include{libslides.cow}
+
+\cowel_macro[footsep]{\N{EM SPACE}|\N{EM SPACE}}
+
+\cowel_macro[slidefoot]{
+Jan Schultke
+\footsep
+Slides for P3774R0
+\N{EM DASH}
+Rename \tcode{std::nontype}
+\footsep
+LEWG Telecon 2025-08-12
+\footsep
+Slide \Vget[slidenum]
+}
+
+\style{
+section>h1 {
+    margin-top: calc(0.075 * var(--sw)) !important;
+    font-size: 250%;
+    text-align: center;
+}
+
+#docnum {
+    font-family: var(--sans-serif-family);
+    font-size: 80%;
+    font-weight: normal;
+}
+#authors {
+    margin-top: 1em;
+    font-size: 50%;
+    font-weight: normal;
+}
+
+li>ul {
+    margin-top: 0;
+}
+}
+}\: cowel_actions
+
+\wg21_head[
+    title = Slides for P3774R0 \br Rename \tcode{std::nontype}\,\br and make it broadly useful
+]{
+\dl{
+    \dt{Document number:} \dd{\docnum{P3775R0}}
+    \dt{Date:}            \dd{\tt{2025-08-12}}
+    \dt{Audience:}        \dd{LEWG}
+    \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+    \dt{Reply-To:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+    \dt{Source:}          \dd{\ref[https://github.com/Eisenwave/cpp-proposals/blob/master/src/nontype-slides.cow]}
+}
+\hr
+\slide_controls
+}
+
+\slide{
+\cowel_html_element[h1]{Rename \tcode{std::nontype}\,\br and make it broadly useful
+\span[id=docnum]{P3775R0}\br
+\span[id=authors]{Jan Schultke, Bronek Kozicki, Tomasz Kamiński}
+}
+}
+
+\slide{
+\slideh{Introduction}
+\ul{
+  \li{P2472R3 added \tcode{std::nontype} constructors for \tcode{std::function_ref}}
+  \li{merged into P0792R14, plenary-approved Varna 2023 for C++26}
+  \li{\tcode{std::nontype} possibly obsoleted by \tcode{std::constant_wrapper} (P2781R9)\ul{
+    \li{In C++26}
+  }}
+  \li{"non-type template parameter" term was removed by P2841R1 (C++26)}
+  \li{in Sofia, two plausible directions discussed\ul{
+    \li{replace \tcode{std::nontype} with \tcode{std::constant_wrapper}}
+    \li{rename \tcode{std::nontype} to \tcode{std::constant_arg}}
+    \li{latter option had more consensus}
+  }}
+}
+}
+
+\slide{
+\slideh{\tcode{std::function_ref} refresher}
+
+\tcode{std::function_ref} is a "function wrapper"
+similar to \tcode{std::function}, \tcode{std::move_only_function},
+\tcode{std::copyable_function}, but without ownership.
+
+\hr
+
+\tcode{std::function_ref<R(Args...) \exposid{cv} \exposid{noex}>} stores:
+\ul{
+  \li{\tcode{\exposid{bound-entity}} \N{EM DASH} \tcode{\exposid{BoundEntityType}} (basically a \tcode{\exposid{cv} void*})}
+  \li{\tcode{\exposid{thunk-ptr}} \N{EM DASH} \tcode{R(*)(\exposid{BoundEntityType}, Args...) \exposid{noex}}}
+}
+
+\Bnote{
+For illustration purposes, we'll ignore \tcode{\exposid{cv}}, \tcode{\exposid{noex}}, \tcode{invoke}.
+}
+}
+
+\slide{
+\slideh{\tcode{std::nontype} in \tcode{std::function_ref}}
+
+\cppblock{
+template<class F>         function_ref(F*);
+template<class F>         function_ref(F&&);
+template<auto f>          function_ref(nontype_t<f>);
+template<auto f, class U> function_ref(nontype_t<f>, U&&);
+template<auto f, class T> function_ref(nontype_t<f>, T*);
+}
+
+\cppblock{
+template<auto f>
+function_ref(nontype_t<f>) {
+  this->\exposid{bound-entity} = {};
+  this->\exposid{thunk-ptr} = [](\exposid{BoundEntityType}, Args&&... args) -> R {
+    return f(std::forward<Args&&>(args)...);
+  };
+}
+}
+}
+
+\slide{
+\slideh{Alternatives considered}
+
+\ul{
+  \li{Low-consensus:\ul{
+    \li{\tcode{std::stateless} constructor tag}
+    \li{remove \tcode{std::nontype}, revisit in C++29}
+    \li{wait for P1045R1 \tcode{constexpr} function parameters}
+    \li{expose the \tcode{\exposid{BoundEntityType}}}
+  }}
+  \li{Plausible:\ul{
+    \li{replace \tcode{std::nontype} with \tcode{std::constant_wrapper}}
+    \li{rename \tcode{std::nontype} (most consensus in Sofia)}
+  }}
+}
+}
+
+\slide{
+\slideh{\N{ROMAN NUMERAL ONE} \N{EM DASH} Nullary functions}
+
+\cppblock{
+using status_t = int;
+constexpr status_t perform_task() {
+    // TODO: implement, this is a placeholder
+    return \hl[macro]{STATUS_OK};
+}
+
+// OK, extracts &perform_task,
+// r() calls perform_task
+std::function_ref<status_t()> r = std::cw<&perform_task>;
+
+// OK, but m() does not call perform_task;
+// we create a wrapper which returns pre-computed result
+std::move_only_function<status_t()> m = std::cw<&perform_task>;
+}
+}
+
+\slide{
+\slideh{\N{ROMAN NUMERAL TWO} \N{EM DASH} Proper constant wrappers}
+
+\cppblock{
+struct Zero {
+    static constexpr int value = 0;
+    constexpr operator int() const { return value; }
+    constexpr int operator()() const { return value; }
+};
+
+// OK, calls Zero::operator()
+std::function_ref<int()> r = std::cw<Zero{}>;
+
+// OK, but simply returns 0
+std::move_only_function<int()> m = std::cw<Zero{}>;
+}
+}
+
+\slide{
+\slideh{\N{ROMAN NUMERAL THREE} \N{EM DASH} Improper constant wrappers}
+
+\cppblock{
+struct Zero {
+    static constexpr int value = 0;
+    constexpr operator int() const { return value; }
+    \del{constexpr} int operator()() const { return value; }
+};
+
+// OK, calls Zero::operator()
+std::function_ref<int()> r = std::cw<Zero{}>;
+
+// error
+std::move_only_function<int(int)> m = std::cw<Zero{}>;
+}
+}
+
+\slide{
+\slideh{\N{ROMAN NUMERAL FOUR} \N{EM DASH} Surrogate calls}
+
+\cppblock{
+constexpr int sqr(int x) {
+    return x * x;
+}
+
+// OK, extracts &sqr
+std::function_ref<int(int)> r = std::cw<&sqr>;
+
+// OK, surrogate function call
+// because of conversion to int(*)(int)
+std::move_only_function<int(int)> m = std::cw<&sqr>;
+}
+}
+
+\slide{
+\slideh{\N{ROMAN NUMERAL FIVE} \N{EM DASH} Function objects}
+
+\cppblock{
+struct Sqr {
+    constexpr int operator()(int x) const {
+        return x * x;
+    }
+};
+inline constexpr Sqr sqr;
+
+// OK, extracts sqr
+std::function_ref<int(int)> r = std::cw<sqr>;
+
+// error
+std::move_only_function<int(int)> m = std::cw<sqr>;
+}
+}
+
+\slide{
+\slideh{Proposed solution \N{EM DASH} \tcode{std::fn}}
+
+\ul{
+  \li{
+    \mark{C++26}: rename
+    \tcode{std::\del{nontype}\ins{fn}},
+    \tcode{std::\del{nontype_t}\ins{fn_t}}
+  }
+  \li{
+    \mark{C++26}: move decl. from \header{utility} to \header{functional}
+  }
+  \li{
+    C++29: add call operator, extra functionality
+  }
+}
+
+\cppblock{
+// vision for C++29
+constexpr int sqr(int x) { return x * x; }
+
+function_ref<int(int)> ref = fn<sqr>;      // OK, same as C++26
+views::transform(range, fn<sqr>);          // good for inlining
+move_only_function<int(int)> m = fn<sqr>;  // OK, optimal
+boost::function_ref<int(int)> b = fn<sqr>; // OK, optimal
+}
+}
+
+\slide{
+\slideh{Discussion}
+
+\ul{
+  \li{Do we agree \tcode{std::constant_wrapper} should not be used here?}
+  \li{
+    Do we agree on the name?\ul{
+      \li{\tcode{std::constant_arg} had "consensus"}
+      \li{\tcode{std::fn} / \tcode{std::fn_t} proposed}
+      \li{\tcode{std::const_fn} / \tcode{std::const_fn_t} possible alternative}
+      \li{\tcode{std::fw} / \tcode{std::function_wrapper} possible alternative}
+    }
+  }
+  \li{Do we agree on moving to \header{functional}?}
+}
+}
