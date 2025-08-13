@@ -4,8 +4,8 @@
     title = Rename \tcode{std::nontype}\,\br{}and make it broadly useful
 ]{
 \dl{
-    \dt{Document number:} \dd{\docnum{P3774R0}}
-    \dt{Date:}            \dd{\tt{2025-07-15}}
+    \dt{Document number:} \dd{\docnum{P3774R1}}
+    \dt{Date:}            \dd{\tt{2025-08-13}}
     \dt{Audience:}        \dd{LEWG}
     \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
     \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -19,19 +19,46 @@
 \Babstract{
 \ref[P3740R1] proposed to rename \tcode{std::nontype} to \tcode{std::constant_arg},
 now that the term "non-type template parameter" no longer exists in the C++26 standard.
-This solution found weak consensus in LEWG,
-but there was no time in LWG to review the change,
+This solution found some acceptance in LEWG (but not formal consensus),
+and LWG had no time to see the paper,
 so it did not make it into C++26.
 
-We now propose to rename it to \tcode{std::fn} in C++26.
-We also propose to make it more broadly useful in C++29 by adding further members.
+While R0 of this paper proposed more significant changes,
+following decisions made during LEWG Telecon 2025-08-12,
+we now simply propose to rename \tcode{std::nontype} to \tcode{std::constant_arg},
+with much greater consensus,
+which reaffirms the \ref[P3740R1] decision.
 }
 
 \h2[listed=no]{Contents}
 
 \make_contents
 
+\h2{Revision history}
+
+\h3{Changes since R0}
+
+\ul{
+  \li{
+    implement LEWG decisions from LEWG Telecon 2025-08-12 in \ref[#wording],
+    i.e. simply rename \tcode{std::nontype} to \tcode{std::constant_arg}
+  }
+  \li{
+    add disclaimers across the paper the clarify
+    that certain changes are no longer proposed,
+    but avoid "erasing history" or drastically altering the papers' contents
+  }
+  \li{
+    summarize the LEWG Telecon decisions in \ref[#post-sofia-decisions]
+  }
+  \li{
+    update the abstract to reflect these changes
+  }
+}
+
 \h2{Introduction}
+
+\h3{History up to Sofia 2025}
 
 \ref[P2472R3] proposed additional overloads for the \tcode{std::function_ref}
 constructor which utilize a helper type \tcode{std::nontype}.
@@ -53,7 +80,8 @@ Furthermore, the \tcode{std::constant_wrapper} from \ref[P2781R9]
 was accepted into C++26, and it seems like a good replacement for \tcode{std::nontype}
 at first glance.
 At Sofia 2025, the choice to rename \tcode{std::nontype} to \tcode{std::constant_arg}
-instead of replacing it with \tcode{std::constant_wrapper} achieved consensus,
+instead of replacing it with \tcode{std::constant_wrapper} was most popular
+(without \em{actually} constituting consensus, and without LWG seeing the paper),
 by the narrowest of margins
 (see\N{NO-BREAK SPACE}\ref[https://wiki.edg.com/bin/view/Wg21sofia2025/P3740]{P3740 minutes}):
 
@@ -99,14 +127,89 @@ to LWG for C++26 (if possible)
 Outcome: No consensus for change
 }
 
-However, LWG had no time to review this \em{extremely} last-minute change,
-so it did not make it into C++26.
+However, as already stated,
+these polls did not actually constitute consensus,
+and LWG did not see the paper.
 
 \Bnote{
-The reason why the last poll does not change the LEWG decision
+The reason why the last poll does not change the LEWG "decision"
 is that after the \mark{marked decision},
 renaming \tcode{std::nontype} became the status quo,
 and the last poll did not have enough votes to change that status quo.
+}
+
+\h3{Post-Sofia decisions}
+
+The paper was discussed during the LEWG 2025-08-12 Telecon;
+See also \ref[TeleconMinutes] and \ref[P3775R0] (presentation slides).
+Firstly, issues with using \tcode{std::constant_wrapper} were discussed in great detail;
+resulting in the following poll:
+
+\Bquote{
+\b{POLL}: We want to explore replacing nontype with constant_wrapper instead of renaming.
+\five_way_poll[2, 1, 3, 7, 4]
+
+\b{Attendance}: 20
+
+\b{Authors' opinion}: 3xSA
+
+\b{Outcome}: Consensus against
+}
+
+Next, it was decided to rename \tcode{std::nontype}:
+
+\Bquote{
+\b{POLL}: We want to rename \tcode{std::nontype}.
+\five_way_poll[6, 6, 3, 0, 1]
+
+\b{Attendance}: 20
+
+\b{Authors' opinion}: 3xSF
+
+\mark{\b{Outcome}: Consensus in favor}
+}
+
+Next, an in-depth discussion regarding the naming of \tcode{std::nontype} ensued.
+The preferred design of this paper
+(rename to \tcode{std::fn}, add a call operator to the type in C++29)
+did not find favor (under then name \tcode{std::fw}).
+That is in part because it would mean renaming the type in C++26,
+on the conjecture that a change \em{will} happen in C++29 that justifies the choice of name.
+
+\Bquote{
+\b{POLL}: We want to rename std::nontype/std::nontype_t to std::fw / std::function_wrapper.
+
+[\N{HORIZONTAL ELLIPSIS}]
+
+\b{Attendance}: 20
+
+\b{Authors' opinion}: 3xSF
+
+\b{Outcome}: No consensus for change
+}
+
+\Bnote{
+The exact poll results are not available due to an error in the minutes,
+but were slightly below a two-thirds majority.
+}
+
+Finally, the room decided to reaffirm the most popular option of Sofia 2025:
+
+\Bquote{
+\b{POLL}: In P3774R0 change the name to std::constant_arg / std::constant_arg_t,
+without moving the facility to
+and forward the resulting revision to LWG for C++26 (to be confirmed by electronic poll).
+\five_way_poll[8, 4, 1, 0, 1]
+
+\b{Attendance}: 19
+
+\b{Author's opinion}: 3xSF
+
+\mark{\b{Outcome}: consensus in favor}
+}
+
+\Bnote{
+\em{Many} more polls were taken, not quoted here for the sake of brevity.
 }
 
 \h3[id=why-did-we-need-nontype]{Why did we need a new \tcode{std::nontype} type?}
@@ -170,7 +273,15 @@ but does not reference any specific lambda.
 This is crucial for being able to store \tcode{std::function_ref} somewhere long-term
 without paying attention to the lifetime of the callable type it has been initialized with.
 
-\h2{Proposed solution}
+\h2{Formerly proposed solution}
+
+\Bimp{
+This proposed solution is no longer a plausible direction for the paper.
+It only exists here for historical context.
+LEWG decided to rename \tcode{std::nontype} to \tcode{std::constant_arg},
+and adding a call operator to such a general-purpose type is not something
+any of the authors want.
+}
 
 We propose to rename \tcode{std::nontype_t} and \tcode{std::nontype}
 to \tcode{std::fn_t} and \tcode{std::fn}.
@@ -453,12 +564,22 @@ not to pursue this path.
 
 \h3{Simple rename for C++26}
 
+\Bnote{
+It was decided by LEWG to take this direction.
+See \ref[TeleconMinutes].
+}
+
 Renaming \tcode{std::nontype} requires no implementation experience
 because it is merely changing the name of a symbol;
 it obviously works.
 This is what we are proposing for C++26.
 
 \h3[id=implementation-for-29]{Possible implementation of \tcode{std::fn} for C++29}
+
+\Bimp{
+This is no longer a plausible direction for the paper given the naming choice made.
+The content in this setting exists only to provide historical context.
+}
 
 An implementation for illustration purposes of the full C++29 \tcode{std::fn}
 may look as follows:
@@ -523,8 +644,8 @@ diff-block h-[data-h=cmt_dlim] {
 
 The following changes are relative to \ref[N5008].
 
-\cowel_macro[replacement_v]{fn}
-\cowel_macro[replacement_t]{fn_t}
+\cowel_macro[replacement_v]{constant_arg}
+\cowel_macro[replacement_t]{constant_arg_t}
 \cowel_macro[del_ins_nontype]{\del{nontype_t} \ins{\replacement_t}}
 \cowel_macro[etc]{[\N{HORIZONTAL ELLIPSIS}]}
 
@@ -532,48 +653,22 @@ In \eelis{version.syn}, update the feature-test macro:
 
 \Bdiff{
 \itemdecl{
-#define __cpp_lib_function_ref \del{202306L} \ins{20XXXXL} // \serif{also in \tt{<functional>}}
+#define __cpp_lib_function_ref \del{202306L} \ins{202511L} // \serif{also in \tt{<functional>}}
 }
 }
 
 In \eelis{utility.syn},
-delete the declarations of \tcode{std::nontype} and \tcode{std::nontype_t}:
-
-\Bdel{
-\itemdecl{
-// \serif{nontype argument tag}
-template<auto V>
-  struct nontype_t {
-    explicit nontype_t() = default;
-  };
-template<auto V> constexpr nontype_t<V> nontype{};
-}
-}
-
-In \eelis{functional.syn},
-change the synopsis as follows:
+replace every occurrence of \tcode{nontype_t} with \tcode{\replacement_t}
+and \tcode{nontype} with \tcode{\replacement_v}, respectively.
 
 \Bdiff{
 \itemdecl{
-namespace std {
-  \html{\etc}
-
-  // \serif{\eelis{func.identity}, identity}
-  struct identity;                                                  // \serif{freestanding}
-
-\ins{  // \serif{constant function wrapper}
-  template<auto f>
-    struct \replacement_t {
-      explicit \replacement_t() = default;
-    };
-  template<auto f> constexpr \replacement_t<f> \replacement_v{};}
-  
-  // \serif{\eelis{func.not.fn}, function template \tcode{not_fn}}
-  template<class F> constexpr \exposid{unspecified} not_fn(F&& f);            // \serif{freestanding}
-  template<auto f> constexpr \exposid{unspecified} not_fn() noexcept;         // \serif{freestanding}
-
-  \html{\etc}
-}
+// \serif{nontype argument tag}
+template<auto V>
+  struct \del_ins_nontype {
+    explicit \del_ins_nontype() = default;
+  };
+template<auto V> constexpr \del_ins_nontype<V> \del{nontype} \ins{\replacement_v}{};
 }
 }
 
@@ -653,7 +748,7 @@ template<class T> function_ref& operator=(T) = delete;
 \ul{
   \li{\tcode{T} is not the same type as \tcode{function_ref},}
   \li{\tcode{is_pointer_v<T>} is \tcode{false}, and}  
-  \li{\tcode{T} is not a specialization of \del_ins_nontype{}.}  
+  \li{\tcode{T} is not a specialization of \tcode{\del_ins_nontype{}}.}  
 }
 }
 }
@@ -684,7 +779,14 @@ template<auto f, class T>
 
 \make_bib
 
-\h2[id=wording-29,show-number=no]{Appendix \N{EM DASH} Follow-up wording for C++29}
+\h2[id=wording-29,show-number=no]{Appendix \N{EM DASH} Formerly considered wording for C++29}
+
+\Bimp{
+The following changes are \strong{not proposed},
+nor planned for a future revision of this paper.
+They exist in this paper solely for historical reasons,
+unchanged from R0.
+}
 
 The following changes are relative to \ref[N5008],
 with the changes in \ref[#wording] applied.
@@ -820,21 +922,26 @@ Then:
   link = https://wg21.link/p3312r1,
   long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3312r1.pdf
 ]\
-\: FIXME: if we ever revise this paper,
-\: these links should be replaced with proper wg21.link hrefs like the others
 \bib[
   id = P3740R0,
   title = Last chance to fix std::nontype,
   date = 2025-06-14,
   author = Jan Schultke,
-  link = https://isocpp.org/files/papers/P3740R0.html
+  link = https://wg21.link/p3740r0
 ]\
 \bib[
   id = P3740R1,
   title = Last chance to fix std::nontype,
   date = 2025-06-20,
   author = Jan Schultke,
-  link = https://isocpp.org/files/papers/P3740R1.html
+  link = https://wg21.link/p3740r1
+]\
+\bib[
+  id = P3775R0,
+  title = Slides for P3774R0,
+  date = 2025-08-12,
+  author = Jan Schultke,
+  link = https://wg21.link/p3775r0
 ]\
 \bib[
   id = P3792R0,
@@ -855,4 +962,10 @@ Then:
   date = 2025-06-14,
   author = Jan Schultke,
   link = https://github.com/Eisenwave/nontype_functional
+]\
+\bib[
+  id = TeleconMinutes,
+  title = LEWG Telecon Minutes,
+  date = 2025-08-12,
+  link = https://wiki.edg.com/bin/view/Wg21telecons2025/P3774#Library_Evolution_Telecon-2025-08-12
 ]\
