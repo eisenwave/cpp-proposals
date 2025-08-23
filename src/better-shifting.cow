@@ -1,8 +1,8 @@
 \cowel_include{libwg21.cow}
 
-\wg21_head[
+\wg21_head(
     title = Better shifting
-]{
+){
 \dl{
   \dt{Document number:} \dd{\docnum{P3793R0}}
   \dt{Date:}            \dd{\tt{2025-07-15}}
@@ -10,8 +10,8 @@
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Brian Bi <\mail{bbi5291@gmail.com}>}
   \dt{Co-authors:}      \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-  \dt{GitHub Issue:}    \dd{\ref[https://wg21.link/P3793/github]}
-  \dt{Source:}          \dd{\ref[https://github.com/Eisenwave/cpp-proposals/blob/master/src/better-shifting.cow]}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3793/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/better-shifting.cow)}
 }
 \hr
 }
@@ -29,7 +29,7 @@ following advantages over the built-in shift operators:
 }
 }
 
-\h2[listed=no]{Contents}
+\h2(listed = false){Contents}
 
 \make_contents
 
@@ -66,7 +66,7 @@ correct result.
 For these reasons, we are instead proposing to solve the problems with shifting in C++
 by introducing new Standard Library facilities in the \header{bit} header.
 
-\h2[id=motivation]{Motivation \N{EM DASH} Why are overlong shifts needed?}
+\h2(id=motivation){Motivation \N{EM DASH} Why are overlong shifts needed?}
 
 We consider the undefined behavior of overlong shifts to be gratuitous.
 Unlike other arithmetic operators, which produce undefined behavior only when the result is
@@ -192,7 +192,7 @@ unsigned int shl2(unsigned int x, unsigned int amount) {
 }
 }
 
-\codeblock[asm]{
+\codeblock(asm){
 shl1:
         mov     ecx, esi
         xor     eax, eax
@@ -236,7 +236,7 @@ possibly by inserting a cast that will be optimized out.
 Conversely, the deliberate choice to use a signed type for the left operand of
 a right shift indicates intent to perform an arithmetic shift.
 The proposed \tcode{std::to_signed} and \tcode{std::to_unsigned}
-functions in \ref[P3643R0] would make such conversions convenient,
+functions in \ref(P3643R0) would make such conversions convenient,
 even in generic code.
 
 A survey of popular programming languages supports this design direction:
@@ -420,7 +420,7 @@ The rationale for these signature is as follows:
 
 \h3{SIMD support}
 
-Following \ref[P2933R4],
+Following \ref(P2933R4),
 almost all \header{bit} functions have a corresponding overload in \header{simd},
 including \tcode{std::rotl} and \tcode{std::rotr}.
 
@@ -432,12 +432,12 @@ or by a scalar shift amount which applies to all elements in the \tcode{simd::ve
 
 \h2{Wording}
 
-The following changes are relative to \ref[N5008].
+The following changes are relative to \ref(N5008).
 
 \Bnote{
 The \tcode{shl} and \tcode{shr} functions should immediately precede the
 \tcode{rotl} and \tcode{rotr} functions in the wording. Therefore, if this paper
-and \ref[P3764R0] are adopted in the same meeting, the \tcode{shl} and \tcode{shr}
+and \ref(P3764R0) are adopted in the same meeting, the \tcode{shl} and \tcode{shr}
 functions should be inserted between the \tcode{msb_to_mask} and \tcode{rotl}
 functions.
 }
@@ -460,7 +460,7 @@ In \eelis{bit.syn}, change the synopsis as follows:
 \Bdiff{
 \itemdecl{
 namespace std {
-  \html{[\N{HORIZONTAL ELLIPSIS}]}
+  \etc
 
 \ins{  // \serif{[bit.shift], shifting}
   template<class T>
@@ -474,7 +474,7 @@ namespace std {
   template<class T>
     constexpr T rotr(T x, int s) noexcept;
 
-  \html{[\N{HORIZONTAL ELLIPSIS}]}
+  \etc
 }
 }
 }
@@ -482,7 +482,7 @@ namespace std {
 In \eelis{bit}, add a new subclause immediately preceding \eelis{bit.rotate}:
 
 \Bins{
-\cowel_html_element[h3]{Shifting \stable_ref{bit.shift}}
+\cowel_html_element(h3){Shifting \stable_ref{bit.shift}}
 
 \itemdecl{
 template<class T>
@@ -497,7 +497,7 @@ template<class T>
 If \tcode{s} is negative, the behavior is erroneous and an
 implementation-defined value is returned. Otherwise, returns the value of
 \tcode{x} multiplied by 2\sup{\tcode{s}}.
-\br\wg21_note{If \tcode{s} is greater than or equal to the bit width of \tcode{T},
+\br\note{If \tcode{s} is greater than or equal to the bit width of \tcode{T},
 the result is zero.}
 }
 
@@ -514,7 +514,7 @@ template<class T>
 If \tcode{s} is negative, the behavior is erroneous and an
 implementation-defined value is returned. Otherwise, returns the value of
 \tcode{x} divided by 2\sup{\tcode{s}}, rounded toward negative infinity.
-\br\wg21_note{If \tcode{s} is greater than or equal to the bit width of \tcode{T},
+\br\note{If \tcode{s} is greater than or equal to the bit width of \tcode{T},
 the result is -1 if \tcode{x} is negative and 0 otherwise; the computation of
 2\sup{\tcode{s}} does not overflow.}
 }
@@ -526,11 +526,11 @@ In \eelis{simd.syn}, change the synopsis as follows:
 
 \Bdiff{
 \itemdecl{
-\html{[\N{HORIZONTAL ELLIPSIS}]}
+\etc
 
 // \serif{[simd.bit], Bit manipulation}
 
-\html{[\N{HORIZONTAL ELLIPSIS}]}
+\etc
 
 \ins{template<\exposid{simd-type} V0, \exposid{simd-type} V1>
   constexpr V0 shl(const V0& v, const V1& s) noexcept;
@@ -552,7 +552,7 @@ template<\exposid{simd-type} V0, \exposid{simd-type} V1>
 template<\exposid{simd-type} V>
   constexpr V  rotr(const V& v, int s) noexcept;
 
-\html{[\N{HORIZONTAL ELLIPSIS}]}
+\etc
 
 // See \serif{[simd.bit], Bit manipulation}
 using simd::byteswap;
@@ -570,7 +570,7 @@ using simd::countr_zero;
 using simd::countr_one;
 using simd::popcount;
 
-\html{[\N{HORIZONTAL ELLIPSIS}]}
+\etc
 }
 }
 
@@ -629,37 +629,37 @@ all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}), where
 
 \h2{References}
 
-\bib[
+\bib(
   id = N5008,
   title = Working Draft\, Programming Languages — C++,
   date = 2025-03-15,
   author = Thomas Köppe,
   link = https://wg21.link/n5008,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5008.pdf
-]\
-\bib[
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5008.pdf,
+)\
+\bib(
   id = P2933R4,
   title = Extend <bit> header function with overloads  for std::simd,
   author = Daniel Towner\, Ruslan Arutyunyan,
   date = 2025-02-13,
   link = https://wg21.link/p2933r4,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2933r4.html
-]\
-\bib[
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2933r4.html,
+)\
+\bib(
   id = P3643R0,
   title = \tcode{std::to_signed} and \tcode{std::to_unsigned},
   date = 2025-03-13,
   author = Jan Schultke,
   link = https://wg21.link/p3643r0,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3643r0.html
-]\
-\bib[
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3643r0.html,
+)\
+\bib(
   id = P3764R0,
   title = A utility function for propagating the most significant bit,
   date = 2025-07-15,
   author = Jan Schultke,
   link = https://wg21.link/p3764r0,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3764r0.html
-]\
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3764r0.html,
+)\
 
 \make_bib
