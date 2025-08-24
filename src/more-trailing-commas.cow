@@ -338,7 +338,7 @@ new (a, b,) T                       // \serif{\gterm{expression-list} in \gterm{
 new T(a, b,)                        // \serif{\gterm{expression-list} in \gterm{new-initializer}}
 template for (int _ : { a, b, })    // \serif{\gterm{expression-list} in \gterm{expansion-init-list}}
 auto [a, b,]                        // \serif{\gterm{sb-identifier-list} in \gterm{structured-binding-declaration}}
-T f(a, b,)                          // \serif{\gterm{parameter-declaration-list} in }
+T f(a, b,)                          // \serif{\gterm{parameter-declaration-list} in \gterm{parameter-declaration-clause}}
 T x(a, b,);                         // \serif{\gterm{expression-list} in \gterm{initializer}}
 [[=a, =b,]]                         // \serif{\gterm{annotation-list} in \gterm{attribute-specifier}}
 S() : m(a, b,)                      // \serif{\gterm{expression-list} in \gterm{mem-initializer}}
@@ -457,6 +457,32 @@ using b;
 Overall, permitting trailing commas
 in a \gterm{init-declarator-list} or \gterm{using-declarator-list} seems unmotivated,
 and would create unnecessary work for implementers.
+
+\h4{Non-lists}
+
+The following trailing commas are not proposed because they are not following a list:
+
+\cppblock{
+static_assert(true,"",)   // \serif{\gterm{static_assert-declaration}}
+contract_assert(true,)    // \serif{\gterm{assertion-statement}}
+= delete("",)             // \serif{\gterm{deleted-function-body}}
+}
+
+While it may be more philosophically consistent to permit a comma within anything
+that vaguely looks like a function call,
+there is little motivation for such cases above.
+To be fair, a trailing comma could yield a minimal one-line change as follows:
+
+\codeblock(diff){
+ static_assert(
+     true,
++    "message"
+ );
+}
+
+However, it seems unlikely that a developer would choose to distribute a no-message
+\tcode{static_assert} over three lines in the first place.
+Overall, these cases just seem to add more work for implementers.
 
 \h3{Comparison to P0562R2}
 
