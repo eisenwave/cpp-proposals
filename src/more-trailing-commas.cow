@@ -1,0 +1,606 @@
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+    title = More trailing commas
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{P3776R0}}
+  \dt{Date:}            \dd{\tt{2025-08-23}}
+  \dt{Audience:}        \dd{EWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3776/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/more-trailing-commas.cow)}
+}
+\hr
+}
+
+\Babstract{
+C++ should support trailing commas in more places,
+such as in function parameter lists.
+}
+
+\h2(listed = false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+C++ permits the use of trailing commas in some lists, but not in others.
+For example, trailing commas are permitted at the end of an \gterm{initializer-list},
+but not following a
+\gterm{mem-initializer-list},
+\gterm{capture-list},
+\gterm{template-parameter-list},
+\gterm{expression-list},
+in a \gterm{postfix-expression}, etc.
+It would be convenient if the support for trailing commas was extended
+to those other lists.
+
+For example, the following should be valid:
+
+\cppblock{
+void f(
+    int x,
+    int y, // \N{LEFTWARDS ARROW} trailing comma here
+);
+}
+
+\h3{Recent history}
+
+While this proposal is new,
+a very similar proposal \ref(P0562R2) has recently passed through EWG and CWG,
+but was ultimately not polled due to implementability concerns.
+\ref(P0562R2) argues in favor of trailing commas
+following \gterm{mem-initializer-list} and \gterm{base-specifier-list},
+with similar rationale as this proposal.
+The concern in question is that a comma after a \gterm{mem-initializer-list}
+introduces a parsing ambiguity
+between expressions and function bodies;
+see \ref(ReflectorDiscussion):
+
+\Bquote{
+Classes are parsed in two phases: first, declarations are parsed, skipping
+the bodies of member functions and a few other things, and then those
+delayed parts are parsed in a context where the class is complete. 
+
+For most functions, skipping the body in the first pass is easy. There's an
+open brace, and you can just skip to the close brace. At worst, there's
+\tcode{try \N{LEFT CURLY BRACKET}},
+and you need to find the end of the last catch handler.
+
+The problem is that a
+\gterm{mem-initializer-id} can be a \gterm{template-id} that refers to a base class, and
+the identifiers it uses to name the base class might be declared
+(possibly after the constructor) in the same class \N{EM DASH} meaning that we've not parsed
+them yet.
+Therefore when we see a \tcode{<}, we don't know if it's introducing a
+template argument list.
+For example: 
+
+\cppblock{
+struct X {};
+struct Y : X {
+  Y() : A<b<c>(), {
+  // ...
+  }
+  // A, b, and c declared down here somewhere
+};
+}
+
+Are we in the body of the constructor yet?
+
+Prior to P0562R2, the answer was no: an open brace preceded by a comma
+cannot start the constructor body. For this to be valid, \tcode{b} must be a
+template, and the \tcode{\N{LEFT CURLY BRACKET}} is then the start
+of the second template argument of \tcode{A}. (\etc) 
+
+But after P0562R2, the above example seems to become ambiguous, and I'm not
+sure how an implementation would be able to parse it.
+}
+
+Following these developments in St. Louis 2024-06,
+the proposal has seen no activity.
+It seems like the baby has been thrown out with the bathwater here,
+since the rationale of the proposal is still sound and
+this ambiguity does not affect \gterm{base-specifier-list}s.
+
+\h3{Trailing commas in other languages}
+
+Various modern programming languages support trailing commas,
+not just in initialization of classes or when listing \tcode{enum} members,
+but also in function parameter lists or function argument lists:
+
+\style{
+  #lang-table {
+    margin-left: auto;
+    margin-right: auto;
+    width: 95%;
+  }
+  #lang-table td {
+    padding-bottom: 1em;
+  }
+}
+
+\table(id = lang-table){
+  \tr{
+    \th{Language} \th{Trailing commas support}
+  }
+  \tr{
+    \td{Rust}
+    \td{
+      Has always supported trailing commas in.\br
+      Use of trailing commas is recommended by the official style guide
+      (\ref(RustTrailingCommas)).
+    }
+  }
+  \tr{
+    \td{Kotlin}
+    \td{
+      Added support for trailing commas in 2020 (\ref(KotlinTrailingCommas)).
+    }
+  }
+  \tr{
+    \td{JavaScript}
+    \td{
+      Support for trailing commas was standardized in ECMASCript2017
+      (\ref(ECMAScriptTrailingCommas)).
+    }
+  }
+  \tr{
+    \td{TypeScript}
+    \td{
+      Added support at the same time it was standardized for JavaScript
+      (\ref(TypeScriptTrailingCommas)).
+    }
+  }
+  \tr{
+    \td{C#}
+    \td{
+      No support yet,
+      in part due to concerns regarding tuple syntax,
+      which also uses parentheses (\ref(CSharpTrailingCommas)).
+    }
+  }
+  \tr{
+    \td{Swift}
+    \td{
+      No support yet.
+      Concerns regarding tuple syntax have also been raised (\ref(SwiftTrailingCommas)).
+    }
+  }
+}
+
+The motivation for trailing commas in those languages equally applies to C++.
+
+\Bnote{
+More discussion on this language design choice can also be found at
+\ref(RedditTrailingCommas) and \ref(OldNewThing).
+
+Various other languages such as Python, Go, and Julia also support
+trailing commas in function calls,
+but are not specially listed in the table above.
+That table aims to highlight particularly relevant examples with authoritative resources.
+}
+
+\h2{Motivation}
+
+While trailing commas don't solve any major safety or performance issue,
+they improve developer convenience significantly in some ways.
+Given how many comma-separated lists developers regularly write,
+this convenience can be noticeable on a daily basis.
+
+\Bnote{
+The following motivation uses only function parameter lists as motivating examples,
+but the arguments equally apply to other comma-separated lists.
+}
+
+\h3{Improved text editing}
+
+Advanced text editors typically have commands for cutting/copying whole lines,
+or let the developer reorder lines via keyboard shortcut.
+For example, a line can be swapped with the line above
+with \kbd{Alt}+\kbd{\N{NO-BREAK SPACE}↑\N{NO-BREAK SPACE}} in VSCode.
+This can result in compiler errors without trailing commas:
+
+\cppblock{
+void f(
+    int x,
+    int y
+);
+}
+
+When reordering \tcode{int x,} and \tcode{int y}, errors are raised:
+
+\cppblock{
+void f(
+    int y  // \N{DOWNWARDS ARROW WITH TIP LEFTWARDS} syntax error: "int" following "y"
+    int x, // \N{LEFTWARDS ARROW} syntax error: trailing comma
+);
+}
+
+If both lines had a trailing comma and C++ permitted that syntax,
+reordering these lines would not be a problem.
+
+\h3{Improved version control}
+
+When an element is appended to a comma-separated list,
+this means that the previous element needs to receive a separating comma,
+resulting in menial changes:
+
+\codeblock(diff){
+ void f(
+     int x,
+-    int y
++    int y,
++    int z
+ );
+}
+
+With trailing commas, we can turn a three-line change into a one-line change:
+
+\codeblock(diff){
+ void f(
+     int x,
+     int y,
++    int z,
+ );
+}
+
+This smaller change is not just easier to review,
+it also does not pollute the revision history (\tt{git blame}) for
+the previous line of code,
+and it does not introduce easily avoidable merge conflicts.
+
+\h3{Improved auto-formatter control}
+
+Many C++ developers auto-format their code using
+\ref(https://clang.llvm.org/docs/ClangFormat.html){ClangFormat}.
+One powerful feature it has is the ability to control
+how brace-enclosed lists are formatted via the use of trailing commas.
+
+\Bex{
+ClangFormat may format C++ code like:
+\cppblock{
+vector<int> numbers { LIST_ITEM_A, LIST_ITEM_B,  //
+                      LIST_ITEM_C };             // \N{LEFTWARDS ARROW} column limit here
+                                                 // 
+vector<int> numbers {
+    LIST_ITEM_A,
+    LIST_ITEM_B,
+    LIST_ITEM_C, // \N{LEFTWARDS ARROW} trailing comma here
+};
+}
+
+The compact version without a trailing comma may be situationally useful
+by compactifying code, allowing more to fit on screen.
+The verbose version with a trailing comma is more useful for regularly updated lists,
+and can be perceived as more organized.
+It's easy to envision the same example with function argument lists.
+}
+
+Trailing commas express the desire to format over multiple lines,
+which auto-formatters may utilize.
+Without support for trailing commas in e.g. function parameter lists,
+the developer is robbed of their ability to (elegantly) express that desire,
+since doing so would make the program ill-formed.
+
+\Bnote{
+A possible workaround for ClangFormat is to insert a trailing \tcode{//}
+at the end of a line
+(which forces line breaks to be retained),
+or to manually format a section of code with \tcode{// clang-format off}.
+}
+
+\h3{Improved language consistency}
+
+It is generally surprising that C++ only supports trailing commas
+within a subset of its comma-separated lists.
+Besides the design not sparking joy,
+it creates practical problems.
+
+For example, when refactoring code and e.g. converting list-initialization
+such as \tcode{{1, 2, 3,}} which already uses trailing commas into direct-initialization
+\tcode{(1, 2, 3,)},
+the trailing comma introduces a compiler error until it is removed,
+which is a mild inconvenience at least.
+
+\h2{Design}
+
+I propose to add a trailing comma after a list whenever possible
+(i.e. no parsing issues are introduced),
+with the exception of lists terminated by a semicolon.
+
+\h3{New trailing commas}
+
+The following trailing commas are proposed,
+and not currently permitted.
+
+\cppblock{
+[: /* ... */ :]<A, B,>              // \serif{\gterm{template-argument-list} in \gterm{splice-specialization-specifier}}
+[]<A, B,>{}                         // \serif{\gterm{template-parameter-list} in \gterm{lambda-expression}}
+[a, b,]{}                           // \serif{\gterm{capture-list} in \gterm{lambda-introducer}}
+d[a, b,]                            // \serif{\gterm{expression-list} in subscript operator}
+f(a, b,)                            // \serif{\gterm{expression-list} in call operator}
+T(0,)                               // \serif{\gterm{expression-list} in function-style cast}
+typename T(0,)                      // \serif{\gterm{expression-list} in function-style cast with \tcode{typename}}
+new (a, b,) T                       // \serif{\gterm{expression-list} in \gterm{new-placement}}
+new T(a, b,)                        // \serif{\gterm{expression-list} in \gterm{new-initializer}}
+template for (int _ : { a, b, })    // \serif{\gterm{expression-list} in \gterm{expansion-init-list}}
+auto [a, b,]                        // \serif{\gterm{sb-identifier-list} in \gterm{structured-binding-declaration}}
+T f(a, b,)                          // \serif{\gterm{parameter-declaration-list} in }
+T x(a, b,);                         // \serif{\gterm{expression-list} in \gterm{initializer}}
+[[=a, =b,]]                         // \serif{\gterm{annotation-list} in \gterm{attribute-specifier}}
+S() : m(a, b,)                      // \serif{\gterm{expression-list} in \gterm{mem-initializer}}
+template<a, b,>                     // \serif{\gterm{template-parameter-list} in \gterm{template-head}}
+template<C<a, b,> T>                // \serif{\gterm{template-argument-list} in \gterm{type-constraint}}
+template<template<A, B,> concept>   // \serif{\gterm{template-parameter-list} in \gterm{concept-tt-parameter}}
+T<A, B,>                            // \serif{\gterm{template-argument-list} in \gterm{simple-template-id}}
+operator()<A, B,>                   // \serif{\gterm{template-argument-list} in \gterm{template-id}}
+}
+
+While this initially appears like a huge change,
+it can be easily worded by incorporating the trailing comma directly
+into lists such as \gterm{expression-list},
+since every occurrence of these lists would allow for trailing commas.
+
+\Bnote{
+Of these, the \gterm{expression-list} in an \gterm{expansion-init-list} seems like a C++26 defect,
+and a CWG issue has been requested at \ref(CWGGithub754).
+Since this appears to be a separate C++26 defect,
+not a new C++29 feature,
+this paper's wording does not include that fix.
+}
+
+\h4{Addressing ambiguity concerns}
+
+Note that all of these proposed cases are safe from parsing ambiguities
+encountered by \ref(P0562R2).
+That is because a the trailing comma can only be followed by
+'\tcode{\N{RIGHT CURLY BRACKET}}',
+'\tcode{\N{RIGHT PARENTHESIS}}',
+'\tcode{\N{RIGHT SQUARE BRACKET}}', or
+'\tcode{>}'.
+In the first three cases,
+a closing bracket cannot possibly be the beginning of a new element,
+only the end whatever encloses list.
+Neither '\tcode{>}', '\tcode{>=}', nor '\tcode{>>}' are prefix unary operators,
+so in any case, '\tcode{,>}' can only mean one thing.
+
+Furthermore, \tcode{operator,} cannot be separated into \tcode{operator} and '\tcode{,}'
+or combined into \tcode{operator,>} (there is no '\tcode{,>}' operator in the language),
+so no ambiguity can be introduced by having \tcode{operator} appear at the end of a list.
+
+\h3{Already supported trailing commas}
+
+The following trailing commas are already supported:
+
+\cppblock{
+{ a, b, }                 // \serif{\gterm{initializer-list} in \gterm{braced-init-list}}
+{ .a=0, .b=0, }           // \serif{\gterm{designated-initializer-list} in \gterm{braced-init-list}}
+enum { a, b, }            // \serif{\gterm{enumerator-list} in \gterm{enum-specifier}}
+[[a,b,,,,]]               // \serif{\gterm{attribute-list} in \gterm{attribute-specifier}}
+}
+
+\h3{Not proposed trailing commas}
+
+\h4{Commas proposed in P0562R2}
+
+The following two trailing commas are proposed by \ref(P0562R2) and should be added,
+if at all possible,
+as a revision of that paper.
+
+\cppblock{
+S() : a{}, b{},           // \serif{\gterm{mem-initializer-list} in \gterm{ctor-initializer}}
+struct S : A, B, { };     // \serif{\gterm{base-specifier-list} in \gterm{base-clause}}
+}
+
+While the parsing ambiguity (\ref(#recent-history))
+seems limited to a \gterm{mem-initializer-list},
+a \gterm{base-specifier-list} is similarly followed by \tcode{\N{LEFT CURLY BRACKET}},
+which makes it quite plausible that similar parsing issues could affect that case.
+In any case, to keep this paper focused,
+I do not propose those two commas.
+
+\h4{Trailing commas in semicolon-terminated lists}
+
+Two more commas are not proposed because they are in semicolon-terminated lists:
+
+\cppblock{
+int a, b,;                // \serif{\gterm{init-declarator-list} in \gterm{simple-declaration}}
+struct S { int a, b,; };  // \serif{\gterm{member-declarator-list} in \gterm{member-declaration}}
+friend A, B,;             // \serif{\gterm{friend-type-specifier-list} in \gterm{friend-type-declaration}}
+using a, b,;              // \serif{\gterm{using-declarator-list} in \gterm{using-declaration}}
+}
+
+Firstly, for aesthetic reasons, it is unlikely that users would want to write this.
+Furthermore, multiple elements in a \gterm{init-declarator-list} are already
+discouraged by some style guides.
+Last but not least, the \ref(#motivation) of this paper focuses on multi-line scenarios.
+In the aforementioned cases,
+to make good use of trailing commas,
+developers would need to write:
+
+\cppblock{
+int
+    a,
+    b,
+;
+
+using
+    a,
+    b,
+;
+}
+
+Not only is this exotic, it is also more verbose than the status quo,
+which already allows reordering lines if we instead write:
+
+\cppblock{
+int a;
+int b;
+
+using a;
+using b;
+}
+
+Overall, permitting trailing commas
+in a \gterm{init-declarator-list} or \gterm{using-declarator-list} seems unmotivated,
+and would create unnecessary work for implementers.
+
+\h3{Comparison to P0562R2}
+
+It is worth noting that \ref(P0562R2) did not propose trailing commas
+in function and template parameters
+with the following rationale:
+
+\Bquote{
+Function and template parameters do not allow a final terminating comma,
+but these do not  trouble me in practice.
+(Arguably any function or template with enough parameters to be much 
+of a maintenance issue seems like it is ripe for refactoring.)
+This paper does not propose changing function or template parameters.
+}
+
+Note that \ref(P0562R2) argues that additional trailing commas for \gterm{mem-initializer-list}s
+make "maintenance" easier.
+Maintenance equally motivates trailing commas in function parameter lists.
+However, \ref(P0562R2) holds function parameter lists to a double standard
+where if you maintain such lists,
+they are "ripe for refactoring" anyway.
+
+This position is hypocritical, lacks reason,
+and is out-of-touch with language development at large,
+where trailing commas in function parameter lists have recently been added to
+various programming languages (\ref(#trailing-commas-in-other-languages)).
+In fact, developers write tremendously more function parameter lists and argument lists than
+\gterm{mem-initializer-list}s,
+so the former are more deserving of attention.
+
+\h3{Could this syntax be used for something else?}
+
+The idea has been floated on some mailing lists to give empty list elements special meaning,
+such as using a default argument:
+
+\cppblock{
+void f(int x = 0, int y = 0);
+
+f(, 1);    // OK, equivalent to f(0, 1)
+f(1, );    // OK, equivalent to f(1, 0)
+f(1,1,);   // error: third default argument requested, but only two parameters
+}
+
+Personally, I consider this idea terrible because of how non-descriptive it is;
+a user could even unintentionally perform such calls by making a typo '\tcode{,,}'
+somewhere in the argument list.
+Using the syntax \tcode{f(1,1,)} to mean anything other than a function call
+with two arguments and a trailing comma would be terribly confusing to developers
+accustomed to trailing commas from other languages,
+such as JavaScript or Kotlin developers (\ref(#trailing-commas-in-other-languages)).
+
+\h2{Implementation experience}
+
+None.
+
+\h2{Impact on existing code}
+
+The proposal does not alter the meaning of any existing code;
+it only makes previously ill-formed code valid.
+
+\h2{Wording}
+
+In \eelis{temp.names#1},
+change the syntax of \gterm{template-argument-list} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{template-argument-list}:}
+  \dd{template-argument \opt{\tcode{...}} \ins{\opt{\tcode{,}}}}
+  \dd{\del{template-argument-list \tcode{,}} template-argument \opt{\tcode{...}} \ins{\tcode{,} template-argument-list}}
+}
+}
+
+\h2{References}
+
+\bib(
+  id = N5014,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-08-05,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+)\
+\bib(
+  id = P0562R2,
+  title = Trailing Commas in Base-clauses and Ctor-initializers,
+  date = 2024-04-15,
+  author = Alan Talbot,
+  link = https://wg21.link/p0562r2,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p0562r2.pdf,
+)
+\bib(
+  id = P3312R1,
+  title = Overload Set Types,
+  date = 2025-04-16,
+  author = Bengt Gustafsson,
+  link = https://wg21.link/p3312r1,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3312r1.pdf
+)\
+\bib(
+  id = CWGGithub754,
+  title = [stmt.expand] Trailing commas in an expansion-init-list should be permitted,
+  date = 2025-08-24,
+  author = Jan Schultke,
+  link = https://github.com/cplusplus/CWG/issues/754,
+)\
+\bib(
+  id = ReflectorDiscussion,
+  title = [isocpp-core] P0562R2 -- how is a compiler intended to find the end of a constructor definition?,
+  date = 2024-06-27,
+  link = https://lists.isocpp.org/core/2024/06/15961.php,
+)\
+\bib(
+  id = RustTrailingCommas,
+  title = Rust Style Guide \N{EM DASH} Trailing commas,
+  link = https://doc.rust-lang.org/style-guide/#trailing-commas,
+)\
+\bib(
+  id = KotlinTrailingCommas,
+  title = What's nwe in Kotlin 1.4.0 \N{EM DASH} Trailing comma,
+  date = 2020-08-17,
+  link = https://kotlinlang.org/docs/whatsnew14.html#trailing-comma,
+)\
+\bib(
+  id = ECMAScriptTrailingCommas,
+  title = Proposal to allow trailing commas in function parameter lists,
+  link = https://github.com/tc39/proposal-trailing-function-commas,
+)\
+\bib(
+  id = TypeScriptTrailingCommas,
+  title = TypeScript 2.0 \N{EM DASH} Trailing commas in function parameter and argument lists,
+  link = https://www.typescriptlang.org/docs/handbook/release-notes/typescript-2-0.html#trailing-commas-in-function-parameter-and-argument-lists,
+)
+\bib(
+  id = CSharpTrailingCommas,
+  title = Proposal: Allow trailing comma in tuples & argument lists,
+  link = https://github.com/dotnet/csharplang/issues/1246,
+)\
+\bib(
+  id = SwiftTrailingCommas,
+  title = Allow trailing commas in parameter lists,
+  link = https://forums.swift.org/t/allow-trailing-commas-in-parameter-lists/68549/29,
+)\
+\bib(
+  id = RedditTrailingCommas,
+  title = Does your language support trailing commas?,
+  link = https://www.reddit.com/r/ProgrammingLanguages/comments/1amsalm/does_your_language_support_trailing_commas/,
+)\
+\bib(
+  id = OldNewThing,
+  title = On the virtues of the trailing comma,
+  author = Raymond Chen,
+  date = 2024-02-09,
+  link = https://devblogs.microsoft.com/oldnewthing/20240209-00/?p=109379,
+)\
+
+\make_bib
