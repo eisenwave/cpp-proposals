@@ -5,7 +5,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{P3776R0}}
-  \dt{Date:}            \dd{\tt{2025-08-24}}
+  \dt{Date:}            \dd{\tt{2025-08-25}}
   \dt{Audience:}        \dd{EWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -57,7 +57,7 @@ with similar rationale as this proposal.
 The concern in question is that a comma after a \gterm{mem-initializer-list}
 introduces a parsing ambiguity
 between expressions and function bodies;
-see \ref(ReflectorDiscussion):
+see \ref(P0562R2ReflectorDiscussion):
 
 \Bquote{
 Classes are parsed in two phases: first, declarations are parsed, skipping
@@ -305,6 +305,88 @@ such as \tcode{{1, 2, 3,}} which already uses trailing commas into direct-initia
 the trailing comma introduces a compiler error until it is removed,
 which is a mild inconvenience at least.
 
+\h3{Eliminating some uses of \tt{\hl(macro){__VA_OPT__}}}
+
+When we want to prepend an element to a variadic macro argument,
+we may need to use \tt{\hl(macro){__VA_OPT__}} in the following way:
+
+\cppblock{
+#define F(...) f(0 __VA_OPT__(,) __VA_ARGS__)
+}
+
+With an unconditional comma,
+\tcode{\hl(macro){F}()} would expand to \tcode{f(0,)},
+which is currently ill-formed.
+A trailing comma in function calls would allow us to simplify such macros.
+
+\h3{Motivating examples}
+
+In discussions of this proposal,
+there is often some skepticism as to whether it's useful for specific lists.
+For example, I have been told that trailing commas may be useful
+in a \gterm{template-parameter-list}, but not in a \gterm{template-argument-list}.
+
+However, while some lists are more frequently multi-line,
+you can come up with a plausible multi-line example for virtually any list:
+
+\cppblock{
+// \serif{\gterm{template-parameter-list}}
+template <
+    input_iterator I,
+    sentinel_for<I> S,
+    weakly_incrementable O, // \N{LEFTWARDS ARROW} \serif{trailing comma here}
+>
+copy_result function(I first, S last, O result);
+
+// \serif{\gterm{template-argument-list}}
+using V = variant<
+    int_least64_t,
+    float,
+    double,
+    char8_t,
+    char16_t,
+    char32_t,
+    bool,
+    string, // \N{LEFTWARDS ARROW} \serif{trailing comma here}
+>;
+
+// \serif{\gterm{function-parameter-list}}
+void pretty_print_log(
+    log_level level,
+    string_view message,
+    optional<code_location> location = {},
+    optional<const error&> error = {}, // \N{LEFTWARDS ARROW} \serif{trailing comma here}
+);
+
+// \serif{\gterm{function-argument-list}}
+auto it = find(
+    ranges::begin(container),
+    ranges::end(container) + (container.size() / 2), // \N{LEFTWARDS ARROW} \serif{trailing comma here}
+);
+
+// \serif{\gterm{lambda-capture}}
+auto callback = [
+        &,
+        current_index = 0,
+        invocation_count = 0, // \N{LEFTWARDS ARROW} \serif{trailing comma here}
+    ] {
+        ++invocation_count;
+        // ...
+    };
+
+// \serif{\gterm{annotation-list}}
+[[
+    = testing::description("Fuzzing test for ASCII sequences."),
+    = testing::execution::parallel, // \N{LEFTWARDS ARROW} \serif{trailing comma here}
+]]
+void fuzz_ascii() { /* ... */ }
+}
+
+For any of these list types, it is plausible that they are long enough
+to be broken onto multiple lines,
+and it is plausible that changes will be made to such lists in the future,
+which makes a trailing comma useful in these lists.
+
 \h2{Design}
 
 I propose to add a trailing comma after a list whenever possible
@@ -360,6 +442,13 @@ and a CWG issue has been requested at \ref(CWGGithub754).
 Since this appears to be a separate C++26 defect,
 not a new C++29 feature,
 this paper's wording does not include that fix.
+}
+
+\Bnote{
+Trailing commas would also be supported following a \gterm{capture-default},
+such as in \tcode{[&,]}.
+This is worth mentioning because a \gterm{capture-default} is not actually part of a
+\gterm{capture-list}, but a standalone element within a \gterm{lambda-capture}.
 }
 
 \h4{Addressing ambiguity concerns}
@@ -484,6 +573,43 @@ However, it seems unlikely that a developer would choose to distribute a no-mess
 \tcode{static_assert} over three lines in the first place.
 Overall, these cases just seem to add more work for implementers.
 
+\h4{Commas following ellipsis parameters}
+
+Another not proposed trailing comma is that after an ellipsis parameter:
+
+\cppblock{
+void f(
+  int x,
+  ...,    // \serif{after \tcode{...} in \gterm{parameter-declaration-clause}}
+);
+}
+
+This decision is largely based on negative feedback in \ref(CoreReflectorDiscussion).
+
+The trailing comma in this place is largely unmotivated because the ellipsis is always
+the last element in the list.
+Consequently, a \tcode{...} line cannot be reordered with the line before,
+and a comma will never have to be inserted after \tcode{...} to accommodate a subsequent element.
+
+\h4{Commas in macros}
+
+The following trailing commas are not proposed:
+
+\cppblock{
+#define M(x,y,) // \serif{\gterm{identifier-list} in \gterm{control-line}}
+\hl(macro){M}(x,y,)         // \serif{arguments to a function-like macro}
+}
+
+The former lacks motivation because it is highly unlikely
+that a C++ use would define multi-line parameters to a function-style macro.
+Doing so requires each parameter line to be terminated by \tcode{\\},
+among other reasons.
+
+Supporting trailing commas in \tcode{\hl(macro){M}(x,y,)}
+would alter the meaning of existing code.
+Currently, that expression is providing three arguments to \tcode{\hl(macro){M}},
+the last of which is empty.
+
 \h3{Comparison to P0562R2}
 
 It is worth noting that \ref(P0562R2) did not propose trailing commas
@@ -534,6 +660,111 @@ with two arguments and a trailing comma would be terribly confusing to developer
 accustomed to trailing commas from other languages,
 such as JavaScript or Kotlin developers (\ref(#trailing-commas-in-other-languages)).
 
+\h3{Addressing criticisms}
+
+\h4{Aesthetic objections}
+
+I have unofficially polled the idea of trailing commas on social media
+prior to drafting this proposal,
+and a surprising amount of people objected to the idea.
+Note that this was a blind poll without explaining the purpose of the feature beforehand.
+When asking opponents of the idea why they don't like it,
+the answers revolved around aesthetics.
+In one case literally
+
+\Bquote{
+it looks ugly
+}
+
+Since trailing commas are foreign to both natural language and mathematical notation,
+I can sympathize with this position.
+However, we must keep two things in mind:
+
+\ul{
+  \li{
+    Aesthetic perception is heavily influenced by familiarity.
+    A Python developer likely perceives C++' use of special characters in
+    \tcode{(!x && y)} or \tcode{int(T::*)} as "ugly".
+    In practice, it is easy to get used to trailing commas.
+    Since they are intended for multi-line scenarios,
+    there is a fair amount of distance between '\tcode{,}' and e.g. \tcode{>} anyway.
+  }
+  \li{
+    The job of WG21 is to standardize a programming language used by software engineers.
+    Trailing commas have clear technical benefits laid out in \ref(#motivation),
+    and clear technical benefits should always take precedence over matters of personal taste.
+    If we had gotten hung up over \tcode{^^} and \tcode{[::]} "looking ugly",
+    C++26 reflections would have died.
+  }
+}
+
+\h4{Concerns over C compatibility}
+
+Some concerns have been raised regarding the fact that only C++ but not C
+would support the use of trailing commas.
+This was alleged to make writing common C and C++ code harder.
+
+However, the use of trailing commas is entirely optional,
+so this claim is untrue.
+It is not a stated design goal of C++ to make every possible line of C++ code valid C as well.
+Instead, we maintain a common subset that is both valid C and valid C++.
+If a developer wants to write C/C++-interoperable code,
+they can simply not use trailing commas.
+
+Furthermore, I intend to follow this proposal up with a WG14 counterpart
+if it finds consensus.
+For the sake of C++ compatibility,
+it is plausible that WG14 would adopt the syntax as well;
+this has been done with numerous features before.
+
+\h4{Making previously ill-formed code valid}
+
+Some people consider it a benefit that \tcode{f(0,)} is currently not allowed,
+which may catch mistakes in some scenarios:
+
+\Bquote{
+Maybe I was typing, distracted, and forgot my last argument?
+Maybe a macro expanded badly?
+}
+
+The problem with this line of reasoning is that there are infinite things
+that a developer may forget to type
+and infinite ways in which macros can expand into something unintended.
+Trailing commas are not particularly inviting to mistakes.
+
+Making obvious mistakes such as forgetting arguments likely results in a compiler error anyway,
+unless that forgotten argument has a default argument.
+
+\h4{Semantic inconsistencies with macros}
+
+With the proposed syntax in function calls,
+\tcode{f(0,)} would be valid for both regular functions and for function-style macros.
+Previously, it would have only been valid if \tcode{f} is a function-style macro,
+but the trailing comma would mean that we are passing two arguments, one of which is empty.
+
+This does result in a bit of surprising behavior for non-variadic cases:
+\cppblock{
+void f(int x);
+#define F(x)
+
+f(0,);    // \serif{OK}
+\hl(macro){F}(0,);    // \serif{error: two arguments provided, but only one parameter}
+}
+
+This inconsistency cannot be changed without altering the semantics of the preprocessor,
+so it is here to stay.
+However, it also seems largely inconsequential.
+Users who are uncertain about whether \tcode{f} is a macro can choose
+not to use a trailing comma; it is entirely optional.
+Furthermore, trailing commas in variadic macros "just work":
+
+\cppblock{
+#define M(...) f(__VA_ARGS__)
+
+// \serif{looks like four comma-separated macro arguments (last is empty), but three function arguments}
+\hl(macro){M}(0, 1, 2,);
+}
+
 \h2{Implementation experience}
 
 None.
@@ -580,11 +811,10 @@ change the grammar as follows:
 \Bdiff{
 \dl(class=grammar){
   \dt{\grammarterm{parameter-declaration-clause}:}
-  \dd{\tcode{...} \ins{\opt{\tcode{,}}}}
+  \dd{\tcode{...}}
   \dd{\opt{parameter-declaration-list}}
-  \dd{\ins{parameter-declaration-list \opt{\tcode{,}}}}
-  \dd{parameter-declaration-list \tcode{,} \tcode{...} \ins{\opt{\tcode{,}}}}
-  \dd{parameter-declaration-list \tcode{...} \ins{\opt{\tcode{,}}}}
+  \dd{parameter-declaration-list \tcode{,} \tcode{...}\ins{\opt}}
+  \dd{parameter-declaration-list \tcode{...}}
 }
 }
 
@@ -596,9 +826,9 @@ change the grammar as follows:
 
 \dl(class=grammar){
   \dt{\grammarterm{braced-init-list}:}
-  \dd{\tcode{\N{LEFT CURLY BRACKET}} initializer-list \del{\opt{\tcode{,}}} \tcode{\N{RIGHT CURLY BRACKET}}}
-  \dd{\tcode{\N{LEFT CURLY BRACKET}} designated-initializer-list \del{\opt{\tcode{,}}} \tcode{\N{RIGHT CURLY BRACKET}}}
-  \dd{\del{\tcode{\N{LEFT CURLY BRACKET}} \tcode{\N{RIGHT CURLY BRACKET}}}}
+  \dd{\tt{\N{LEFT CURLY BRACKET}} initializer-list \del{\opt{\tcode{,}}} \tt{\N{RIGHT CURLY BRACKET}}}
+  \dd{\tt{\N{LEFT CURLY BRACKET}} designated-initializer-list \del{\opt{\tcode{,}}} \tt{\N{RIGHT CURLY BRACKET}}}
+  \dd{\tt{\N{LEFT CURLY BRACKET}} \tt{\N{RIGHT CURLY BRACKET}}}
 }
 
 \dl(class=grammar){
@@ -655,8 +885,8 @@ revert the change as follows:
 \Bdiff{
 \dl(class=grammar){
   \dt{\grammarterm{expansion-init-list}:}
-  \dd{\tcode{\N{LEFT CURLY BRACKET}} expression-list \del{\tcode{,}}\opt \tcode{\N{RIGHT CURLY BRACKET}}}
-  \dd{\del{\tcode{\N{LEFT CURLY BRACKET}} \tcode{\N{RIGHT CURLY BRACKET}}}}
+  \dd{\tt{\N{LEFT CURLY BRACKET}} expression-list \del{\tcode{,}}\opt \tt{\N{RIGHT CURLY BRACKET}}}
+  \dd{\del{\tt{\N{LEFT CURLY BRACKET}} \tt{\N{RIGHT CURLY BRACKET}}}}
 } 
 }
 
@@ -694,10 +924,16 @@ revert the change as follows:
   link = https://github.com/cplusplus/CWG/issues/754,
 )\
 \bib(
-  id = ReflectorDiscussion,
+  id = P0562R2ReflectorDiscussion,
   title = [isocpp-core] P0562R2 -- how is a compiler intended to find the end of a constructor definition?,
   date = 2024-06-27,
   link = https://lists.isocpp.org/core/2024/06/15961.php,
+)\
+\bib(
+  id = CoreReflectorDiscussion,
+  title = [isocpp-core] P3776R0 Review of grammar changes
+  date = 2025-08-25,
+  link = https://lists.isocpp.org/core/2025/08/18487.php,
 )\
 \bib(
   id = RustTrailingCommas,
