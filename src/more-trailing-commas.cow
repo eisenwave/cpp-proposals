@@ -5,7 +5,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{P3776R0}}
-  \dt{Date:}            \dd{\tt{2025-08-25}}
+  \dt{Date:}            \dd{\tt{2025-08-27}}
   \dt{Audience:}        \dd{EWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -305,19 +305,54 @@ such as \tcode{{1, 2, 3,}} which already uses trailing commas into direct-initia
 the trailing comma introduces a compiler error until it is removed,
 which is a mild inconvenience at least.
 
-\h3{Eliminating some uses of \tt{\hl(macro){__VA_OPT__}}}
+\h3(id = va-opt){Eliminating some uses of \tt{\hl(macro){__VA_OPT__}}}
 
 When we want to prepend an element to a variadic macro argument,
 we may need to use \tt{\hl(macro){__VA_OPT__}} in the following way:
 
 \cppblock{
 #define F(...) f(0 __VA_OPT__(,) __VA_ARGS__)
+#define L(...) [& __VA_OPT__(,) __VA_ARGS__] {}
 }
 
 With an unconditional comma,
 \tcode{\hl(macro){F}()} would expand to \tcode{f(0,)},
 which is currently ill-formed.
-A trailing comma in function calls would allow us to simplify such macros.
+A trailing comma in function calls and other lists would allow us to simplify such macros.
+
+\Bnote{
+While a \gterm{capture-default} like \tcode{&} is not part of the \gterm{capture-list},
+a trailing comma should still be permitted following it.
+Otherwise, the example above would still be broken.
+}
+
+\h3{Code generation convenience}
+
+Allowing trailing commas makes it easier to generate C++ code,
+for similar reasons as in \ref(#va-opt).
+Generating lists is sometimes made easier if each element in a list can
+be terminated by a comma, rather than adding special handling for the first/last element
+to ensure no trailing commas in generated code.
+
+\Bex{
+Code generation for a list of function parameters
+is simplified by trailing commas in C++ as follows:
+\cppblock{
+void emit_parameters(span<const Parameter> parameters) {
+    emit('\N{LEFT PARENTHESIS}');
+    \del{bool first = true;}
+    for (const auto& p : parameters) {
+\del{        if (!first) {
+            emit(',');
+        }
+        first = false;}
+        emit_parameter(p);
+\ins{        emit(',');}
+    }
+    emit('\N{RIGHT PARENTHESIS}');
+}
+}
+}
 
 \h3{Motivating examples}
 
@@ -325,7 +360,6 @@ In discussions of this proposal,
 there is often some skepticism as to whether it's useful for specific lists.
 For example, I have been told that trailing commas may be useful
 in a \gterm{template-parameter-list}, but not in a \gterm{template-argument-list}.
-
 However, while some lists are more frequently multi-line,
 you can come up with a plausible multi-line example for virtually any list:
 
@@ -732,8 +766,18 @@ that a developer may forget to type
 and infinite ways in which macros can expand into something unintended.
 Trailing commas are not particularly inviting to mistakes.
 
+It is also important to keep one of C++'s language design rules in mind
+(see Design and Evolution of C++ \N{EM DASH} 4.3 Design Support Rules):
+
+\Bquote{
+It is more important to allow a useful feature than to prevent every misuse.
+}
+
+The usefulness of trailing commas clearly outweighs the benefits
+from this unlikely scenario where a mistake is caught.
 Making obvious mistakes such as forgetting arguments likely results in a compiler error anyway,
-unless that forgotten argument has a default argument.
+with or without comma,
+unless that forgotten argument has a default argument or an overload with fewer parameters exists.
 
 \h4{Semantic inconsistencies with macros}
 
@@ -764,6 +808,43 @@ Furthermore, trailing commas in variadic macros "just work":
 // \serif{looks like four comma-separated macro arguments (last is empty), but three function arguments}
 \hl(macro){M}(0, 1, 2,);
 }
+
+\h4{Multiple ways to do the same thing}
+
+A common and generally good rule of thumb in programming language design is:
+
+\Bquote{
+Don't introduce multiple ways to do the same thing.
+}
+
+It could be argued that we can already spell parameter lists without a trailing comma,
+so it is bad to add a second way.
+However, this rule is not universally and innately true;
+it is important to understand why one may follow it:
+
+\ul{
+  \li{
+    Multiple ways of doing the same thing makes a language harder to teach.
+  }
+  \li{
+    If we can already do the same thing a different way, no value is added to the language.
+  }
+}
+
+The first motivation hardly applies because C++ already supports trailing commas in some lists.
+One could argue the language becomes \em{more} teachable by fixing this inconsistency
+and permitting it in all lists.
+Even if that argument is not accepted,
+the teaching effort for an optional punctuation character is microscopic.
+
+Secondly, \ref(#motivation) lays out numerous ways in which trailing commas
+add value to the language.
+It would be hard to argue that \tcode{// line comments} add no value to the language
+because \tcode{/* block comments */} exist,
+or that \tcode{1s} adds no value because \tcode{std::chrono::seconds(1)} exists.
+It is fine to have multiple spellings of the same feature
+when there are clear technical benefits to both spellings.
+There are no hard rules in language design, only trade-offs and rules of thumb.
 
 \h2{Implementation experience}
 

@@ -1502,7 +1502,7 @@ if (theme !== null) {
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/P3776R0>P3776R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2025-08-25</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2025-08-27</tt-></dd>
   <dt>Audience:</dt>        <dd>EWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1536,8 +1536,10 @@ such as in function parameter lists.
 <div class=toc-num data-level=3>2.4</div>
 <a href=#improved-language-consistency><h3>Improved language consistency</h3></a>
 <div class=toc-num data-level=3>2.5</div>
-<a href=#eliminating-some-uses-of-__va_opt__><h3>Eliminating some uses of <tt-><h- data-h=mac>__VA_OPT__</h-></tt-></h3></a>
+<a href=#va-opt><h3>Eliminating some uses of <tt-><h- data-h=mac>__VA_OPT__</h-></tt-></h3></a>
 <div class=toc-num data-level=3>2.6</div>
+<a href=#code-generation-convenience><h3>Code generation convenience</h3></a>
+<div class=toc-num data-level=3>2.7</div>
 <a href=#motivating-examples><h3>Motivating examples</h3></a>
 <div class=toc-num data-level=2>3</div>
 <a href=#design><h2>Design</h2></a>
@@ -1573,6 +1575,8 @@ such as in function parameter lists.
 <a href=#making-previously-ill-formed-code-valid><h4>Making previously ill-formed code valid</h4></a>
 <div class=toc-num data-level=4>3.6.4</div>
 <a href=#semantic-inconsistencies-with-macros><h4>Semantic inconsistencies with macros</h4></a>
+<div class=toc-num data-level=4>3.6.5</div>
+<a href=#multiple-ways-to-do-the-same-thing><h4>Multiple ways to do the same thing</h4></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#implementation-experience><h2>Implementation experience</h2></a>
 <div class=toc-num data-level=2>5</div>
@@ -1850,26 +1854,58 @@ such as <code><h- data-h=sym_brac>{</h-><h- data-h=num>1</h-><h- data-h=sym_punc
 the trailing comma introduces a compiler error until it is removed,
 which is a mild inconvenience at least.
 </p>
-<h3 id=eliminating-some-uses-of-__va_opt__><a class=para href=#eliminating-some-uses-of-__va_opt__></a>2.5. Eliminating some uses of <tt-><h- data-h=mac>__VA_OPT__</h-></tt-></h3>
+<h3 id=va-opt><a class=para href=#va-opt></a>2.5. Eliminating some uses of <tt-><h- data-h=mac>__VA_OPT__</h-></tt-></h3>
 
 <p>When we want to prepend an element to a variadic macro argument,
 we may need to use <tt-><h- data-h=mac>__VA_OPT__</h-></tt-> in the following way:
 </p>
-<code-block><h- data-h=mac>#define F(...) f(0 __VA_OPT__(,) __VA_ARGS__)</h-></code-block>
+<code-block><h- data-h=mac>#define F(...) f(0 __VA_OPT__(,) __VA_ARGS__)</h->
+<h- data-h=mac>#define L(...) [&amp; __VA_OPT__(,) __VA_ARGS__] {}</h-></code-block>
 
 <p>With an unconditional comma,
 <code><h- data-h=mac>F</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> would expand to <code><h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=sym_punc>,</h-><h- data-h=sym_par>)</h-></code>,
 which is currently ill-formed.
-A trailing comma in function calls would allow us to simplify such macros.
+A trailing comma in function calls and other lists would allow us to simplify such macros.
 </p>
-<h3 id=motivating-examples><a class=para href=#motivating-examples></a>2.6. Motivating examples</h3>
+<note-block><p><intro-></intro-> 
+While a <g-term>capture-default</g-term> like <code><h- data-h=sym_op>&amp;</h-></code> is not part of the <g-term>capture-list</g-term>,
+a trailing comma should still be permitted following it.
+Otherwise, the example above would still be broken.
+</p></note-block>
+
+<h3 id=code-generation-convenience><a class=para href=#code-generation-convenience></a>2.6. Code generation convenience</h3>
+
+<p>Allowing trailing commas makes it easier to generate C++ code,
+for similar reasons as in <a href=#va-opt>§2.5. Eliminating some uses of <tt-><h- data-h=mac>__VA_OPT__</h-></tt-></a>.
+Generating lists is sometimes made easier if each element in a list can
+be terminated by a comma, rather than adding special handling for the first/last element
+to ensure no trailing commas in generated code.
+</p>
+<example-block><p><intro-></intro-> 
+Code generation for a list of function parameters
+is simplified by trailing commas in C++ as follows:
+</p><code-block><h- data-h=kw_type>void</h-> <h- data-h=id>emit_parameters</h-><h- data-h=sym_par>(</h-><h- data-h=id>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>const</h-> <h- data-h=id>Parameter</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>parameters</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=id>emit</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>'</h-><h- data-h=str>(</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <del><h- data-h=kw_type>bool</h-> <h- data-h=id>first</h-> <h- data-h=sym_op>=</h-> <h- data-h=bool>true</h-><h- data-h=sym_punc>;</h-></del>
+    <h- data-h=kw_ctrl>for</h-> <h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw>auto</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>p</h-> <h- data-h=sym_punc>:</h-> <h- data-h=id>parameters</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+<del>        <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=sym_op>!</h-><h- data-h=id>first</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+            <h- data-h=id>emit</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>'</h-><h- data-h=str>,</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+        <h- data-h=sym_brac>}</h->
+        <h- data-h=id>first</h-> <h- data-h=sym_op>=</h-> <h- data-h=bool>false</h-><h- data-h=sym_punc>;</h-></del>
+        <h- data-h=id>emit_parameter</h-><h- data-h=sym_par>(</h-><h- data-h=id>p</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<ins>        <h- data-h=id>emit</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>'</h-><h- data-h=str>,</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
+    <h- data-h=sym_brac>}</h->
+    <h- data-h=id>emit</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>'</h-><h- data-h=str>)</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+</example-block>
+
+<h3 id=motivating-examples><a class=para href=#motivating-examples></a>2.7. Motivating examples</h3>
 
 <p>In discussions of this proposal,
 there is often some skepticism as to whether it's useful for specific lists.
 For example, I have been told that trailing commas may be useful
 in a <g-term>template-parameter-list</g-term>, but not in a <g-term>template-argument-list</g-term>.
-</p>
-<p>However, while some lists are more frequently multi-line,
+However, while some lists are more frequently multi-line,
 you can come up with a plausible multi-line example for virtually any list:
 </p>
 <code-block><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><g-term><h- data-h=cmt>template-parameter-list</h-></g-term></f-serif>
@@ -2251,8 +2287,18 @@ that a developer may forget to type
 and infinite ways in which macros can expand into something unintended.
 Trailing commas are not particularly inviting to mistakes.
 </p>
-<p>Making obvious mistakes such as forgetting arguments likely results in a compiler error anyway,
-unless that forgotten argument has a default argument.
+<p>It is also important to keep one of C++'s language design rules in mind
+(see Design and Evolution of C++ — 4.3 Design Support Rules):
+</p>
+<blockquote>
+<p>It is more important to allow a useful feature than to prevent every misuse.
+</p></blockquote>
+
+<p>The usefulness of trailing commas clearly outweighs the benefits
+from this unlikely scenario where a mistake is caught.
+Making obvious mistakes such as forgetting arguments likely results in a compiler error anyway,
+with or without comma,
+unless that forgotten argument has a default argument or an overload with fewer parameters exists.
 </p>
 <h4 id=semantic-inconsistencies-with-macros><a class=para href=#semantic-inconsistencies-with-macros></a>3.6.4. Semantic inconsistencies with macros</h4>
 
@@ -2280,6 +2326,43 @@ Furthermore, trailing commas in variadic macros "just work":
 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>looks like four comma-separated macro arguments (last is empty), but three function arguments</h-></f-serif>
 <h- data-h=mac>M</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>1</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>2</h-><h- data-h=sym_punc>,</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
+<h4 id=multiple-ways-to-do-the-same-thing><a class=para href=#multiple-ways-to-do-the-same-thing></a>3.6.5. Multiple ways to do the same thing</h4>
+
+<p>A common and generally good rule of thumb in programming language design is:
+</p>
+<blockquote>
+<p>Don't introduce multiple ways to do the same thing.
+</p></blockquote>
+
+<p>It could be argued that we can already spell parameter lists without a trailing comma,
+so it is bad to add a second way.
+However, this rule is not universally and innately true;
+it is important to understand why one may follow it:
+</p>
+<ul>
+  <li>
+    Multiple ways of doing the same thing makes a language harder to teach.
+  </li>
+  <li>
+    If we can already do the same thing a different way, no value is added to the language.
+  </li>
+</ul>
+
+<p>The first motivation hardly applies because C++ already supports trailing commas in some lists.
+One could argue the language becomes <em>more</em> teachable by fixing this inconsistency
+and permitting it in all lists.
+Even if that argument is not accepted,
+the teaching effort for an optional punctuation character is microscopic.
+</p>
+<p>Secondly, <a href=#motivation>§2. Motivation</a> lays out numerous ways in which trailing commas
+add value to the language.
+It would be hard to argue that <code><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> line comments</h-></code> add no value to the language
+because <code><h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> block comments </h-><h- data-h=cmt_dlim>*/</h-></code> exist,
+or that <code><h- data-h=num>1</h-><h- data-h=num_deco>s</h-></code> adds no value because <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>chrono</h-><h- data-h=sym_op>::</h-><h- data-h=id>seconds</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code> exists.
+It is fine to have multiple spellings of the same feature
+when there are clear technical benefits to both spellings.
+There are no hard rules in language design, only trade-offs and rules of thumb.
+</p>
 <h2 id=implementation-experience><a class=para href=#implementation-experience></a>4. Implementation experience</h2>
 
 <p>None.
