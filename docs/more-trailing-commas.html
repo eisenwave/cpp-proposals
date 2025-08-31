@@ -1506,6 +1506,7 @@ if (theme !== null) {
   <dt>Audience:</dt>        <dd>EWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
+  <dt>Co-authors:</dt>      <dd>Murat Can Çağrı &lt;<a href=mailto:cancagri.dev@gmail.com class=sans>cancagri.dev@gmail.com</a>&gt;</dd>
   <dt>GitHub Issue:</dt>    <dd><a href=https://wg21.link/P3776/github class=sans>wg21.link/P3776/github</a></dd>
   <dt>Source:</dt>          <dd><a href=https://github.com/eisenwave/cpp-proposals/blob/master/src/more-trailing-commas.cow class=sans>github.com/eisenwave/cpp-proposals/blob/master/src/more-trailing-commas.cow</a></dd>
 </dl>
@@ -1600,10 +1601,12 @@ such as in function parameter lists.
 <ul>
   <li>cited EWG polls in <a href=#recent-history>§2.1. Recent history</a></li>
   <li>expanded and updated <a href=#trailing-commas-in-other-languages>§2.2. Trailing commas in other languages</a></li>
+  <li>elaborated on ClangFormat options in <a href=#improved-auto-formatter-control>§3.3. Improved auto-formatter control</a></li>
   <li>added <a href=#preventing-string-joining-bugs>§3.7. Preventing string joining bugs</a></li>
   <li>reworded <a href=#comparison-to-p0562r2>§4.4. Comparison to P0562R2</a></li>
   <li>expanded <a href=#addressing-criticisms>§5. Addressing criticisms</a> based on EWG reflector discussion</li>
   <li>added Clang fork as <a href=#implementation-experience>§6. Implementation experience</a></li>
+  <li>added feature-test macro</li>
   <li>various minor/editorial changes</li>
 </ul>
 
@@ -1871,8 +1874,11 @@ One powerful feature it has is the ability to control
 how brace-enclosed lists are formatted via the use of trailing commas.
 </p>
 <example-block><p><intro-></intro-> 
-ClangFormat may format C++ code like:
-</p><code-block><h- data-h=id>vector</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>numbers</h-> <h- data-h=sym_brac>{</h-> <h- data-h=id>LIST_ITEM_A</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>LIST_ITEM_B</h-><h- data-h=sym_punc>,</h->  <h- data-h=cmt_dlim>//</h->
+ClangFormat "disables bin-packing" when a trailing comma is present,
+as stated in
+<a href=https://clang.llvm.org/docs/ClangFormatStyleOptions.html#inserttrailingcommas>the documentation of <tt->TrailingCommaStyle</tt-></a>:
+</p>
+<code-block><h- data-h=id>vector</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>numbers</h-> <h- data-h=sym_brac>{</h-> <h- data-h=id>LIST_ITEM_A</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>LIST_ITEM_B</h-><h- data-h=sym_punc>,</h->  <h- data-h=cmt_dlim>//</h->
                       <h- data-h=id>LIST_ITEM_C</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->             <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><h- data-h=cmt>←</h-><h- data-h=cmt> column limit here</h->
                                                  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h->
 <h- data-h=id>vector</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>numbers</h-> <h- data-h=sym_brac>{</h->
@@ -1881,7 +1887,7 @@ ClangFormat may format C++ code like:
     <h- data-h=id>LIST_ITEM_C</h-><h- data-h=sym_punc>,</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><h- data-h=cmt>←</h-><h- data-h=cmt> trailing comma here</h->
 <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h-></code-block>
 
-<p>The compact version without a trailing comma may be situationally useful
+<p>The version without a trailing comma may be situationally useful
 by compactifying code, allowing more to fit on screen.
 The verbose version with a trailing comma is more useful for regularly updated lists,
 and can be perceived as more organized.
@@ -2486,10 +2492,10 @@ such as using a default argument:
 <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, equivalent to f(1, 0)</h->
 <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_punc>,</h-><h- data-h=num>1</h-><h- data-h=sym_punc>,</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> error: third default argument requested, but only two parameters</h-></code-block>
 
-<p>Firstly, it's worth noting that <code><h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_punc>,</h-><h- data-h=sym_par>)</h-></code> has the effect of passing
+<p>Firstly, note that <code><h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_punc>,</h-><h- data-h=sym_par>)</h-></code> has the effect of passing
 a default argument for <code><h- data-h=id>y</h-></code>, no matter the meaning of a trailing comma.
 <code><h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_punc>,</h-><h- data-h=num>1</h-><h- data-h=sym_punc>,</h-><h- data-h=sym_par>)</h-></code> would be a special case,
-but in principle, trailing commas are compatible with these proposed semantics.
+but in principle, trailing commas are compatible with these hypothetical semantics.
 </p>
 <p>Secondly, I consider this idea terrible because of how non-descriptive it is;
 a user could even unintentionally perform such calls by making a typo '<code><h- data-h=sym_punc>,</h-><h- data-h=sym_punc>,</h-></code>'
@@ -2506,7 +2512,7 @@ are not confident that this "default argument passing" could find consensus.
 </p>
 <h2 id=implementation-experience><a class=para href=#implementation-experience></a>6. Implementation experience</h2>
 
-<p>This proposal has been implemented by Murat Can Cagri in a <a href="https://github%2ecom/term-est/llvm-project/tree/P3776-More-Trailing-Commas">[ClangFork]</a>,
+<p>This proposal has been implemented by Can Çağrı in a <a href="https://github%2ecom/term-est/llvm-project/tree/P3776-More-Trailing-Commas">[ClangFork]</a>,
 and should soon be available on <a href=https://godbolt.org/>Compiler Explorer</a>.
 The implementation is a simple parser change of approximately 40 lines of code.
 </p>
@@ -2621,7 +2627,7 @@ change the grammar as follows:
 </diff-block>
 
 <p>If the proposed resolution of <a href="https://github%2ecom/cplusplus/CWG/issues/754">[CWGGithub754]</a> at the time of writing has been applied,
-revert the change as follows:
+revert the change to <a href=https://eel.is/c++draft/stmt.expand>[stmt.expand]</a> as follows:
 </p>
 <diff-block>
 <dl class=grammar>
@@ -2629,6 +2635,12 @@ revert the change as follows:
   <dd><tt->{</tt-> expression-list <del><code><h- data-h=sym_punc>,</h-></code></del><sub class=opt>opt</sub> <tt->}</tt-></dd>
   <dd><del><tt->{</tt-> <tt->}</tt-></del></dd>
 </dl> 
+</diff-block>
+
+<p>Add the following table row to <a href=https://eel.is/c++draft/cpp.predefined#tab:cpp.predefined.ft>[cpp.predefined] [tab:cpp.predefined.ft]</a>:
+</p>
+<diff-block>
+<code-block class=borderless><ins><h- data-h=id>__cpp_trailing_comma</h-> <h- data-h=num>20</h-><h- data-h=num_deco>XXXXL</h-></ins></code-block>
 </diff-block>
 
 <h2 id=references><a class=para href=#references></a>9. References</h2>
@@ -2690,7 +2702,7 @@ revert the change as follows:
 <span class=bib-date>2024-02-09</span>
 <a href="https://devblogs%2emicrosoft%2ecom/oldnewthing/20240209-00/?p=109379" class=bib-link>https://devblogs.microsoft.com/oldnewthing/20240209-00/?p=109379</a></div><div id=bib-item-ClangFork class=bib-item>
 <a href="https://github%2ecom/term-est/llvm-project/tree/P3776-More-Trailing-Commas">[ClangFork]</a>
-<span class=bib-author>Murat Can Cagri.</span>
+<span class=bib-author>Murat Can Çağrı.</span>
 <a href="https://github%2ecom/term-est/llvm-project/tree/P3776-More-Trailing-Commas" class=bib-link>https://github.com/term-est/llvm-project/tree/P3776-More-Trailing-Commas</a></div></div>
 </main></body>
 </html>

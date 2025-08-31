@@ -9,6 +9,7 @@
   \dt{Audience:}        \dd{EWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{Co-authors:}      \dd{Murat Can Çağrı <\mail{cancagri.dev@gmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3776/github)}
   \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/more-trailing-commas.cow)}
 }
@@ -31,11 +32,12 @@ such as in function parameter lists.
 \ul{
   \li{cited EWG polls in \ref(#recent-history)}
   \li{expanded and updated \ref(#trailing-commas-in-other-languages)}
+  \li{elaborated on ClangFormat options in \ref(#improved-auto-formatter-control)}
   \li{added \ref(#preventing-string-joining-bugs)}
   \li{reworded \ref(#comparison-to-p0562r2)}
   \li{expanded \ref(#addressing-criticisms) based on EWG reflector discussion}
   \li{added Clang fork as \ref(#implementation-experience)}
-  \li{added feature test macro}
+  \li{added feature-test macro}
   \li{various minor/editorial changes}
 }
 
@@ -309,7 +311,11 @@ One powerful feature it has is the ability to control
 how brace-enclosed lists are formatted via the use of trailing commas.
 
 \Bex{
-ClangFormat may format C++ code like:
+ClangFormat "disables bin-packing" when a trailing comma is present,
+as stated in
+\ref(https://clang.llvm.org/docs/ClangFormatStyleOptions.html#inserttrailingcommas){\
+the documentation of \tt{TrailingCommaStyle}}:
+
 \cppblock{
 vector<int> numbers { LIST_ITEM_A, LIST_ITEM_B,  //
                       LIST_ITEM_C };             // \N{LEFTWARDS ARROW} column limit here
@@ -321,7 +327,7 @@ vector<int> numbers {
 };
 }
 
-The compact version without a trailing comma may be situationally useful
+The version without a trailing comma may be situationally useful
 by compactifying code, allowing more to fit on screen.
 The verbose version with a trailing comma is more useful for regularly updated lists,
 and can be perceived as more organized.
@@ -966,10 +972,10 @@ f(1, );    // OK, equivalent to f(1, 0)
 f(1,1,);   // error: third default argument requested, but only two parameters
 }
 
-Firstly, it's worth noting that \tcode{f(1,)} has the effect of passing
+Firstly, note that \tcode{f(1,)} has the effect of passing
 a default argument for \tcode{y}, no matter the meaning of a trailing comma.
 \tcode{f(1,1,)} would be a special case,
-but in principle, trailing commas are compatible with these proposed semantics.
+but in principle, trailing commas are compatible with these hypothetical semantics.
 
 Secondly, I consider this idea terrible because of how non-descriptive it is;
 a user could even unintentionally perform such calls by making a typo '\tcode{,,}'
@@ -1101,7 +1107,7 @@ change the grammar as follows:
 }
 
 If the proposed resolution of \ref(CWGGithub754) at the time of writing has been applied,
-revert the change as follows:
+revert the change to \eelis{stmt.expand} as follows:
 
 \Bdiff{
 \dl(class=grammar){
@@ -1111,12 +1117,12 @@ revert the change as follows:
 } 
 }
 
-\h3{Feature-Test Macro}
-
-Add to \eelis{cpp.predefined#tab:cpp.predefined.ft},
+Add the following table row to \eelis{cpp.predefined#tab:cpp.predefined.ft}:
 
 \Bdiff{
-  \ins{__cpp_trailing_comma 2025XXL}
+\itemdecl{
+\ins{__cpp_trailing_comma 20XXXXL}
+}
 }
 
 \h2{References}
