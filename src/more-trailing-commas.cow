@@ -4,8 +4,8 @@
     title = More trailing commas
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3776R0}}
-  \dt{Date:}            \dd{\tt{2025-08-27}}
+  \dt{Document number:} \dd{\docnum{D3776R1}}
+  \dt{Date:}            \dd{\tt{2025-08-31}}
   \dt{Audience:}        \dd{EWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -23,6 +23,20 @@ such as in function parameter lists.
 \h2(listed = false){Contents}
 
 \make_contents
+
+\h2{Revision history}
+
+\h3{Changes since R0}
+
+\ul{
+  \li{cited EWG polls in \ref(#recent-history)}
+  \li{expanded and updated \ref(#trailing-commas-in-other-languages)}
+  \li{added \ref(#preventing-string-joining-bugs)}
+  \li{reworded \ref(#comparison-to-p0562r2)}
+  \li{expanded \ref(#addressing-criticisms) based on EWG reflector discussion}
+  \li{added Clang fork as \ref(#implementation-experience)}
+  \li{various minor/editorial changes}
+}
 
 \h2{Introduction}
 
@@ -49,12 +63,29 @@ void f(
 \h3{Recent history}
 
 While this proposal is new,
-a very similar proposal \ref(P0562R2) has recently passed through EWG and CWG,
-but was ultimately not polled due to implementability concerns.
+a very similar proposal \ref(P0562R2) has passed through EWG in Tokyo 2024.
 \ref(P0562R2) argues in favor of trailing commas
-following \gterm{mem-initializer-list} and \gterm{base-specifier-list},
+following \gterm{mem-initializer-list}
+and (following EWG feedback) \gterm{base-specifier-list},
 with similar rationale as this proposal.
-The concern in question is that a comma after a \gterm{mem-initializer-list}
+
+\Bquote{
+Poll: D0562R1 — Initialization List Symmetry:
+also add support for base class trailing commas.
+\five_way_poll(18, 10, 2, 1, 0)
+
+Result: Consensus
+
+Poll: D0562R1 — Initialization List Symmetry: forward the paper
+(with the addition of base class trailing comma) to CWG for inclusion in C++26.
+\five_way_poll(12, 11, 4, 3, 0)
+
+Result: Consensus
+}
+
+However, the subsequent revision \ref(P0562R2) was not polled
+due to implementability concerns:
+a comma after a \gterm{mem-initializer-list}
 introduces a parsing ambiguity
 between expressions and function bodies;
 see \ref(P0562R2ReflectorDiscussion):
@@ -109,7 +140,8 @@ this ambiguity does not affect \gterm{base-specifier-list}s.
 
 Various modern programming languages support trailing commas,
 not just in initialization of classes or when listing \tcode{enum} members,
-but also in function parameter lists or function argument lists:
+but also in function parameter lists or function argument lists.
+We can see a clear trend:
 
 \style{
   #lang-table {
@@ -127,60 +159,76 @@ but also in function parameter lists or function argument lists:
     \th{Language} \th{Trailing commas support}
   }
   \tr{
-    \td{Rust}
+    \td{Swift}
     \td{
-      Has always supported trailing commas in.\br
-      Use of trailing commas is recommended by the official style guide
-      (\ref(RustTrailingCommas)).
+      Added support for trailing commas in parameter lists
+      in 2025 (\ref(SwiftTrailingCommas)).
     }
   }
   \tr{
     \td{Kotlin}
     \td{
-      Added support for trailing commas in 2020 (\ref(KotlinTrailingCommas)).
+      Added support for trailing commas in parameter lists
+      in 2020 (\ref(KotlinTrailingCommas)).
     }
   }
   \tr{
     \td{JavaScript}
     \td{
-      Support for trailing commas was standardized in ECMASCript2017
-      (\ref(ECMAScriptTrailingCommas)).
+      Added support for trailing commas in parameter lists
+      in ECMASCript2017 (\ref(ECMAScriptTrailingCommas)).
     }
   }
   \tr{
     \td{TypeScript}
     \td{
-      Added support at the same time it was standardized for JavaScript
-      (\ref(TypeScriptTrailingCommas)).
+      Added support for trailing commas in parameter lists
+      at the same time they was standardized for JavaScript (\ref(TypeScriptTrailingCommas)).
     }
   }
   \tr{
-    \td{C#}
+    \td{Rust}
     \td{
-      No support yet,
-      in part due to concerns regarding tuple syntax,
-      which also uses parentheses (\ref(CSharpTrailingCommas)).
+      Has always supported trailing commas in parameter lists.\br
+      Use of trailing commas is recommended by the official style guide
+      (\ref(RustTrailingCommas)).
     }
   }
   \tr{
-    \td{Swift}
+    \td{Go}
     \td{
-      No support yet.
-      Concerns regarding tuple syntax have also been raised (\ref(SwiftTrailingCommas)).
+      Has always made it mandatory to use trailing commas in multi-line parameter lists
+      (presumably to prevent implicit semicolon insertion).
+    }
+  }
+  \tr{
+    \td{Python}
+    \td{
+      Has always permitted the use of trailing commas in function parameter lists.
+      Trailing commas in \tcode{(1,)} form unary tuples.
+    }
+  }
+  \tr{
+    \td{Julia}
+    \td{
+      Has always permitted the use of trailing commas in function parameter lists.
+      Trailing commas in \tcode{(1,)} form unary tuples.
     }
   }
 }
 
-The motivation for trailing commas in those languages equally applies to C++.
+To the best of my knowledge,
+trailing commas have been well-received by the users of these languages,
+to the point where they are the default in e.g. the Rust Style Guide.
+The motivation to have trailing commas in those languages equally applies to C++,
+and is largely covered in \ref(#improved-text-editing) and \ref(#improved-version-control).
 
 \Bnote{
+Many more languages support trailing commas at least within braces,
+such as C++, Java, C#, etc.
+
 More discussion on this language design choice can also be found at
 \ref(RedditTrailingCommas) and \ref(OldNewThing).
-
-Various other languages such as Python, Go, and Julia also support
-trailing commas in function calls,
-but are not specially listed in the table above.
-That table aims to highlight particularly relevant examples with authoritative resources.
 }
 
 \h2{Motivation}
@@ -352,6 +400,63 @@ void emit_parameters(span<const Parameter> parameters) {
     emit('\N{RIGHT PARENTHESIS}');
 }
 }
+}
+
+\h3{Preventing string joining bugs}
+
+When appending a string literal to a list of arguments
+and forgetting to add a comma,
+our code may compile, but do the wrong thing:
+
+\codeblock(diff){
+ emplace_strings(
+   "fee",
+   "fie",
+   "foe"
++  "fum"
+ );
+}
+
+Rather than passing a four arguments,
+the effect is as if the third argument was \tcode{"foe" "fum"},
+which is valid and equivalent to \tcode{"foefum"}.
+Among other causes, this may happen when pasting the line containing \tcode{"fum"}
+into position.
+
+This bug would be prevented by the use of trailing commas.
+Even if we forget a comma after \tcode{"fum"},
+there should already be one after \tcode{"foe"},
+so nothing surprising happens:
+
+\codeblock(diff){
+ emplace_strings(
+   "fee",
+   "fie",
+   "foe",
++  "fum"
+ );
+}
+
+Furthermore, our linter or auto-formatter should enforce the use of commas there,
+making the bug much easier to find.
+
+\Bnote{
+A similar bug is \em{enabled} by trailing commas:
+we could swap the last and second-to-last line in a function call,
+producing the now valid code:
+
+\codeblock(cpp){
+emplace_strings(
+    "fee",
+    "fie",
+    "fum"
+    "foe",
+);
+}
+
+However, appending lines is more common than such a swap operation,
+and as stated, linter or auto-formatter rules may reveal the lack of comma
+following \tcode{"fum"}.
 }
 
 \h3{Motivating examples}
@@ -665,38 +770,16 @@ However, \ref(P0562R2) holds function parameter lists to a double standard
 where if you maintain such lists,
 they are "ripe for refactoring" anyway.
 
-This position is hypocritical, lacks reason,
-and is out-of-touch with language development at large,
-where trailing commas in function parameter lists have recently been added to
+This position is poorly motivated and out-of-touch with language development at large.
+Trailing commas in function parameter lists have recently been added to
 various programming languages (\ref(#trailing-commas-in-other-languages)).
 In fact, developers write tremendously more function parameter lists and argument lists than
 \gterm{mem-initializer-list}s,
 so the former are more deserving of attention.
 
-\h3{Could this syntax be used for something else?}
+\h2{Addressing criticisms}
 
-The idea has been floated on some mailing lists to give empty list elements special meaning,
-such as using a default argument:
-
-\cppblock{
-void f(int x = 0, int y = 0);
-
-f(, 1);    // OK, equivalent to f(0, 1)
-f(1, );    // OK, equivalent to f(1, 0)
-f(1,1,);   // error: third default argument requested, but only two parameters
-}
-
-Personally, I consider this idea terrible because of how non-descriptive it is;
-a user could even unintentionally perform such calls by making a typo '\tcode{,,}'
-somewhere in the argument list.
-Using the syntax \tcode{f(1,1,)} to mean anything other than a function call
-with two arguments and a trailing comma would be terribly confusing to developers
-accustomed to trailing commas from other languages,
-such as JavaScript or Kotlin developers (\ref(#trailing-commas-in-other-languages)).
-
-\h3{Addressing criticisms}
-
-\h4{Aesthetic objections}
+\h3{Aesthetic objections}
 
 I have unofficially polled the idea of trailing commas on social media
 prior to drafting this proposal,
@@ -732,7 +815,7 @@ However, we must keep two things in mind:
   }
 }
 
-\h4{Concerns over C compatibility}
+\h3{Concerns over C compatibility}
 
 Some concerns have been raised regarding the fact that only C++ but not C
 would support the use of trailing commas.
@@ -751,7 +834,7 @@ For the sake of C++ compatibility,
 it is plausible that WG14 would adopt the syntax as well;
 this has been done with numerous features before.
 
-\h4{Making previously ill-formed code valid}
+\h3{Making previously ill-formed code valid, possibly inviting bugs}
 
 Some people consider it a benefit that \tcode{f(0,)} is currently not allowed,
 which may catch mistakes in some scenarios:
@@ -761,32 +844,44 @@ Maybe I was typing, distracted, and forgot my last argument?
 Maybe a macro expanded badly?
 }
 
-The problem with this line of reasoning is that there are infinite things
-that a developer may forget to type
-and infinite ways in which macros can expand into something unintended.
-Trailing commas are not particularly inviting to mistakes.
+However, there are numerous counter-arguments to this concern:
+\ul{
+  \li{
+    Single-line trailing comma uses like \tcode{f(0,)}
+    (which are unmotivated, and most likely how such a mistake is spelled)
+    can also be diagnosed by linters and compilers.
+    This would be similar to the \tt{only-multiline} string option
+    for \ref(https://eslint.style/rules/comma-dangle#comma-dangle){ESLint Stylistic's}
+    \tt{comma-dangle} rule.
+  }
+  \li{
+    C++ is a statically typed language,
+    so forgetting an argument, whether spelled \tcode{f(0)} or \tcode{f(0,)}, likely
+    results in an error anyway (no matching overload).
+  }
+  \li{
+    We know based on C++ user experience with trailing commas in braced lists
+    as well as user experience from other languages with trailing comma support,
+    that this is not rampant problem.
+    I was unable to find an authoritative style guide for any language
+    that recommends against the use of trailing commas.
+    One would expect such a style guide to exist if trailing commas were a common source of bugs.
+  }
+}
 
-It is also important to keep one of C++'s language design rules in mind
+Last but not least, it is worth remembering one of C++' design principles
 (see Design and Evolution of C++ \N{EM DASH} 4.3 Design Support Rules):
 
 \Bquote{
 It is more important to allow a useful feature than to prevent every misuse.
 }
 
-The usefulness of trailing commas clearly outweighs the benefits
-from this unlikely scenario where a mistake is caught.
-Making obvious mistakes such as forgetting arguments likely results in a compiler error anyway,
-with or without comma,
-unless that forgotten argument has a default argument or an overload with fewer parameters exists.
-
-\h4{Semantic inconsistencies with macros}
+\h3{Semantic inconsistencies with macros}
 
 With the proposed syntax in function calls,
 \tcode{f(0,)} would be valid for both regular functions and for function-style macros.
-Previously, it would have only been valid if \tcode{f} is a function-style macro,
-but the trailing comma would mean that we are passing two arguments, one of which is empty.
+The trailing comma has different meaning in those two:
 
-This does result in a bit of surprising behavior for non-variadic cases:
 \cppblock{
 void f(int x);
 #define F(x)
@@ -797,7 +892,16 @@ f(0,);    // \serif{OK}
 
 This inconsistency cannot be changed without altering the semantics of the preprocessor,
 so it is here to stay.
-However, it also seems largely inconsequential.
+However, the syntax of function-style macro expansions and function calls is already
+inconsistent:
+
+\cppblock{
+f({1,});  // \serif{Passing one argument containing an initializer list to a function}
+\hl(macro){F}({1,});  // \serif{Expanding function-style macro with two arguments (the second argument is a closing brace)}
+}
+
+As things stand, function calls need to be "massaged" a bit to also be valid macro expansions,
+e.g. via the use of parentheses.
 Users who are uncertain about whether \tcode{f} is a macro can choose
 not to use a trailing comma; it is entirely optional.
 Furthermore, trailing commas in variadic macros "just work":
@@ -805,11 +909,11 @@ Furthermore, trailing commas in variadic macros "just work":
 \cppblock{
 #define M(...) f(__VA_ARGS__)
 
-// \serif{looks like four comma-separated macro arguments (last is empty), but three function arguments}
+// \serif{expands to \tt{f(0, 1, 2,)}}
 \hl(macro){M}(0, 1, 2,);
 }
 
-\h4{Multiple ways to do the same thing}
+\h3{Multiple ways to do the same thing}
 
 A common and generally good rule of thumb in programming language design is:
 
@@ -846,9 +950,44 @@ It is fine to have multiple spellings of the same feature
 when there are clear technical benefits to both spellings.
 There are no hard rules in language design, only trade-offs and rules of thumb.
 
+\h3{Claiming syntax space}
+
+Concerns have been expressed that permitting trailing commas would claim
+syntax space, so that \tcode{f(0,)} could not be given other meaning in the future.
+Specifically, empty list elements could be given special meaning,
+such as using a default argument:
+
+\cppblock{
+void f(int x = 0, int y = 0);
+
+f(, 1);    // OK, equivalent to f(0, 1)
+f(1, );    // OK, equivalent to f(1, 0)
+f(1,1,);   // error: third default argument requested, but only two parameters
+}
+
+Firstly, it's worth noting that \tcode{f(1,)} has the effect of passing
+a default argument for \tcode{y}, no matter the meaning of a trailing comma.
+\tcode{f(1,1,)} would be a special case,
+but in principle, trailing commas are compatible with these proposed semantics.
+
+Secondly, I consider this idea terrible because of how non-descriptive it is;
+a user could even unintentionally perform such calls by making a typo '\tcode{,,}'
+somewhere in the argument list.
+Using the syntax \tcode{f(1,1,)} to mean anything other than a function call
+with two arguments and a trailing comma would be terribly confusing to developers
+accustomed to trailing commas from other languages,
+such as JavaScript or Kotlin developers (\ref(#trailing-commas-in-other-languages)).
+
+Without a plausible alternative use for the syntax
+concerns over claiming syntax space have little relevance.
+Even the people bringing up these syntax space concerns
+are not confident that this "default argument passing" could find consensus.
+
 \h2{Implementation experience}
 
-None.
+This proposal has been implemented by Murat Can Cagri in a \ref(ClangFork),
+and should soon be available on \ref(https://godbolt.org/){Compiler Explorer}.
+The implementation is a simple parser change of approximately 40 lines of code.
 
 \h2{Impact on existing code}
 
@@ -1036,16 +1175,12 @@ revert the change as follows:
   id = TypeScriptTrailingCommas,
   title = TypeScript 2.0 \N{EM DASH} Trailing commas in function parameter and argument lists,
   link = https://www.typescriptlang.org/docs/handbook/release-notes/typescript-2-0.html#trailing-commas-in-function-parameter-and-argument-lists,
-)
-\bib(
-  id = CSharpTrailingCommas,
-  title = Proposal: Allow trailing comma in tuples & argument lists,
-  link = https://github.com/dotnet/csharplang/issues/1246,
 )\
 \bib(
   id = SwiftTrailingCommas,
-  title = Allow trailing commas in parameter lists,
-  link = https://forums.swift.org/t/allow-trailing-commas-in-parameter-lists/68549/29,
+  title = Swift 6.1 Released \N{EM DASH} Productivity Enhancements,
+  date = 2025-03-31,
+  link = https://www.swift.org/blog/swift-6.1-released/#productivity-enhancements,
 )\
 \bib(
   id = RedditTrailingCommas,
@@ -1058,6 +1193,11 @@ revert the change as follows:
   author = Raymond Chen,
   date = 2024-02-09,
   link = https://devblogs.microsoft.com/oldnewthing/20240209-00/?p=109379,
+)\
+\bib(
+  id = ClangFork,
+  author = Murat Can Cagri,
+  link = https://github.com/term-est/llvm-project/tree/P3776-More-Trailing-Commas,
 )\
 
 \make_bib
