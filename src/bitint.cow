@@ -1,16 +1,16 @@
-\import{libwg21.cow}
+\cowel_include{libwg21.cow}
 
-\wg21_head[
-    title = Bit-precise integers \N{EM DASH} \tt{_BitInt} in \nobr{C++}
-]{
+\wg21_head(
+    title = Bit-precise integers
+){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3666}}
-  \dt{Date:}            \dd{\tt{2025-07-03}}
+  \dt{Document number:} \dd{\docnum{D3666R0}}
+  \dt{Date:}            \dd{\tt{2025-09-01}}
   \dt{Audience:}        \dd{SG6, SG22, EWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-  \dt{GitHub Issue:}    \dd{\ref[https://wg21.link/P3666/github]}
-  \dt{Source:}          \dd{\ref[https://github.com/Eisenwave/cpp-proposals/blob/master/src/bitint.cow]}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3666/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/bitint.cow)}
 }
 \hr
 }
@@ -18,18 +18,28 @@
 \Babstract{
 C23 has introduced so-called "bit-precise integers" into the language,
 which should be brought to C++ for compatibility, among other reasons.
-Following an exploration of possible designs in \ref[P3639R0] "The \tt{_BitInt} Debate",
+Following an exploration of possible designs in \ref(P3639R0) "The \tt{_BitInt} Debate",
 this proposal introduces a new set of fundamental types to C++.
 }
 
-\h2[listed=no]{Contents}
+\Bimp{
+This draft is super early work-in-progress.
+The wording is not anywhere near complete,
+and the discussion needs to be fleshed out substantially.
+}
+
+\h2(listed=false){Contents}
 
 \make_contents
 
+\h2{Revision history}
+
+This is the first revision.
+
 \h2{Introduction}
 
-\ref[N2763] introduced the \tcode{_BitInt} set of types to the C23 standard,
-and \ref[N2775] further enhanced this feature with literal suffixes.
+\ref(N2763) introduced the \tcode{_BitInt} set of types to the C23 standard,
+and \ref(N2775) further enhanced this feature with literal suffixes.
 For example, this feature may be used as follows:
 
 \cppblock{
@@ -56,11 +66,119 @@ In short, the behavior of these \dfn{bit-precise integers} is as follows:
   }
 }
 
+\h2{Motivation}
+
+\h3{Computation beyond 64 bits}
+
+Computation beyond 64-bit bits, such as with 128-bits is immensely useful.
+A large amount of motivation for 128-bit computation can be found in \ref(P3140R0).
+Computations in cryptography, such as for RSA require even 4096-bit integers.
+
+\h3{C ABI compatibility}
+
+C++ currently has no portable way to call C functions such as:
+
+\cppblock{
+_BitInt(32)  plus( _BitInt(32) x,  _BitInt(32) y);
+_BitInt(128) plus(_BitInt(128) x, _BitInt(128) y);
+}
+
+While one could rely on the ABI of \tcode{uint32_t} and \tcode{_BitInt(32)}
+to be identical in the first overload,
+there certainly is no way to portably invoke the second overload.
+
+This compatibility problem is not a hypothetical concern either; it is an urgent problem.
+There are already targets with \tcode{_BitInt} supported by major compilers,
+and used by C developers:
+
+\style{
+  .center {
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+\table(class=center){
+  \tr{
+    \th{Compiler}
+    \th{\tt{BITINT_MAXWIDTH}}
+    \th{Targets}
+    \th{Languages}
+  }
+  \tr{
+    \td{clang 16+}
+    \td{\tcode{8'388'608}}
+    \td{all}
+    \td{C & C++}
+  }
+  \tr{
+    \td{GCC 14+}
+    \td{\tcode{65'535}}
+    \td{64-bit only}
+    \td{C}
+  }
+  \tr{
+    \td{MSVC}
+    \td{\N{CROSS MARK}}
+    \td{\N{CROSS MARK}}
+    \td{\N{CROSS MARK}}
+  }
+}
+
+\h3{Resolving issues with the current integer type system}
+
+\tcode{_BitInt} as standardized in C solves multiple issues that
+the standard integers (\tcode{int} etc.) have.
+
+Firstly, integer promotion can result in unexpected signedness changes.
+
+\Bex{
+The following code may have surprising effects
+if \tcode{std::uint8_t} is an alias for \tcode{unsigned char}.
+
+\cppblock{
+std::uint8_t x = 0b1111'0000;
+std::uint8_t y = ~x >> 1; // y = 0b1000'01111
+}
+
+Surprisingly, \tcode{y} is not \tcode{0b111}
+because \tcode{x} is promoted to \tcode{int} in \tcode{~x},
+so the subsequent right-shift by \tcode{1} shifts one set bit into \tcode{y} from the left.
+Even more surprisingly, if we had used \tcode{auto} instead of \tcode{std::uint8_t} for \tcode{y},
+\tcode{y} would be \tcode{-121},
+despite our code seemingly using only unsigned integers.
+
+This design is terribly confusing and makes it hard to write bit manipulation
+for integers narrower than \tcode{int}.
+}
+
+Lastly, there is no portable way to use an integer with exactly 32 bits.
+\tcode{std::int_least32_t} and \tcode{long} may be wider,
+and \tcode{std::int32_t} is an optional type alias which only exists if such an integer type
+has no padding bits.
+While most users can use \tcode{std::int32_t} without much issue,
+its optionality is a problem for use in the standard library and other ultra-portable libraries.
+
 \h2{Design discussion}
+
+The overall design strategy is as follows:
+
+\ul{
+  \li{
+    The proposal is a C compatibility proposal first and foremost.
+    Whenever possible, we match the behavior of the C type.
+  }
+  \li{
+    The goal is to deliver a minimal viable product (MVP)
+    which can be integrated into the standard as quickly as possible.
+    This gives us plenty of time to add standard library support wherever desirable over time,
+    as well as other convenience features surrounding \tcode{_BitInt}.
+  }
+}
 
 \h3{Why not make it a library type?}
 
-\ref[P3639R0] explored in detail whether to make it a fundamental type or a library type.
+\ref(P3639R0) explored in detail whether to make it a fundamental type or a library type.
 Furthermore, feedback given by SG22 and EWG was to make it a fundamental type, not a library type.
 This boils down to two plausible designs
 (assuming \tcode{_BitInt} is already supported by the compiler), shown below.
@@ -78,25 +196,25 @@ This boils down to two plausible designs
 }
 }
 
-\table[id=tony-table]{
+\table(id=tony-table){
 \tr{
     \th{\N{MATHEMATICAL DOUBLE-STRUCK CAPITAL F} \N{EN DASH} Fundamental type}
     \th{\N{MATHEMATICAL DOUBLE-STRUCK CAPITAL L} \N{EN DASH} Library type}
 }
 \tr{
-\td{\codeblock[cpp,borders=no]{
+\td{\codeblock(cpp, borders=false){
 template <size_t N>
-using bit_int_t =
+using bit_int =
     _BitInt(N);
 
 
 
 
 template <size_t N>
-using bit_uint_t =
+using bit_uint =
     unsigned _BitInt(N);
 }}
-\td{\codeblock[cpp,borders=no]{
+\td{\codeblock(cpp, borders=false){
 template <size_t N>
 class bit_int {
   private:
@@ -119,17 +237,63 @@ The reasons why we should prefer the left side are described in the following su
 
 \cppblock{
 struct S {
+    // 1. _BitInt as the underlying type of a bit-field
     _BitInt(32) x : 10;
 };
+
+// 2. _BitInt in a switch statement
+_BitInt(32) x = 10;
+switch (x) {}
 }
 
 Since C++ does not support the use of class types in bit-fields,
 such a \tcode{struct S} could not be passed from C++ to a C API.
-
-Furthermore, expressions of type \tcode{_BitInt} can be used as array sizes,
-in \tcode{case} labels, and any other place where integers but not class types are permitted.
 A developer would face \em{severe} difficulties
-when porting C code which makes use of these capabilities to C++.
+when porting C code which makes use of these capabilities to C++
+and if bit-precise integers were a class type in C++.
+
+\h4{Tiny integers are useful in C++}
+
+In some cases, tiny \tcode{bit_int}'s may be useful as the underlying type of an enumeration:
+
+\cppblock{
+enum struct Direction : bit_int<2> {
+    north, east, south, west,
+};
+}
+
+By using \tcode{bit_int<2>} rather than \tcode{unsigned char},
+every possible value has an enumerator.
+If we used e.g. \tcode{unsigned char} instead,
+there would be 252 other possible values that simply have no name,
+and this may be detrimental to compiler optimization of \tcode{switch} statements etc.
+
+\h4{Special deduction rules}
+
+While this proposal focuses on the minimal viable product (MVP),
+a possible future extension would be new deduction rules allowing the following code:
+
+\cppblock{
+template <size_t N>
+void f(bit_int<N> x);
+
+f(int32_t(0)); // calls f<32>
+}
+
+Being able to make such a call to \tcode{f} is immensely useful because it would allow
+for defining a single function template which may be called with every possible
+signed integer type,
+while only producing a single template instantiation
+for \tcode{int}, \tcode{long}, and \tcode{_BitInt(32)},
+as long as those three have the same width.
+The prospect of being able to write bit manipulation utilities that simply accept
+\tcode{bit_uint<N>} is quite appealing.
+
+If \tcode{bit_int<N>} was a class type,
+this would not work because template argument deduction would fail,
+even if there existed an implicit conversion sequence from \tcode{int32_t}
+to \tcode{bit_int<32>}.
+These kinds of deduction rules may be shutting the door on this mechanism forever.
 
 \h4{Quality of implementation requires a fundamental type}
 
@@ -154,57 +318,761 @@ for performance reasons.
 Another workaround would be an ever-growing set of implementation-specific attributes,
 but at that point, we may as well make it fundamental.
 
-\h2{Impact on implementations}
+\h3{Naming}
 
-\: TODO
+The approach is to expose bit-precise integers via two alias templates:
+
+\cppblock{
+template <size_t N>
+using bit_int = _BitInt(N);
+
+template <size_t N>
+using bit_uint = unsigned _BitInt(N);
+}
+
+The goal is to have a spelling reminiscent of the C \tcode{_BitInt} spelling.
+There are no clear problems with it,
+so it is the obvious candidate.
+
+\h4{Why no \tcode{_t} suffix?}
+
+While the \tcode{_t} suffix would be conventional for simple type aliases
+such as \tcode{uint32_t},
+there is no clear precedent for alias templates.
+There are alias templates such as \tcode{expected::rebind}
+without any \tcode{_t} or \tcode{_type} suffix,
+but "type trait wrappers" such as \tcode{conditional_t} which have a \tcode{_t} suffix.
+
+The \tcode{_t} suffix does not add any clear benefit,
+adds verbosity,
+and distances the name from the C spelling \tcode{_BitInt}.
+Brevity is important here because \tcode{bit_int}
+is expected to be a commonly spelled type.
+A function doing some bit manipulation could use this name numerous times.
+
+\h4{Why the keyword spelling?}
+
+I also propose to standardize the keyword spelling
+\tcode{_BitInt} and \tcode{unsigned _BitInt}.
+While a similar approach could be taken as with the \tcode{\hl(macro){_Atomic}}
+compatibility macro,
+macros cannot be exported from modules,
+and macros needlessly complicate the problem compared to a keyword.
+
+The objections to a keyword spelling are that it's not \em{really} necessary,
+or that it "bifurcates" the language by having two spellings for the same thing,
+or that those ugly C keywords should not exist in C++.
+Ultimately, it's not the job of WG21 to police code style;
+both spellings have a right to exist:
+
+\ul{
+  \li{
+    The \tcode{std::bit_int} alias template fits in aesthetically with the rest of the language,
+    and conveys clearly (via "pointy brackets") that the given width is a constant expression.
+  }
+  \li{
+    The \tcode{_BitInt} spelling is useful for writing C/C++-interoperable code,
+    and C compatibility is an important design goal.
+    Furthermore, the spelling is going to exist whether that would be a compatibility macro
+    or a keyword,
+    and since there is no clear technical benefit to a macro,
+    it should be a keyword.
+  }
+}
+
+Furthermore, to enable C compatibility, all of the spellings
+\tcode{_BitInt}, \tcode{signed _BitInt} and \tcode{unsigned _BitInt} need to be valid.
+This goes far beyond the capabilities that a compatibility macro like \tcode{\hl(macro){_Atomic}}
+can provide without language support.
+The most likely wording path would be to create an exposition-only \tcode{\exposid{bit-int}}
+spelling to define \tcode{signed \exposid{bit-int}} etc., which makes our users beg the question:
+
+\Bquote{
+Why is there an compatibility macro for an exposition-only keyword spelling?!
+Why are we making everything more complicated by not just copying the keyword from C?!
+Why is this exposition-only when it's clearly useful for users to spell?!
+}
+
+\Bnote{
+Clang already supports the \tcode{_BitInt} keyword spelling as a compiler extensions,
+so this is standardizing existing practice.
+}
+
+\h3{Degree of library support}
+
+As previously stated,
+the overall strategy of this proposal is to ship an MVP.
+There are three categories of library features that deal with integer types:
+
+\ul{
+  \li{
+    Features which are stated to support any integer type,
+    such as \header{bit} or \header{simd}.
+    These should generally support bit-precise integers too,
+    since there's typically no reason to single out bit-precise integers,
+    and support would be useful.
+  }
+  \li{
+    Functions originating from C with support for bit-precise integer types,
+    such as \tcode{std::sqrt}.
+    The C functions typically support only bit-precise integers with the same width as
+    some standard integer type.
+    This restriction is unmotivated in C++ since a function template can easily cover
+    any bit-precise integer rather than having a finite set of options
+    covered by C's \tcode{_Generic} selection,
+    so we introduce a function template overload instead.
+  }
+  \li{
+    Features which explicitly support only standard integers,
+    such as \tcode{std::to_string} or the \tcode{std::bitset} constructors.
+    These should be addressed by follow-up proposals
+    because they are not part of the MVP.
+  }
+}
+
+\h2{Implementation experience}
+
+\tcode{_BitInt}, formerly known as \tcode{_ExtInt}, has been a compiler extension
+in Clang for several years now.
+The core language changes are essentially standardizing that compiler extension.
 
 \h2{Impact on the standard}
 
 \: TODO
 
-\h2{Proposed wording}
+\h2{Wording}
 
-\: TODO
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+\h3{Core}
+
+\style{
+  math[display=inline] {
+    font-size: inherit;
+  }
+}
+
+\h4(show-number=false){[lex.icon]}
+
+In \eelis{lex.icon},
+change the grammar as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{integer-suffix}:}
+  \dd{unsigned-suffix \opt{long-suffix}}
+  \dd{unsigned-suffix \opt{long-long-suffix}}
+  \dd{unsigned-suffix \opt{size-suffix}}
+  \dd{long-suffix \opt{unsigned-suffix}}
+  \dd{long-long-suffix \opt{unsigned-suffix}}
+  \dd{\ins{\opt{unsigned-suffix} bit-precise-int-suffix}}
+  \dd{\ins{bit-precise-int-suffix \opt{unsigned-suffix}}}
+}
+\dl(class=grammar){
+  \dt{\grammarterm{unsigned-suffix}: one of}
+  \dd{\tcode{u} \tcode{U}}
+}
+\dl(class=grammar){
+  \dt{\grammarterm{long-suffix}: one of}
+  \dd{\tcode{l} \tcode{L}}
+}
+\dl(class=grammar){
+  \dt{\grammarterm{long-long-suffix}: one of}
+  \dd{\tcode{ll} \tcode{LL}}
+}
+\dl(class=grammar){
+  \dt{\grammarterm{size-suffix}: one of}
+  \dd{\tcode{z} \tcode{Z}}
+}
+\dl(class=grammar){
+  \dt{\ins{\grammarterm{bit-precise-int-suffix}: one of}}
+  \dd{\ins{\tcode{wb} \tcode{WB}}}
+}
+}
+
+Change table \eelis{tab:lex.icon.type} as follows:
+
+\Bdiff{
+\table{
+  \tr{
+    \th{\grammarterm{\nobr{integer-suffix}}}
+    \th{\grammarterm{decimal-literal}}
+    \th{\grammarterm{integer-literal} other than \grammarterm{decimal-literal}}
+  }
+  \tr{
+    \td{\etc}
+    \td{\etc}
+    \td{\etc}
+  }
+  \tr{
+    \td{Both \tcode{u} or \tcode{U} and \tcode{z} or \tcode{Z}}
+    \td{\tcode{std::size_t}}
+    \td{\tcode{std::size_t}}
+  }
+  \tr{
+    \td{\ins{\tcode{wb} or \tcode{WB}}}
+    \td{
+      \ins{\tcode{_BitInt(\math{\mi{N}})} of minimal width
+      \math{\mrow{\mi{N}\mo{>}\mn{1}}}
+      so that the value of the literal can be represented by the type.}
+    }
+    \td{
+      \ins{\tcode{_BitInt(\math{\mi{N}})} of minimal width
+      \math{\mrow{\mi{N}\mo{>}\mn{1}}}
+      so that the value of the literal can be represented by the type.}
+    }
+  }
+  \tr{
+    \td{
+      \ins{Both \tcode{u} or \tcode{U} and\br{}\tcode{wb} or \tcode{WB}}
+    }
+    \td{
+      \ins{\tcode{unsigned _BitInt(\math{\mi{N}})} of minimal width
+      \math{\mrow{\mi{N}\mo{>}\mn{0}}}
+      so that the value of the literal can be represented by the type.}
+    }
+    \td{
+      \ins{\tcode{unsigned _BitInt(\math{\mi{N}})} of minimal width
+      \math{\mrow{\mi{N}\mo{>}\mn{0}}}
+      so that the value of the literal can be represented by the type.}
+    }
+  }
+}
+}
+
+Change \eelis{lex.icon#4} as follows:
+
+\Bdiff{
+Except for \grammarterm{integer-literal}s containing a \grammarterm{size-suffix}
+\ins{or \grammarterm{bit-precise-int-suffix}},
+if the value of an \grammarterm{integer-literal} cannot be represented
+by any type in its list and an extended integer type\iref{basic.fundamental}
+can represent its value,
+it may have that extended integer type.
+\etc
+
+\note{
+An \grammarterm{integer-literal} with a \tcode{z} or \tcode{Z} suffix
+is ill-formed if it cannot be represented by \tcode{std::size_t}.
+\ins{An \grammarterm{integer-literal} with a \tcode{wb} or \tcode{WB} suffix
+is ill-formed if it cannot be represented by any \tcode{_BitInt(\math{\mi{N}})}
+because the necessary width \math{\mi{N}} is greater than
+\tcode{BITINT_MAXWIDTH}\iref{climits.syn}.}
+}
+}
+
+\h4(show-number=false){[basic.fundamental]}
+
+Change \eelis{basic.fundamental#1} as follows:
+
+\Bdiff{
+There are five \dfn{standard signed integer types}:
+\q{\tcode{signed char}},
+\q{\tcode{short int}},
+\q{\tcode{int}},
+\q{\tcode{long int}}, and
+\q{\tcode{long long int}}.
+In this list,
+each type provides at least as much storage as those
+preceding it in the list.
+\ins{There is also a distinct \dfn{bit-precise signed integer type}
+\q{\tcode{_BitInt} of width \math{\mi{N}}}
+for each \math{\mrow{\mn{1}\mo{<}\mi{N}\mo{≤}\mtext{\tt{BITINT_MAXWIDTH}}}}\iref{climits.syn}.}
+There may also be implementation-defined
+\dfn{extended signed integer types}.
+The standard\ins{, bit-precise,} and extended signed integer types are collectively called
+\dfn{signed integer types}.
+The range of representable values for a signed integer type is
+\math{
+  \msup{
+    \mn{-2}
+    \mrow{\mi{N}\mo{−}\mn{1}}
+  }
+}
+to
+\math{
+  \mrow{
+    \msup{
+      \mn{2}
+      \mrow{\mi{N}\mo{−}\mn{1}}
+    }
+    \mo{−}
+    \mn{1}
+  }
+}
+(inclusive),
+where \math{\mi{N}} is called the \dfn{width} of the type.
+
+\note{
+Plain \tcode{int}s are intended to have
+the natural width suggested by the architecture of the execution environment;
+the other signed integer types are provided to meet special needs.
+}
+}
+
+Change \eelis{basic.fundamental#2} as follows:
+
+\Bdiff{
+For each of the standard signed integer types,
+there exists a corresponding (but different)
+\dfn{standard unsigned integer type}:
+\q{\tcode{unsigned char}},
+\q{\tcode{unsigned short}},
+\q{\tcode{unsigned int}},
+\q{\tcode{unsigned long int}}, and
+\q{\tcode{unsigned long long int}}.
+\ins{For each bit-precise signed integer type
+\q{\tcode{_BitInt} of width \math{\mi{N}}},
+there exists a corresponding \dfn{bit-precise unsigned integer type}
+\q{\tcode{unsigned _BitInt} of width \math{\mi{N}}}.
+Additionally, there exists the type \q{\tcode{unsigned _BitInt} of width 1}.}
+\del{Likewise, for} \ins{For} each of the extended signed integer types,
+there exists a corresponding \dfn{extended unsigned integer type}.
+The standard\ins{, bit-precise,} and extended unsigned integer types
+are collectively called \dfn{unsigned integer types}.
+An unsigned integer type has the same width \math{\mi{N}}
+as the corresponding signed integer type.
+The range of representable values for the unsigned type is
+\math{\mn{0}} to
+\math{
+  \msup{
+    \mn{2}
+    \mrow{\mi{N}\mo{−}\mn{1}}
+  }
+} (inclusive);
+arithmetic for the unsigned type is performed modulo \math{\msup{\mn{2}\mi{N}}}.
+
+\note{
+Unsigned arithmetic does not overflow.
+Overflow for signed arithmetic yields undefined behavior\iref{expr.pre}.
+}
+}
+
+\comment{
+Change \eelis{basic.fundamental#4} as follows:
+
+\Bdiff{
+The width of each standard signed integer type
+shall not be less than the values specified in \tref{basic.fundamental.width}.
+
+The value representation of a signed or unsigned integer type
+comprises \math{\mi{N}} bits,
+where \math{\mi{N}} is the respective width.
+Each set of values for any padding bits\iref{basic.types.general}
+in the object representation are
+alternative representations of the value specified by the value representation.
+
+\note{
+Padding bits have unspecified value, but cannot cause traps.
+In contrast, see \IsoC{} 6.2.6.2.
+}
+
+\note{
+The signed and unsigned integer types satisfy
+the constraints given in \IsoC{} 5.2.4.2.1.
+}
+
+Except as specified above,
+the width of a signed or unsigned integer type is
+implementation-defined.
+}
+}
+
+Change \eelis{basic.fundamental#5} as follows:
+
+\Bdiff{
+\etc
+The standard signed integer types and standard unsigned integer types
+are collectively called the \dfn{standard integer types}\del{, and the}
+\ins{. The bit-precise signed integer types and bit-precise unsigned integer types
+are collectively called the \dfn{bit-precise integer types}. The}
+extended signed integer types and extended
+unsigned integer types are collectively called the
+\dfn{extended integer types}.
+}
+
+\h4(show-number=false){[conv.rank]}
+
+Change \eelis{conv.rank#1} as follows:
+
+\Bdiff{
+
+Every integer type has an \term{integer conversion rank} defined as follows:
+
+\ul{
+  \li{
+    No two signed integer types other than \tcode{char} and \tcode{signed char}
+    (if \keyword{char} is signed) have the same rank, even if they have the same representation.
+  }
+  \li{
+    The rank of a signed integer type is greater than the rank
+    of any signed integer type with a smaller width.
+  }
+  \li{
+    The rank of \tcode{long long int} is greater than the rank of \tcode{long int},
+    which is greater than the rank of \tcode{int},
+    which is greater than the rank of \tcode{short int},
+    which is greater than the rank of \tcode{signed char}.
+  }
+  \li{
+    The rank of any unsigned integer type equals the rank of the
+    corresponding signed integer type.
+  }
+  \li{
+    The rank of any standard integer type is greater than the rank
+    of \ins{any bit-precise integer type with the same width
+    and of} any extended integer type with the same width.
+  }
+  \li{
+    The rank of \tcode{char} equals the rank of \tcode{signed char}
+    and \tcode{unsigned char}.
+  }
+  \li{
+    The rank of \tcode{bool} is less than the rank of all
+    standard integer types.
+  }
+  \li{
+    The ranks of \tcode{char8_t}, \tcode{char16_t}, \tcode{char32_t}, and
+    \tcode{wchar_t} equal the ranks of their underlying
+    types\iref{basic.fundamental}.
+  }
+  \li{
+    The rank of any extended signed integer type relative to another
+    extended signed integer type with the same width
+    \ins{and relative to a bit-precise signed integer type with the same width}
+    is implementation-defined,
+    but still subject to the other rules for determining the integer conversion rank.
+  }
+  \li{
+    For all integer types \tcode{T1}, \tcode{T2}, and \tcode{T3}, if
+    \tcode{T1} has greater rank than \tcode{T2} and \tcode{T2} has greater
+    rank than \tcode{T3}, then \tcode{T1} has greater rank than
+    \tcode{T3}.
+  }
+}
+
+\note{
+The integer conversion rank is used in the definition of the integral
+promotions\iref{conv.prom} and the usual arithmetic
+conversions\iref{expr.arith.conv}.
+}
+}
+
+\h4(show-number=false){[conv.prom]}
+
+Change \eelis{conv.prom#2} as follows:
+
+\Bdiff{
+A prvalue that
+\ul{
+  \li{is not a converted bit-field \del{and} \ins{,}}
+  \li{
+    has \del{an} \ins{a standard or extended} integer type other than
+    \tcode{bool}, \tcode{char8_t}, \tcode{char16_t}, \tcode{char32_t},
+    or \tcode{wchar_t}\ins{, and}
+  }
+  \li{
+    whose integer conversion rank\iref{conv.rank}
+    is less than the rank of \tcode{int}
+  }
+}
+can be converted to
+a prvalue of type \tcode{int}
+if \tcode{int} can represent all the values of the source type;
+otherwise, the source prvalue can be converted to
+a prvalue of type \tcode{unsigned int}.
+}
+
+\Btodo{
+Investigate whether in \eelis{conv.prom#5},
+a converted bit-field of bit-precise integer type should be promotable.
+What does C do here?
+}
+
+\h4(show-number=false){[dcl.type.simple]}
+
+Change \eelis{dcl.type.simple#1} as follows:
+
+\Bdiff{
+The simple type specifiers are
+
+\dl(class=grammar){
+  \dt{\grammarterm{simple-type-specifier}:}
+  \dd{\opt{nested-name-specifier} type-name}
+  \dd{nested-name-specifier \tcode{template} simple-template-id}
+  \dd{computed-type-specifier}
+  \dd{placeholder-type-specifier}
+  \dd{\opt{nested-name-specifier} template-name}
+  \dd{\tcode{char}}
+  \dd{\tcode{char8_t}}
+  \dd{\tcode{char16_t}}
+  \dd{\tcode{char32_t}}
+  \dd{\tcode{wchar_t}}
+  \dd{\tcode{bool}}
+  \dd{\tcode{short}}
+  \dd{\tcode{int}}
+  \dd{\tcode{long}}
+  \dd{\tcode{signed}}
+  \dd{\tcode{unsigned}}
+  \dd{\tcode{float}}
+  \dd{\tcode{double}}
+  \dd{\tcode{void}}
+
+  \dt{\grammarterm{type-name}:}
+  \dd{class-name}
+  \dd{enum-name}
+  \dd{typedef-name}
+
+  \dt{\grammarterm{computed-type-specifier}:}
+  \dd{decltype-specifier}
+  \dd{pack-index-specifier}
+  \dd{splice-type-specifier}
+  \dd{\ins{bit-precise-int-type-specifier}}
+
+  \dt{\ins{\grammarterm{bit-precise-int-type-specifier}:}}
+  \dd{\ins{\tcode{_BitInt} \tcode{(} constant-expression \tcode{)}}}
+}
+}
+
+Change table \eelis{tab:dcl.type.simple} as follows:
+
+\cowel_macro(dcl_type_simple_row){\tr{\td{\tcode{\cowel_put{0}}}\td{\q{\tcode{\cowel_put{1}}}}}}
+
+\Bdiff{
+  \table{
+    \tr{
+      \th{Specifier(s)}
+      \th{Type}
+    }
+    \tr{
+      \td{\grammarterm{type-name}}
+      \td{the type named}
+    }
+    \tr{
+      \td{\grammarterm{simple-template-id}}
+      \td{the type as defined in \eelis{temp.names}}
+    }
+    \tr{
+      \td{\grammarterm{decltype-specifier}}
+      \td{the type as defined in \eelis{dcl.type.decltype}}
+    }
+    \tr{
+      \td{\grammarterm{pack-index-specifier}}
+      \td{the type as defined in \eelis{dcl.type.pack.index}}
+    }
+    \tr{
+      \td{\grammarterm{placeholder-type-specifier}}
+      \td{the type as defined in \eelis{dcl.spec.auto}}
+    }
+    \tr{
+      \td{\grammarterm{template-name}}
+      \td{the type as defined in \eelis{dcl.type.class.deduct}}
+    }
+    \tr{
+      \td{\grammarterm{splice-type-specifier}}
+      \td{the type as defined in \eelis{dcl.type.splice}}
+    }
+    \tr{
+      \td{\ins{\tcode{unsigned _BitInt(\math{\mi{N}})}}}
+      \td{\ins{\q{\tcode{unsigned _BitInt} of width \math{\mi{N}}}}}
+    }
+    \tr{
+      \td{\ins{\tcode{signed _BitInt(\math{\mi{N}})}}}
+      \td{\ins{\q{\tcode{_BitInt} of width \math{\mi{N}}}}}
+    }
+    \tr{
+      \td{\ins{\tcode{_BitInt(\math{\mi{N}})}}}
+      \td{\ins{\q{\tcode{_BitInt} of width \math{\mi{N}}}}}
+    }
+    \dcl_type_simple_row(char, char)
+    \dcl_type_simple_row(unsigned char, unsigned char)
+    \dcl_type_simple_row(signed char, signed char)
+    \dcl_type_simple_row(char8_t, char8_t)
+    \dcl_type_simple_row(char16_t, char16_t)
+    \dcl_type_simple_row(char32_t, char32_t)
+    \dcl_type_simple_row(bool, bool)
+    \dcl_type_simple_row(unsigned, unsigned int)
+    \dcl_type_simple_row(unsigned int, unsigned int)
+    \dcl_type_simple_row(signed, int)
+    \dcl_type_simple_row(signed int, int)
+    \dcl_type_simple_row(int, int)
+    \dcl_type_simple_row(unsigned short int, unsigned short int)
+    \dcl_type_simple_row(unsigned short, unsigned short int)
+    \dcl_type_simple_row(unsigned long int, unsigned long int)
+    \dcl_type_simple_row(unsigned long, unsigned long int)
+    \dcl_type_simple_row(unsigned long long int, unsigned long long int)
+    \dcl_type_simple_row(unsigned long long, unsigned long long int)
+    \dcl_type_simple_row(signed long int, long int)
+    \dcl_type_simple_row(signed long, long int)
+    \dcl_type_simple_row(signed long long int, long long int)
+    \dcl_type_simple_row(signed long long, long long int)
+    \dcl_type_simple_row(long long int, long long int)
+    \dcl_type_simple_row(long long, long long int)
+    \dcl_type_simple_row(long int, long int)
+    \dcl_type_simple_row(long, long int)
+    \dcl_type_simple_row(signed short int, short int)
+    \dcl_type_simple_row(signed short, short int)
+    \dcl_type_simple_row(short int, short int)
+    \dcl_type_simple_row(short, short int)
+    \dcl_type_simple_row(wchar_t, wchar_t)
+    \dcl_type_simple_row(float, float)
+    \dcl_type_simple_row(double, double)
+    \dcl_type_simple_row(long double, long double)
+    \dcl_type_simple_row(void, void)
+  }
+}
+
+Immediately following \eelis{dcl.type.simple#3},
+add a new paragraph as follows:
+
+\Bins{
+Within a \grammarterm{bit-precise-int-type-specifier},
+the \grammarterm{constant-expression} shall be a converted constant expression of type
+\tcode{std::size_t}\iref{expr.const}.
+Its value \math{\mi{N}} specifies the width
+of the bit-precise integer type\iref{basic.fundamental}.
+The program is ill-formed unless
+\math{
+  \mrow{
+    \mn{1}
+    \mo{<}
+    \mi{N}
+    \mo{≤}
+    \mtext{\tt{BITINT_MAXWIDTH}}
+  }
+}\iref{climits.syn}
+or the denoted type is \q{\tcode{unsigned _BitInt} of width 1}.
+
+\note{
+\tcode{unsigned _BitInt(1)} can represent the values \tcode{0} and \tcode{1},
+but \tcode{_BitInt(1)} is not a valid type.
+}
+}
+
+\h4(show-number=false){[cpp.predefined]}
+
+Add a feature-test macro to the table in \eelis{cpp.predefined} as follows:
+
+\Bins{
+\itemdecl{
+__cpp_bit_int 20XXXXL
+}
+}
+
+\h3{Library}
+
+\h4(show-number=false){[cstdint.syn]}
+
+In \eelis{cstdint.syn},
+update the header synopsis as follows:
+
+\Bdiff{
+\itemdecl{
+namespace std {
+  \etc
+
+  using uintmax_t = \exposid{unsigned integer type};
+  using uintptr_t = \exposid{unsigned integer type}; // \serif{optional}
+
+\ins{  template<size_t N>
+    using bit_int = _BitInt(N);
+  template<size_t N>
+    using bit_uint = unsigned _BitInt(N);}
+}
+}
+}
+
+Change \eelis{cstdint.syn#2} as follows:
+
+\Bdiff{
+All types that use the placeholder \placeholder{N}
+are optional when \placeholder{N}
+is not \tcode{8}, \tcode{16}, \tcode{32}, or \tcode{64}.
+The exact-width types
+\tcode{int\placeholdernc{N}_t} and \tcode{uint\placeholdernc{N}_t}
+for \placeholder{N} = \tcode{8}, \tcode{16}, \tcode{32}, and \tcode{64}
+are also optional;
+however, if an implementation defines integer types
+\ins{other than bit-precise integer types}
+with the corresponding width and no padding bits,
+it defines the corresponding \grammarterm{typedef-name}s.
+Each of the macros listed in this subclause
+is defined if and only if
+the implementation defines the corresponding \grammarterm{typedef-name}.
+\br\note{
+The macros \tcode{INT\placeholdernc{N}_C} and \tcode{UINT\placeholdernc{N}_C}
+correspond to the \grammarterm{typedef-name}s
+\tcode{int_least\placeholdernc{N}_t} and \tcode{uint_least\placeholdernc{N}_t},
+respectively.
+}
+}
+
+\h4(show-number=false){[climits.syn]}
+
+In \eelis{climits.syn},
+add a new line below the definition of \tcode{\hl(macro){ULLONG_WIDTH}}:
+
+\Bins{
+\itemdecl{
+#define BITINT_MAXWIDTH \exposid{see below}
+}
+}
+
+Change \eelis{climits.syn#1} as follows:
+
+\Bdiff{
+The header \tt{<climits>} defines all macros
+the same as the C standard library header \tt{limits.h}\del{,
+except that it does not define the macro \tcode{BITINT_MAXWIDTH}}.
+}
 
 \h2{References}
 
-\bib[
-  id = N5008,
+\bib(
+  id = N5014,
   title = Working Draft\, Programming Languages — C++,
-  date = 2025-03-15,
+  date = 2025-08-05,
   author = Thomas Köppe,
-  link = https://wg21.link/n5008,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5008.pdf
-]
-\bib[
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf
+)\
+\bib(
+  id = P3140R0,
+  title = std::int_least128_t,
+  date = 2025-02-11,
+  author = Jan Schultke,
+  link = https://wg21.link/p3140r0,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3140r0.html,
+)\
+\bib(
   id = P3639R0,
   title = The _BitInt Debate,
   date = 2025-02-20,
   author = Jan Schultke,
   link = https://wg21.link/p3639r0,
   long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3639r0.html
-]
-\bib[
+)\
+\bib(
   id = P3312R1,
   title = Overload Set Types,
   date = 2025-04-16,
   author = Bengt Gustafsson,
   link = https://wg21.link/p3312r1,
   long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3312r1.pdf
-]
-\bib[
+)\
+\bib(
   id = N2763,
   title = Adding a Fundamental Type for N-bit integers,
   date = 2021-06-21,
   author = Aaron Ballman\, Melanie Blower\, Tommy Hoffner\, Erich Keane,
   link = https://open-std.org/JTC1/SC22/WG14/www/docs/n2763.pdf
-]
-\bib[
+)\
+\bib(
   id = N2775,
   title = Literal suffixes for bit-precise integers,
   date = 2021-07-13,
   author = Aaron Ballman\, Melanie Blower,
   link = https://open-std.org/JTC1/SC22/WG14/www/docs/n2775.pdf
-]
+)\
 
 \make_bib
