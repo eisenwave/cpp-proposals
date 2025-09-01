@@ -1558,6 +1558,10 @@ and the discussion needs to be fleshed out substantially.
 <div class=toc-num data-level=4>4.2.2</div>
 <a href=#why-the-keyword-spelling><h4>Why the keyword spelling?</h4></a>
 <div class=toc-num data-level=3>4.3</div>
+<a href=#should-it-be-optional-is-this-too-hard-to-implement><h3>Should it be optional? Is this too hard to implement?</h3></a>
+<div class=toc-num data-level=3>4.4</div>
+<a href=#bit-int-1><h3><code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code></h3></a>
+<div class=toc-num data-level=3>4.5</div>
 <a href=#degree-of-library-support><h3>Degree of library support</h3></a>
 <div class=toc-num data-level=2>5</div>
 <a href=#implementation-experience><h2>Implementation experience</h2></a>
@@ -1937,7 +1941,35 @@ Clang already supports the <code><h- data-h=kw_type>_BitInt</h-></code> keyword 
 so this is standardizing existing practice.
 </p></note-block>
 
-<h3 id=degree-of-library-support><a class=para href=#degree-of-library-support></a>4.3. Degree of library support</h3>
+<h3 id=should-it-be-optional-is-this-too-hard-to-implement><a class=para href=#should-it-be-optional-is-this-too-hard-to-implement></a>4.3. Should it be optional? Is this too hard to implement?</h3>
+
+<p>As in C, <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=id>N</h-><h- data-h=sym_par>)</h-></code> is only required to support <code><h- data-h=id>N</h-></code>
+of at least <code><h- data-h=id>LLONG_WIDTH</h-></code>, which has a minimum of <code><h- data-h=num>64</h-></code>.
+This makes <code><h- data-h=kw_type>_BitInt</h-></code> a semi-optional feature,
+and it is reasonable to mandate its existence, even in freestanding platforms.
+</p>
+<p>Of course, this has the catch that <code><h- data-h=kw_type>_BitInt</h-></code> may be completely useless
+for tasks like 128-bit computation.
+As unfortunate as that is, the MVP should include no more than C actually mandates.
+Mandating a greater minimum width could be done in a future proposal.
+</p>
+<h3 id=bit-int-1><a class=para href=#bit-int-1></a>4.4. <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code></h3>
+
+<p>C23 does not permit <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code> but does permit <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code>.
+This is an irregularity that could make generic programming harder in C++.
+</p>
+<p>Whether <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code> should be permitted in C++ depends somewhat on
+the outcome of <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3644%2epdf">[N3644]</a>,
+a WG14 proposal which makes <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code> valid.
+That proposal also contains some practical motivation for why
+a single-bit should be permitted.
+</p>
+<note-block><p><intro-></intro-> 
+If <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code> was allowed,
+it would be able to represent the values <code><h- data-h=num>0</h-></code> and <code><h- data-h=sym_op>-</h-><h- data-h=num>1</h-></code>.
+</p></note-block>
+
+<h3 id=degree-of-library-support><a class=para href=#degree-of-library-support></a>4.5. Degree of library support</h3>
 
 <p>As previously stated,
 the overall strategy of this proposal is to ship an MVP.
@@ -1980,6 +2012,8 @@ The core language changes are essentially standardizing that compiler extension.
 
 <h2 id=wording><a class=para href=#wording></a>7. Wording</h2>
 
+<p>The following changes are relative to <a href="https://wg21%2elink/n5014">[N5014]</a>.
+</p>
 
 <h3 id=core><a class=para href=#core></a>7.1. Core</h3>
 
@@ -2562,6 +2596,11 @@ except that it does not define the macro <code><h- data-h=id>BITINT_MAXWIDTH</h-
 <span class=bib-author>Aaron Ballman, Melanie Blower.</span>
 <span class=bib-title>Literal suffixes for bit-precise integers</span>
 <span class=bib-date>2021-07-13</span>
-<a href="https://open-std%2eorg/JTC1/SC22/WG14/www/docs/n2775%2epdf" class=bib-link>https://open-std.org/JTC1/SC22/WG14/www/docs/n2775.pdf</a></div></div>
+<a href="https://open-std%2eorg/JTC1/SC22/WG14/www/docs/n2775%2epdf" class=bib-link>https://open-std.org/JTC1/SC22/WG14/www/docs/n2775.pdf</a></div><div id=bib-item-N3644 class=bib-item>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3644%2epdf">[N3644]</a>
+<span class=bib-author>Robert C. Seacord.</span>
+<span class=bib-title>Integer Sets, v2</span>
+<span class=bib-date>2025-07-05</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3644%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3644.pdf</a></div></div>
 </main></body>
 </html>
