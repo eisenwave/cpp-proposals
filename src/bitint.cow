@@ -129,12 +129,29 @@ and used by C developers:
 
 \tcode{_BitInt} as standardized in C solves multiple issues that
 the standard integers (\tcode{int} etc.) have.
+Among other problems,
+integer promotion can result in unexpected signedness changes.
 
-Firstly, integer promotion can result in unexpected signedness changes.
+\Bex{
+The following code has undefined behavior
+if \tcode{int} is a 32-bit signed integer (which it is on many platforms).
+
+\cppblock{
+uint16_t x = 65'535;
+uint16_t y = x * x;
+}
+
+During the multiplication \tcode{x * x},
+\tcode{x} is promoted to \tcode{int},
+and the result of the multiplication \tcode{4'294'836'225}
+is not representable as a 32-bit signed integer.
+Therefore, signed integer overflow takes places \N{HORIZONTAL ELLIPSIS} given unsigned operands.
+}
 
 \Bex{
 The following code may have surprising effects
-if \tcode{std::uint8_t} is an alias for \tcode{unsigned char}.
+if \tcode{std::uint8_t} is an alias for \tcode{unsigned char}
+and gets promoted to \tcode{int}.
 
 \cppblock{
 std::uint8_t x = 0b1111'0000;
@@ -147,12 +164,12 @@ so the subsequent right-shift by \tcode{1} shifts one set bit into \tcode{y} fro
 Even more surprisingly, if we had used \tcode{auto} instead of \tcode{std::uint8_t} for \tcode{y},
 \tcode{y} would be \tcode{-121},
 despite our code seemingly using only unsigned integers.
-
-This design is terribly confusing and makes it hard to write bit manipulation
-for integers narrower than \tcode{int}.
 }
 
-Lastly, there is no portable way to use an integer with exactly 32 bits.
+Overall, the current integer promotion semantics are extremely surprising
+and make it hard to write correct code involving promotable unsigned integers.
+
+Furthermore, there is no portable way to use an integer with exactly 32 bits.
 \tcode{std::int_least32_t} and \tcode{long} may be wider,
 and \tcode{std::int32_t} is an optional type alias which only exists if such an integer type
 has no padding bits.
@@ -244,6 +261,9 @@ struct S {
 // 2. _BitInt in a switch statement
 _BitInt(32) x = 10;
 switch (x) {}
+
+// 3. _BitInt used as a null pointer constant
+void* p = 0wb;
 }
 
 Since C++ does not support the use of class types in bit-fields,
@@ -251,6 +271,125 @@ such a \tcode{struct S} could not be passed from C++ to a C API.
 A developer would face \em{severe} difficulties
 when porting C code which makes use of these capabilities to C++
 and if bit-precise integers were a class type in C++.
+
+\h4{C compatibility would require an enormous amount of operator overloads etc.}
+
+Integer types can be used in a large number of places within the language.
+If we wanted a \tcode{std::bit_int} class type to be used in the same places
+(which would be beneficial for C-interoperable code),
+we would have to add a significant amount of operator overloads
+and user-defined conversion functions:
+
+\ul{
+  \li{There are conversion to/from floating-point types and other integral types.}
+  \li{There are conversion to/from enumeration types.}
+  \li{
+    There are conversion to/from pointers,
+    at least for \tcode{_BitInt}s of the same width as \tcode{uintptr_t}.
+  }
+  \li{
+    Integers can be used to add offsets onto pointers, and by proxy,
+    in the subscript operator of builtin arrays.
+  }
+  \li{
+    Arithmetic operators can be used to operate between any mixture of arithmetic types,
+    such as \tcode{_BitInt(32) + float}.
+  }
+}
+
+Any discrepancies would lead to some code using bit-precise integers behaving
+differently in C and C++, which is undesirable.
+
+Furthermore, the \tcode{wb} \grammarterm{integer-suffix} for \tcode{_BitInt}
+is fairly complicated to implement as a library feature
+because the resulting type depends on the numeric value of the literal.
+This means it would presumably be implemented like:
+
+\: manual highlights are workaround for https://github.com/eisenwave/ulight/issues/109
+\cppblock{
+template<char... Chars>
+  constexpr auto \hl(keyword){operator}""wb() { /* ... */ }
+template<char... Chars>
+  constexpr auto \hl(keyword){operator}""WB() { /* ... */ }
+template<char... Chars>
+  constexpr auto \hl(keyword){operator}""uwb() { /* ... */ }
+template<char... Chars>
+  constexpr auto \hl(keyword){operator}""UWB() { /* ... */ }
+template<char... Chars>
+  constexpr auto \hl(keyword){operator}""uWB() { /* ... */ }
+template<char... Chars>
+  constexpr auto \hl(keyword){operator}""Uwb() { /* ... */ }
+}
+
+Seeing that properly emulating C's behavior for \tcode{_BitInt} (and its suffixes)
+requires a mountain of complicated operator overload sets,
+user-defined conversion functions,
+converting constructors, and
+user-defined literals,
+it seems unreasonable to go this direction.
+
+A major selling point of a library type is that library types have more teachable interfaces,
+since the user simply needs to look at the declared members of the class
+to understand how it works.
+If the interface is a record-breaking convoluted mess,
+this benefit is lost.
+If we choose not to add all this functionality,
+then we lose a large portion of C compatibility.
+Either option is bad, and making \tcode{std::bit_int} a fundamental type
+seems like the only way out.
+
+\h4{Constructors cannot signal narrowing}
+
+Some C++ users prefer list initialization because it prevents narrowing conversion.
+This can prevent some mistakes/questionable code:
+
+\cppblock{
+unsigned x = -1; // OK, x = UINT_MAX, but this looks weird
+unsigned y{ -1 };  // error: narrowing conversion
+}
+
+This would not be feasible if \tcode{std::bit_int} was a library type
+because narrowing cannot be signaled by constructors.
+Consider that \tcode{std::bit_int} and \tcode{std::bit_uint}
+should have a non-explicit constructor (template)
+accepting \tcode{int} (and other integral types) to enable compatibility in situations like:
+
+\cppblock{
+#ifdef __cplusplus
+typedef std::bit_uint<32> u32; // C++
+#else
+typedef unsigned _BitInt(32) u32; // C
+#endif
+// Common C and C++ code, possibly in a header:
+
+// OK, converting int → u32.
+// Using "incorrectly typed" zeros is fairly common, both in C and in C++.
+u32 x = 0;
+// OK, same conversion, but would be considered narrowing in C++.
+// Not very likely to be written.
+u32 y = -1;
+}
+
+If such a \tcode{std::bit_uint<32>(int)} constructor existed,
+the following C++ code would not raise any errors:
+
+\cppblock{
+std::bit_uint<32> x{ 0 };  // OK, as expected
+std::bit_uint<32> y{ -1 }; // OK?! But this looks narrowing!
+}
+
+This code simply calls a \tcode{std::bit_uint<32>(int)} constructor,
+and while the initialization of \tcode{y} is \em{spiritually} narrowing,
+no narrowing conversion actually takes place.
+In conclusion,
+if \tcode{std::bit_int} was a library type,
+C++ users who use this style would lose what they consider a valuable safety guarantee.
+
+\Bnote{
+It can be argued that using list-initialization for this purpose is an anti-pattern
+and only solves a subset of the issues that compiler warnings and linter warnings should address.
+Personally, I have no strong position on this issue.
+}
 
 \h4{Tiny integers are useful in C++}
 
@@ -398,6 +537,38 @@ Clang already supports the \tcode{_BitInt} keyword spelling as a compiler extens
 so this is standardizing existing practice.
 }
 
+\h3(id=underlying-bitint){Underlying type of enumerations}
+
+The following C code is ill-formed:
+
+\cppblock{
+// error: '_BitInt(32)' is an invalid underlying type
+enum S : _BitInt(32) { x = 0 };
+}
+
+There is no obvious reason why \tcode{_BitInt} must not be a valid underlying type.
+However, since this feature is not needed for C compatibility,
+I do not consider bit-precise integers as underlying types to be part of the MVP.
+A follow-up proposal could add this feature later,
+possibly in coordination with WG14.
+
+\Btodo{
+While \tcode{_BitInt} cannot be used as the underlying type of an enumeration type in C,
+it can be used as the type of individual enumerators,
+at least the wording gives me that impression:
+
+\cppblock{
+enum {
+  X = 0uwb // OK, X is of type 'unsigned _BitInt(1)'
+};
+}
+
+Compilers don't actually implement this,
+and an issue should be submitted to WG14.
+}
+
+This behavior should be mirrored.
+
 \h3{Should it be optional? Is this too hard to implement?}
 
 As in C, \tcode{_BitInt(N)} is only required to support \tcode{N}
@@ -410,21 +581,145 @@ for tasks like 128-bit computation.
 As unfortunate as that is, the MVP should include no more than C actually mandates.
 Mandating a greater minimum width could be done in a future proposal.
 
-\h3(id=bit-int-1){\tcode{_BitInt(1)}}
+\h3(id=bit-int-1){\tt{_BitInt(1)}}
 
-C23 does not permit \tcode{_BitInt(1)} but does permit \tcode{unsigned _BitInt(1)}.
+C23 does not permit \tcode{_BitInt(1)} but does permit \tcode{unsigned _BitInt(1)},
+mostly for historical reasons
+(C did not always requires two's complement representation for signed integers).
 This is an irregularity that could make generic programming harder in C++.
 
-Whether \tcode{_BitInt(1)} should be permitted in C++ depends somewhat on
-the outcome of \ref(N3644),
-a WG14 proposal which makes \tcode{_BitInt(1)} valid.
+However, there are already plans to lift the restriction for C2y;
+see \ref(N3644).
+Following v3 of the proposal,
+\tcode{_BitInt(1)} is expected to be valid type,
+and \tcode{0wb} should be of type \tcode{_BitInt(1)} rather than \tcode{_BitInt(2)}.
 That proposal also contains some practical motivation for why
 a single-bit should be permitted.
 
 \Bnote{
 If \tcode{_BitInt(1)} was allowed,
-it would be able to represent the values \tcode{0} and \tcode{-1}.
+it would be able to represent the values \tcode{0} and \tcode{-1},
+just like an \tcode{int x : 1;} bit-field.
 }
+
+\h3{Template argument deduction}
+
+The following code should be valid:
+
+\cppblock{
+template <std::size_t N>
+void f(std::bit_int<N>);
+
+int main() {
+    f(std::bit_int<3>{}); // OK, N = 3
+}
+}
+
+This would be a consequence of deduction from \tcode{_BitInt} being valid:
+
+\cppblock{
+template <unsigned N>
+void f(_BitInt(N));
+template <int N>
+void g(_BitInt(N));
+
+int main() {
+    f(_BitInt(3)(0)); // OK, N = 3
+    g(_BitInt(3)(0)); // OK, N = 3
+}
+}
+
+This behavior is already implemented by Clang as a C++ compiler extension,
+and makes deduction behave identically to deducing sizes of arrays.
+In general, the aim is to make the deduction of \tcode{_BitInt} widths
+as similar as possible to arrays because users are already familiar with the latter.
+It is also clearly useful because it allows writing templates
+that can accept \tcode{_BitInt} of any width.
+
+While this behavior could arguably be excluded from the MVP,
+it would be extremely surprising to users if such deduction was not possible,
+given that appearance of \tcode{std::bit_int}.
+If deducing \tcode{N} from \tcode{std::array<T, N>} is possible,
+why would it not be possible to deduce \tcode{N} from \tcode{std::bit_int<N>}?
+
+One thing deliberately not allowed is:
+\cppblock{
+_BitInt x = 123wb;
+std::bit_int y = 123wb;
+}
+
+This class-template-argument-deduction-like construct is not part of the MVP and if desired,
+should be proposed separately.
+Even if it was allowed, \tcode{std::bit_int} is proposed to be an alias template,
+and alias templates do not support "forwarding deduction" to CTAD.
+
+\h3{Undefined behavior on signed integer overflow}
+
+I propose to perpetuate bit-precise integers having undefined behavior
+on signed integer overflow, just like \tcode{int}, \tcode{long} etc.
+This has a few reasons:
+
+\ul{
+  \li{
+    bit-precise integers have undefined overflow in C,
+    so this is what users are used to.
+  }
+  \li{
+    "Solving" signed integer overflow for bit-precise integers is not part of the MVP.
+    Undefined behavior can always be defined to do something else,
+    so there is no urgent need for this paper to address this issue,
+    rather than solving it in a follow-up paper.
+  }
+  \li{
+    Signed integer overflow having undefined behavior is a much broader issue
+    that should be looked at in general, for all integer types,
+    not just bit-precise integer types.
+    Perhaps hardened implementations could have wrapping overflow with erroneous behavior.
+    In any case, the problem exceeds the scope of the paper.
+  }
+  \li{
+    It is highly unusual that users would expect signed integer overflow to be well-behaved,
+    such as having wrapping behavior.
+    Adding two positive numbers and obtaining a negative number is not typically useful.
+  }
+  \li{
+    The undefined behavior here is useful.
+    It allows for optimizations such as converting \tcode{x + 3 < 0} into \tcode{x < -3}.
+  }
+}
+
+\h3(id=preprocessor){No preprocessor changes, for better or worse}
+
+To my understanding, no changes to the preprocessor are required.
+\ref(N2763) did not make any changes to the C preprocessor either.
+In most contexts, integer literals in the preprocessor are simply a \grammarterm{pp-number},
+and their numeric value or type is irrelevant.
+
+Within the controlling constant expression of an \tcode{#if} directive,
+all signed and unsigned integer types
+behave like \tcode{intmax_t} and \tcode{uintmax_t}\iref{cpp.cond},
+which may be surprising.
+
+\Bex{
+The following code is ill-formed
+if \tcode{intmax_t} is a 64-bit signed integer (which it is on many platforms):
+\cppblock{
+#if \cowel_highlight(cpp){1'000'000'000'000'000'000'000'000wb} // error
+#endif
+_BitInt(81) x = 1'000'000'000'000'000'000'000'000wb; // OK
+}
+\tcode{#if \cowel_highlight(cpp){1'000'000'000'000'000'000'000'000wb}} is ill-formed
+because the integer literal is of type \tcode{_BitInt(81)},
+which behaves like \tcode{intmax_t} within \tcode{#if}.
+Since \math{\msup{\mn{10}\mn{32}}} does not fit within \tcode{intmax_t},
+the literal is ill-formed\iref{lex.icon#4}.
+}
+
+The current behavior could be seen as suboptimal
+because it makes bit-precise integers dysfunctional within the preprocessor.
+However, the preprocessor is largely "owned" by C,
+and any fix should go through WG14.
+In any case, fixing the C preprocessor is not part of the MVP.
 
 \h3{Degree of library support}
 
@@ -439,6 +734,10 @@ There are three categories of library features that deal with integer types:
     These should generally support bit-precise integers too,
     since there's typically no reason to single out bit-precise integers,
     and support would be useful.
+    In the long run, it seems implausible that e.g. \header{bit} would not support
+    bit-precise integers as this support is clearly useful and would improve consistency.
+    Forbidding bit-precise integers only to introduce support for them later would
+    only add a bunch of busy-work for LWG.
   }
   \li{
     Functions originating from C with support for bit-precise integer types,
@@ -543,12 +842,12 @@ Change table \eelis{tab:lex.icon.type} as follows:
     \td{\ins{\tcode{wb} or \tcode{WB}}}
     \td{
       \ins{\tcode{_BitInt(\math{\mi{N}})} of minimal width
-      \math{\mrow{\mi{N}\mo{>}\mn{1}}}
+      \math{\mrow{\mi{N}\mo{≥}\mn{1}}}
       so that the value of the literal can be represented by the type.}
     }
     \td{
       \ins{\tcode{_BitInt(\math{\mi{N}})} of minimal width
-      \math{\mrow{\mi{N}\mo{>}\mn{1}}}
+      \math{\mrow{\mi{N}\mo{≥}\mn{1}}}
       so that the value of the literal can be represented by the type.}
     }
   }
@@ -558,12 +857,12 @@ Change table \eelis{tab:lex.icon.type} as follows:
     }
     \td{
       \ins{\tcode{unsigned _BitInt(\math{\mi{N}})} of minimal width
-      \math{\mrow{\mi{N}\mo{>}\mn{0}}}
+      \math{\mrow{\mi{N}\mo{≥}\mn{1}}}
       so that the value of the literal can be represented by the type.}
     }
     \td{
       \ins{\tcode{unsigned _BitInt(\math{\mi{N}})} of minimal width
-      \math{\mrow{\mi{N}\mo{>}\mn{0}}}
+      \math{\mrow{\mi{N}\mo{≥}\mn{1}}}
       so that the value of the literal can be represented by the type.}
     }
   }
@@ -607,7 +906,7 @@ each type provides at least as much storage as those
 preceding it in the list.
 \ins{There is also a distinct \dfn{bit-precise signed integer type}
 \q{\tcode{_BitInt} of width \math{\mi{N}}}
-for each \math{\mrow{\mn{1}\mo{<}\mi{N}\mo{≤}\mtext{\tt{BITINT_MAXWIDTH}}}}\iref{climits.syn}.}
+for each \math{\mrow{\mn{1}\mo{≤}\mi{N}\mo{≤}\mtext{\tt{BITINT_MAXWIDTH}}}}\iref{climits.syn}.}
 There may also be implementation-defined
 \dfn{extended signed integer types}.
 The standard\ins{, bit-precise,} and extended signed integer types are collectively called
@@ -640,6 +939,12 @@ the other signed integer types are provided to meet special needs.
 }
 }
 
+\Bwarn{
+This change deviates from C at the time of writing;
+C2y does not yet allow \tcode{_BitInt(1)},
+but may allow it following \ref(N3644).
+}
+
 Change \eelis{basic.fundamental#2} as follows:
 
 \Bdiff{
@@ -654,8 +959,8 @@ there exists a corresponding (but different)
 \ins{For each bit-precise signed integer type
 \q{\tcode{_BitInt} of width \math{\mi{N}}},
 there exists a corresponding \dfn{bit-precise unsigned integer type}
-\q{\tcode{unsigned _BitInt} of width \math{\mi{N}}}.
-Additionally, there exists the type \q{\tcode{unsigned _BitInt} of width 1}.}
+\q{\tcode{unsigned _BitInt} of width \math{\mi{N}}}.}
+\:Additionally, there exists the type \q{\tcode{unsigned _BitInt} of width 1}.
 \del{Likewise, for} \ins{For} each of the extended signed integer types,
 there exists a corresponding \dfn{extended unsigned integer type}.
 The standard\ins{, bit-precise,} and extended unsigned integer types
@@ -790,6 +1095,11 @@ conversions\iref{expr.arith.conv}.
 
 \h4(show-number=false){[conv.prom]}
 
+\Bnote{
+These changes mirror the C semantics described in
+\ref(N3550) §6.3.2.1 Boolean, characters, and integers.
+}
+
 Change \eelis{conv.prom#2} as follows:
 
 \Bdiff{
@@ -797,7 +1107,8 @@ A prvalue that
 \ul{
   \li{is not a converted bit-field \del{and} \ins{,}}
   \li{
-    has \del{an} \ins{a standard or extended} integer type other than
+    has an integer type other than
+    \ins{a bit-precise integer type,}
     \tcode{bool}, \tcode{char8_t}, \tcode{char16_t}, \tcode{char32_t},
     or \tcode{wchar_t}\ins{, and}
   }
@@ -813,10 +1124,15 @@ otherwise, the source prvalue can be converted to
 a prvalue of type \tcode{unsigned int}.
 }
 
-\Btodo{
-Investigate whether in \eelis{conv.prom#5},
-a converted bit-field of bit-precise integer type should be promotable.
-What does C do here?
+Change \eelis{conv.prom#5} as follows:
+
+\Bdiff{
+A converted bit-field of integral type
+\ins{other than a bit-precise integer type}
+can be converted to a prvalue of type \tcode{int}
+if \tcode{int} can represent all the values of the bit-field;
+otherwise, it can be converted to \tcode{unsigned int}
+if \tcode{unsigned int} can represent all the values of the bit-field.
 }
 
 \h4(show-number=false){[dcl.type.simple]}
@@ -979,6 +1295,248 @@ but \tcode{_BitInt(1)} is not a valid type.
 }
 }
 
+\h4(show-number=false){[dcl.enum]}
+
+\Bnote{
+The intent is to ban \tcode{_BitInt} from being the underlying type of enumerations,
+matching the current restrictions in C.
+See \ref(#underlying-bitint).
+}
+
+Change \eelis{dcl.enum#2} as follows:
+
+\Bdiff{
+\etc
+The \grammarterm{type-specifier-seq} of an \grammarterm{enum-base}
+shall name an integral type
+\ins{other than a bit-precise integer type};
+any cv-qualification is ignored.
+\etc
+}
+
+Change \eelis{dcl.enum#5} as follows:
+
+\Bdiff{
+\etc
+If the underlying type is not fixed,
+the type of each enumerator prior ot the closing brace is determined as follows:
+
+\ul{
+  \li{
+    If an initializer is specified for an enumerator,
+    the \grammarterm{constant-expression} shall be
+    an integral constant expression\iref{expr.const}
+    \ins{whose type is not a bit-precise integer type}.
+    If the expression has unscoped enumeration type,
+    the enumerator has the underlying type of that enumeration type,
+    otherwise it has the same type as the expression.
+  }
+  \li{
+    If no initializer is specified for the first enumerator,
+    its type is an unspecified signed \del{integral} \ins{integer} type
+    \ins{other than a bit-precise integer type}.
+  }
+  \li{
+    Otherwise\ins{,} the type of the enumerator is the same as
+    that of the preceding enumerator\ins{,}
+    unless the incremented value is not representable in that type,
+    in which case the type is an unspecified integral type
+    \ins{other than a bit-precise integer type}
+    sufficient to contain the incremented value.
+    If no such type exists, the program is ill-formed.
+  }
+}
+}
+
+Change \eelis{dcl.enum#7} as follows:
+
+\Bdiff{
+For an enumeration whose underlying type is not fixed,
+the underlying type is an integral type
+that can represent all the enumerator values defined in the enumeration.
+If no integral type can represent all the enumerator values,
+the enumeration is ill-formed.
+It is implementation-defined which integral type is used as the underlying type\ins{,}
+except that
+\ul{
+  \li{
+    \ins{the underlying type shall not be a bit-precise integer type and}
+  }
+  \li{
+    the underlying type shall not be larger than \tcode{int}
+    unless the value of an enumerator
+    cannot fit in an \tcode{int} or \tcode{unsigned int}.
+  }
+}
+If the \grammarterm{enumerator-list} is empty,
+the underlying type is as if the enumeration had a single enumerator with value 0.
+}
+
+\h4(show-number=false){[temp.deduct.general]}
+
+Add a bullet to \eelis{temp.deduct.general#note-8} as follows:
+
+\Bdiff{
+\note{
+Type deduction can fail for the following reasons:
+
+\ul{
+  \li{Attempting to instantiate a pack expansion containing multiple packs of differing lengths.}
+  \li{
+    Attempting to create an array with an element type that is \tcode{void},
+    a function type, or a reference type,
+    or attempting to create an array with a size that is zero or negative.
+    \br\example{
+    \itemdecl{
+template <class T> int f(T[5]);
+int I = f<int>(0);
+int j = f<void>(0);             // \serif{invalid array}
+}
+    }
+  }
+  \li{
+    \ins{Attempting to create a bit-precise integer type of invalid width\iref{basic.fundamental}.
+    \br\example{
+    \itemdecl{
+\ins{template <int N> void f(_BitInt(N));
+f<0>(0);                        // \serif{invalid bit-precise integer}}
+}
+    }
+    }
+  }
+  \li{\etc}
+}
+}
+}
+
+\h4(show-number=false){[temp.deduct.type]}
+
+Change \eelis{temp.deduct.type#2} as follows:
+
+\Bdiff{
+\etc
+The type of a type parameter is only deduced from an array bound
+\ins{or bit-precise integer width}
+if it is not otherwise deduced.
+}
+
+Change \eelis{temp.deduct.type#3} as follows:
+
+\Bdiff{
+A given type \tcode{P} can be composed from a number of other types,
+templates, and constant template argument values:
+\ul{
+  \li{
+    A function type includes the types of each of the function parameters,
+    the return type, and its exception specification.
+  }
+  \li{
+    A pointer-to-member type includes the type of the class object pointed to
+    and the type of the member pointed to.
+  }
+  \li{
+    A type that is a specialization of a class template (e.g., \tcode{A<int>}) includes the types,
+    templates, and constant template argument values
+    referenced by the template argument list of the specialization.
+  }
+  \li{
+    An array type includes the array element type and the value of the array bound.
+  }
+  \li{
+    \ins{A bit-precise integer type includes the integer width.}
+  }
+}
+}
+
+Change \eelis{temp.deduct.type#5} as follows:
+
+\Bdiff{
+The non-deduced contexts are:
+\ul{
+  \li{\etc}
+  \li{
+    A constant template argument \del{or} \ins{,} an array bound\ins{, or
+    a bit-precise integer width,}
+    in \ins{any of} which a subexpression references a template parameter.
+  }
+  \li{\etc}
+}
+}
+
+Change \eelis{temp.deduct.type#8} as follows:
+
+\Bdiff{
+A type template argument \tcode{T},
+a constant template argument \tcode{i},
+a template template argument \tcode{TT} denoting a class template or an alias template,
+or a template template argument \tcode{VV} denoting a variable template or a concept
+can be deduced if \tcode{P} and \tcode{A} have one of the following forms:
+
+\itemdecl{
+\opt{\cv} T
+T*
+T&
+T&&
+\opt{T}[\opt{i}]
+\ins{_BitInt(\opt{i})}
+\opt{T}(\opt{T}) noexcept(\opt{i})
+\opt{T} \opt{T}::*
+\opt{TT}<T>
+\opt{TT}<i>
+\opt{TT}<TT>
+\opt{TT}<VV>
+\opt{TT}<>
+}
+
+where \etc
+}
+
+Do \u{not} change \eelis{temp.deduct.type#14}; it is included here for reference.
+
+\Bquote{
+The type of \tt{N} in the type \tt{T[N] is \tt{std::size_t}}.
+
+\example{
+\codeblock(text, borders=false){
+template<typename T> struct S;
+template<typename T, T n> struct S<int[n]> {
+  using Q = T;
+};
+
+using V = decltype(sizeof 0);
+using V = S<int[42]>::Q;        // \serif{OK; \tt{T} was deduced as \tt{std::size_t} from the type \tt{int[42]}}
+}
+}
+}
+
+Immediately following \eelis{temp.deduct.type#14}, insert a new paragraph:
+
+\Bins{
+The type of \tcode{N} in the type \tcode{_BitInt(N)} is \tcode{std::size_t}.
+
+\example{
+\itemdecl{
+template <typename T, T n> void f(_BitInt(n));
+
+f(0wb);                         // \serif{OK; \tcode{T} was deduced as \tcode{std::size_t} from an argument of type \tcode{_BitInt(1)}}
+}
+}
+}
+
+Change \eelis{temp.deduct.type#20} as follows:
+
+\Bdiff{
+If \tcode{P} has a form that contains \tcode{<i>},
+and if the type of \tcode{i} differs from the type of the corresponding template parameter
+of the template named by the enclosing \grammarterm{simple-template-id}
+or \grammarterm{splice-specialization-specifier}, deduction fails.
+If \tcode{P} has a form that contains \tcode{[i]}
+\ins{or \tcode{_BitInt(i)}},
+and if the type of \tcode{i} is not an integral type, deduction fails.
+If \tcode{P} has a form that includes \tcode{noexcept(i)}
+and the type of \tcode{i} is not \tcode{bool}, deduction fails.
+}
+
 \h4(show-number=false){[cpp.predefined]}
 
 Add a feature-test macro to the table in \eelis{cpp.predefined} as follows:
@@ -1048,12 +1606,65 @@ add a new line below the definition of \tcode{\hl(macro){ULLONG_WIDTH}}:
 }
 }
 
-Change \eelis{climits.syn#1} as follows:
+Change the synopsis in \eelis{climits.syn#1} as follows:
 
 \Bdiff{
 The header \tt{<climits>} defines all macros
 the same as the C standard library header \tt{limits.h}\del{,
 except that it does not define the macro \tcode{BITINT_MAXWIDTH}}.
+}
+
+\h4(show-number=false){[cmath.syn]}
+
+In \eelis{cmath.syn}, change the synopsis as follows:
+
+\Bdiff{
+\itemdecl{
+constexpr int abs(int j);                                         // \serif{freestanding}
+constexpr long int abs(long int j);                               // \serif{freestanding}
+constexpr long long int abs(long long int j);                     // \serif{freestanding}
+\ins{template<size_t N> constexpr abs(bit_int<N> j);                   // \serif{freestanding}}
+constexpr \exposid{floating-point-type} abs(\exposid{floating-point-type} j);         // \serif{freestanding}
+}
+}
+
+\Bnote{
+Simply specifying the whole overload set as a \tcode{template<class T> abs(T);}
+function would be a breaking change because it would no longer support types
+that are convertible to \tcode{int} but are not signed integer types.
+}
+
+\h4(show-number=false){[c.math.abs]}
+
+Change \eelis{c.math.abs} as follows:
+
+\Bdiff{
+\itemdecl{
+constexpr int abs(int j);
+constexpr long int abs(long int j);
+constexpr long long int abs(long long int j);
+\ins{template<size_t N> constexpr abs(bit_int<N> j);}
+}
+
+\del{\effects
+These functions have the semantics specified in the C standard library for the functions
+\tcode{abs}, \tcode{labs}, and \tcode{llabs}, respectively.}
+
+\ins{\returns
+\tcode{j >= 0 ? j : -j}.}
+
+\remarks
+If \tcode{abs} is called with an argument of type \tcode{X}
+for which \tcode{is_unsigned_v<X>} is \tcode{true}
+and if \tcode{X} cannot be converted to \tcode{int} by integral promotion,
+the program is ill-formed.
+\br\note{
+Allowing arguments that can be promoted to \tcode{int} provides compatibility with C.
+}
+}
+
+\Btodo{
+Add a feature-test macro for these changes.
 }
 
 \h2{References}
@@ -1103,6 +1714,13 @@ except that it does not define the macro \tcode{BITINT_MAXWIDTH}}.
   date = 2021-07-13,
   author = Aaron Ballman\, Melanie Blower,
   link = https://open-std.org/JTC1/SC22/WG14/www/docs/n2775.pdf
+)\
+\bib(
+  id = N3550,
+  title = ISO/IEC 9899:202y (en) — N3550 working draft,
+  date = 2025-05-04,
+  author = JeanHeyd Meneide,
+  link = https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3550.pdf,
 )\
 \bib(
   id = N3644,
