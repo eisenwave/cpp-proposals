@@ -765,7 +765,18 @@ The core language changes are essentially standardizing that compiler extension.
 
 \h2{Impact on the standard}
 
-\: TODO
+The core language changes essentially boil down to adding the \tcode{_BitInt}
+type and the \tcode{wb} \grammarterm{integer-suffix}.
+This obviously comes with various syntax changes,
+definitions of conversion rank,
+addition of template argument deduction rules, etc.
+The vast majority of core language wording which deals with integers
+is not affected by the existence of bit-precise integers.
+
+\Btodo{
+Explain library impact.
+}
+
 
 \h2{Wording}
 
@@ -1580,6 +1591,14 @@ The non-deduced contexts are:
     A constant template argument \del{or} \ins{,} an array bound\ins{, or
     a bit-precise integer width,}
     in \ins{any of} which a subexpression references a template parameter.
+    \br\ins{\example{
+    \itemdecl{
+template<size_t N> void f(_BitInt(N));
+template<size_t N> void g(_BitInt(N + 1));
+f(100wb);                                   // \serif{OK}, \tcode{N = 8}
+g(100wb);                                   // \serif{error: no argument for deduced \tcode{N}}
+}
+    }}
   }
   \li{\etc}
 }
@@ -1788,6 +1807,35 @@ Allowing arguments that can be promoted to \tcode{int} provides compatibility wi
 \Btodo{
 Add a feature-test macro for these changes.
 }
+
+\h2{Acknowledgements}
+
+I thank Jens Maurer and Christof Meerwald
+for reviewing and correcting the proposal's wording.
+
+I thank Erich Keane and other LLVM contributors
+for implementing most of the proposed core changes in Clang's C++ frontend,
+giving this paper years worth of implementation experience in a major compiler
+without any effort by the author.
+
+I thank
+Erich Keane,
+Bill Seymour,
+Howard Hinnant,
+JeanHeyd Meneide,
+Lénárd Szolnoki,
+Brian Bi,
+Peter Dimov,
+Aaron Ballman,
+Pete Becker,
+Jens Maurer,
+Matthias Kretz,
+Jonathan Wakely,
+and \em{many} others for providing early feedback on this paper,
+prior papers such as \ref(P3639R0), and
+the discussion surrounding bit-precise integers as a whole.
+The paper would not be where it is today without \em{hundreds}
+of messages worth of valuable feedback.
 
 \h2{References}
 
