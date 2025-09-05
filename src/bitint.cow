@@ -779,7 +779,18 @@ The following changes are relative to \ref(N5014).
   math[display=inline] {
     font-size: inherit;
   }
+
+  .wording td {
+    vertical-align: top;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  table.wording code-block {
+    margin: 0;
+  }
 }
+
+\cowel_macro(ins_quotes){\cowel_to_html{\ins{\N{LEFT DOUBLE QUOTATION MARK}}}\cowel_put\cowel_to_html{\ins{\N{RIGHT DOUBLE QUOTATION MARK}}}}
 
 \h4(show-number=false){[lex.icon]}
 
@@ -792,9 +803,10 @@ change the grammar as follows:
   \dd{unsigned-suffix \opt{long-suffix}}
   \dd{unsigned-suffix \opt{long-long-suffix}}
   \dd{unsigned-suffix \opt{size-suffix}}
+  \dd{\ins{unsigned-suffix \opt{bit-precise-int-suffix}}}
   \dd{long-suffix \opt{unsigned-suffix}}
   \dd{long-long-suffix \opt{unsigned-suffix}}
-  \dd{\ins{\opt{unsigned-suffix} bit-precise-int-suffix}}
+  \dd{size-suffix \opt{unsigned-suffix}}
   \dd{\ins{bit-precise-int-suffix \opt{unsigned-suffix}}}
 }
 \dl(class=grammar){
@@ -822,33 +834,139 @@ change the grammar as follows:
 Change table \eelis{tab:lex.icon.type} as follows:
 
 \Bdiff{
-\table{
+\table(class=wording){
+
   \tr{
     \th{\grammarterm{\nobr{integer-suffix}}}
     \th{\grammarterm{decimal-literal}}
     \th{\grammarterm{integer-literal} other than \grammarterm{decimal-literal}}
   }
+
   \tr{
-    \td{\etc}
-    \td{\etc}
-    \td{\etc}
+    \td{none}
+    \td{
+      \itemdecl{
+\ins_quotes{int}
+\ins_quotes{long int}
+\ins_quotes{long long int}
+}
+    }
+    \td{
+      \itemdecl{
+\ins_quotes{int}
+\ins_quotes{unsigned int}
+\ins_quotes{long int}
+\ins_quotes{unsigned long int}
+\ins_quotes{long long int}
+\ins_quotes{unsigned long long int}
+}
+    }
   }
+
+  \tr{
+    \td{\tcode{u} or \tcode{U}}
+    \td{
+      \itemdecl{
+\ins_quotes{unsigned int}
+\ins_quotes{unsigned long int}
+\ins_quotes{unsigned long long int}
+}
+    }
+    \td{
+      \itemdecl{
+\ins_quotes{unsigned int}
+\ins_quotes{unsigned long int}
+\ins_quotes{unsigned long long int}
+}
+    }
+  }
+
+  \tr{
+    \td{\tcode{l} or \tcode{L}}
+    \td{
+      \itemdecl{
+\ins_quotes{long int}
+\ins_quotes{long long int}
+}
+    }
+    \td{
+      \itemdecl{
+\ins_quotes{long int}
+\ins_quotes{unsigned long int}
+\ins_quotes{long long int}
+\ins_quotes{unsigned long long int}
+}
+    }
+  }
+
+  \tr{
+    \td{Both \tcode{u} or \tcode{U} and \tcode{l} or \tcode{L}}
+    \td{
+      \itemdecl{
+\ins_quotes{unsigned long int}
+\ins_quotes{unsigned long long int}
+}
+    }
+    \td{
+      \itemdecl{
+\ins_quotes{unsigned long int}
+\ins_quotes{unsigned long long int}
+}
+    }
+  }
+
+  \tr{
+    \td{Both \tcode{u} or \tcode{U} and \tcode{ll} or \tcode{LL}}
+    \td{
+      \itemdecl{
+\ins_quotes{unsigned long long int}
+}
+    }
+    \td{
+      \itemdecl{
+\ins_quotes{unsigned long long int}
+}
+    }
+  }
+
+  \tr{
+    \td{\tcode{z} or \tcode{Z}}
+    \td{
+      the signed integer type corresponding to
+      \ins{the type named by}
+      \tcode{std::size_t}\iref{support.types.layout}
+    }
+    \td{
+      the signed integer type corresponding to
+      \ins{the type named by}
+      \tcode{std::size_t}\br\br
+      \ins{the type named by}
+      \tcode{std::size_t}
+    }
+  }
+
   \tr{
     \td{Both \tcode{u} or \tcode{U} and \tcode{z} or \tcode{Z}}
-    \td{\tcode{std::size_t}}
-    \td{\tcode{std::size_t}}
+    \td{
+      \ins{the type named by}
+      \tcode{std::size_t}
+    }
+    \td{
+      \ins{the type named by}
+      \tcode{std::size_t}
+    }
   }
   \tr{
     \td{\ins{\tcode{wb} or \tcode{WB}}}
     \td{
-      \ins{\tcode{_BitInt(\math{\mi{N}})} of minimal width
-      \math{\mrow{\mi{N}\mo{≥}\mn{1}}}
-      so that the value of the literal can be represented by the type.}
+      \ins{\q{\tcode{_BitInt} of width \math{\mi{N}}},
+      where \math{\mi{N}} is the lowest integer \math{\mrow{\mo{≥}\mn{1}}}
+      so that the value of the literal can be represented by the type}
     }
     \td{
-      \ins{\tcode{_BitInt(\math{\mi{N}})} of minimal width
-      \math{\mrow{\mi{N}\mo{≥}\mn{1}}}
-      so that the value of the literal can be represented by the type.}
+      \ins{\q{\tcode{_BitInt} of width \math{\mi{N}}},
+      where \math{\mi{N}} is the lowest integer \math{\mrow{\mo{≥}\mn{1}}}
+      so that the value of the literal can be represented by the type}
     }
   }
   \tr{
@@ -856,17 +974,27 @@ Change table \eelis{tab:lex.icon.type} as follows:
       \ins{Both \tcode{u} or \tcode{U} and\br{}\tcode{wb} or \tcode{WB}}
     }
     \td{
-      \ins{\tcode{unsigned _BitInt(\math{\mi{N}})} of minimal width
-      \math{\mrow{\mi{N}\mo{≥}\mn{1}}}
-      so that the value of the literal can be represented by the type.}
+      \ins{\q{\tcode{unsigned _BitInt} of width \math{\mi{N}}},
+      where \math{\mi{N}} is the lowest integer \math{\mrow{\mo{≥}\mn{1}}}
+      so that the value of the literal can be represented by the type}
     }
     \td{
-      \ins{\tcode{unsigned _BitInt(\math{\mi{N}})} of minimal width
-      \math{\mrow{\mi{N}\mo{≥}\mn{1}}}
-      so that the value of the literal can be represented by the type.}
+      \ins{\q{\tcode{unsigned _BitInt} of width \math{\mi{N}}},
+      where \math{\mi{N}} is the lowest integer \math{\mrow{\mo{≥}\mn{1}}}
+      so that the value of the literal can be represented by the type}
     }
   }
 }
+}
+
+\Bnote{
+The existing rows are adjusted for consistency.
+We usually aim to use the \q{quoted} spellings of types
+like \q{\tcode{_BitInt} of width \math{\mi{N}}}
+in core wording
+instead of the \grammarterm{type-id} spellings.
+Adding a quoted spelling for bit-precise integers would reveal
+that the previous rows "incorrectly" use \grammarterm{type-id}s.
 }
 
 Change \eelis{lex.icon#4} as follows:
@@ -1148,6 +1276,7 @@ The simple type specifiers are
   \dd{nested-name-specifier \tcode{template} simple-template-id}
   \dd{computed-type-specifier}
   \dd{placeholder-type-specifier}
+  \dd{\ins{bit-precise-int-type-specifier}}
   \dd{\opt{nested-name-specifier} template-name}
   \dd{\tcode{char}}
   \dd{\tcode{char8_t}}
@@ -1173,7 +1302,6 @@ The simple type specifiers are
   \dd{decltype-specifier}
   \dd{pack-index-specifier}
   \dd{splice-type-specifier}
-  \dd{\ins{bit-precise-int-type-specifier}}
 
   \dt{\ins{\grammarterm{bit-precise-int-type-specifier}:}}
   \dd{\ins{\tcode{_BitInt} \tcode{(} constant-expression \tcode{)}}}
@@ -1288,11 +1416,6 @@ The program is ill-formed unless
   }
 }\iref{climits.syn}
 or the denoted type is \q{\tcode{unsigned _BitInt} of width 1}.
-
-\note{
-\tcode{unsigned _BitInt(1)} can represent the values \tcode{0} and \tcode{1},
-but \tcode{_BitInt(1)} is not a valid type.
-}
 }
 
 \h4(show-number=false){[dcl.enum]}

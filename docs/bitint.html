@@ -1496,6 +1496,13 @@ if (theme !== null) {
     width: 20%;
     text-align: center;
   }
+
+  q::before {
+    content: "“";
+  }
+  q::after {
+    content: "”";
+  }
 </style>
 
 <div class=wg21-head><h1>Bit-precise integers</h1>
@@ -2319,7 +2326,18 @@ The core language changes are essentially standardizing that compiler extension.
   math[display=inline] {
     font-size: inherit;
   }
+
+  .wording td {
+    vertical-align: top;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  table.wording code-block {
+    margin: 0;
+  }
 </style>
+
+
 
 <h4 id=lex.icon><a class=para href=#lex%2eicon></a>[lex.icon]</h4>
 
@@ -2332,9 +2350,10 @@ change the grammar as follows:
   <dd>unsigned-suffix long-suffix<sub class=opt>opt</sub></dd>
   <dd>unsigned-suffix long-long-suffix<sub class=opt>opt</sub></dd>
   <dd>unsigned-suffix size-suffix<sub class=opt>opt</sub></dd>
+  <dd><ins>unsigned-suffix bit-precise-int-suffix<sub class=opt>opt</sub></ins></dd>
   <dd>long-suffix unsigned-suffix<sub class=opt>opt</sub></dd>
   <dd>long-long-suffix unsigned-suffix<sub class=opt>opt</sub></dd>
-  <dd><ins>unsigned-suffix<sub class=opt>opt</sub> bit-precise-int-suffix</ins></dd>
+  <dd>size-suffix unsigned-suffix<sub class=opt>opt</sub></dd>
   <dd><ins>bit-precise-int-suffix unsigned-suffix<sub class=opt>opt</sub></ins></dd>
 </dl>
 <dl class=grammar>
@@ -2362,33 +2381,119 @@ change the grammar as follows:
 <p>Change table <a href=https://eel.is/c++draft/tab:lex.icon.type>[tab:lex.icon.type]</a> as follows:
 </p>
 <diff-block>
-<table>
+<table class=wording>
+
   <tr>
     <th><g-term><span class=word>integer-suffix</span></g-term></th>
     <th><g-term>decimal-literal</g-term></th>
     <th><g-term>integer-literal</g-term> other than <g-term>decimal-literal</g-term></th>
   </tr>
+
   <tr>
-    <td>[…]</td>
-    <td>[…]</td>
-    <td>[…]</td>
+    <td>none</td>
+    <td>
+      <code-block class=borderless><ins>“</ins><h- data-h=kw_type>int</h-><ins>”</ins>
+<ins>“</ins><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins>
+<ins>“</ins><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins></code-block>
+    </td>
+    <td>
+      <code-block class=borderless><ins>“</ins><h- data-h=kw_type>int</h-><ins>”</ins>
+<ins>“</ins><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-><ins>”</ins>
+<ins>“</ins><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins>
+<ins>“</ins><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins>
+<ins>“</ins><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins>
+<ins>“</ins><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins></code-block>
+    </td>
   </tr>
+
+  <tr>
+    <td><code><h- data-h=id>u</h-></code> or <code><h- data-h=id>U</h-></code></td>
+    <td>
+      <code-block class=borderless><ins>“</ins><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-><ins>”</ins>
+<ins>“</ins><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins>
+<ins>“</ins><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins></code-block>
+    </td>
+    <td>
+      <code-block class=borderless><ins>“</ins><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-><ins>”</ins>
+<ins>“</ins><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins>
+<ins>“</ins><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins></code-block>
+    </td>
+  </tr>
+
+  <tr>
+    <td><code><h- data-h=id>l</h-></code> or <code><h- data-h=id>L</h-></code></td>
+    <td>
+      <code-block class=borderless><ins>“</ins><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins>
+<ins>“</ins><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins></code-block>
+    </td>
+    <td>
+      <code-block class=borderless><ins>“</ins><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins>
+<ins>“</ins><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins>
+<ins>“</ins><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins>
+<ins>“</ins><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins></code-block>
+    </td>
+  </tr>
+
+  <tr>
+    <td>Both <code><h- data-h=id>u</h-></code> or <code><h- data-h=id>U</h-></code> and <code><h- data-h=id>l</h-></code> or <code><h- data-h=id>L</h-></code></td>
+    <td>
+      <code-block class=borderless><ins>“</ins><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins>
+<ins>“</ins><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins></code-block>
+    </td>
+    <td>
+      <code-block class=borderless><ins>“</ins><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins>
+<ins>“</ins><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins></code-block>
+    </td>
+  </tr>
+
+  <tr>
+    <td>Both <code><h- data-h=id>u</h-></code> or <code><h- data-h=id>U</h-></code> and <code><h- data-h=id>ll</h-></code> or <code><h- data-h=id>LL</h-></code></td>
+    <td>
+      <code-block class=borderless><ins>“</ins><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins></code-block>
+    </td>
+    <td>
+      <code-block class=borderless><ins>“</ins><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-><ins>”</ins></code-block>
+    </td>
+  </tr>
+
+  <tr>
+    <td><code><h- data-h=id>z</h-></code> or <code><h- data-h=id>Z</h-></code></td>
+    <td>
+      the signed integer type corresponding to
+      <ins>the type named by</ins>
+      <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>size_t</h-></code> (<a href=https://eel.is/c++draft/support.types.layout>[support.types.layout]</a>)
+    </td>
+    <td>
+      the signed integer type corresponding to
+      <ins>the type named by</ins>
+      <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>size_t</h-></code><br/><br/>
+      <ins>the type named by</ins>
+      <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>size_t</h-></code>
+    </td>
+  </tr>
+
   <tr>
     <td>Both <code><h- data-h=id>u</h-></code> or <code><h- data-h=id>U</h-></code> and <code><h- data-h=id>z</h-></code> or <code><h- data-h=id>Z</h-></code></td>
-    <td><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>size_t</h-></code></td>
-    <td><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>size_t</h-></code></td>
+    <td>
+      <ins>the type named by</ins>
+      <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>size_t</h-></code>
+    </td>
+    <td>
+      <ins>the type named by</ins>
+      <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>size_t</h-></code>
+    </td>
   </tr>
   <tr>
     <td><ins><code><h- data-h=id>wb</h-></code> or <code><h- data-h=id>WB</h-></code></ins></td>
     <td>
-      <ins><code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><math display=inline><mi>N</mi></math><h- data-h=sym_par>)</h-></code> of minimal width
-      <math display=inline><mrow><mi>N</mi><mo>≥</mo><mn>1</mn></mrow></math>
-      so that the value of the literal can be represented by the type.</ins>
+      <ins><q><code><h- data-h=kw_type>_BitInt</h-></code> of width <math display=inline><mi>N</mi></math></q>,
+      where <math display=inline><mi>N</mi></math> is the lowest integer <math display=inline><mrow><mo>≥</mo><mn>1</mn></mrow></math>
+      so that the value of the literal can be represented by the type</ins>
     </td>
     <td>
-      <ins><code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><math display=inline><mi>N</mi></math><h- data-h=sym_par>)</h-></code> of minimal width
-      <math display=inline><mrow><mi>N</mi><mo>≥</mo><mn>1</mn></mrow></math>
-      so that the value of the literal can be represented by the type.</ins>
+      <ins><q><code><h- data-h=kw_type>_BitInt</h-></code> of width <math display=inline><mi>N</mi></math></q>,
+      where <math display=inline><mi>N</mi></math> is the lowest integer <math display=inline><mrow><mo>≥</mo><mn>1</mn></mrow></math>
+      so that the value of the literal can be represented by the type</ins>
     </td>
   </tr>
   <tr>
@@ -2396,18 +2501,28 @@ change the grammar as follows:
       <ins>Both <code><h- data-h=id>u</h-></code> or <code><h- data-h=id>U</h-></code> and<br/><code><h- data-h=id>wb</h-></code> or <code><h- data-h=id>WB</h-></code></ins>
     </td>
     <td>
-      <ins><code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><math display=inline><mi>N</mi></math><h- data-h=sym_par>)</h-></code> of minimal width
-      <math display=inline><mrow><mi>N</mi><mo>≥</mo><mn>1</mn></mrow></math>
-      so that the value of the literal can be represented by the type.</ins>
+      <ins><q><code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>_BitInt</h-></code> of width <math display=inline><mi>N</mi></math></q>,
+      where <math display=inline><mi>N</mi></math> is the lowest integer <math display=inline><mrow><mo>≥</mo><mn>1</mn></mrow></math>
+      so that the value of the literal can be represented by the type</ins>
     </td>
     <td>
-      <ins><code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><math display=inline><mi>N</mi></math><h- data-h=sym_par>)</h-></code> of minimal width
-      <math display=inline><mrow><mi>N</mi><mo>≥</mo><mn>1</mn></mrow></math>
-      so that the value of the literal can be represented by the type.</ins>
+      <ins><q><code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>_BitInt</h-></code> of width <math display=inline><mi>N</mi></math></q>,
+      where <math display=inline><mi>N</mi></math> is the lowest integer <math display=inline><mrow><mo>≥</mo><mn>1</mn></mrow></math>
+      so that the value of the literal can be represented by the type</ins>
     </td>
   </tr>
 </table>
 </diff-block>
+
+<note-block><p><intro-></intro-> 
+The existing rows are adjusted for consistency.
+We usually aim to use the <q>quoted</q> spellings of types
+like <q><code><h- data-h=kw_type>_BitInt</h-></code> of width <math display=inline><mi>N</mi></math></q>
+in core wording
+instead of the <g-term>type-id</g-term> spellings.
+Adding a quoted spelling for bit-precise integers would reveal
+that the previous rows "incorrectly" use <g-term>type-id</g-term>s.
+</p></note-block>
 
 <p>Change <a href=https://eel.is/c++draft/lex.icon#4>[lex.icon] paragraph 4</a> as follows:
 </p>
@@ -2659,6 +2774,7 @@ if <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-></code> can
   <dd>nested-name-specifier <code><h- data-h=kw>template</h-></code> simple-template-id</dd>
   <dd>computed-type-specifier</dd>
   <dd>placeholder-type-specifier</dd>
+  <dd><ins>bit-precise-int-type-specifier</ins></dd>
   <dd>nested-name-specifier<sub class=opt>opt</sub> template-name</dd>
   <dd><code><h- data-h=kw_type>char</h-></code></dd>
   <dd><code><h- data-h=kw_type>char8_t</h-></code></dd>
@@ -2684,7 +2800,6 @@ if <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-></code> can
   <dd>decltype-specifier</dd>
   <dd>pack-index-specifier</dd>
   <dd>splice-type-specifier</dd>
-  <dd><ins>bit-precise-int-type-specifier</ins></dd>
 
   <dt><ins><g-term>bit-precise-int-type-specifier</g-term>:</ins></dt>
   <dd><ins><code><h- data-h=kw_type>_BitInt</h-></code> <code><h- data-h=sym_par>(</h-></code> constant-expression <code><h- data-h=sym_par>)</h-></code></ins></dd>
@@ -2799,11 +2914,6 @@ The program is ill-formed unless
   </mrow>
 </math> (<a href=https://eel.is/c++draft/climits.syn>[climits.syn]</a>)
 or the denoted type is <q><code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>_BitInt</h-></code> of width 1</q>.
-</p>
-<p>[<i>Note</i>: 
-<code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code> can represent the values <code><h- data-h=num>0</h-></code> and <code><h- data-h=num>1</h-></code>,
-but <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code> is not a valid type.
- — <i>end note</i>]
 </p></ins-block>
 
 <h4 id=dcl.enum><a class=para href=#dcl%2eenum></a>[dcl.enum]</h4>
