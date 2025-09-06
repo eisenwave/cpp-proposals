@@ -1593,18 +1593,20 @@ this proposal introduces a new set of fundamental types to C++.
 <div class=toc-num data-level=3>5.5</div>
 <a href=#bitint-abs><h3>New <tt->abs</tt-> overload</h3></a>
 <div class=toc-num data-level=3>5.6</div>
-<a href=#simd-support><h3><tt->simd</tt-> support for bit-precise integers</h3></a>
-<div class=toc-num data-level=4>5.6.1</div>
-<a href=#simd-design-problems><h4><tt->simd</tt-> design problems</h4></a>
-<div class=toc-num data-level=4>5.6.2</div>
-<a href=#simd-design-conclusion><h4><tt->simd</tt-> design conclusion</h4></a>
+<a href=#random-support><h3>Lack of random number generation support</h3></a>
 <div class=toc-num data-level=3>5.7</div>
-<a href=#valarray-support><h3><tt->valarray</tt-> support for bit-precise integers</h3></a>
+<a href=#simd-support><h3><tt->simd</tt-> support for bit-precise integers</h3></a>
+<div class=toc-num data-level=4>5.7.1</div>
+<a href=#simd-design-problems><h4><tt->simd</tt-> design problems</h4></a>
+<div class=toc-num data-level=4>5.7.2</div>
+<a href=#simd-design-conclusion><h4><tt->simd</tt-> design conclusion</h4></a>
 <div class=toc-num data-level=3>5.8</div>
-<a href=#broadening-type-traits><h3>Broadening <tt->is_integral</tt-></h3></a>
+<a href=#valarray-support><h3><tt->valarray</tt-> support for bit-precise integers</h3></a>
 <div class=toc-num data-level=3>5.9</div>
-<a href=#misc-support><h3>Miscellaneous library support</h3></a>
+<a href=#broadening-type-traits><h3>Broadening <tt->is_integral</tt-></h3></a>
 <div class=toc-num data-level=3>5.10</div>
+<a href=#misc-support><h3>Miscellaneous library support</h3></a>
+<div class=toc-num data-level=3>5.11</div>
 <a href=#passing-bitint><h3>Passing <tt->bit_int</tt-> into standard library function templates</h3></a>
 <div class=toc-num data-level=2>6</div>
 <a href=#education><h2>Education</h2></a>
@@ -2511,7 +2513,7 @@ the overloads for bit-precise integers should also be made <code><h- data-h=kw>c
 </p></note-block>
 
 <note-block><p><intro-></intro-> 
-See also <a href=#passing-bitint>§5.10. Passing <tt->bit_int</tt-> into standard library function templates</a> for an explanation of why this function passes by value.
+See also <a href=#passing-bitint>§5.11. Passing <tt->bit_int</tt-> into standard library function templates</a> for an explanation of why this function passes by value.
 </p></note-block>
 
 <p><code><h- data-h=id>T</h-></code> is constrained to accept any bit-precise integer type.
@@ -2587,16 +2589,38 @@ taking the absolute of an integer is such a fundamental, easy-to-implement, and 
 operation that we may as well include it here.
 </p>
 <note-block><p><intro-></intro-> 
-See <a href=#passing-bitint>§5.10. Passing <tt->bit_int</tt-> into standard library function templates</a> for an explanation as to why this signature is chosen.
+See <a href=#passing-bitint>§5.11. Passing <tt->bit_int</tt-> into standard library function templates</a> for an explanation as to why this signature is chosen.
 </p></note-block>
 
-<h3 id=simd-support><a class=para href=#simd-support></a>5.6. <tt->simd</tt-> support for bit-precise integers</h3>
+<h3 id=random-support><a class=para href=#random-support></a>5.6. Lack of random number generation support</h3>
+
+<p>Support for random number generation is not added
+because too many design changes are required,
+with non-obvious decisions.
+Users can also live without bit-precise integer support in <code><h- data-h=str>&lt;random&gt;</h-></code>
+for a while, so this feature is not part of the MVP.
+</p>
+<p>Wording changes would be needed because <code><h- data-h=str>&lt;random&gt;</h-></code>
+specifically supports certain integer types specified in <a href=https://eel.is/c++draft/rand.req.genl>[rand.req.genl]</a>,
+rather than having blanket support for bit-precise integers.
+</p>
+<p>Another issue lies with <code><h- data-h=id>linear_congruential_engine</h-></code>.
+This generator performs modular arithmetic,
+which requires double the integer width for intermediate results.
+For example, <code><h- data-h=id_type>int64_t</h-></code> modular arithmetic is implemented using <code><h- data-h=kw_type>__int128</h-></code>
+in some standard libraries (if available).
+An obvious problem for bit-precise integers is how modular arithmetic
+for <code><h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>BITINT_MAXWIDTH</h-><h- data-h=sym_op>&gt;</h-></code> is meant to be implemented.
+We obviously can't just use a wider integer type because none exists.
+These and other potential design issues should be explored in a separate paper.
+</p>
+<h3 id=simd-support><a class=para href=#simd-support></a>5.7. <tt->simd</tt-> support for bit-precise integers</h3>
 
 <p><code><h- data-h=str>&lt;simd&gt;</h-></code> is one of the few parts in the standard library
 where the implementation is highly specific to integer widths,
 at least if high implementation quality is needed.
 </p>
-<h4 id=simd-design-problems><a class=para href=#simd-design-problems></a>5.6.1. <tt->simd</tt-> design problems</h4>
+<h4 id=simd-design-problems><a class=para href=#simd-design-problems></a>5.7.1. <tt->simd</tt-> design problems</h4>
 
 <p>There are many important questions, such as:
 </p>
@@ -2622,7 +2646,7 @@ Furthermore, adding a naive implementation for e.g. <code><h- data-h=id>bit_int<
 would result in an ABI break when being replaced with a more efficient "bit-packed"
 implementation later.
 </p>
-<h4 id=simd-design-conclusion><a class=para href=#simd-design-conclusion></a>5.6.2. <tt->simd</tt-> design conclusion</h4>
+<h4 id=simd-design-conclusion><a class=para href=#simd-design-conclusion></a>5.7.2. <tt->simd</tt-> design conclusion</h4>
 
 <p>Due to these design concerns,
 I do not consider <em>full</em><code><h- data-h=id>simd</h-></code> support to be part of the MVP.
@@ -2643,7 +2667,7 @@ Those functions accept standard integers
 as well as bit-precise integers of matching width.
 </p></note-block>
 
-<h3 id=valarray-support><a class=para href=#valarray-support></a>5.7. <tt->valarray</tt-> support for bit-precise integers</h3>
+<h3 id=valarray-support><a class=para href=#valarray-support></a>5.8. <tt->valarray</tt-> support for bit-precise integers</h3>
 
 <p>Bit-precise integer support in <code><h- data-h=id>valarray</h-></code> is required.
 While the same concerns as with <code><h- data-h=str>&lt;simd&gt;</h-></code> apply <em>in theory</em>,
@@ -2658,7 +2682,7 @@ are implemented as a simple loop
 rather than being manually optimized with SIMD operations.
 </p></note-block>
 
-<h3 id=broadening-type-traits><a class=para href=#broadening-type-traits></a>5.8. Broadening <tt->is_integral</tt-></h3>
+<h3 id=broadening-type-traits><a class=para href=#broadening-type-traits></a>5.9. Broadening <tt->is_integral</tt-></h3>
 
 <p>Since bit-precise integer types are integral types,
 obviously, <code><h- data-h=id>is_integral_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-></code> should be <code><h- data-h=bool>true</h-></code> for any bit-precise integer <code><h- data-h=id>T</h-></code>.
@@ -2673,7 +2697,7 @@ that is confusing and inconsistent with C
 or to make <code><h- data-h=id>is_integral_v</h-></code> inconsistent with the term "integral type".
 Both of these alternatives seem terrible.
 </p>
-<h3 id=misc-support><a class=para href=#misc-support></a>5.9. Miscellaneous library support</h3>
+<h3 id=misc-support><a class=para href=#misc-support></a>5.10. Miscellaneous library support</h3>
 
 <p>There are many more standard library parts to which support for bit-precise integers is added.
 Examples include:
@@ -2693,7 +2717,7 @@ Examples include:
   </li>
 </ul>
 
-<h3 id=passing-bitint><a class=para href=#passing-bitint></a>5.10. Passing <tt->bit_int</tt-> into standard library function templates</h3>
+<h3 id=passing-bitint><a class=para href=#passing-bitint></a>5.11. Passing <tt->bit_int</tt-> into standard library function templates</h3>
 
 <p>Unlike standard integers,
 it is plausible that some bit-precise integers are too large to be passed on the stack,
@@ -2867,7 +2891,7 @@ the possible changes to container <code><h- data-h=id>size_type</h-></code>s are
     <td><code><h- data-h=str>&lt;algorithm&gt;</h-></code></td>
     <td>Relax some <i>Mandates</i> due to implementability problems.</td>
     <td><a href=#alg.foreach>§ [alg.foreach]</a></td>
-    <td><a href=#misc-support>§5.9. Miscellaneous library support</a></td>
+    <td><a href=#misc-support>§5.10. Miscellaneous library support</a></td>
   </tr>
   <tr>
     <td><code><h- data-h=str>&lt;atomic&gt;</h-></code></td>
@@ -2876,13 +2900,13 @@ the possible changes to container <code><h- data-h=id>size_type</h-></code>s are
       Partial specializations for integral types also support <code><h- data-h=id>bit_int</h-></code>.
     </td>
     <td><a href=#atomics.ref.int>§ [atomics.ref.int]</a>,<br/><a href=#atomics.types.int>§ [atomics.types.int]</a></td>
-    <td><a href=#misc-support>§5.9. Miscellaneous library support</a></td>
+    <td><a href=#misc-support>§5.10. Miscellaneous library support</a></td>
   </tr>
   <tr>
     <td><code><h- data-h=str>&lt;bit&gt;</h-></code></td>
     <td>Expand blanket support for integers.</td>
     <td>None required</td>
-    <td><a href=#misc-support>§5.9. Miscellaneous library support</a></td>
+    <td><a href=#misc-support>§5.10. Miscellaneous library support</a></td>
   </tr>
   <tr>
     <td><code><h- data-h=str>&lt;charconv&gt;</h-></code></td>
@@ -2912,13 +2936,13 @@ the possible changes to container <code><h- data-h=id>size_type</h-></code>s are
     <td><code><h- data-h=str>&lt;complex&gt;</h-></code></td>
     <td>Expand blanket support for integers.</td>
     <td>None required</td>
-    <td><a href=#misc-support>§5.9. Miscellaneous library support</a></td>
+    <td><a href=#misc-support>§5.10. Miscellaneous library support</a></td>
   </tr>
   <tr>
     <td><code><h- data-h=str>&lt;concepts&gt;</h-></code></td>
     <td>Some concepts broadened (e.g. <code><h- data-h=id>integral</h-></code>).</td>
     <td>None required</td>
-    <td><a href=#broadening-type-traits>§5.8. Broadening <tt->is_integral</tt-></a></td>
+    <td><a href=#broadening-type-traits>§5.9. Broadening <tt->is_integral</tt-></a></td>
   </tr>
   <tr>
     <td><code><h- data-h=str>&lt;cstdio&gt;</h-></code></td>
@@ -2960,19 +2984,13 @@ the possible changes to container <code><h- data-h=id>size_type</h-></code>s are
     <td><code><h- data-h=str>&lt;meta&gt;</h-></code></td>
     <td>Some queries broadened (e.g. <code><h- data-h=id>is_integral_type</h-></code>).</td>
     <td>None required</td>
-    <td><a href=#broadening-type-traits>§5.8. Broadening <tt->is_integral</tt-></a></td>
+    <td><a href=#broadening-type-traits>§5.9. Broadening <tt->is_integral</tt-></a></td>
   </tr>
   <tr>
     <td><code><h- data-h=str>&lt;numeric&gt;</h-></code></td>
     <td>Expand blanket support for integers (<code><h- data-h=id>gcd</h-></code>, saturating arithmetic, etc.)</td>
     <td>None required</td>
     <td></td>
-  </tr>
-  <tr>
-    <td><code><h- data-h=str>&lt;random&gt;</h-></code></td>
-    <td>Expand blanket support for integers.</td>
-    <td>None required</td>
-    <td><a href=#misc-support>§5.9. Miscellaneous library support</a></td>
   </tr>
   <tr>
     <td><code><h- data-h=str>&lt;ranges&gt;</h-></code></td>
@@ -2987,25 +3005,25 @@ the possible changes to container <code><h- data-h=id>size_type</h-></code>s are
     <td><code><h- data-h=str>&lt;simd&gt;</h-></code></td>
     <td>Add limited support for bit-precise integers.</td>
     <td><a href=#simd.general>§ [simd.general]</a></td>
-    <td><a href=#simd-support>§5.6. <tt->simd</tt-> support for bit-precise integers</a></td>
+    <td><a href=#simd-support>§5.7. <tt->simd</tt-> support for bit-precise integers</a></td>
   </tr>
   <tr>
     <td><code><h- data-h=str>&lt;stdbit.h&gt;</h-></code></td>
     <td>Inherit bit-precise integer support from C.</td>
     <td><a href=#stdbit.h.syn>§ [stdbit.h.syn]</a></td>
-    <td><a href=#misc-support>§5.9. Miscellaneous library support</a></td>
+    <td><a href=#misc-support>§5.10. Miscellaneous library support</a></td>
   </tr>
   <tr>
     <td><code><h- data-h=str>&lt;stdckdint.h&gt;</h-></code></td>
     <td>Inherit bit-precise integer support from C.</td>
     <td><a href=#numerics.c.ckdint>§ [numerics.c.ckdint]</a></td>
-    <td><a href=#misc-support>§5.9. Miscellaneous library support</a></td>
+    <td><a href=#misc-support>§5.10. Miscellaneous library support</a></td>
   </tr>
   <tr>
     <td><code><h- data-h=str>&lt;stdio.h&gt;</h-></code></td>
     <td>Changed indirectly.</td>
     <td>None required</td>
-    <td><a href=#misc-support>§5.9. Miscellaneous library support</a>,<br/><code><h- data-h=str>&lt;cstdio&gt;</h-></code></td>
+    <td><a href=#misc-support>§5.10. Miscellaneous library support</a>,<br/><code><h- data-h=str>&lt;cstdio&gt;</h-></code></td>
   </tr>
   <tr>
     <td><code><h- data-h=str>&lt;string&gt;</h-></code></td>
@@ -3023,19 +3041,19 @@ the possible changes to container <code><h- data-h=id>size_type</h-></code>s are
     <td><code><h- data-h=str>&lt;type_traits&gt;</h-></code></td>
     <td>Some traits broadened (e.g. <code><h- data-h=id>is_integral</h-></code>).</td>
     <td>None required</td>
-    <td><a href=#broadening-type-traits>§5.8. Broadening <tt->is_integral</tt-></a></td>
+    <td><a href=#broadening-type-traits>§5.9. Broadening <tt->is_integral</tt-></a></td>
   </tr>
   <tr>
     <td><code><h- data-h=str>&lt;utility&gt;</h-></code></td>
     <td>Expand blanket support for integers (e.g. <code><h- data-h=id>to_integer</h-></code>).</td>
     <td>None required</td>
-    <td><a href=#misc-support>§5.9. Miscellaneous library support</a></td>
+    <td><a href=#misc-support>§5.10. Miscellaneous library support</a></td>
   </tr>
   <tr>
     <td><code><h- data-h=str>&lt;valarray&gt;</h-></code></td>
     <td>Expand blanket support for integers.</td>
     <td>None required</td>
-    <td><a href=#valarray-support>§5.7. <tt->valarray</tt-> support for bit-precise integers</a></td>
+    <td><a href=#valarray-support>§5.8. <tt->valarray</tt-> support for bit-precise integers</a></td>
   </tr>
   <tr>
     <td><code><h- data-h=str>&lt;version&gt;</h-></code></td>

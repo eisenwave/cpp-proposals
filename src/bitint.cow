@@ -978,6 +978,28 @@ operation that we may as well include it here.
 See \ref(#passing-bitint) for an explanation as to why this signature is chosen.
 }
 
+\h3(id=random-support){Lack of random number generation support}
+
+Support for random number generation is not added
+because too many design changes are required,
+with non-obvious decisions.
+Users can also live without bit-precise integer support in \header{random}
+for a while, so this feature is not part of the MVP.
+
+Wording changes would be needed because \header{random}
+specifically supports certain integer types specified in \eelis{rand.req.genl},
+rather than having blanket support for bit-precise integers.
+
+Another issue lies with \tcode{linear_congruential_engine}.
+This generator performs modular arithmetic,
+which requires double the integer width for intermediate results.
+For example, \tcode{int64_t} modular arithmetic is implemented using \tcode{__int128}
+in some standard libraries (if available).
+An obvious problem for bit-precise integers is how modular arithmetic
+for \tcode{bit_int<BITINT_MAXWIDTH>} is meant to be implemented.
+We obviously can't just use a wider integer type because none exists.
+These and other potential design issues should be explored in a separate paper.
+
 \h3(id=simd-support){\tt{simd} support for bit-precise integers}
 
 \header{simd} is one of the few parts in the standard library
@@ -1364,12 +1386,6 @@ the possible changes to container \tcode{size_type}s are not listed.
     \td{Expand blanket support for integers (\tcode{gcd}, saturating arithmetic, etc.)}
     \td{None required}
     \td{}
-  }
-  \tr{
-    \td{\header{random}}
-    \td{Expand blanket support for integers.}
-    \td{None required}
-    \td{\ref(#misc-support)}
   }
   \tr{
     \td{\header{ranges}}
