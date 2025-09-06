@@ -5,8 +5,8 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{D3666R0}}
-  \dt{Date:}            \dd{\tt{2025-09-05}}
-  \dt{Audience:}        \dd{SG6, SG22, EWG}
+  \dt{Date:}            \dd{\tt{2025-09-06}}
+  \dt{Audience:}        \dd{SG6, SG22, EWG, LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3666/github)}
@@ -20,12 +20,6 @@ C23 has introduced so-called "bit-precise integers" into the language,
 which should be brought to C++ for compatibility, among other reasons.
 Following an exploration of possible designs in \ref(P3639R0) "The \tt{_BitInt} Debate",
 this proposal introduces a new set of fundamental types to C++.
-}
-
-\Bimp{
-This draft is super early work-in-progress.
-The wording is not anywhere near complete,
-and the discussion needs to be fleshed out substantially.
 }
 
 \h2(listed=false){Contents}
@@ -176,7 +170,7 @@ has no padding bits.
 While most users can use \tcode{std::int32_t} without much issue,
 its optionality is a problem for use in the standard library and other ultra-portable libraries.
 
-\h2{Design discussion}
+\h2{Core design}
 
 The overall design strategy is as follows:
 
@@ -193,7 +187,7 @@ The overall design strategy is as follows:
   }
 }
 
-\h3{Why not make it a library type?}
+\h3{Why not a class template?}
 
 \ref(P3639R0) explored in detail whether to make it a fundamental type or a library type.
 Furthermore, feedback given by SG22 and EWG was to make it a fundamental type, not a library type.
@@ -201,6 +195,16 @@ This boils down to two plausible designs
 (assuming \tcode{_BitInt} is already supported by the compiler), shown below.
 
 \style{
+.toc h4 {
+  margin-left: 1.5em;
+}
+.toc h5 {
+  margin-left: 3em;
+}
+.toc h6 {
+  margin-left: 4.5em;
+}
+
 #tony-table {
     margin-left: auto;
     margin-right: auto;
@@ -457,38 +461,6 @@ for performance reasons.
 Another workaround would be an ever-growing set of implementation-specific attributes,
 but at that point, we may as well make it fundamental.
 
-\h3{Naming}
-
-The approach is to expose bit-precise integers via two alias templates:
-
-\cppblock{
-template <size_t N>
-using bit_int = _BitInt(N);
-
-template <size_t N>
-using bit_uint = unsigned _BitInt(N);
-}
-
-The goal is to have a spelling reminiscent of the C \tcode{_BitInt} spelling.
-There are no clear problems with it,
-so it is the obvious candidate.
-
-\h4{Why no \tcode{_t} suffix?}
-
-While the \tcode{_t} suffix would be conventional for simple type aliases
-such as \tcode{uint32_t},
-there is no clear precedent for alias templates.
-There are alias templates such as \tcode{expected::rebind}
-without any \tcode{_t} or \tcode{_type} suffix,
-but "type trait wrappers" such as \tcode{conditional_t} which have a \tcode{_t} suffix.
-
-The \tcode{_t} suffix does not add any clear benefit,
-adds verbosity,
-and distances the name from the C spelling \tcode{_BitInt}.
-Brevity is important here because \tcode{bit_int}
-is expected to be a commonly spelled type.
-A function doing some bit manipulation could use this name numerous times.
-
 \h4{Why the keyword spelling?}
 
 I also propose to standardize the keyword spelling
@@ -558,7 +530,7 @@ See \ref(N3550) §6.7.3.3 "Enumeration specifiers" for restrictions.
 
 This behavior should be mirrored.
 
-\h3{Should it be optional? Is this too hard to implement?}
+\h3{Should bit-precise integers be optional?}
 
 As in C, \tcode{_BitInt(N)} is only required to support \tcode{N}
 of at least \tcode{LLONG_WIDTH}, which has a minimum of \tcode{64}.
@@ -590,6 +562,142 @@ If \tcode{_BitInt(1)} was allowed,
 it would be able to represent the values \tcode{0} and \tcode{-1},
 just like an \tcode{int x : 1;} bit-field.
 }
+
+\h3{Undefined behavior on signed integer overflow}
+
+I propose to perpetuate bit-precise integers having undefined behavior
+on signed integer overflow, just like \tcode{int}, \tcode{long} etc.
+This has a few reasons:
+
+\ul{
+  \li{
+    bit-precise integers have undefined overflow in C,
+    so this is what users are used to.
+  }
+  \li{
+    "Solving" signed integer overflow for bit-precise integers is not part of the MVP.
+    Undefined behavior can always be defined to do something else,
+    so there is no urgent need for this paper to address this issue,
+    rather than solving it in a follow-up paper.
+  }
+  \li{
+    Signed integer overflow having undefined behavior is a much broader issue
+    that should be looked at in general, for all integer types,
+    not just bit-precise integer types.
+    Perhaps hardened implementations could have wrapping overflow with erroneous behavior.
+    In any case, the problem exceeds the scope of the paper.
+  }
+  \li{
+    It is highly unusual that users would expect signed integer overflow to be well-behaved,
+    such as having wrapping behavior.
+    Adding two positive numbers and obtaining a negative number is not typically useful.
+  }
+  \li{
+    The undefined behavior here is useful.
+    It allows for optimizations such as converting \tcode{x + 3 < 0} into \tcode{x < -3}.
+  }
+}
+
+\h3{Permissive implicit conversions}
+
+Just like any other integral type,
+the proposal makes bit-precise integers quite permissive when it comes to implicit conversions.
+This is disappointing to anyone who wants bit-precise integers
+to be a much "stricter" or "safer" alternative to standard integers,
+but it is arguably the better design
+for various reasons.
+
+\h4(id=conversions-c-compatibility){C compatibility}
+
+Firstly, the point is to mirror the C semantics as closely as possible,
+which leads to few or no surprises when porting code between the languages.
+
+\h4(id=difficult-special-cases){Difficulty of carving out exceptions in the language}
+
+Writing C++ code involving bit-precise integers would be
+quite annoying and "flag" many harmless cases
+if the rules were too strict.
+
+\Bex{
+\cppblock{
+std::bit_uint<32> x = 0; // error?
+}
+
+\tcode{0} is "incorrectly signed" for \tcode{std::bit_uint},
+but writing code like this is perfectly reasonable.
+}
+
+To combat this problem,
+it would be necessary to carve out various special cases.
+For example, permitting value-preserving conversions with constant expressions
+would prevent the example above from being flagged.
+However, such special cases are insufficient to cover \em{all} harmless cases.
+
+\Bex{
+\cppblock{
+void for_each_cell(vec3 x) {
+    for (int i = 0; i < 3; ++i) {
+        do_something(x[i]);
+    }
+}
+}
+
+Even though \tcode{i} is not a constant expression,
+\tcode{x[i]} will "just work" no matter what integer type \tcode{vec3::operator[]} accepts.
+}
+
+Existing C++ code bases that have not used flags such as \tt{-Wconversion}
+from the start are likely filled with many such harmless cases of mixed-sign
+implicit conversions.
+If bit-precise integer types were introduced into these code bases,
+refactoring effort may be unacceptable.
+
+Furthermore, discrepancies between the standard integers and bit-precise integers
+would make it much harder to write generic code:
+
+\Bex{
+The following function template may be instantiated with any integral type \tcode{T}.
+If mixed-sign comparisons were ill-formed for bit-precise integer types,
+an instantiation would not be possible with unsigned bit-precise integer types.
+
+\cppblock{
+template <typename T>
+bool eq(T x, int v) {
+    return x == v;
+}
+}
+}
+
+\Bex{
+The following function template involves a mixed-sign operation,
+but is entirely harmless for any type \tcode{T}:
+
+\cppblock{
+constexpr unsigned mask = 0xf;
+T integer = /* ... */;
+x &= mask; // equivalent to x = x & mask;
+}
+
+Even if \tcode{x} is signed instead of unsigned,
+\tcode{x & mask} produces a mathematically identical result.
+}
+
+\h4(id=conversions-conclusion){Conclusion on implicit conversions}
+
+In conclusion, discrepancies between the standard integers and bit-precise
+integers are undesirable;
+they introduce a lot of unnecessary problems.
+There are many harmless operations like \tcode{T x = 0;} and \tcode{x & mask}
+where mixing signedness is okay,
+and not every user wants to have warnings, let alone errors for these.
+Especially errors would make it hard to write headers that compile both in C and in C++.
+
+The final nail in the coffin is that if the user wants implicit conversions to be restricted,
+they have the freedom to add those restrictions via compiler warnings and linter checks.
+Having these restrictions standardized in the language robs the user of choice.
+If C++26 profiles make progress,
+it is likely that C++ will have profiles which restrict implicit conversions,
+giving users a standard way to opt into diagnostics.
 
 \h3{Template argument deduction}
 
@@ -642,41 +750,6 @@ should be proposed separately.
 Even if it was allowed, \tcode{std::bit_int} is proposed to be an alias template,
 and alias templates do not support "forwarding deduction" to CTAD.
 
-\h3{Undefined behavior on signed integer overflow}
-
-I propose to perpetuate bit-precise integers having undefined behavior
-on signed integer overflow, just like \tcode{int}, \tcode{long} etc.
-This has a few reasons:
-
-\ul{
-  \li{
-    bit-precise integers have undefined overflow in C,
-    so this is what users are used to.
-  }
-  \li{
-    "Solving" signed integer overflow for bit-precise integers is not part of the MVP.
-    Undefined behavior can always be defined to do something else,
-    so there is no urgent need for this paper to address this issue,
-    rather than solving it in a follow-up paper.
-  }
-  \li{
-    Signed integer overflow having undefined behavior is a much broader issue
-    that should be looked at in general, for all integer types,
-    not just bit-precise integer types.
-    Perhaps hardened implementations could have wrapping overflow with erroneous behavior.
-    In any case, the problem exceeds the scope of the paper.
-  }
-  \li{
-    It is highly unusual that users would expect signed integer overflow to be well-behaved,
-    such as having wrapping behavior.
-    Adding two positive numbers and obtaining a negative number is not typically useful.
-  }
-  \li{
-    The undefined behavior here is useful.
-    It allows for optimizations such as converting \tcode{x + 3 < 0} into \tcode{x < -3}.
-  }
-}
-
 \h3(id=preprocessor){No preprocessor changes, for better or worse}
 
 To my understanding, no changes to the preprocessor are required.
@@ -710,57 +783,157 @@ However, the preprocessor is largely "owned" by C,
 and any fix should go through WG14.
 In any case, fixing the C preprocessor is not part of the MVP.
 
-\h3{Degree of library support}
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-As previously stated,
-the overall strategy of this proposal is to ship an MVP.
-There are three categories of library features that deal with integer types:
+\h2{Library design}
+
+When discussing library design,
+it is important to understand that the vast majority of support for bit-precise integers
+"sneaks" into the standard without any explicit design changes or wording changes.
+Many existing facilities (e.g. \header{bit}) support any integer type;
+adding bit-precise integers to the core language silently adds library support.
+The following sections deal mostly with areas of the standard
+where some explicit design changes must be made.
+
+\Bnote{
+See \ref(#impact-on-the-standard-library)
+for a complete list of changes,
+including such silently added support.
+}
+
+\h3{Naming of the alias template}
+
+The approach is to expose bit-precise integers via two alias templates:
+
+\cppblock{
+template <size_t N>
+using bit_int = _BitInt(N);
+
+template <size_t N>
+using bit_uint = unsigned _BitInt(N);
+}
+
+The goal is to have a spelling reminiscent of the C \tcode{_BitInt} spelling.
+There are no clear problems with it,
+so it is the obvious candidate.
+
+\h4{Why no \tcode{_t} suffix?}
+
+While the \tcode{_t} suffix would be conventional for simple type aliases
+such as \tcode{uint32_t},
+there is no clear precedent for alias templates.
+There are alias templates such as \tcode{expected::rebind}
+without any \tcode{_t} or \tcode{_type} suffix,
+but "type trait wrappers" such as \tcode{conditional_t} which have a \tcode{_t} suffix.
+
+The \tcode{_t} suffix does not add any clear benefit,
+adds verbosity,
+and distances the name from the C spelling \tcode{_BitInt}.
+Brevity is important here because \tcode{bit_int}
+is expected to be a commonly spelled type.
+A function doing some bit manipulation could use this name numerous times.
+
+\h3(id=printing-support){\tt{format}, \tt{to_chars}, and \tt{to_string} support for bit-precise integers}
+
+I consider printing support to be part of the MVP for bit-precise integers.
+There are numerous reasons for this:
 
 \ul{
   \li{
-    Features which are stated to support any integer type,
-    such as \header{bit} or \header{simd}.
-    These should generally support bit-precise integers too,
-    since there's typically no reason to single out bit-precise integers,
-    and support would be useful.
-    In the long run, it seems implausible that e.g. \header{bit} would not support
-    bit-precise integers as this support is clearly useful and would improve consistency.
-    Forbidding bit-precise integers only to introduce support for them later would
-    only add a bunch of busy-work for LWG.
+    Being able to print bit-precise integers is clearly useful.
+    It seems unthinkable that it would not be supported at some point,
+    even if support was not added by this proposal.
   }
   \li{
-    Functions originating from C with support for bit-precise integer types,
-    such as \tcode{std::sqrt}.
-    The C functions typically support only bit-precise integers with the same width as
-    some standard integer type.
-    This restriction is unmotivated in C++ since a function template can easily cover
-    any bit-precise integer rather than having a finite set of options
-    covered by C's \tcode{_Generic} selection,
-    so we introduce a function template overload instead.
+    Printing support needs to exist in an implementation on some level anyway.
+    For example, \tcode{printf} has support for printing bit-precise integers.
+    If \tcode{printf} supported printing bit-precise integers but not the idiomatic
+    C++ facilities,
+    it would be a bad look for the language,
+    and it would push users towards type-unsafe functions out of desperation.
+    To be fair, \tcode{printf} typically "lives" in the system's libc,
+    so this support cannot enable things like \tcode{constexpr std::to_chars}.
+    However, code may be shared between the libc implementation and the C++ standard library,
+    as is the case in LLVM.
   }
   \li{
-    Features which explicitly support only standard integers,
-    such as \tcode{std::to_string} or the \tcode{std::bitset} constructors.
-    These should be addressed by follow-up proposals
-    because they are not part of the MVP.
+    It would take considerable wording effort to exclude
+    support for bit-precise integers from these facilities,
+    only for it to be reverted once support is inevitably added.
+    For example, the expression \tcode{std::println("{:b}", 100)} prints \tt{1100100}.
+    This is specified in terms of \tcode{std::to_chars} where \tcode{base = 2}.
+    If \tcode{std::to_chars} does not actually support bit-precise integers,
+    this wording becomes nonsensical.
+  }
+  \li{
+    The design is obvious.
+    No changes to \tcode{format} are necessary
+    if \tcode{to_chars} supports bit-precise integers.
   }
 }
 
-\h3{\tcode{std::format}, \tcode{std::to_chars}, etc.}
+To facilitate printing and parsing,
+the following function templates are added:
 
-I consider printing support to be part of the MVP for bit-precise integers.
-This is in part because it would take considerable wording effort to exclude
-support for bit-precise integers from these facilities,
-only for it to be reverted once support is inevitably added.
+\cppblock{
+template<class T>
+  constexpr to_chars_result to_chars(char* first, char* last, T value, int base = 10);
+template<class T>
+  constexpr from_chars_result from_chars(char* first, char* last, T& value, int base = 10);
+
+template<class T>
+  string to_string(T val);
+template<class T>
+  wstring to_wstring(T val);
+}
+
+\Bnote{
+The \tcode{to_string} and \tcode{to_wstring} overloads for integral types
+are made \tcode{constexpr} by \ref(P3438R0).
+If that paper be accepted,
+the overloads for bit-precise integers should also be made \tcode{constexpr} for consistency.
+}
+
+\Bnote{
+See also \ref(#passing-bitint) for an explanation of why this function passes by value.
+}
+
+\tcode{T} is constrained to accept any bit-precise integer type.
+It would have also been possible to accept two overloads
+taking \tcode{bit_int<N>} and \tcode{bit_uint<N>} with some constant template argument instead,
+but this doubles the amount of declarations without any clear benefit.
+
+Such a signature is also more future-proof:
+the constraints can be relaxed if more types are supported (e.g. extended integer types),
+whereas a \tcode{bit_int<N>} parameter can only support bit-precise integer,
+until the end of times.
+For parsing and printing, this seems short-sighted.
+
+It should also be noted that the existing overloads such as \tcode{to_string(int)}
+cannot be removed because it would break existing code.
 
 \Bex{
-The expression \tcode{std::println("{:b}", 100)} prints \tt{1100100}.
-This is specified in terms of \tcode{std::to_chars} where \tcode{base = 2}.
-If \tcode{std::to_chars} does not actually support bit-precise integers,
-this wording becomes nonsensical.
+Wrapper types which are convertible to \tcode{int} (but are not \tcode{int})
+may rely on these dedicated overloads:
+\cppblock{
+struct int_wrapper {
+    int x;
+    operator int() const { return x; }
+};
+
+string to_string(int);
+string to_string_generic(integral auto);
+
+to_string(int_wrapper{});         // OK
+to_string_generic(int_wrapper{}); // error: integral<int_wrapper> constraint not satisfied
 }
 
-\h3(id=preventing-iota-view-abi-break){Preventing \tcode{ranges::iota_view} ABI break}
+Analogously, if we replaced all the non-template overloads
+and handled all integers in a single function template,
+this may break existing valid calls to \tcode{to_string} etc.
+}
+
+\h3(id=preventing-iota-view-abi-break){Preventing \tt{ranges::iota_view} ABI break}
 
 Due to the current wording in \eelis{range.iota.view#1},
 adding bit-precise integers or extended integers of greater width than \tcode{long long}
@@ -770,11 +943,11 @@ Changing the type would be an ABI break.
 This problem is similar to historical issues with \tcode{intmax_t},
 where adding 128-bit integers would force the implementation to redefine the former type.
 
-To prevent this, we tweak the wording in \ref(#wording-iota-view)
+To prevent this, we tweak the wording in \ref(#range.iota.view)
 so that new extended or bit-precise integers may be added.
-This extends slightly beyond the scope of the MVP,
+Dealing with extended integer types extends slightly beyond the scope of the MVP,
 but it would be silly to leave the wording in an undesirable state,
-where adding a 128-bit extended integer still constitutes an ABI break.
+where adding a 128-bit extended integer still forces an ABI break.
 
 \h3{Bit-precise \tcode{size_t}, \tcode{ptrdiff_t}}
 
@@ -788,17 +961,137 @@ It would be a massive breaking change if existing C++ implementations redefined
 the type of these,
 so it is unlikely we will see an implementation that makes use of this freedom anytime soon.
 
-\h3{Passing \tcode{std::bit_int} into standard library function templates}
+\h3(id=bitint-abs){New \tt{abs} overload}
+
+The proposal adds the following \tcode{abs} overload:
+
+\cppblock{
+template<size_t N>
+constexpr abs(bit_int<N> j);
+}
+
+While \tcode{abs} is not strictly part of the MVP,
+taking the absolute of an integer is such a fundamental, easy-to-implement, and useful
+operation that we may as well include it here.
+
+\Bnote{
+See \ref(#passing-bitint) for an explanation as to why this signature is chosen.
+}
+
+\h3(id=simd-support){\tt{simd} support for bit-precise integers}
+
+\header{simd} is one of the few parts in the standard library
+where the implementation is highly specific to integer widths,
+at least if high implementation quality is needed.
+
+\h4{\tt{simd} design problems}
+
+There are many important questions, such as:
+
+\ul{
+  \li{
+    How do we best optimize \tcode{simd::vec<bit_int<1>>}?
+    that type is effectively a bitset.
+  }
+  \li{
+    How do we deal with padding bits?
+    Standard integers are typically padding-free, but bit-precise integers are not
+    except for specific sizes.
+  }
+  \li{
+    What about \tcode{simd::vec<bit_int<512>>} or even greater widths?
+    It seems like this case degenerates into a scalar implementation anyway.
+  }
+}
+
+It is not obvious whether design changes are needed to properly
+support bit-precise integers.
+Furthermore, adding a naive implementation for e.g. \tcode{bit_int<1>}
+would result in an ABI break when being replaced with a more efficient "bit-packed"
+implementation later.
+
+\h4{\tt{simd} design conclusion}
+
+Due to these design concerns,
+I do not consider \em{full}\tcode{simd} support to be part of the MVP.
+However, \tcode{simd} support for bit-precise integers is clearly useful,
+so a compromise is possible:
+\tcode{simd} support is added only for those bit-precise integers
+whose width matches a standard integer type.
+
+This means that a \tcode{simd::vec<bit_int<32>>} implementation
+"piggy-backs" off of an existing \tcode{simd::vec<int>} implementation,
+assuming \tcode{int} is a 32-bit signed integer.
+Such limited support is easy to provide.
+
+\Bnote{
+This restriction is inspired by the constraints (inherited from C) on
+\tcode{stdc_count_ones} and other \header{stdbit.h} functions.
+Those functions accept standard integers
+as well as bit-precise integers of matching width.
+}
+
+\h3(id=valarray-support){\tt{valarray} support for bit-precise integers}
+
+Bit-precise integer support in \tcode{valarray} is required.
+While the same concerns as with \header{simd} apply \em{in theory},
+it is easy to provide a naive implementation,
+and the implementation in standard libraries is typically naive anyway,
+including for existing integers.
+
+\Bnote{
+Naive means that in libc++, libstdc++, and the MSVC STL,
+operator overloads such as \tcode{valarray::operator+}
+are implemented as a simple loop
+rather than being manually optimized with SIMD operations.
+}
+
+\h3(id=broadening-type-traits){Broadening \tt{is_integral}}
+
+Since bit-precise integer types are integral types,
+obviously, \tcode{is_integral_v<T>} should be \tcode{true} for any bit-precise integer \tcode{T}.
+
+There is a potential concern that existing C++ code constrained using
+\tcode{is_integral} or \tcode{integral} never anticipated that the templates
+would be instantiated with huge integers like \tcode{bit_int<1024>}.
+That is simply a problem we have to live with.
+The only way to avoid the issue would be to create a taxonomy of integer types
+that is confusing and inconsistent with C
+(e.g. by not considering bit-precise integers to be integral types),
+or to make \tcode{is_integral_v} inconsistent with the term "integral type".
+Both of these alternatives seem terrible.
+
+\h3(id=misc-support){Miscellaneous library support}
+
+There are many more standard library parts to which support for bit-precise integers is added.
+Examples include:
+
+\ul{
+  \li{
+    C headers such as \header{stdbit.h}, \header{stdio.h}, and \header{stdckdint.h}
+    receive the same degree of support as they have in C.
+    This is the obvious design, and any deviation would need to be justified somehow.
+  }
+  \li{
+    Various utilities such as \tcode{to_integer} and \tcode{hash}
+    receive support for bit-precise integers.
+    It is implausible that support wouldn't be added in the long run,
+    and the support is added by extending the existing blanket support for integers;
+    no wording changes are needed.
+  }
+}
+
+\h3(id=passing-bitint){Passing \tt{bit_int} into standard library function templates}
 
 Unlike standard integers,
 it is plausible that some bit-precise integers are too large to be passed on the stack,
 or at least too large to make this the "default option".
 Nonetheless,
-all proposed library functions which operate on \tcode{std::bit_int}
-should accept \tcode{std::bit_int} by value.
+all proposed library functions which operate on \tcode{bit_int}
+should accept \tcode{bit_int} by value.
 
 \Bex{
-The proposal adds this \tcode{std::abs} overload:
+The proposal adds this \tcode{abs} overload:
 \cppblock{
 template<size_t N>
   constexpr abs(bit_int<N> j);
@@ -851,10 +1144,12 @@ not on the stack.
 }
 
 Admittedly, having the standard pass all integers by value may give the user
-the false impression that there is no problem,
-which is problematic.
+the false impression that a \tcode{bit_int<N>} function parameter (with unconstrained \tcode{N})
+is idiomatic and harmless, which is problematic.
 However, it is seemingly the lesser evil,
 since the alternative is wasting LEWG and LWG time on quality of implementation.
+
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 \h2{Education}
 
@@ -915,11 +1210,15 @@ are meant to be taught by learning resources.
   }
 }
 
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
 \h2{Implementation experience}
 
 \tcode{_BitInt}, formerly known as \tcode{_ExtInt}, has been a compiler extension
 in Clang for several years now.
 The core language changes are essentially standardizing that compiler extension.
+
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 \h2{Impact on the standard}
 
@@ -938,52 +1237,224 @@ is not affected by the existence of bit-precise integers.
 The impact of adding bit-precise integers to the standard library is quite enormous
 because there are many parts of the library
 which already support any integer type via blanket wording.
-
-\h3{Broadening "blanket support" of various library components}
+Additionally, bit-precise integer support for various components such as \tcode{std::to_chars}
+is explicitly added.
 
 Since this proposal does not explicitly remove support for bit-precise integers,
 support "sneaks" its way in, without any explicit wording changes.
-
 For example, use of bit-precise integers in \header{simd}, \header{bit}, \header{valarray},
 and many others is enabled.
-
-\h4{Broadening the possible definition of type aliases}
 
 The addition of bit-precise integers means that (as in the core language),
 the \tcode{size_type} of various containers may be a bit-precise integer,
 \tcode{size_t} and \tcode{ptrdiff_t} may be bit-precise integers, etc.
 
-\h4{Broadening (type) traits}
+Find a summary of affected library components below.
+In the interest of reducing noise,
+the possible changes to container \tcode{size_type}s are not listed.
 
-Since bit-precise integer types are integer types,
-certain type traits such as \tcode{is_integral} would report \tcode{true} for these new types.
-Additionally, \tcode{numeric_limits} specializations for bit-precise integers would be added.
-
-\h4{Bumping various feature-test macros}
-
-Even when support for bit-precise integers is added "silently"
-(that is, by leveraging the existing wording which says
-that some library part works with all integer types)
-it still requires implementation effort in some cases.
-For example, proper support for bit-precise integers in \header{bit}
-requires some effort,
-even if no wording changes are required.
-To make support detectable in those cases, various feature-test macros are bumped:
-
-\table{
+\table(class=wording){
   \tr{
-    \th{Macro}
-    \th{Added support}
+    \th{Header}
+    \th{Changes}
+    \th{Wording}
+    \th{See also}
   }
   \tr{
-    \td{\tcode{__cpp_lib_bitops}}
-    \td{\tcode{countl_zero} and other bit-manipulation functions}
+    \td{\header{algorithm}}
+    \td{Relax some \i{Mandates} due to implementability problems.}
+    \td{\ref(#alg.foreach)}
+    \td{\ref(#misc-support)}
   }
   \tr{
-    \td{\ins{\tcode{__cpp_lib_stdc_bitops}}}
+    \td{\header{atomic}}
+    \td{
+      Add support for bit-precise integers.
+      Partial specializations for integral types also support \tcode{bit_int}.
+    }
+    \td{\ref(#atomics.ref.int),\br\ref(#atomics.types.int)}
+    \td{\ref(#misc-support)}
+  }
+  \tr{
+    \td{\header{bit}}
+    \td{Expand blanket support for integers.}
+    \td{None required}
+    \td{\ref(#misc-support)}
+  }
+  \tr{
+    \td{\header{charconv}}
+    \td{Add \tcode{to_chars} and \tcode{from_chars} overloads.}
+    \td{\ref(#charconv.syn)}
+    \td{\ref(#printing-support)}
+  }
+  \tr{
+    \td{\header{chrono}}
+    \td{Bit-precise integers can be used in e.g. \tcode{duration}.}
+    \td{None required}
+    \td{}
+  }
+  \tr{
+    \td{\header{climits}}
+    \td{Add \tcode{BITINT_MAXWIDTH} macro.}
+    \td{\ref(#climits.syn)}
+    \td{}
+  }
+  \tr{
+    \td{\header{cmath}}
+    \td{Add \tcode{abs} overload.}
+    \td{\ref(#cmath.syn)}
+    \td{\ref(#bitint-abs)}
+  }
+  \tr{
+    \td{\header{complex}}
+    \td{Expand blanket support for integers.}
+    \td{None required}
+    \td{\ref(#misc-support)}
+  }
+  \tr{
+    \td{\header{concepts}}
+    \td{Some concepts broadened (e.g. \tcode{integral}).}
+    \td{None required}
+    \td{\ref(#broadening-type-traits)}
+  }
+  \tr{
+    \td{\header{cstdio}}
+    \td{Inherit \tcode{printf} etc. support for bit-precise integers from C.}
+    \td{None required}
+    \td{}
+  }
+  \tr{
+    \td{\header{format}}
+    \td{Expand blanket support for integers.}
+    \td{None required}
+    \td{\ref(#printing-support)}
+  }
+  \tr{
+    \td{\header{limits}}
+    \td{\tcode{numeric_limits} specializations required as blanket support.}
+    \td{None required}
+    \td{}
+  }
+  \tr{
+    \td{\header{limits.h}}
+    \td{Changed indirectly.}
+    \td{\ref(#climits.syn)}
+    \td{\header{climits}}
+  }
+  \tr{
+    \td{\header{linalg}}
+    \td{Expand blanket support for integers.}
+    \td{None required}
+    \td{}
+  }
+  \tr{
+    \td{\header{mdspan}}
+    \td{Bit-precise integers may be used as an index type.}
+    \td{None required}
+    \td{}
+  }
+  \tr{
+    \td{\header{meta}}
+    \td{Some queries broadened (e.g. \tcode{is_integral_type}).}
+    \td{None required}
+    \td{\ref(#broadening-type-traits)}
+  }
+  \tr{
+    \td{\header{numeric}}
+    \td{Expand blanket support for integers (\tcode{gcd}, saturating arithmetic, etc.)}
+    \td{None required}
+    \td{}
+  }
+  \tr{
+    \td{\header{random}}
+    \td{Expand blanket support for integers.}
+    \td{None required}
+    \td{\ref(#misc-support)}
+  }
+  \tr{
+    \td{\header{ranges}}
+    \td{
+      Change \tcode{\exposid{IOTA-DIFF-T}} to prevent ABI break
+      when integer types are added.
+    }
+    \td{\ref(#range.iota.view)}
+    \td{\ref(#preventing-iota-view-abi-break)}
+  }
+  \tr{
+    \td{\header{simd}}
+    \td{Add limited support for bit-precise integers.}
+    \td{\ref(#simd.general)}
+    \td{\ref(#simd-support)}
+  }
+  \tr{
     \td{\header{stdbit.h}}
+    \td{Inherit bit-precise integer support from C.}
+    \td{\ref(#stdbit.h.syn)}
+    \td{\ref(#misc-support)}
+  }
+  \tr{
+    \td{\header{stdckdint.h}}
+    \td{Inherit bit-precise integer support from C.}
+    \td{\ref(#numerics.c.ckdint)}
+    \td{\ref(#misc-support)}
+  }
+  \tr{
+    \td{\header{stdio.h}}
+    \td{Changed indirectly.}
+    \td{None required}
+    \td{\ref(#misc-support),\br\header{cstdio}}
+  }
+  \tr{
+    \td{\header{string}}
+    \td{Add \tcode{to_string} and \tcode{to_wstring} overloads.}
+    \td{\ref(#string.conversions)}
+    \td{\ref(#printing-support)}
+  }
+  \tr{
+    \td{\header{tgmath.h}}
+    \td{Changed indirectly.}
+    \td{None required}
+    \td{\header{cmath}, \header{complex}}
+  }
+  \tr{
+    \td{\header{type_traits}}
+    \td{Some traits broadened (e.g. \tcode{is_integral}).}
+    \td{None required}
+    \td{\ref(#broadening-type-traits)}
+  }
+  \tr{
+    \td{\header{utility}}
+    \td{Expand blanket support for integers (e.g. \tcode{to_integer}).}
+    \td{None required}
+    \td{\ref(#misc-support)}
+  }
+  \tr{
+    \td{\header{valarray}}
+    \td{Expand blanket support for integers.}
+    \td{None required}
+    \td{\ref(#valarray-support)}
+  }
+  \tr{
+    \td{\header{version}}
+    \td{Add feature-test macros.}
+    \td{\ref(#version.syn)}
+    \td{}
   }
 }
+
+\Bnote{
+There are numerous other standard library facilities which now support bit-precise integers,
+but are not mentioned specially because they are not numeric in nature.
+For example, it is possible to store a \tcode{bit_int} in \tcode{any},
+but \header{any} is not mentioned specially in the table above.
+}
+
+\Bnote{
+See \eelis{headers} and \eelis{support.c.headers.general}
+for a complete list of headers.
+}
+
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 \h2{Wording}
 
@@ -1936,7 +2407,39 @@ __cpp_bit_int 20XXXXL
 }
 }
 
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
 \h3{Library}
+
+\h4(show-number=false){[version.syn]}
+
+Change \eelis{version.syn} as follows:
+
+\Bdiff{
+\itemdecl{
+\etc
+\ins{#define __cpp_lib_bit_int_abs                       20XXXXL}
+\ins{#define __cpp_lib_bit_int_atomic                    20XXXXL}
+\ins{#define __cpp_lib_bit_int_bitops                    20XXXXL}
+\ins{#define __cpp_lib_bit_int_stdckdint_h               20XXXXL}
+\ins{#define __cpp_lib_bit_int_stdbit_h                  20XXXXL}
+\ins{#define __cpp_lib_bit_int_format                    20XXXXL}
+\ins{#define __cpp_lib_bit_int_gcd_lcm                   20XXXXL}
+\ins{#define __cpp_lib_bit_int_saturation_arithmetic     20XXXXL}
+\ins{#define __cpp_lib_bit_int_to_chars                  20XXXXL}
+\ins{#define __cpp_lib_bit_int_to_string                 20XXXXL}
+\etc
+#define __cpp_lib_atomic_ref                        \del{202411L} \ins{20XXXXL}
+#define __cpp_lib_bitops                            \del{201907L} \ins{20XXXXL}
+#define __cpp_lib_int_pow2                          \del{202002L} \ins{20XXXXL}
+#define __cpp_lib_format                            \del{202311L} \ins{20XXXXL}
+#define __cpp_lib_gcd_lcm                           \del{201606L} \ins{20XXXXL}
+#define __cpp_lib_saturation_arithmetic             \del{202311L} \ins{20XXXXL}
+#define __cpp_lib_to_chars                          \del{202306L} \ins{20XXXXL}
+#define __cpp_lib_to_string                         \del{202306L} \ins{20XXXXL}
+\etc
+}
+}
 
 \h4(show-number=false){[cstdint.syn]}
 
@@ -2034,7 +2537,7 @@ Change \eelis{stdbit.h.syn#2} as follows:
 }
 }
 
-\h4(show-number=false, id=wording-iota-view){[range.iota.view]}
+\h4(show-number=false){[range.iota.view]}
 
 \Bnote{See \ref(#preventing-iota-view-abi-break).}
 
@@ -2218,8 +2721,8 @@ namespace std {
   constexpr from_chars_result from_chars(const char* first, const char* last,   // \serif{freestanding}
                                          \exposid{integer-type}& value, int base = 10);
 \ins{  template<class T>
-    constexpr to_chars_result to_chars(char* first, char* last,         // \serif{freestanding}
-                                       T& value, int base = 10);}
+    constexpr from_chars_result from_chars(char* first, char* last,         // \serif{freestanding}
+                                           T& value, int base = 10);}
 
   from_chars_result from_chars(const char* first, const char* last,     // \serif{freestanding-deleted}
                                \exposid{floating-point-type}& value,
@@ -2278,6 +2781,126 @@ constexpr from_chars_result from_chars(const char* first, const char* last,
 \etc
 }
 
+\h4(show-number=false){[string.syn]}
+
+Change \eelis{string.syn} as follows:
+
+\Bdiff{
+\itemdecl{
+namespace std {
+  \etc
+
+  string to_string(int val);
+  string to_string(unsigned val);
+  string to_string(long val);
+  string to_string(unsigned long val);
+  string to_string(long long val);
+  string to_string(unsigned long long val);
+  string to_string(float val);
+  string to_string(double val);
+  string to_string(long double val);
+\ins{  template<class T> string to_string(T val);}
+
+  \etc
+
+  wstring to_wstring(int val);
+  wstring to_wstring(unsigned val);
+  wstring to_wstring(long val);
+  wstring to_wstring(unsigned long val);
+  wstring to_wstring(long long val);
+  wstring to_wstring(unsigned long long val);
+  wstring to_wstring(float val);
+  wstring to_wstring(double val);
+  wstring to_wstring(long double val);
+\ins{  template<class T> wstring to_wstring(T val);}
+
+  \etc
+}
+}
+}
+
+If the existing overloads for integral types
+have been made \tcode{constexpr} through \ref(P3438R0) or a subsequent paper,
+additionally make the following changes:
+
+\Bdiff{
+\itemdecl{
+\etc
+template<class T> \ins{constexpr} string to_string(T val);
+\etc
+template<class T> \ins{constexpr} wstring to_wstring(T val);
+\etc
+}
+}
+
+\h4(show-number=false){[string.conversions]}
+
+Change \eelis{string.conversions} as follows:
+
+\Bdiff{
+\etc
+
+\itemdecl{
+string to_string(int val);
+string to_string(unsigned val);
+string to_string(long val);
+string to_string(unsigned long val);
+string to_string(long long val);
+string to_string(unsigned long long val);
+string to_string(float val);
+string to_string(double val);
+string to_string(long double val);
+\ins{template<class T> string to_string(T val);}
+}
+
+\itemdescr{
+\ins{\constraints
+\tcode{T} is a bit-precise or extended integer type.}
+
+\returns
+\tcode{format("{}", val)}.
+}
+
+\etc
+
+\itemdecl{
+wstring to_wstring(int val);
+wstring to_wstring(unsigned val);
+wstring to_wstring(long val);
+wstring to_wstring(unsigned long val);
+wstring to_wstring(long long val);
+wstring to_wstring(unsigned long long val);
+wstring to_wstring(float val);
+wstring to_wstring(double val);
+wstring to_wstring(long double val);
+\ins{template<class T> wstring to_wstring(T val);}
+}
+
+\itemdescr{
+\ins{\constraints
+\tcode{T} is a bit-precise or extended integer type.}
+
+\returns
+\tcode{format(L"{}", val)}.
+}
+
+\etc
+}
+
+If the existing overloads for integral types
+have been made \tcode{constexpr} through \ref(P3438R0) or a subsequent paper,
+additionally make the following changes:
+
+\Bdiff{
+\itemdecl{
+\etc
+template<class T> \ins{constexpr} string to_string(T val);
+\etc
+template<class T> \ins{constexpr} wstring to_wstring(T val);
+\etc
+}
+}
+
 \h4(show-number=false){[cmath.syn]}
 
 In \eelis{cmath.syn}, change the synopsis as follows:
@@ -2290,12 +2913,6 @@ constexpr long long int abs(long long int j);                     // \serif{free
 \ins{template<size_t N> constexpr abs(bit_int<N> j);                   // \serif{freestanding}}
 constexpr \exposid{floating-point-type} abs(\exposid{floating-point-type} j);         // \serif{freestanding}
 }
-}
-
-\Bnote{
-Simply specifying the whole overload set as a \tcode{template<class T> abs(T);}
-function would be a breaking change because it would no longer support types
-that are convertible to \tcode{int} but are not signed integer types.
 }
 
 Change \eelis{cmath.syn#3} as follows:
@@ -2318,6 +2935,10 @@ from the overloads provided by the implementation.
 }
 
 \h4(show-number=false){[c.math.abs]}
+
+\Bnote{
+See \ref(#bitint-abs).
+}
 
 Change \eelis{c.math.abs} as follows:
 
@@ -2369,8 +2990,31 @@ In that event, the program is not ill-formed;
 overload resolution simply doesn't select one of these functions.
 }
 
-\Btodo{
-Add a feature-test macro for these changes.
+\h4(show-number=false){[simd.general]}
+
+Change \eelis{simd.general#2} as follows:
+
+\Bdiff{
+The set of \dfn{vectorizable types} comprises
+
+\ul{
+  \li{
+    all standard integer types,
+    character types,
+    and the types \tcode{float} and \tcode{double}\iref{basic.fundamental};
+  }
+  \li{
+    \ins{any bit-precise integer type
+    whose width matches a standard integer type;}
+  }
+  \li{
+    \tcode{std::float16_t}, \tcode{std::float32_t}, and \tcode{std::float64_t}
+    if defined\iref{basic.extended.fp}; and
+  }
+  \li{
+    \tcode{complex<T>} where \tcode{T} is a vectorizable floating-point type.
+  }
+}
 }
 
 \h4(show-number=false){[numerics.c.ckdint]}
@@ -2519,6 +3163,14 @@ of messages worth of valuable feedback.
   author = Bengt Gustafsson,
   link = https://wg21.link/p3312r1,
   long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3312r1.pdf
+)\
+\bib(
+  id = P3438R0,
+  title = Make integral overloads of std::to_string constexpr,
+  date = 2024-10-13,
+  author = Andreas Fertig,
+  link = https://wg21.link/p3438r0,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3438r0.pdf,
 )\
 \bib(
   id = N2763,
