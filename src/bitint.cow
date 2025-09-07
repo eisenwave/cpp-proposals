@@ -5,7 +5,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{D3666R0}}
-  \dt{Date:}            \dd{\tt{2025-09-06}}
+  \dt{Date:}            \dd{\tt{2025-09-07}}
   \dt{Audience:}        \dd{SG6, SG22, EWG, LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -67,6 +67,50 @@ In short, the behavior of these \dfn{bit-precise integers} is as follows:
 Computation beyond 64-bit bits, such as with 128-bits is immensely useful.
 A large amount of motivation for 128-bit computation can be found in \ref(P3140R0).
 Computations in cryptography, such as for RSA require even 4096-bit integers.
+
+Even when performing most operations using 64-bit integers,
+there are certain use cases where temporarily, twice the width is needed.
+For example, the implementation of \tcode{linear_congruential_engine<uint64_t>}
+requires the user of 128-bit arithmetic,
+as does arithmetic with 64-bit
+\ref(https://en.wikipedia.org/wiki/Fixed-point_arithmetic){fixed-point numbers (e.g. \tt{Q32.32})}.
+
+\h3{Cornerstone of standard library facilities}
+
+There are various existing and possible feature
+library facilities that would greatly benefit from an N-bit integer type:
+
+\ul{
+  \li{
+    As mentioned above,
+    the implementation of \tcode{linear_congruential_engine<uint64_t>}
+    requires the use of 128-bit integers.
+  }
+  \li{
+    \tcode{bitset} has constructors taking \tcode{unsigned long long} and a
+    \tcode{to_ullong} member function that converts from/to integers.
+    This is clunky and limited considering that bitsets can be much larger
+    than \tcode{unsigned long long}.
+    Bit-precise integers would be a superior alternative to \tcode{unsigned long long} here.
+  }
+  \li{
+    \ref(P3161R4) proposes library features such as \tcode{add_carry}
+    or \tcode{mul_wide} which produce a wider integer result than the operands.
+    For example:
+    \cppblock{
+template<class T>
+struct mul_wide_result {
+  T low_bits;
+  T high_bits;
+};
+template<class T>
+  constexpr mul_wide_result<T> mul_wide(T x, T y) noexcept;
+}
+    Proposals like these are arguably obsolete if the same operation can be
+    expressed by simply casting the operands to an integer with double the width
+    prior to the multiplication.
+  }
+}
 
 \h3{C ABI compatibility}
 
@@ -162,13 +206,27 @@ despite our code seemingly using only unsigned integers.
 
 Overall, the current integer promotion semantics are extremely surprising
 and make it hard to write correct code involving promotable unsigned integers.
+Promotion also makes it hard to expose small integers (e.g. 10-bit unsigned integer)
+that exist in hardware (e.g. FPGA) in the language,
+since all operations would be performed using \tcode{int}.
+Unconventional hardware such as FPGAs are pillar of the motivation for \tcode{_BitInt}
+laid out in \ref(N2763).
 
-Furthermore, there is no portable way to use an integer with exactly 32 bits.
-\tcode{std::int_least32_t} and \tcode{long} may be wider,
-and \tcode{std::int32_t} is an optional type alias which only exists if such an integer type
-has no padding bits.
-While most users can use \tcode{std::int32_t} without much issue,
-its optionality is a problem for use in the standard library and other ultra-portable libraries.
+\h3{Portable exact-width integers}
+
+There is no portable way to use an integer with exactly 32 bits in standard C++.
+\tcode{int_least32_t} and \tcode{long} may be wider,
+and \tcode{int32_t} is an optional type alias
+which only exists if such an integer type has no padding bits.
+Having additional non-padding bits may be undesirable when implementing serialization,
+networking, etc. where the underlying file format or network protocol is specified
+using exact widths.
+
+While most platforms support 32-bit integers as \tcode{int32_t},
+their optionality is a problem for use in the standard library and other ultra-portable libraries.
+There are many use cases where padding bits would be an acceptable sacrifice
+in exchange for writing portable code,
+and bit-precise integers fill that gap in the language.
 
 \h2{Core design}
 
@@ -195,26 +253,26 @@ This boils down to two plausible designs
 (assuming \tcode{_BitInt} is already supported by the compiler), shown below.
 
 \style{
-.toc h4 {
-  margin-left: 1.5em;
-}
-.toc h5 {
-  margin-left: 3em;
-}
-.toc h6 {
-  margin-left: 4.5em;
-}
+  .toc h4 {
+    margin-left: 1.5em;
+  }
+  .toc h5 {
+    margin-left: 3em;
+  }
+  .toc h6 {
+    margin-left: 4.5em;
+  }
 
-#tony-table {
+  #tony-table {
     margin-left: auto;
     margin-right: auto;
     width: 90%;
     table-layout: fixed;
-}
-#tony-table td {
+  }
+  #tony-table td {
     background-color: var(--deep-background-color);
     width: 50%;
-}
+  }
 }
 
 \table(id=tony-table){
@@ -258,8 +316,8 @@ The reasons why we should prefer the left side are described in the following su
 
 \cppblock{
 struct S {
-    // 1. _BitInt as the underlying type of a bit-field
-    _BitInt(32) x : 10;
+  // 1. _BitInt as the underlying type of a bit-field
+  _BitInt(32) x : 10;
 };
 
 // 2. _BitInt in a switch statement
@@ -401,7 +459,7 @@ In some cases, tiny \tcode{bit_int}'s may be useful as the underlying type of an
 
 \cppblock{
 enum struct Direction : bit_int<2> {
-    north, east, south, west,
+  north, east, south, west,
 };
 }
 
@@ -411,6 +469,14 @@ If we used e.g. \tcode{unsigned char} instead,
 there would be 252 other possible values that simply have no name,
 and this may be detrimental to compiler optimization of \tcode{switch} statements etc.
 
+\Bnote{
+Using bit-precise integers as the underlying type of enumerations
+is not currently proposed (\ref(#underlying-bitint)).
+However, it is likely that it will be supported in the future
+(after some follow-up proposal),
+so I still consider this motivation to be valid.
+}
+
 \h4{Special deduction rules}
 
 While this proposal focuses on the minimal viable product (MVP),
@@ -418,7 +484,7 @@ a possible future extension would be new deduction rules allowing the following 
 
 \cppblock{
 template <size_t N>
-void f(bit_int<N> x);
+  void f(bit_int<N> x);
 
 f(int32_t(0)); // calls f<32>
 }
@@ -461,14 +527,34 @@ for performance reasons.
 Another workaround would be an ever-growing set of implementation-specific attributes,
 but at that point, we may as well make it fundamental.
 
-\h4{Why the keyword spelling?}
+\h3{Why the \tcode{_BitInt} keyword spelling?}
 
 I also propose to standardize the keyword spelling
 \tcode{_BitInt} and \tcode{unsigned _BitInt}.
-While a similar approach could be taken as with the \tcode{\hl(macro){_Atomic}}
-compatibility macro,
+I consider this to a "C compatibility spelling" rather than the preferred one
+which is taught to C++ developers.
+See also \ref(#teaching-principles).
+
+While a similar approach could be taken
+as with the \tcode{\hl(macro){_Atomic}} compatibility macro,
 macros cannot be exported from modules,
 and macros needlessly complicate the problem compared to a keyword.
+Furthermore, to enable compiling shared C and C++ headers, all of the spellings
+\tcode{_BitInt}, \tcode{signed _BitInt} and \tcode{unsigned _BitInt} need to be valid.
+This goes far beyond the capabilities that a compatibility macro like \tcode{\hl(macro){_Atomic}}
+can provide without language support.
+If the \tcode{\hl(macro){_BitInt(...)}} macro simply expanded to \tcode{bit_int<__VA_ARGS__>},
+this may result in the ill-formed code \tcode{signed bit_int<N>}.
+
+The most plausible fix would be to create an exposition-only \tcode{\exposid{bit-int}}
+spelling to enable \tcode{signed \exposid{bit-int<N>}},
+which makes our users beg the question:
+
+\Bquote{
+Why is there a compatibility macro for an exposition-only keyword spelling?!
+Why are we making everything more complicated by not just copying the keyword from C?!
+Why is this exposition-only when it's clearly useful for users to spell?!
+}
 
 The objections to a keyword spelling are that it's not \em{really} necessary,
 or that it "bifurcates" the language by having two spellings for the same thing,
@@ -478,31 +564,19 @@ both spellings have a right to exist:
 
 \ul{
   \li{
-    The \tcode{std::bit_int} alias template fits in aesthetically with the rest of the language,
+    The \tcode{bit_int} alias template fits in aesthetically with the rest of the language,
     and conveys clearly (via "pointy brackets") that the given width is a constant expression.
   }
   \li{
     The \tcode{_BitInt} spelling is useful for writing C/C++-interoperable code,
     and C compatibility is an important design goal.
-    Furthermore, the spelling is going to exist whether that would be a compatibility macro
-    or a keyword,
-    and since there is no clear technical benefit to a macro,
-    it should be a keyword.
   }
 }
 
-Furthermore, to enable C compatibility, all of the spellings
-\tcode{_BitInt}, \tcode{signed _BitInt} and \tcode{unsigned _BitInt} need to be valid.
-This goes far beyond the capabilities that a compatibility macro like \tcode{\hl(macro){_Atomic}}
-can provide without language support.
-The most likely wording path would be to create an exposition-only \tcode{\exposid{bit-int}}
-spelling to define \tcode{signed \exposid{bit-int}} etc., which makes our users beg the question:
-
-\Bquote{
-Why is there an compatibility macro for an exposition-only keyword spelling?!
-Why are we making everything more complicated by not just copying the keyword from C?!
-Why is this exposition-only when it's clearly useful for users to spell?!
-}
+It seems like both spellings are going to exist,
+whether \tcode{_BitInt} is a keyword or compatibility macro.
+Since there is no clear technical benefit to a macro,
+the keyword is the \em{only} logical choice.
 
 \Bnote{
 Clang already supports the \tcode{_BitInt} keyword spelling as a compiler extensions,
@@ -636,9 +710,9 @@ However, such special cases are insufficient to cover \em{all} harmless cases.
 \Bex{
 \cppblock{
 void for_each_cell(vec3 x) {
-    for (int i = 0; i < 3; ++i) {
-        do_something(x[i]);
-    }
+  for (int i = 0; i < 3; ++i) {
+    do_something(x[i]);
+  }
 }
 }
 
@@ -663,7 +737,7 @@ an instantiation would not be possible with unsigned bit-precise integer types.
 \cppblock{
 template <typename T>
 bool eq(T x, int v) {
-    return x == v;
+  return x == v;
 }
 }
 }
@@ -705,10 +779,10 @@ The following code should be valid:
 
 \cppblock{
 template <std::size_t N>
-void f(std::bit_int<N>);
+  void f(std::bit_int<N>);
 
 int main() {
-    f(std::bit_int<3>{}); // OK, N = 3
+  f(std::bit_int<3>{}); // OK, N = 3
 }
 }
 
@@ -716,13 +790,13 @@ This would be a consequence of deduction from \tcode{_BitInt} being valid:
 
 \cppblock{
 template <unsigned N>
-void f(_BitInt(N));
+  void f(_BitInt(N));
 template <int N>
-void g(_BitInt(N));
+  void g(_BitInt(N));
 
 int main() {
-    f(_BitInt(3)(0)); // OK, N = 3
-    g(_BitInt(3)(0)); // OK, N = 3
+  f(_BitInt(3)(0)); // OK, N = 3
+  g(_BitInt(3)(0)); // OK, N = 3
 }
 }
 
@@ -807,15 +881,23 @@ The approach is to expose bit-precise integers via two alias templates:
 
 \cppblock{
 template <size_t N>
-using bit_int = _BitInt(N);
-
+  using bit_int = _BitInt(N);
 template <size_t N>
-using bit_uint = unsigned _BitInt(N);
+  using bit_uint = unsigned _BitInt(N);
 }
 
 The goal is to have a spelling reminiscent of the C \tcode{_BitInt} spelling.
 There are no clear problems with it,
 so it is the obvious candidate.
+\tt{int} and \tt{uint} match the naming scheme of existing aliases,
+such as \tcode{intN_t}, \tcode{uint_fastN_t}, etc.
+
+The alias names as a whole also act as abbreviations of the core language term
+(which is copied from C):
+\ul{
+  \li{\tcode{bit_int<N>} is a bit-precise signed integer of width \tcode{N}}
+  \li{\tcode{bit_uint<N>} is a bit-precise unsigned integer of width \tcode{N}}
+}
 
 \h4{Why no \tcode{_t} suffix?}
 
@@ -943,7 +1025,7 @@ Changing the type would be an ABI break.
 This problem is similar to historical issues with \tcode{intmax_t},
 where adding 128-bit integers would force the implementation to redefine the former type.
 
-To prevent this, we tweak the wording in \ref(#range.iota.view)
+To prevent this, the proposal tweaks the wording in \ref(#range.iota.view)
 so that new extended or bit-precise integers may be added.
 Dealing with extended integer types extends slightly beyond the scope of the MVP,
 but it would be silly to leave the wording in an undesirable state,
@@ -952,9 +1034,11 @@ where adding a 128-bit extended integer still forces an ABI break.
 \h3{Bit-precise \tcode{size_t}, \tcode{ptrdiff_t}}
 
 As in C,
-the proposal allows for \tcode{size_t} and \tcode{ptrdiff_t} to be bit-precise integers.
+the proposal allows for \tcode{size_t} and \tcode{ptrdiff_t} to be bit-precise integers,
+which is a consequence of \tcode{sizeof} and pointer subtraction
+potentially yielding a bit-precise integer.
 
-Whether such an implementation is desirable is for implementers and users to decide,
+Whether bit-precise integers in those places is desirable is for implementers and users to decide,
 but from the perspective of the C standard and the C++ standard,
 there is no compelling reason to disallow it.
 It would be a massive breaking change if existing C++ implementations redefined
@@ -967,7 +1051,7 @@ The proposal adds the following \tcode{abs} overload:
 
 \cppblock{
 template<size_t N>
-constexpr abs(bit_int<N> j);
+  constexpr abs(bit_int<N> j);
 }
 
 While \tcode{abs} is not strictly part of the MVP,
@@ -3163,6 +3247,14 @@ of messages worth of valuable feedback.
   author = Jan Schultke,
   link = https://wg21.link/p3140r0,
   long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3140r0.html,
+)\
+\bib(
+  id = P3161R4,
+  title = Unified integer overflow arithmetic,
+  date = 2025-03-24,
+  author = Tiago Freire,
+  link = https://wg21.link/p3161r4,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3161r4.html,
 )\
 \bib(
   id = P3639R0,
