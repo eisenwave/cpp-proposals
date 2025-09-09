@@ -319,27 +319,26 @@ Code generation
 for a list of function parameters
 is simplified by trailing commas in C++ as follows:
 \cppblock{
-void inject_parameters(span<const Parameter> parameters) {
-    std::meta::queue_injection(^^{\N{LEFT PARENTHESIS}});
+consteval std::meta::info produce_parameter() { /* ... */ }
+
+consteval std::meta::info produce_parameter_list(span<const Parameter> parameters) {
+    auto result = ^^{};
     \del{bool first = true;}
     for (const auto& p : parameters) {
-\del{        if (!first) {
-            std::meta::queue_injection(^^{,}); // inject comma
-        }
-        first = false;}
-        inject_parameter(p);
-\ins{        std::meta::queue_injection(^^{,});} // inject comma
+        result = ^^{
+          \hl(keyword){\\tokens}(result)
+          \del{\\tokens(first ? ^^{} : ^^{,})}
+          \hl(keyword){\\tokens}(produce_parameter(p)) \ins{,}
+        };
+        \del{first = false;}
     }
-    std::meta::queue_injection(^^{\N{RIGHT PARENTHESIS}});
+    return result;
 }
 }
 
 If the trailing comma is permitted,
-we can simply inject a comma after each list element,
-rather than adding logic to only inject it as a separator between elements.
-To be fair, this logic can sometimes be handled by using some \tt{join} algorithm,
-but this can result in extra work,
-especially if parts of the list are generated in different places.
+we can simply add a comma after each list element,
+rather than adding logic to only add it as a separator between elements.
 }
 
 A number of WG21 members have expressed that this code generation convenience is
@@ -1159,6 +1158,9 @@ Add the following table row to \eelis{cpp.predefined#tab:cpp.predefined.ft}:
 }
 
 \h2{Acknowledgements}
+
+I thank Barry Revzin and Matthias Wippich
+for helping me craft the example in \ref(#code-generation-convenience).
 
 I thank Herb Sutter,
 Mathias Stearn,
