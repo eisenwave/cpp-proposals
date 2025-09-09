@@ -5,7 +5,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{D3666R0}}
-  \dt{Date:}            \dd{\tt{2025-09-07}}
+  \dt{Date:}            \dd{\tt{2025-09-09}}
   \dt{Audience:}        \dd{SG6, SG22, EWG, LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -32,6 +32,22 @@ This is the first revision.
 
 \h2{Introduction}
 
+In distant history,
+there have been various attempts at standardizing multi-precision integers in C++,
+such as
+\ref(N1692) "A Proposal to add the Infinite Precision Integer to the C++ Standard Library",
+\ref(N1744) "Big Integer Library Proposal for C++0x", and
+\ref(N4038) "Proposal for Unbounded-Precision Integer Types",
+all of which have been abandoned by the authors.
+However, there has always been some enthusiasm in the committee for such a feature.
+
+I am picking up where they have left off.
+Whether this results in a C++ feature or adds corpses
+to the graveyard of multi-precision papers remains to be seen.
+
+\h3{C23}
+
+Recently, WG14's
 \ref(N2763) introduced the \tcode{_BitInt} set of types to the C23 standard,
 and \ref(N2775) further enhanced this feature with literal suffixes.
 For example, this feature may be used as follows:
@@ -58,6 +74,76 @@ In short, the behavior of these \dfn{bit-precise integers} is as follows:
     as does an operation with \tcode{_BitInt(N)} where \tcode{N} is the width of \tcode{int}.
     They only have greater conversion rank when their width is greater.
   }
+  \li{
+    Widths up to \tcode{BITINT_MAXWIDTH} are allowed,
+    with padding bits being added if needed.
+    \tcode{BITINT_MAXWIDTH} is at least \tcode{64}.
+  }
+}
+
+\h3{P3140R0 "\tt{std::int_least128_t}"}
+
+In parallel,
+I proposed \ref(P3140R0) which would add 128-bit integers as \tcode{std::int_least128_t}
+to the C++ standard.
+It became apparent to me that standardizing just a single width of 128
+and not solving the \tcode{_BitInt} C compatibility problem would be futile,
+so I've stepped away from the proposal.
+However, the feedback and experience gained from P3140
+made it well worth the time spent.
+
+\h3{P3639R0 "The \tt{_BitInt} Debate"}
+
+I've subsequently proposed \ref(P3639R0) "The \tt{_BitInt} Debate",
+which shifts the goal to compatibility with C's \tcode{_BitInt} type,
+and attempts to answer whether the set of types corresponding to \tcode{_BitInt}
+should be a class template or a family of fundamental types.
+P3639R0 received much feedback in 2025.
+First, from SG22:
+
+\Bquote{
+The WG14 delegation to SG22 believes
+that the C++ type family that deliberately corresponds to _BitInt
+(perhaps via compatibility macros) should be... (Fundamental/Library)
+
+\table(class=five-way-poll){
+  \tr{\th{SF}\th{F}\th{N}\th{L}\th{SL}}
+  \tr{\td{8}\td{1}\td{1}\td{0}\td{0}}
+}
+
+WG21
+\table(class=five-way-poll){
+  \tr{\th{SF}\th{F}\th{N}\th{L}\th{SL}}
+  \tr{\td{4}\td{5}\td{0}\td{0}\td{0}}
+}
+}
+
+The overall sentiment in SG22 was that a fundamental type is "inevitable".
+This is reflected in the polls.
+SG6 also saw the paper, but had no clear opinion on the fundamental/library problem.
+Last but not least, EWG also saw the paper in Sofia 2025,
+with the following two polls:
+
+\Bquote{
+P3639R0: EWG prefers that _BitInt-like type be a FUNDAMENTAL TYPE (in some form) in C++.
+\five_way_poll(13,9,9,5,4)
+
+Result: consensus
+
+P3639R0: EWG prefers that _BitInt-like type be a LIBRARY TYPE (in some form) in C++.
+\five_way_poll(8,9,14,8,3)
+
+Result: not consensus
+}
+
+While the general direction for the paper is clear (fundamental type),
+there are many contentious design issues,
+such as the minimum supported \tt{BITINT_WIDTH}
+or how permissive bit-precise integers should be with implicit conversions.
+You can identify the most contentious problems as blocks such as:
+
+\Bdecision{
+This is an example.
 }
 
 \h2{Motivation}
@@ -326,6 +412,10 @@ switch (x) {}
 
 // 3. _BitInt used as a null pointer constant
 void* p = 0wb;
+
+// 4. _BitInt used as underlying type of enumeration
+//    (NOT valid now, but may be in the future)
+enum S : _BitInt(32) { X = 0 };
 }
 
 Since C++ does not support the use of class types in bit-fields,
@@ -639,6 +729,14 @@ just like an \tcode{int x : 1;} bit-field.
 
 \h3{Undefined behavior on signed integer overflow}
 
+\Bdecision{
+Whether (and how) to address signed integer overflow in bit-precise integers
+specifically is a contentious issue,
+which has been discussed in great length.
+EWG should decide whether to perpetuate undefined behavior
+or to have different behavior for bit-precise integers.
+}
+
 I propose to perpetuate bit-precise integers having undefined behavior
 on signed integer overflow, just like \tcode{int}, \tcode{long} etc.
 This has a few reasons:
@@ -672,6 +770,26 @@ This has a few reasons:
   }
 }
 
+That being said,
+much of the feedback surrounding bit-precise integers revolved around signed integer overflow.
+If we were to make signed integer overflow \em{not} undefined for bit-precise integers,
+there are two options that may find consensus:
+
+\ul{
+  \li{
+    Make signed integer overflow wrapping.
+    In other words, most operations would be performed as if by casting to the corresponding
+    unsigned type, performing the operation, and casting back.
+  }
+  \li{
+    Make signed integer overflow wrapping \em{and} erroneous.
+    This is mirroring Rust's behavior,
+    and would typically be implemented by detecting overflow
+    on debug builds and in constant evaluation,
+    but ignoring it and letting it wrap in release builds.
+  }
+}
+
 \h3{Permissive implicit conversions}
 
 Just like any other integral type,
@@ -681,10 +799,59 @@ to be a much "stricter" or "safer" alternative to standard integers,
 but it is arguably the better design
 for various reasons.
 
+\Bdecision{
+This is a contentious issue,
+and feedback was given that implicit conversions should be limited
+for bit-precise integers.
+The idea of limiting implicit conversions was also a selling point of \ref(P3639R0).
+
+There are several plausible directions:
+\ul{
+  \li{
+    Perpetuate implicit conversions of the standard integers.
+    This is the current design of the proposal;
+    see rationale below.
+  }
+  \li{
+    Limit implicit conversions for bit-precise integers.
+    For example, converting \tcode{int} to \tcode{unsigned _BitInt(1)} could be invalid.
+  }
+  \li{
+    Perpetuate implicit conversions of standard integers,
+    but also add a library wrapper or another \tcode{_BitIntStrict} type family
+    with much more restrictive semantics.
+  }
+}
+}
+
 \h4(id=conversions-c-compatibility){C compatibility}
 
-Firstly, the point is to mirror the C semantics as closely as possible,
-which leads to few or no surprises when porting code between the languages.
+Firstly, the point of perpetuating implicit conversions
+is to mirror the C semantics as closely as possible,
+which leads to few or no surprises when porting code between the languages,
+or when writing C-interoperable headers.
+
+If we look at how C users use \tcode{_BitInt},
+\ref(https://github.com/search?q=\N{PERCENT SIGN}22_BitInt\N{PERCENT SIGN}22+language\N{PERCENT SIGN}3AC+&type=code){\
+GitHub code search for \tt{"_BitInt" language:C}\
+} yields examples such as:
+
+\Bquote{
+\cppblock{
+// mixing signed and unsigned bit-precise integers
+unsigned _BitInt(128) max128s = 0x7FFF'FFFF'FFFF'FFFF'FFFF'FFFF'FFFF'FFFFwb;
+// mixing bit-precise and standard integers
+unsigned _BitInt(4) a = 1u;
+// mixing bit-precise and standard integers of different signedness
+unsigned _BitInt(total) bit = 1;
+// ... including cases where initialization does not preserve values
+unsigned _BitInt(3) max3u = -1;
+}
+}
+
+If we were to make implicit conversions much more restrictive on the C++ side,
+it would become very easy to slip up and accidentally write a header
+that does not also compile in C++.
 
 \h4(id=difficult-special-cases){Difficulty of carving out exceptions in the language}
 
@@ -693,12 +860,20 @@ quite annoying and "flag" many harmless cases
 if the rules were too strict.
 
 \Bex{
+The following line of code would not compile if converting from \tcode{int}
+to \tcode{bit_uint<8>} was unconditionally ill-formed.
 \cppblock{
-std::bit_uint<32> x = 0; // error?
+std::bit_uint<8> x = 0; // error?
 }
 
 \tcode{0} is "incorrectly signed" for \tcode{std::bit_uint},
+and the conversion from \tcode{int} to \tcode{bit_uint<8>} is not value-preserving generally,
 but writing code like this is perfectly reasonable.
+
+The workaround would be to use correct literals, such as:
+\cppblock{
+std::bit_uint<8> x = 0uwb; // OK, conversion bit_uint<1> → bit_uint<8>
+}
 }
 
 To combat this problem,
@@ -730,14 +905,36 @@ Furthermore, discrepancies between the standard integers and bit-precise integer
 would make it much harder to write generic code:
 
 \Bex{
-The following function template may be instantiated with any integral type \tcode{T}.
-If mixed-sign comparisons were ill-formed for bit-precise integer types,
-an instantiation would not be possible with unsigned bit-precise integer types.
+The following function template may be instantiated with any integral type \tcode{T},
+but the instantiation would be ill-formed for \tcode{T = unsigned _BitInt(8)}
+with restrictive implicit conversions:
 
 \cppblock{
-template <typename T>
-bool eq(T x, int v) {
-  return x == v;
+template<std::integral T>
+T div_ceil(T x, T y) { // performs integer division, rounding to +inf
+  // ⚠️ Could be mixed-sign comparison:
+  bool quotient_positive = (x ^ y) >= 0;
+  // ⚠️ Could be mixed-sign comparison
+  bool adjust = x % y != 0 && quotient_positive;
+  // ⚠️ Could be mixed-sign addition between int (0 or 1)
+  //    and unsigned _BitInt(N) "x / y":
+  // ⚠️ Could be lossy conversion when returning: int → unsigned _BitInt
+  return x / y + int(adjust);
+}
+}
+
+Literally every statement of this template may fail to compile when \tcode{T = unsigned _BitInt(8)},
+depending on how strict implicit conversions are.
+I conjecture that there are vast amounts of templates like \tcode{div_ceil}.
+To accommodate bit-precise integers in this function, a rewrite is necessary:
+
+\cppblock{
+template<std::integral T>
+T div_ceil(T x, T y) {
+\ins{  constexpr auto zero = T(0);}
+  bool quotient_positive = (x ^ y) >= \del{0} \ins{zero};
+  bool adjust = x % y != \del{0} \ins{zero} && quotient_positive;
+  return x / y + \del{int} \ins{T}(adjust);
 }
 }
 }
@@ -772,6 +969,100 @@ Having these restrictions standardized in the language robs the user of choice.
 If C++26 profiles make progress,
 it is likely that C++ will have profiles which restrict implicit conversions,
 giving users a standard way to opt into diagnostics.
+
+\h3{Raising the \tt{BITINT_MAXWIDTH}}
+
+The proposal currently does not seek to increase the \tcode{BITINT_MAXWIDTH}
+beyond what C offers.
+That is, \tcode{BITINT_MAXWIDTH} may as low as 64.
+I do not consider an increase of the maximum to be part of the MVP.
+It's something that can always be done later, if desirable,
+without any breaking changes.
+
+\Bdecision{
+While the proposal does not propose an increase,
+some negative feedback stated that bit-precise integers as a feature
+are not worth the standardization effort if they only support a width of \tcode{64}.
+Therefore, EWG should decide whether
+an increase should take place, and, if so,
+whether it should be done within this proposal.
+}
+
+It also should be stated that increasing the \tcode{BITINT_MAXWIDTH} is not \em{really}
+within the power of WG21 and not even within the power of compiler vendors.
+
+\Bex{
+Clang supports a \tcode{BITINT_MAXWIDTH} of up tp \tcode{8'388'608},
+but only enables this for certain ABIs.
+For example, the \ref(https://gitlab.com/x86-psABIs/x86-64-ABI){x86-64 psABI}
+defines an ABI for any bit-precise integer width,
+so the full width is available.
+
+However,
+the \ref(https://github.com/WebAssembly/tool-conventions/blob/main/BasicCABI.md){"Basic" C ABI for WebAssembly}
+(which Clang uses at the time of writing) has the following limitation:
+
+\Bquote{
+\tcode{_BitInt(N)} types are supported up to width 128
+and are represented as the smallest same-signedness Integer type with at least as many bits.
+}
+
+Consequently, \tcode{BITINT_MAXWIDTH} is set to \tcode{128} when compiling
+with \tt{--target=wasm32-unknown-unknown}.
+}
+
+WG21 can define the \tcode{BITINT_MAXWIDTH} as whatever they want to;
+it is of no consequence because compiler vendors are not going to make that
+width available when there is no platform ABI for \tcode{_BitInt(BITINT_MAXWIDTH)}.
+If compiler vendors did that,
+there would be a risk of a massive future ABI break in order to comply with the system ABI,
+once defined.
+Without a single platform ABI, there would also be no portable way for code generated
+by different compilers to interoperate,
+such as compiling a C library with GCC and using it from Clang-compiled C++ code.
+
+An increase to the \tcode{BITINT_MAXWIDTH} is political posturing.
+That does not mean that it's entirely pointless.
+If C++ defined the minimum to be, say, \tcode{65'535},
+this would motivate platforms to define an ABI for large bit-precise integers.
+
+\h4{Possible increased \tt{BITINT_MAXWIDTH} values}
+
+Firstly, it should be noted that \ref(P3140R0) got substantial criticism
+just for attempting to standardize 128-bit integers for embedded developers.
+As a compromise, it may be reasonable to increase the \tcode{BITINT_MAXWIDTH}
+only for hosted implementations, not for freestanding implementations.
+That being said, there two plausible increased minimums:
+
+\ul{
+  \li{
+    \tcode{128}. Many platform ABIs (see example above)
+    already define an ABI for \tcode{_BitInt(128)}.
+    128-bit integers have been provided by compilers for a long time now,
+    at least by GCC and Clang (\tcode{__int128}).
+    There are heaps of motivation (see \ref(P3140R0)) for 128-bit computation.
+    The calling conventions are also relatively obvious for 64-bit platforms:
+    pass via pair of 64-bit integers.
+  }
+  \li{
+    \tcode{65'535}.
+    Both GCC and Clang already support this width.
+    Some cryptographic use cases like future-proof RSA computations
+    need 8192 bits of key size,
+    and at least double that for modular arithmetic.
+    It is unlikely that a cryptographic library needs 4096 bits but does not need 8192 bits
+    at any point,
+    but likely that 65,535 is sufficiently large, even in the next few years.
+  }
+}
+
+Beyond that, \tcode{_BitInt} may be tricky to use.
+When working with Clang's \tcode{_BitInt(8'388'608)},
+a single \tcode{+} operation could result in stack overflow because the result is 1 MiB large.
+The user would have to carefully ensure that all objects (including temporaries)
+have static or dynamic storage duration (i.e. use \tcode{new} or global variables).
+For these extreme sizes, a dynamically sized integer is more ergonomic.
+Therefore, setting the minimum to millions feels unmotivated.
 
 \h3{Template argument deduction}
 
@@ -1062,6 +1353,24 @@ operation that we may as well include it here.
 See \ref(#passing-bitint) for an explanation as to why this signature is chosen.
 }
 
+\h3(id=bitint-cmath){Using bit-precise integers in \tt{<cmath>} functions}
+
+The proposal adds support for using bit-precise integers in all \tt{<cmath>} functions:
+
+\cppblock{
+std::sqrt(0);    // OK, int → call to std::sqrt(double)
+std::sqrt(0wb);  // OK, _BitInt(1) → call to std::sqrt(double)
+}
+
+This is done simply for consistency with C:
+after some consulting with WG14 members,
+I am under the impression that C's \header{tgmath.h} functions deliberately
+all integers types (including bit-precise integers),
+not just as the result of defective wording.
+Consequently, \tcode{_BitInt} can be passed both to
+the type-generic \tcode{\hl(macro){sqrt}} macro
+as well as to the regular \tcode{sqrt(double)} function.
+
 \h3(id=random-support){Lack of random number generation support}
 
 Support for random number generation is not added
@@ -1186,6 +1495,16 @@ Examples include:
     no wording changes are needed.
   }
 }
+
+\h3{Feature testing}
+
+After consulting with some LWG and SG10 experts,
+I have opted to add only two feature-test macros:
+one for the core feature,
+and one for the standard library.
+While more granular feature-testing could be useful considering
+that the feature is quite large,
+there seems to be little enthusiasm for it.
 
 \h3(id=passing-bitint){Passing \tt{bit_int} into standard library function templates}
 
@@ -1407,9 +1726,12 @@ the possible changes to container \tcode{size_type}s are not listed.
   }
   \tr{
     \td{\header{cmath}}
-    \td{Add \tcode{abs} overload.}
+    \td{
+      Add \tcode{abs} overload.
+      Allow passing bit-precise integers to most math functions.
+    }
     \td{\ref(#cmath.syn)}
-    \td{\ref(#bitint-abs)}
+    \td{\ref(#bitint-abs),\br\ref(#bitint-cmath)}
   }
   \tr{
     \td{\header{complex}}
@@ -2513,31 +2835,11 @@ __cpp_bit_int 20XXXXL
 
 \h4(show-number=false){[version.syn]}
 
-Change \eelis{version.syn} as follows:
+Add the following feature-test macro to \eelis{version.syn}:
 
-\Bdiff{
+\Bins{
 \itemdecl{
-\etc
-\ins{#define __cpp_lib_bit_int_abs                       20XXXXL}
-\ins{#define __cpp_lib_bit_int_atomic                    20XXXXL}
-\ins{#define __cpp_lib_bit_int_bitops                    20XXXXL}
-\ins{#define __cpp_lib_bit_int_stdckdint_h               20XXXXL}
-\ins{#define __cpp_lib_bit_int_stdbit_h                  20XXXXL}
-\ins{#define __cpp_lib_bit_int_format                    20XXXXL}
-\ins{#define __cpp_lib_bit_int_gcd_lcm                   20XXXXL}
-\ins{#define __cpp_lib_bit_int_saturation_arithmetic     20XXXXL}
-\ins{#define __cpp_lib_bit_int_to_chars                  20XXXXL}
-\ins{#define __cpp_lib_bit_int_to_string                 20XXXXL}
-\etc
-#define __cpp_lib_atomic_ref                        \del{202411L} \ins{20XXXXL}
-#define __cpp_lib_bitops                            \del{201907L} \ins{20XXXXL}
-#define __cpp_lib_int_pow2                          \del{202002L} \ins{20XXXXL}
-#define __cpp_lib_format                            \del{202311L} \ins{20XXXXL}
-#define __cpp_lib_gcd_lcm                           \del{201606L} \ins{20XXXXL}
-#define __cpp_lib_saturation_arithmetic             \del{202311L} \ins{20XXXXL}
-#define __cpp_lib_to_chars                          \del{202306L} \ins{20XXXXL}
-#define __cpp_lib_to_string                         \del{202306L} \ins{20XXXXL}
-\etc
+#define __cpp_lib_bit_int                           20XXXXL
 }
 }
 
@@ -3003,6 +3305,12 @@ template<class T> \ins{constexpr} wstring to_wstring(T val);
 
 \h4(show-number=false){[cmath.syn]}
 
+\Bnote{
+\eelis{cmath.syn#3} is deliberately not changed,
+meaning that \tcode{bit_int} may be passed to e.g. \tcode{sqrt}.
+See \ref(#bitint-cmath).
+}`'
+
 In \eelis{cmath.syn}, change the synopsis as follows:
 
 \Bdiff{
@@ -3015,6 +3323,7 @@ constexpr \exposid{floating-point-type} abs(\exposid{floating-point-type} j);   
 }
 }
 
+\comment{
 Change \eelis{cmath.syn#3} as follows:
 
 \Bdiff{
@@ -3032,6 +3341,7 @@ the same floating-point conversion rank as double.
 If no such floating-point type with the greatest rank and subrank exists,
 then overload resolution does not result in a usable candidate\iref{over.match.general}
 from the overloads provided by the implementation.
+}
 }
 
 \h4(show-number=false){[c.math.abs]}
@@ -3224,6 +3534,9 @@ Pete Becker,
 Jens Maurer,
 Matthias Kretz,
 Jonathan Wakely,
+Jeff Garland,
+Ville Voutilainen,
+Peter Dimov,
 and \em{many} others for providing early feedback on this paper,
 prior papers such as \ref(P3639R0), and
 the discussion surrounding bit-precise integers as a whole.
@@ -3232,6 +3545,30 @@ of messages worth of valuable feedback.
 
 \h2{References}
 
+\bib(
+  id = N1692,
+  title = A Proposal to add the Infinite Precision Integer to the C++ Standard Library,
+  date = 2004-07-01,
+  author = M.J. Kronenburg,
+  link = https://wg21.link/n1692,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2004/n1692.pdf,
+)\
+\bib(
+  id = N1744,
+  title = Big Integer Library Proposal for C++0x,
+  date = 2005-01-13,
+  author = Michiel Salters,
+  link = https://wg21.link/n1744,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1744.pdf,
+)\
+\bib(
+  id = N4038,
+  title = Proposal for Unbounded-Precision Integer Types,
+  date = 2014-05-23,
+  author = Pete Becker,
+  link = https://wg21.link/n4038,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4038.html,
+)\
 \bib(
   id = N5014,
   title = Working Draft\, Programming Languages — C++,
