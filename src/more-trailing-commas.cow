@@ -1,11 +1,11 @@
 \cowel_include{libwg21.cow}
 
 \wg21_head(
-    title = More trailing commas
+  title = More trailing commas
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{D3776R1}}
-  \dt{Date:}            \dd{\tt{2025-09-01}}
+  \dt{Document number:} \dd{\docnum{P3776R1}}
+  \dt{Date:}            \dd{\tt{2025-09-09}}
   \dt{Audience:}        \dd{EWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -21,7 +21,7 @@ C++ should support trailing commas in more places,
 such as in function parameter lists.
 }
 
-\h2(listed = false){Contents}
+\h2(listed=false){Contents}
 
 \make_contents
 
@@ -32,12 +32,14 @@ such as in function parameter lists.
 \ul{
   \li{cited EWG polls in \ref(#recent-history)}
   \li{expanded and updated \ref(#trailing-commas-in-other-languages)}
+  \li{expanded \ref(#code-generation-convenience), referenced \ref(P3294R2)}
   \li{elaborated on ClangFormat options in \ref(#improved-auto-formatter-control)}
   \li{added \ref(#preventing-string-joining-bugs)}
   \li{reworded \ref(#comparison-to-p0562r2)}
   \li{expanded \ref(#addressing-criticisms) based on EWG reflector discussion}
   \li{added Clang fork as \ref(#implementation-experience)}
   \li{added feature-test macro to \ref(#wording)}
+  \li{added \ref(#acknowledgements)}
   \li{various minor/editorial changes}
 }
 
@@ -303,6 +305,63 @@ it also does not pollute the revision history (\tt{git blame}) for
 the previous line of code,
 and it does not introduce easily avoidable merge conflicts.
 
+\h3{Code generation convenience}
+
+Allowing trailing commas makes it easier to generate C++ code,
+for similar reasons as in \ref(#va-opt).
+Generating lists is sometimes made easier if each element in a list can
+be terminated by a comma, rather than adding special handling for the first/last element
+to ensure no trailing commas in generated code.
+
+\Bex{
+Code generation
+(using the features proposed in \ref(P3294R2))
+for a list of function parameters
+is simplified by trailing commas in C++ as follows:
+\cppblock{
+void inject_parameters(span<const Parameter> parameters) {
+    std::meta::queue_injection(^^{\N{LEFT PARENTHESIS}});
+    \del{bool first = true;}
+    for (const auto& p : parameters) {
+\del{        if (!first) {
+            std::meta::queue_injection(^^{,}); // inject comma
+        }
+        first = false;}
+        inject_parameter(p);
+\ins{        std::meta::queue_injection(^^{,});} // inject comma
+    }
+    std::meta::queue_injection(^^{\N{RIGHT PARENTHESIS}});
+}
+}
+
+If the trailing comma is permitted,
+we can simply inject a comma after each list element,
+rather than adding logic to only inject it as a separator between elements.
+To be fair, this logic can sometimes be handled by using some \tt{join} algorithm,
+but this can result in extra work,
+especially if parts of the list are generated in different places.
+}
+
+A number of WG21 members have expressed that this code generation convenience is
+important to them:
+
+\Bquote{
+In cppfront I resisted supporting trailing commas for a couple of years,
+despite frequent pleas from users.
+What finally made me cave and allow redundant trailing commas in all comma-lists was reflection,
+especially the generation part of reflection:
+When generating new code, writing the special-case code
+all the time to not emit a comma at the end is not hard,
+but it comes up frequently enough to be an irritation
+(think: most generated function declarations,
+and a significant minority of function calls which matters because #calls >> #decls).
+It's just simpler not to have to have to write that comma logic when generating new code...
+it's like stopping the "water torture" of incessant little drips
+none of which is significant in isolation but drive you crazy with constant ceaseless repetition.
+
+\i{\N{EM DASH} Herb Sutter}
+}
+
 \h3{Improved auto-formatter control}
 
 Many C++ developers auto-format their code using
@@ -379,34 +438,6 @@ A trailing comma in function calls and other lists would allow us to simplify su
 While a \gterm{capture-default} like \tcode{&} is not part of the \gterm{capture-list},
 a trailing comma should still be permitted following it.
 Otherwise, the example above would still be broken.
-}
-
-\h3{Code generation convenience}
-
-Allowing trailing commas makes it easier to generate C++ code,
-for similar reasons as in \ref(#va-opt).
-Generating lists is sometimes made easier if each element in a list can
-be terminated by a comma, rather than adding special handling for the first/last element
-to ensure no trailing commas in generated code.
-
-\Bex{
-Code generation for a list of function parameters
-is simplified by trailing commas in C++ as follows:
-\cppblock{
-void emit_parameters(span<const Parameter> parameters) {
-    emit('\N{LEFT PARENTHESIS}');
-    \del{bool first = true;}
-    for (const auto& p : parameters) {
-\del{        if (!first) {
-            emit(',');
-        }
-        first = false;}
-        emit_parameter(p);
-\ins{        emit(',');}
-    }
-    emit('\N{RIGHT PARENTHESIS}');
-}
-}
 }
 
 \h3{Preventing string joining bugs}
@@ -1127,6 +1158,18 @@ Add the following table row to \eelis{cpp.predefined#tab:cpp.predefined.ft}:
 }
 }
 
+\h2{Acknowledgements}
+
+I thank Herb Sutter,
+Mathias Stearn,
+Lénárd Szolnoki,
+Alisdair Meredith,
+Matthias Wippich,
+Gabriel Dos Reis,
+and many others
+for providing detailed feedback on this proposal,
+greatly improving its quality.
+
 \h2{References}
 
 \bib(
@@ -1144,7 +1187,15 @@ Add the following table row to \eelis{cpp.predefined#tab:cpp.predefined.ft}:
   author = Alan Talbot,
   link = https://wg21.link/p0562r2,
   long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p0562r2.pdf,
-)
+)\
+\bib(
+  id = P3294R2,
+  title = Code Injection with Token Sequences,
+  date = 2024-10-15,
+  author = Andrei Alexandrescu\, Barry Revzin\, Daveed Vandevoorde,
+  link = https://wg21.link/p3294r2,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3294r2.html,
+)\
 \bib(
   id = P3312R1,
   title = Overload Set Types,
