@@ -1,0 +1,162 @@
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+  title = Make \tcode{optional<T&>} trivially copyable
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D3836R0}}
+  \dt{Date:}            \dd{\tt{2025-09-10}}
+  \dt{Audience:}        \dd{LEWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br{}Nevin Liber <\mail{nevin@cplusplusguy.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3688/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/trivially-copyable-optional-ref.cow)}
+}
+\hr
+}
+
+\Babstract{
+Due to a wording oversight,
+\tcode{optional<T&>} is not guaranteed to be trivially copyable.
+We propose to fix this in C++26.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+Making operations (at least construction)
+of \tcode{optional<T&>} trivial is the design intent of \ref(P2988R12):
+
+\Bquote{
+\cowel_html_element(h3){3.3 Trivial construction}
+
+Construction of \tcode{optional<T&>} should be trivial,
+because it is straightforward to implement, and \tcode{optional<T>}
+is trivial.
+Boost is not.
+}
+
+However, due to a wording oversight,
+trivial construction is not actually guaranteed,
+nor is trivial copyability in general.
+This status quo is inconsistent with the design of \tcode{optional<T>} as a whole:
+the special members (copy constructor, destructor, etc.) of the primary template
+are all specified to be trivial if the relevant operations on \tcode{T} are trivial.
+Therefore, \tcode{optional<int*>} is required to be trivially copyable,
+unlike \tcode{optional<int&>}.
+
+This issue should be fixed in C++26.
+A national body comment by Argonne National Laboratory
+requesting a solution has been submitted.
+
+\h3{Wording problem}
+
+Intuitively, \tcode{optional<T&>} (see \ref(P2988R12)) is a \tcode{T*},
+wrapped \tcode{optional}.
+In fact, the synopsis as specified in \iref{optional.optional.ref} is as follows:
+
+\cppblock{
+template<class T>
+class optional<T&> {
+  \etc
+
+  public:
+    // \serif{[optional.ref.ctor], constructors}
+    constexpr optional() noexcept = default;
+    
+    \etc
+
+    constexpr ~optional() = default;
+
+    \etc
+
+  private:
+    T* \exposid{val} = nullptr; // \serif{exposition only}
+};
+}
+
+If the only non-static data member was \tcode{\exposid{val}},
+\tcode{optional<T&>} would be trivially copyable
+according to \eelis{class.prop#def:class,trivially_copyable}.
+However, the implementation has the freedom to add extra non-static
+data members,
+so no trivial operation is strictly guaranteed.
+
+\h2{Motivation}
+
+\tcode{optional<T&>} should be guaranteed to be trivially copyable for the following reasons:
+
+\ul{
+  \li{It makes the design consistent with the primary template \tcode{optional<T>}.}
+  \li{
+    Trivial copyability is a useful property in this case.
+    It allows storing \tcode{optional<T&>} in a \tcode{struct} whose bytes are copied
+    between processes,
+    uploaded from CPU to GPU (e.g. in CUDA), etc.
+  }
+  \li{
+    Trivial copyability also makes \tcode{optional<T&>} an implicit-lifetime class type,
+    which makes it possible to starts its lifetime in a \tcode{union}
+    more easily via assignment operator,
+    among other benefits.
+  }
+}
+
+\h2{Design}
+
+There are two plausible options to fix the issue of \tcode{optional<T&>}:
+
+\ol{
+  \li{
+    Simply specify \tcode{optional<T&>} to be trivially copyable.
+  }
+  \li{
+    Additionally constrain its layout so it \em{actually}
+    becomes a wrapper for a \tcode{T*}.
+  }
+}
+
+We propose the second option
+because trivial copyability is much more useful when the layout of a type is somewhat constrained.
+This makes it possible to \tcode{bit_cast<T*>(optional_ref)},
+among other things,
+at least if \tcode{T}'s object representation is not any different
+when wrapped in a standard-layout class.
+
+\h3{Wording}
+
+Immediately following \eelis{optional.optional.ref.general#1},
+append a paragraph as follows:
+
+\Bins{
+A class type \tcode{optional<T&>}
+is a trivially copyable class and standard-layout class\iref{class.prop}.
+A class type \tcode{optional<T&>}
+has no non-static data members other than \tcode{\exposid{val}}
+and no base class \tcode{B} for which \tcode{is_empty_v<B>}\iref{meta.unary.prop}
+is \tcode{false}.
+}
+
+\h2{References}
+
+\bib(
+  id = N5014,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-08-05,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+)\
+\bib(
+  id = P2988R12,
+  title = std::optional<T&>,
+  date = 2025-04-04,
+  author = Steve Downey\, Peter Sommerlad,
+  link = https://wg21.link/p2988r12,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2988r12.pdf
+)\
+
+\make_bib
