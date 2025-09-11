@@ -1508,8 +1508,8 @@ if (theme !== null) {
 <div class=wg21-head><h1>Bit-precise integers</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/D3666R0>D3666R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2025-09-09</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3666R0>P3666R0</a></dd>
+  <dt>Date:</dt>            <dd><tt->2025-09-11</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6, SG22, EWG, LEWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1557,14 +1557,18 @@ this proposal introduces a new set of fundamental types to C++.
 <div class=toc-num data-level=4>4.1.1</div>
 <a href=#full-c-compatibility-requires-fundamental-types><h4>Full C compatibility requires fundamental types</h4></a>
 <div class=toc-num data-level=4>4.1.2</div>
-<a href=#c-compatibility-would-require-an-enormous-amount-of-operator-overloads-etc%2e><h4>C compatibility would require an enormous amount of operator overloads etc.</h4></a>
+<a href=#common-spelling-of-unsigned-_bitintn><h4>Common spelling of <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=id>N</h-><h- data-h=sym_par>)</h-></code></h4></a>
 <div class=toc-num data-level=4>4.1.3</div>
-<a href=#constructors-cannot-signal-narrowing><h4>Constructors cannot signal narrowing</h4></a>
+<a href=#c-compatibility-would-require-an-enormous-amount-of-operator-overloads-etc%2e><h4>C compatibility would require an enormous amount of operator overloads etc.</h4></a>
 <div class=toc-num data-level=4>4.1.4</div>
-<a href=#tiny-integers-are-useful-in-c><h4>Tiny integers are useful in C++</h4></a>
+<a href=#constructors-cannot-signal-narrowing><h4>Constructors cannot signal narrowing</h4></a>
 <div class=toc-num data-level=4>4.1.5</div>
-<a href=#special-deduction-rules><h4>Special deduction rules</h4></a>
+<a href=#tiny-integers-are-useful-in-c><h4>Tiny integers are useful in C++</h4></a>
 <div class=toc-num data-level=4>4.1.6</div>
+<a href=#special-deduction-rules><h4>Special deduction rules</h4></a>
+<div class=toc-num data-level=4>4.1.7</div>
+<a href=#special-overload-resolution-rankings><h4>Special overload resolution rankings</h4></a>
+<div class=toc-num data-level=4>4.1.8</div>
 <a href=#quality-of-implementation-requires-a-fundamental-type><h4>Quality of implementation requires a fundamental type</h4></a>
 <div class=toc-num data-level=3>4.2</div>
 <a href=#why-the-_bitint-keyword-spelling><h3>Why the <code><h- data-h=kw_type>_BitInt</h-></code> keyword spelling?</h3></a>
@@ -1583,6 +1587,8 @@ this proposal introduces a new set of fundamental types to C++.
 <div class=toc-num data-level=4>4.7.2</div>
 <a href=#difficult-special-cases><h4>Difficulty of carving out exceptions in the language</h4></a>
 <div class=toc-num data-level=4>4.7.3</div>
+<a href=#conversions-low-hanging-fruits><h4>Picking some low-hanging fruits</h4></a>
+<div class=toc-num data-level=4>4.7.4</div>
 <a href=#conversions-conclusion><h4>Conclusion on implicit conversions</h4></a>
 <div class=toc-num data-level=3>4.8</div>
 <a href=#raising-the-bitint_maxwidth><h3>Raising the <tt->BITINT_MAXWIDTH</tt-></h3></a>
@@ -2100,7 +2106,50 @@ A developer would face <em>severe</em> difficulties
 when porting C code which makes use of these capabilities to C++
 and if bit-precise integers were a class type in C++.
 </p>
-<h4 id=c-compatibility-would-require-an-enormous-amount-of-operator-overloads-etc.><a class=para href=#c-compatibility-would-require-an-enormous-amount-of-operator-overloads-etc%2e></a>4.1.2. C compatibility would require an enormous amount of operator overloads etc.</h4>
+<h4 id=common-spelling-of-unsigned-_bitintn><a class=para href=#common-spelling-of-unsigned-_bitintn></a>4.1.2. Common spelling of <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=id>N</h-><h- data-h=sym_par>)</h-></code></h4>
+
+<p>If bit-precise integers were class types in C++,
+this would cause a serious problem with a common spelling
+that can be used in both C and C++ headers,
+even if there was a <code><h- data-h=mac>_BitInt</h-></code> compatibility macro.
+</p>
+<code-block><h- data-h=mac>#define _BitInt(...) std::bit_int&lt;__VA_ARGS__&gt;</h->
+
+<h- data-h=kw_type>unsigned</h-> <h- data-h=mac>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>8</h-><h- data-h=sym_par>)</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> error: cannot combine 'unsigned' with class type</h-></code-block>
+
+<p>There are some workarounds to the problem,
+but they all seem unattractive:
+</p>
+<ul>
+  <li>
+    Permitting <code><h- data-h=kw_type>signed</h-></code> and <code><h- data-h=kw_type>unsigned</h-></code> to be combined with class types
+    in general,
+    perhaps with the effect of applying <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>make_signed</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>make_unsigned</h-></code>.
+    This would lead to a bifurcation of the language where both a builtin feature
+    and a type trait achieve the same effect.
+  </li>
+  <li>
+    "Blessing" the <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-></code> <g-term>type-name</g-term>
+    so it can be combined with <code><h- data-h=kw_type>unsigned</h-></code>.
+    This would be a highly unusual special case in the language.
+  </li>
+  <li>
+    Making <code><h- data-h=mac>_BitInt(...)</h-></code> expand to an unspecified construct
+    that can be combined with <code><h- data-h=kw_type>signed</h-></code> and <code><h- data-h=kw_type>unsigned</h-></code>.
+    This means there needs to be a fundamental type,
+    although that fundamental type only acts as a proxy for the <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_int</h-></code> class type.
+    Once again, this comes off as an unusual special case.
+  </li>
+  <li>
+    Introducing a <code><h- data-h=mac>_BitUint(...)</h-></code> macro for unsigned bit-precise integers,
+    and insisting that both C and C++ developers use this for interoperability.
+    This feels like an unnecessary burden for C developers
+    considering that their spelling works perfectly fine
+    and that we have other design options which keep C code intact.
+  </li>
+</ul>
+
+<h4 id=c-compatibility-would-require-an-enormous-amount-of-operator-overloads-etc.><a class=para href=#c-compatibility-would-require-an-enormous-amount-of-operator-overloads-etc%2e></a>4.1.3. C compatibility would require an enormous amount of operator overloads etc.</h4>
 
 <p>Integer types can be used in a large number of places within the language.
 If we wanted a <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_int</h-></code> class type to be used in the same places
@@ -2163,7 +2212,7 @@ then we lose a large portion of C compatibility.
 Either option is bad, and making <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_int</h-></code> a fundamental type
 seems like the only way out.
 </p>
-<h4 id=constructors-cannot-signal-narrowing><a class=para href=#constructors-cannot-signal-narrowing></a>4.1.3. Constructors cannot signal narrowing</h4>
+<h4 id=constructors-cannot-signal-narrowing><a class=para href=#constructors-cannot-signal-narrowing></a>4.1.4. Constructors cannot signal narrowing</h4>
 
 <p>Some C++ users prefer list initialization because it prevents narrowing conversion.
 This can prevent some mistakes/questionable code:
@@ -2210,7 +2259,7 @@ and only solves a subset of the issues that compiler warnings and linter warning
 Personally, I have no strong position on this issue.
 </p></note-block>
 
-<h4 id=tiny-integers-are-useful-in-c><a class=para href=#tiny-integers-are-useful-in-c></a>4.1.4. Tiny integers are useful in C++</h4>
+<h4 id=tiny-integers-are-useful-in-c><a class=para href=#tiny-integers-are-useful-in-c></a>4.1.5. Tiny integers are useful in C++</h4>
 
 <p>In some cases, tiny <code><h- data-h=id>bit_int</h-></code>'s may be useful as the underlying type of an enumeration:
 </p>
@@ -2232,7 +2281,7 @@ However, it is likely that it will be supported in the future
 so I still consider this motivation to be valid.
 </p></note-block>
 
-<h4 id=special-deduction-rules><a class=para href=#special-deduction-rules></a>4.1.5. Special deduction rules</h4>
+<h4 id=special-deduction-rules><a class=para href=#special-deduction-rules></a>4.1.6. Special deduction rules</h4>
 
 <p>While this proposal focuses on the minimal viable product (MVP),
 a possible future extension would be new deduction rules allowing the following code:
@@ -2257,29 +2306,119 @@ even if there existed an implicit conversion sequence from <code><h- data-h=id_t
 to <code><h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>32</h-><h- data-h=sym_op>&gt;</h-></code>.
 These kinds of deduction rules may be shutting the door on this mechanism forever.
 </p>
-<h4 id=quality-of-implementation-requires-a-fundamental-type><a class=para href=#quality-of-implementation-requires-a-fundamental-type></a>4.1.6. Quality of implementation requires a fundamental type</h4>
+<h4 id=special-overload-resolution-rankings><a class=para href=#special-overload-resolution-rankings></a>4.1.7. Special overload resolution rankings</h4>
+
+<p>Yet another possible future extension would be rankings for overload resolution
+that take integer width into account.
+</p>
+<example-block><p><intro-></intro-> 
+Special overload rankings could make bit-precise integers
+more easily interoperate with existing overload sets:
+</p><code-block><h- data-h=kw>struct</h-> <h- data-h=id>QString</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> see Qt 6 documentation</h->
+  <h- data-h=kw>static</h-> <h- data-h=id>QString</h-> <h- data-h=id>number</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>n</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>static</h-> <h- data-h=id>QString</h-> <h- data-h=id>number</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=id>n</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>static</h-> <h- data-h=id>QString</h-> <h- data-h=id>number</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=id>n</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=id>QString</h-><h- data-h=sym_op>::</h-><h- data-h=id>number</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=num_deco>wb</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> currently ambiguous, but could call QString::number(int)</h-></code-block>
+
+<p>This could be valid if <code><h- data-h=id>number</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-><h- data-h=sym_par>)</h-></code> was considered a better match
+on the basis that its width is closer to that of <code><h- data-h=num>0</h-><h- data-h=num_deco>wb</h-></code>.
+Further disambiguation could be applied if <code><h- data-h=kw_type>int</h-></code> and <code><h- data-h=kw_type>long</h-></code> had the same width.
+</p></example-block>
+
+<example-block><p><intro-></intro-> 
+Special overload rankings could make it possible to create non-template overload sets
+that cover a greater range of widths:
+</p><code-block><h- data-h=id>bit_uint</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>64</h-><h- data-h=sym_op>&gt;</h->  <h- data-h=id>clmul_wide</h-><h- data-h=sym_par>(</h-><h- data-h=id>bit_uint</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>32</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=id>bit_uint</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>128</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>clmul_wide</h-><h- data-h=sym_par>(</h-><h- data-h=id>bit_uint</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>64</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=id>clmul_wide</h-><h- data-h=sym_par>(</h-><h- data-h=num>128</h-><h- data-h=num_deco>wb</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, calls clmul_wide(bit_uint&lt;32&gt;)</h-></code-block>
+</example-block>
+
+<p>These overload ranking rules would be difficult or impossible to define using a class type.
+Of course, they are not proposed, and it's not certain whether such rules are desirable to have,
+but it would be unfortunate to shut the door on these possible features forever.
+</p>
+<h4 id=quality-of-implementation-requires-a-fundamental-type><a class=para href=#quality-of-implementation-requires-a-fundamental-type></a>4.1.8. Quality of implementation requires a fundamental type</h4>
 
 <p>While a library type <code><h- data-h=kw>class</h-> <h- data-h=id>bit_int</h-></code> gives the implementation
 the option to provide no builtin support for bit-precise integers,
 to achieve high-quality codegen,
 a fundamental type is <em>inevitably</em> needed anyway.
-If so, <code><h- data-h=kw>class</h-> <h- data-h=id>bit_int</h-></code> is arguably adding pointless bloat.
 </p>
-<p>For example, when an integer division has a constant divisor, like <code><h- data-h=id>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=num>10</h-></code>,
+<example-block><p><intro-></intro-> 
+When an integer division has a constant divisor, like <code><h- data-h=id>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=num>10</h-></code>,
 it can be optimized to a fixed-point multiplication,
-which is much cheaper.
-Performing such an optimization requires the compiler to be aware that a division is taking place,
-and this fact is lost when division is implemented in software,
-as a loop which expands to hundreds of IR instructions.
+which is much cheaper:
 </p>
-<p>"Frontend awareness" of these operations is also necessary to provide compiler warnings
-when a division by zero or a bit-shift with undefined behavior is spotted.
+<code-block><h- data-h=kw_type>unsigned</h-> <h- data-h=id>div10</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=num>10</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>For this operation, Clang emits the following assembly:
+</p>
+<code-block><h- data-h=id_labl>div10(unsigned int)</h-><h- data-h=sym_op>:</h->
+        <h- data-h=asm_ins>mov</h->     <h- data-h=id_var>ecx</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_var>edi</h->
+        <h- data-h=asm_ins>mov</h->     <h- data-h=id_var>eax</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>3435973837</h->
+        <h- data-h=asm_ins>imul</h->    <h- data-h=id_var>rax</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_var>rcx</h->
+        <h- data-h=asm_ins>shr</h->     <h- data-h=id_var>rax</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>35</h->
+        <h- data-h=asm_ins>ret</h-></code-block>
+
+<p>Basically, the result is rewritten as <code><h- data-h=id>x</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>3435973837</h-><h- data-h=num_deco>ull</h-> <h- data-h=sym_op>&gt;&gt;</h-> <h- data-h=num>35</h-></code>.
+This optimization is called <dfn>strength reduction</dfn>
+and may lead to dramatically faster code,
+especially when the hardware has no direct support for integer division.
+Similarly, multiplication can be strength-reduced to bit-shifting
+when a factor is a power of two,
+remainder operations can be reduced to bitwise AND when the divisor is a power of two, etc.
+</p>
+<p>Performing strength reduction requires the compiler to be aware that a division is taking place,
+and this fact is lost when division is implemented in software,
+as a loop which expands to hundreds of IR instructions when unrolled.
+</p></example-block>
+
+<p>Furthermore, the compiler frontend needs to understand certain operations
+to warn about obvious mistakes such as division by zero,
+shifting by an overly large amount,
+producing signed integer overflow unconditionally, etc.
 Use of <code><h- data-h=kw>pre</h-></code> on e.g. <code><h- data-h=id>bit_int</h-><h- data-h=sym_op>::</h-><h- data-h=kw>operator</h-><h- data-h=sym_op>/</h-></code> cannot be used to achieve this
 because numerics code needs to have no hardened preconditions and no contracts,
 for performance reasons.
-Another workaround would be an ever-growing set of implementation-specific attributes,
-but at that point, we may as well make it fundamental.
 </p>
+<p>Last but no least,
+a fundamental type is needed to speed up constant evaluation.
+Something like integer division between two <code><h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>128</h-><h- data-h=sym_op>&gt;</h-></code>
+may be much faster as a compiler-builtin operation
+compared to constant-evaluating a "software division" loop with 128 iterations
+necessary to implement <a href=https://en.wikipedia.org/wiki/Binary_number#Division>binary division</a>.
+</p>
+<p>If we accept the premise that a fundamental type is needed anyway
+(possibly as an implementation detail of a class template),
+then the class template actively harmful bloat:
+</p><ul>
+  <li>
+    Any arithmetic operation needs to go through overload resolution,
+    competing with countless other <code><h- data-h=kw>operator</h-><h- data-h=sym_op>+</h-></code>s
+    (there are many in the standard library already).
+    Even if implementers special-case these operations to circumvent the
+    (usually awful) diagnostic quality of a failed call to <code><h- data-h=kw>operator</h-><h- data-h=sym_op>+</h-></code>,
+    there remains substantial cost:
+    overload resolution is expensive.
+  </li>
+  <li>
+    Every distinct <code><h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-></code> and <code><h- data-h=id>bit_uint</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-></code> would be a separate instantiation
+    of a relatively large class template,
+    which would undoubtedly add compilation cost.
+  </li>
+  <li>
+    Invocations of member functions or operator overloads
+    may add cost to debug builds and constant evaluation.
+  </li>
+</ul>
+
+
 <h3 id=why-the-_bitint-keyword-spelling><a class=para href=#why-the-_bitint-keyword-spelling></a>4.2. Why the <code><h- data-h=kw_type>_BitInt</h-></code> keyword spelling?</h3>
 
 <p>I also propose to standardize the keyword spelling
@@ -2533,7 +2672,14 @@ but writing code like this is perfectly reasonable.
 it would be necessary to carve out various special cases.
 For example, permitting value-preserving conversions with constant expressions
 would prevent the example above from being flagged.
-However, such special cases are insufficient to cover <em>all</em> harmless cases.
+</p>
+<note-block><p><intro-></intro-> 
+There is precedent for such special casing of value-preserving conversions.
+Specifically, see mentions of "narrowing" in
+<a href=https://eel.is/c++draft/dcl.init.list>[dcl.init.list]</a>, <a href=https://eel.is/c++draft/expr.spaceship>[expr.spaceship]</a>, and <a href=https://eel.is/c++draft/expr.const>[expr.const]</a>.
+</p></note-block>
+
+<p>However, such special cases are insufficient to cover <em>all</em> harmless cases.
 </p>
 <example-block><p><intro-></intro-> 
 </p><code-block><h- data-h=kw_type>void</h-> <h- data-h=id>for_each_cell</h-><h- data-h=sym_par>(</h-><h- data-h=id>vec3</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
@@ -2598,7 +2744,74 @@ but is entirely harmless for any type <code><h- data-h=id>T</h-></code>:
 <code><h- data-h=id>x</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=id>mask</h-></code> produces a mathematically identical result.
 </p></example-block>
 
-<h4 id=conversions-conclusion><a class=para href=#conversions-conclusion></a>4.7.3. Conclusion on implicit conversions</h4>
+<h4 id=conversions-low-hanging-fruits><a class=para href=#conversions-low-hanging-fruits></a>4.7.3. Picking some low-hanging fruits</h4>
+
+<p>While conversions between bit-precise integers
+and other signed or unsigned integer could be difficult to restrict due to the reasons
+above,
+other conversions are much more rare
+and could more easily be restricted:
+</p>
+<ul>
+  <li>Conversions between bit-precise integers and <code><h- data-h=kw_type>bool</h-></code>.</li>
+  <li>Conversions between bit-precise integers and character types.</li>
+  <li>Conversions between bit-precise integers and floating-point types.</li>
+</ul>
+
+<p>It would be reasonable to ban these conversions unconditionally
+because they are likely to be category errors.
+</p>
+<bug-block><p><intro-></intro-> 
+Consider the "easter egg" discovered in <a href=https://cplusplus.com/forum/general/105627/ class=sans>cplusplus.com/forum/general/105627/</a>:
+</p>
+<blockquote>
+<p>I was fixing a couple of minor bugs in a program I've been working on,
+when I made the mistake of typing <code><h- data-h=id>cout</h-><h- data-h=sym_op>&lt;&lt;</h-><h- data-h=id>string</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>'</h-><h- data-h=esc>\</h-><h- data-h=esc>n</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code>
+instead of <code><h- data-h=id>cout</h-><h- data-h=sym_op>&lt;&lt;</h-><h- data-h=id>string</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_punc>,</h-><h- data-h=str_dlim>'</h-><h- data-h=esc>\</h-><h- data-h=esc>n</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code></p>
+
+<p>I didn't get any compile errors and the programs reaction gave me a bit of a laugh.
+Instead of the blank line I wanted to put in, I got <tt->:):):):):):):):):):)</tt-> (10 of them).
+It just made me wonder as a relative C++ beginner what other "easter eggs" are there
+that people might feel like sharing.
+</p></blockquote>
+
+<p>It turns out that <code><h- data-h=id>string</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>'</h-><h- data-h=esc>\</h-><h- data-h=esc>n</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code> is not an "easter egg",
+it just results in the Windows terminal displaying a <code><h- data-h=kw_type>char</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code> as "<tt->:)</tt->"
+ten times.
+The <code><h- data-h=id>string</h-><h- data-h=sym_par>(</h-><h- data-h=id_type>size_t</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_par>)</h-></code> overload is called,
+and since the <code><h- data-h=str_dlim>'</h-><h- data-h=esc>\</h-><h- data-h=esc>n</h-><h- data-h=str_dlim>'</h-></code> and <code><h- data-h=num>1</h-></code> can be converted to <code><h- data-h=id_type>size_t</h-></code> and <code><h- data-h=kw_type>char</h-></code>
+without any change in value,
+compilers generally don't raise a warning, even with <code><h- data-h=sym_op>-</h-><h- data-h=id>Wconversion</h-> <h- data-h=id>enabled</h-></code>.
+</p></bug-block>
+
+<p>The least harmful of these conversions is a value-preserving
+conversion from a bit-precise integer to a floating-point type.
+However, at best, these lack clarity of intent.
+</p>
+<example-block><p><intro-></intro-> 
+Consider a code base with the following two functions computing <math display=inline><msqrt><mi>x</mi></msqrt></math>:
+</p><code-block><h- data-h=kw_type>int</h-> <h- data-h=id>isqrt</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw_type>double</h-> <h- data-h=id>sqrt</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+<p>When the user calls <code><h- data-h=id>sqrt</h-></code> with an integer operand,
+are we sure that this decision was made intentionally?
+Is the author unaware that there is a separate function giving the integer results,
+or do they actually need the fractional part,
+and that is why they called the <code><h- data-h=kw_type>double</h-></code> overload?
+Even if the author wrote <code><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-><h- data-h=sym_par>)</h-> <h- data-h=id>sqrt</h-><h- data-h=sym_par>(</h-><h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-><h- data-h=sym_par>)</h-></code>,
+this could plausibly be done due to performance considerations.
+</p>
+<p>Similarly, calling <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>sqrt</h-></code> with an integer operand could be a major performance bug
+on a 32-bit platform with 32-bit <code><h- data-h=kw_type>float</h-></code> and 64-bit <code><h- data-h=kw_type>double</h-></code>,
+considering that this is equivalent to calling <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>sqrt</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>double</h-><h- data-h=sym_par>)</h-></code>.
+Perhaps calling <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>sqrt</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>float</h-><h- data-h=sym_par>)</h-></code> was intended.
+</p>
+<p>Conversely, if the author called <code><h- data-h=id>isqrt</h-><h- data-h=sym_par>(</h-><h- data-h=num>10</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_par>)</h-></code>,
+the <code><h- data-h=kw_type>float</h-></code> → <code><h- data-h=kw_type>int</h-></code> conversion may be value-preserving,
+but this call is almost certainly a mistake.
+The author likely expected to obtain <code><h- data-h=num>3</h-><h- data-h=num_dlim>.</h-><h- data-h=num>1623</h-><h- data-h=num_deco>f</h-></code>, judging by the operand.
+</p></example-block>
+
+<h4 id=conversions-conclusion><a class=para href=#conversions-conclusion></a>4.7.4. Conclusion on implicit conversions</h4>
 
 <p>In conclusion, discrepancies between the standard integers and bit-precise
 integers are undesirable;
@@ -2614,6 +2827,10 @@ Having these restrictions standardized in the language robs the user of choice.
 If C++26 profiles make progress,
 it is likely that C++ will have profiles which restrict implicit conversions,
 giving users a standard way to opt into diagnostics.
+</p>
+<p>However, the decision to permit implicit conversions is not set in stone.
+Especially the conversions described in <a href=#conversions-low-hanging-fruits>§4.7.3. Picking some low-hanging fruits</a>
+could be banned for bit-precise integers without much of an issue.
 </p>
 <h3 id=raising-the-bitint_maxwidth><a class=para href=#raising-the-bitint_maxwidth></a>4.8. Raising the <tt->BITINT_MAXWIDTH</tt-></h3>
 
@@ -2852,18 +3069,6 @@ There are numerous reasons for this:
     even if support was not added by this proposal.
   </li>
   <li>
-    Printing support needs to exist in an implementation on some level anyway.
-    For example, <code><h- data-h=id>printf</h-></code> has support for printing bit-precise integers.
-    If <code><h- data-h=id>printf</h-></code> supported printing bit-precise integers but not the idiomatic
-    C++ facilities,
-    it would be a bad look for the language,
-    and it would push users towards type-unsafe functions out of desperation.
-    To be fair, <code><h- data-h=id>printf</h-></code> typically "lives" in the system's libc,
-    so this support cannot enable things like <code><h- data-h=kw>constexpr</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code>.
-    However, code may be shared between the libc implementation and the C++ standard library,
-    as is the case in LLVM.
-  </li>
-  <li>
     It would take considerable wording effort to exclude
     support for bit-precise integers from these facilities,
     only for it to be reverted once support is inevitably added.
@@ -2921,8 +3126,8 @@ cannot be removed because it would break existing code.
 Wrapper types which are convertible to <code><h- data-h=kw_type>int</h-></code> (but are not <code><h- data-h=kw_type>int</h-></code>)
 may rely on these dedicated overloads:
 </p><code-block><h- data-h=kw>struct</h-> <h- data-h=id>int_wrapper</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>operator</h-> <h- data-h=kw_type>int</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=sym_brac>{</h-> <h- data-h=kw_ctrl>return</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h->
+  <h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>operator</h-> <h- data-h=kw_type>int</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=sym_brac>{</h-> <h- data-h=kw_ctrl>return</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h->
 <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
 
 <h- data-h=id>string</h-> <h- data-h=id>to_string</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
@@ -3109,7 +3314,7 @@ Examples include:
 </p>
 <ul>
   <li>
-    C headers such as <code><h- data-h=str>&lt;stdbit.h&gt;</h-></code>, <code><h- data-h=str>&lt;stdio.h&gt;</h-></code>, and <code><h- data-h=str>&lt;stdckdint.h&gt;</h-></code>
+    C headers such as <code><h- data-h=str>&lt;stdbit.h&gt;</h-></code> and <code><h- data-h=str>&lt;stdckdint.h&gt;</h-></code>
     receive the same degree of support as they have in C.
     This is the obvious design, and any deviation would need to be justified somehow.
   </li>
@@ -3168,20 +3373,20 @@ An implementation of the <code><h- data-h=id>abs</h-></code> function template c
 </p>
 <code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>__n</h-><h- data-h=sym_op>&gt;</h->
 <h- data-h=kw>constexpr</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=id>__n</h-><h- data-h=sym_par>)</h-> <h- data-h=id>__j</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> pass small integers by value</h->
-    <h- data-h=kw_ctrl>return</h-> <h- data-h=id>__j</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=id>__j</h-> <h- data-h=sym_punc>:</h-> <h- data-h=sym_op>-</h-><h- data-h=id>__j</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=id>__j</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=id>__j</h-> <h- data-h=sym_punc>:</h-> <h- data-h=sym_op>-</h-><h- data-h=id>__j</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h->
 
 <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>__n</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>requires</h-> <h- data-h=sym_par>(</h-><h- data-h=kw>sizeof</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=id>__n</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&gt;</h-> <h- data-h=id>__pass_by_value_max_size</h-><h- data-h=sym_par>)</h->
 <h- data-h=kw>constexpr</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=id>__n</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>__j</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> pass large integers by reference</h->
-    <h- data-h=kw_ctrl>return</h-> <h- data-h=id>__j</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=id>__j</h-> <h- data-h=sym_punc>:</h-> <h- data-h=sym_op>-</h-><h- data-h=id>__j</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=id>__j</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=id>__j</h-> <h- data-h=sym_punc>:</h-> <h- data-h=sym_op>-</h-><h- data-h=id>__j</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h-></code-block>
 
 <p>Another plausible implementation strategy is to
 use an ABI-altering, implementation-specific attribute.
 </p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>__n</h-><h- data-h=sym_op>&gt;</h->
 <h- data-h=kw>constexpr</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=id>impl</h-><h- data-h=sym_op>::</h-><h- data-h=id>pass_large_by_ref</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=id>__n</h-><h- data-h=sym_par>)</h-> <h- data-h=id>__j</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=kw_ctrl>return</h-> <h- data-h=id>__j</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=id>__j</h-> <h- data-h=sym_punc>:</h-> <h- data-h=sym_op>-</h-><h- data-h=id>__j</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=id>__j</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=id>__j</h-> <h- data-h=sym_punc>:</h-> <h- data-h=sym_op>-</h-><h- data-h=id>__j</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h-></code-block>
 <p>Such an attribute could alter the ABI for <code><h- data-h=id>__j</h-></code>
 so that it is passed indirectly (via address) beyond a certain size,
@@ -3363,12 +3568,6 @@ the possible changes to container <code><h- data-h=id>size_type</h-></code>s are
     <td><a href=#broadening-type-traits>§5.10. Broadening <tt->is_integral</tt-></a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=str>&lt;cstdio&gt;</h-></code></td>
-    <td>Inherit <code><h- data-h=id>printf</h-></code> etc. support for bit-precise integers from C.</td>
-    <td>None required</td>
-    <td></td>
-  </tr>
-  <tr>
     <td><code><h- data-h=str>&lt;format&gt;</h-></code></td>
     <td>Expand blanket support for integers.</td>
     <td>None required</td>
@@ -3436,12 +3635,6 @@ the possible changes to container <code><h- data-h=id>size_type</h-></code>s are
     <td>Inherit bit-precise integer support from C.</td>
     <td><a href=#numerics.c.ckdint>§ [numerics.c.ckdint]</a></td>
     <td><a href=#misc-support>§5.11. Miscellaneous library support</a></td>
-  </tr>
-  <tr>
-    <td><code><h- data-h=str>&lt;stdio.h&gt;</h-></code></td>
-    <td>Changed indirectly.</td>
-    <td>None required</td>
-    <td><a href=#misc-support>§5.11. Miscellaneous library support</a>,<br/><code><h- data-h=str>&lt;cstdio&gt;</h-></code></td>
   </tr>
   <tr>
     <td><code><h- data-h=str>&lt;string&gt;</h-></code></td>
@@ -4833,8 +5026,8 @@ additionally make the following changes:
 <a href=https://eel.is/c++draft/cmath.syn#3>[cmath.syn] paragraph 3</a> is deliberately not changed,
 meaning that <code><h- data-h=id>bit_int</h-></code> may be passed to e.g. <code><h- data-h=id>sqrt</h-></code>.
 See <a href=#bitint-cmath>§5.6. Using bit-precise integers in <tt->&lt;cmath&gt;</tt-> functions</a>.
-</p></note-block><p>`'
-</p>
+</p></note-block>
+
 <p>In <a href=https://eel.is/c++draft/cmath.syn>[cmath.syn]</a>, change the synopsis as follows:
 </p>
 <diff-block>
@@ -5036,6 +5229,7 @@ Jonathan Wakely,
 Jeff Garland,
 Ville Voutilainen,
 Peter Dimov,
+Luigi Ghiron,
 and <em>many</em> others for providing early feedback on this paper,
 prior papers such as <a href="https://wg21%2elink/p3639r0">[P3639R0]</a>, and
 the discussion surrounding bit-precise integers as a whole.

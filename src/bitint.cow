@@ -4,8 +4,8 @@
     title = Bit-precise integers
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{D3666R0}}
-  \dt{Date:}            \dd{\tt{2025-09-09}}
+  \dt{Document number:} \dd{\docnum{P3666R0}}
+  \dt{Date:}            \dd{\tt{2025-09-11}}
   \dt{Audience:}        \dd{SG6, SG22, EWG, LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -424,6 +424,51 @@ A developer would face \em{severe} difficulties
 when porting C code which makes use of these capabilities to C++
 and if bit-precise integers were a class type in C++.
 
+\h4{Common spelling of \tcode{unsigned _BitInt(N)}}
+
+If bit-precise integers were class types in C++,
+this would cause a serious problem with a common spelling
+that can be used in both C and C++ headers,
+even if there was a \tcode{\hl(macro){_BitInt}} compatibility macro.
+
+\cppblock{
+#define _BitInt(...) std::bit_int<__VA_ARGS__>
+
+unsigned \hl(macro){_BitInt}(8) x; // error: cannot combine 'unsigned' with class type
+}
+
+There are some workarounds to the problem,
+but they all seem unattractive:
+
+\ul{
+  \li{
+    Permitting \tcode{signed} and \tcode{unsigned} to be combined with class types
+    in general,
+    perhaps with the effect of applying \tcode{std::make_signed} and \tcode{std::make_unsigned}.
+    This would lead to a bifurcation of the language where both a builtin feature
+    and a type trait achieve the same effect.
+  }
+  \li{
+    "Blessing" the \tcode{std::bit_int<N>} \grammarterm{type-name}
+    so it can be combined with \tcode{unsigned}.
+    This would be a highly unusual special case in the language.
+  }
+  \li{
+    Making \tcode{\hl(macro){_BitInt(...)}} expand to an unspecified construct
+    that can be combined with \tcode{signed} and \tcode{unsigned}.
+    This means there needs to be a fundamental type,
+    although that fundamental type only acts as a proxy for the \tcode{std::bit_int} class type.
+    Once again, this comes off as an unusual special case.
+  }
+  \li{
+    Introducing a \tcode{\hl(macro){_BitUint(...)}} macro for unsigned bit-precise integers,
+    and insisting that both C and C++ developers use this for interoperability.
+    This feels like an unnecessary burden for C developers
+    considering that their spelling works perfectly fine
+    and that we have other design options which keep C code intact.
+  }
+}
+
 \h4{C compatibility would require an enormous amount of operator overloads etc.}
 
 Integer types can be used in a large number of places within the language.
@@ -594,28 +639,126 @@ even if there existed an implicit conversion sequence from \tcode{int32_t}
 to \tcode{bit_int<32>}.
 These kinds of deduction rules may be shutting the door on this mechanism forever.
 
+\h4{Special overload resolution rankings}
+
+Yet another possible future extension would be rankings for overload resolution
+that take integer width into account.
+
+\Bex{
+Special overload rankings could make bit-precise integers
+more easily interoperate with existing overload sets:
+\cppblock{
+struct QString { // see Qt 6 documentation
+  static QString number(int n, int base = 10);
+  static QString number(long n, int base = 10);
+  static QString number(long long n, int base = 10);
+  // ...
+};
+
+QString::number(0wb); // currently ambiguous, but could call QString::number(int)
+}
+
+This could be valid if \tcode{number(int)} was considered a better match
+on the basis that its width is closer to that of \tcode{0wb}.
+Further disambiguation could be applied if \tcode{int} and \tcode{long} had the same width.
+}
+
+\Bex{
+Special overload rankings could make it possible to create non-template overload sets
+that cover a greater range of widths:
+\cppblock{
+bit_uint<64>  clmul_wide(bit_uint<32>);
+bit_uint<128> clmul_wide(bit_uint<64>);
+
+clmul_wide(128wb); // OK, calls clmul_wide(bit_uint<32>)
+}
+}
+
+These overload ranking rules would be difficult or impossible to define using a class type.
+Of course, they are not proposed, and it's not certain whether such rules are desirable to have,
+but it would be unfortunate to shut the door on these possible features forever.
+
 \h4{Quality of implementation requires a fundamental type}
 
 While a library type \tcode{class bit_int} gives the implementation
 the option to provide no builtin support for bit-precise integers,
 to achieve high-quality codegen,
 a fundamental type is \em{inevitably} needed anyway.
-If so, \tcode{class bit_int} is arguably adding pointless bloat.
 
-For example, when an integer division has a constant divisor, like \tcode{x / 10},
+\Bex{
+When an integer division has a constant divisor, like \tcode{x / 10},
 it can be optimized to a fixed-point multiplication,
-which is much cheaper.
-Performing such an optimization requires the compiler to be aware that a division is taking place,
-and this fact is lost when division is implemented in software,
-as a loop which expands to hundreds of IR instructions.
+which is much cheaper:
 
-"Frontend awareness" of these operations is also necessary to provide compiler warnings
-when a division by zero or a bit-shift with undefined behavior is spotted.
+\cppblock{
+unsigned div10(unsigned x) {
+    return x / 10;
+}
+}
+
+For this operation, Clang emits the following assembly:
+
+\codeblock(asm){
+\hl(id-label){div10(unsigned int)}:
+        mov     ecx, edi
+        mov     eax, 3435973837
+        imul    rax, rcx
+        shr     rax, 35
+        ret
+}
+
+Basically, the result is rewritten as \tcode{x * 3435973837ull >> 35}.
+This optimization is called \dfn{strength reduction}
+and may lead to dramatically faster code,
+especially when the hardware has no direct support for integer division.
+Similarly, multiplication can be strength-reduced to bit-shifting
+when a factor is a power of two,
+remainder operations can be reduced to bitwise AND when the divisor is a power of two, etc.
+
+Performing strength reduction requires the compiler to be aware that a division is taking place,
+and this fact is lost when division is implemented in software,
+as a loop which expands to hundreds of IR instructions when unrolled.
+}
+
+Furthermore, the compiler frontend needs to understand certain operations
+to warn about obvious mistakes such as division by zero,
+shifting by an overly large amount,
+producing signed integer overflow unconditionally, etc.
 Use of \tcode{pre} on e.g. \tcode{bit_int::operator/} cannot be used to achieve this
 because numerics code needs to have no hardened preconditions and no contracts,
 for performance reasons.
-Another workaround would be an ever-growing set of implementation-specific attributes,
-but at that point, we may as well make it fundamental.
+
+Last but no least,
+a fundamental type is needed to speed up constant evaluation.
+Something like integer division between two \tcode{bit_int<128>}
+may be much faster as a compiler-builtin operation
+compared to constant-evaluating a "software division" loop with 128 iterations
+necessary to implement \ref(https://en.wikipedia.org/wiki/Binary_number#Division){binary division}.
+
+If we accept the premise that a fundamental type is needed anyway
+(possibly as an implementation detail of a class template),
+then the class template actively harmful bloat:
+\ul{
+  \li{
+    Any arithmetic operation needs to go through overload resolution,
+    competing with countless other \tcode{operator+}s
+    (there are many in the standard library already).
+    Even if implementers special-case these operations to circumvent the
+    (usually awful) diagnostic quality of a failed call to \tcode{operator+},
+    there remains substantial cost:
+    overload resolution is expensive.
+  }
+  \li{
+    Every distinct \tcode{bit_int<N>} and \tcode{bit_uint<N>} would be a separate instantiation
+    of a relatively large class template,
+    which would undoubtedly add compilation cost.
+  }
+  \li{
+    Invocations of member functions or operator overloads
+    may add cost to debug builds and constant evaluation.
+  }
+}
+
 
 \h3{Why the \tcode{_BitInt} keyword spelling?}
 
@@ -880,6 +1023,13 @@ To combat this problem,
 it would be necessary to carve out various special cases.
 For example, permitting value-preserving conversions with constant expressions
 would prevent the example above from being flagged.
+
+\Bnote{
+There is precedent for such special casing of value-preserving conversions.
+Specifically, see mentions of "narrowing" in
+\eelis{dcl.init.list}, \eelis{expr.spaceship}, and \eelis{expr.const}.
+}
+
 However, such special cases are insufficient to cover \em{all} harmless cases.
 
 \Bex{
@@ -953,6 +1103,75 @@ Even if \tcode{x} is signed instead of unsigned,
 \tcode{x & mask} produces a mathematically identical result.
 }
 
+\h4(id=conversions-low-hanging-fruits){Picking some low-hanging fruits}
+
+While conversions between bit-precise integers
+and other signed or unsigned integer could be difficult to restrict due to the reasons
+above,
+other conversions are much more rare
+and could more easily be restricted:
+
+\ul{
+  \li{Conversions between bit-precise integers and \tcode{bool}.}
+  \li{Conversions between bit-precise integers and character types.}
+  \li{Conversions between bit-precise integers and floating-point types.}
+}
+
+It would be reasonable to ban these conversions unconditionally
+because they are likely to be category errors.
+
+\Bug{
+Consider the "easter egg" discovered in \ref(https://cplusplus.com/forum/general/105627/):
+
+\Bquote{
+I was fixing a couple of minor bugs in a program I've been working on,
+when I made the mistake of typing \tcode{cout<<string('\\n', 1);}
+instead of \tcode{cout<<string(1,'\\n');}
+
+I didn't get any compile errors and the programs reaction gave me a bit of a laugh.
+Instead of the blank line I wanted to put in, I got \tt{:):):):):):):):):):)} (10 of them).
+It just made me wonder as a relative C++ beginner what other "easter eggs" are there
+that people might feel like sharing.
+}
+
+It turns out that \tcode{string('\\n', 1)} is not an "easter egg",
+it just results in the Windows terminal displaying a \tcode{char(1)} as "\tt{:)}"
+ten times.
+The \tcode{string(size_t, char)} overload is called,
+and since the \tcode{'\\n'} and \tcode{1} can be converted to \tcode{size_t} and \tcode{char}
+without any change in value,
+compilers generally don't raise a warning, even with \tcode{-Wconversion enabled}.
+}
+
+The least harmful of these conversions is a value-preserving
+conversion from a bit-precise integer to a floating-point type.
+However, at best, these lack clarity of intent.
+
+\Bex{
+Consider a code base with the following two functions computing \math{\msqrt{\mi{x}}}:
+\cppblock{
+int isqrt(int x);
+double sqrt(double x);
+}
+When the user calls \tcode{sqrt} with an integer operand,
+are we sure that this decision was made intentionally?
+Is the author unaware that there is a separate function giving the integer results,
+or do they actually need the fractional part,
+and that is why they called the \tcode{double} overload?
+Even if the author wrote \tcode{(int) sqrt(/* ... */)},
+this could plausibly be done due to performance considerations.
+
+Similarly, calling \tcode{std::sqrt} with an integer operand could be a major performance bug
+on a 32-bit platform with 32-bit \tcode{float} and 64-bit \tcode{double},
+considering that this is equivalent to calling \tcode{std::sqrt(double)}.
+Perhaps calling \tcode{std::sqrt(float)} was intended.
+
+Conversely, if the author called \tcode{isqrt(10.f)},
+the \tcode{float} → \tcode{int} conversion may be value-preserving,
+but this call is almost certainly a mistake.
+The author likely expected to obtain \tcode{3.1623f}, judging by the operand.
+}
+
 \h4(id=conversions-conclusion){Conclusion on implicit conversions}
 
 In conclusion, discrepancies between the standard integers and bit-precise
@@ -969,6 +1188,10 @@ Having these restrictions standardized in the language robs the user of choice.
 If C++26 profiles make progress,
 it is likely that C++ will have profiles which restrict implicit conversions,
 giving users a standard way to opt into diagnostics.
+
+However, the decision to permit implicit conversions is not set in stone.
+Especially the conversions described in \ref(#conversions-low-hanging-fruits)
+could be banned for bit-precise integers without much of an issue.
 
 \h3{Raising the \tt{BITINT_MAXWIDTH}}
 
@@ -1218,18 +1441,6 @@ There are numerous reasons for this:
     even if support was not added by this proposal.
   }
   \li{
-    Printing support needs to exist in an implementation on some level anyway.
-    For example, \tcode{printf} has support for printing bit-precise integers.
-    If \tcode{printf} supported printing bit-precise integers but not the idiomatic
-    C++ facilities,
-    it would be a bad look for the language,
-    and it would push users towards type-unsafe functions out of desperation.
-    To be fair, \tcode{printf} typically "lives" in the system's libc,
-    so this support cannot enable things like \tcode{constexpr std::to_chars}.
-    However, code may be shared between the libc implementation and the C++ standard library,
-    as is the case in LLVM.
-  }
-  \li{
     It would take considerable wording effort to exclude
     support for bit-precise integers from these facilities,
     only for it to be reverted once support is inevitably added.
@@ -1290,8 +1501,8 @@ Wrapper types which are convertible to \tcode{int} (but are not \tcode{int})
 may rely on these dedicated overloads:
 \cppblock{
 struct int_wrapper {
-    int x;
-    operator int() const { return x; }
+  int x;
+  operator int() const { return x; }
 };
 
 string to_string(int);
@@ -1483,7 +1694,7 @@ Examples include:
 
 \ul{
   \li{
-    C headers such as \header{stdbit.h}, \header{stdio.h}, and \header{stdckdint.h}
+    C headers such as \header{stdbit.h} and \header{stdckdint.h}
     receive the same degree of support as they have in C.
     This is the obvious design, and any deviation would need to be justified somehow.
   }
@@ -1545,13 +1756,13 @@ An implementation of the \tcode{abs} function template could look as follows:
 \cppblock{
 template<size_t __n>
 constexpr abs(_BitInt(__n) __j) { // pass small integers by value
-    return __j >= 0 ? __j : -__j;
+  return __j >= 0 ? __j : -__j;
 }
 
 template<size_t __n>
   requires (sizeof(_BitInt(__n)) > __pass_by_value_max_size)
 constexpr abs(const _BitInt(__n)& __j) { // pass large integers by reference
-    return __j >= 0 ? __j : -__j;
+  return __j >= 0 ? __j : -__j;
 }
 }
 
@@ -1560,7 +1771,7 @@ use an ABI-altering, implementation-specific attribute.
 \cppblock{
 template<size_t __n>
 constexpr abs([[impl::pass_large_by_ref]] _BitInt(__n) __j) {
-    return __j >= 0 ? __j : -__j;
+  return __j >= 0 ? __j : -__j;
 }
 }
 Such an attribute could alter the ABI for \tcode{__j}
@@ -1746,12 +1957,6 @@ the possible changes to container \tcode{size_type}s are not listed.
     \td{\ref(#broadening-type-traits)}
   }
   \tr{
-    \td{\header{cstdio}}
-    \td{Inherit \tcode{printf} etc. support for bit-precise integers from C.}
-    \td{None required}
-    \td{}
-  }
-  \tr{
     \td{\header{format}}
     \td{Expand blanket support for integers.}
     \td{None required}
@@ -1819,12 +2024,6 @@ the possible changes to container \tcode{size_type}s are not listed.
     \td{Inherit bit-precise integer support from C.}
     \td{\ref(#numerics.c.ckdint)}
     \td{\ref(#misc-support)}
-  }
-  \tr{
-    \td{\header{stdio.h}}
-    \td{Changed indirectly.}
-    \td{None required}
-    \td{\ref(#misc-support),\br\header{cstdio}}
   }
   \tr{
     \td{\header{string}}
@@ -3309,7 +3508,7 @@ template<class T> \ins{constexpr} wstring to_wstring(T val);
 \eelis{cmath.syn#3} is deliberately not changed,
 meaning that \tcode{bit_int} may be passed to e.g. \tcode{sqrt}.
 See \ref(#bitint-cmath).
-}`'
+}
 
 In \eelis{cmath.syn}, change the synopsis as follows:
 
@@ -3537,6 +3736,7 @@ Jonathan Wakely,
 Jeff Garland,
 Ville Voutilainen,
 Peter Dimov,
+Luigi Ghiron,
 and \em{many} others for providing early feedback on this paper,
 prior papers such as \ref(P3639R0), and
 the discussion surrounding bit-precise integers as a whole.
