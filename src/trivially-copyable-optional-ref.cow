@@ -4,11 +4,11 @@
   title = Make \tcode{optional<T&>} trivially copyable
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{D3836R0}}
-  \dt{Date:}            \dd{\tt{2025-09-10}}
+  \dt{Document number:} \dd{\docnum{P3836R0}}
+  \dt{Date:}            \dd{\tt{2025-09-11}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
-  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br{}Nevin Liber <\mail{nevin@cplusplusguy.com}>}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br{}Nevin Liber <\mail{nliber@anl.gov}>}
   \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3836/github)}
   \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/trivially-copyable-optional-ref.cow)}
 }
@@ -16,9 +16,11 @@
 }
 
 \Babstract{
-Due to a wording oversight,
+Possibly due to a wording oversight,
 \tcode{optional<T&>} is not guaranteed to be trivially copyable.
 We propose to fix this in C++26.
+Due to certain design questions that concern LEWG,
+this issue is not simply handled as an LWG issue.
 }
 
 \h2(listed=false){Contents}
@@ -39,7 +41,7 @@ is trivial.
 Boost is not.
 }
 
-However, due to a wording oversight,
+However, possibly due to a wording oversight,
 trivial construction is not actually guaranteed,
 nor is trivial copyability in general.
 This status quo is inconsistent with the design of \tcode{optional<T>} as a whole:
@@ -49,7 +51,7 @@ Therefore, \tcode{optional<int*>} is required to be trivially copyable,
 unlike \tcode{optional<int&>}.
 
 This issue should be fixed in C++26.
-A national body comment by Argonne National Laboratory
+A US national body comment by Argonne National Laboratory
 requesting a solution has been submitted.
 
 \h3{Wording problem}
@@ -121,12 +123,19 @@ There are two plausible options to fix the issue of \tcode{optional<T&>}:
 
 We propose the second option
 because trivial copyability is much more useful when the layout of a type is somewhat constrained.
-This makes it possible to \tcode{bit_cast<T*>(optional_ref)},
-among other things,
-at least if \tcode{T}'s object representation is not any different
-when wrapped in a standard-layout class.
+This makes it possible to \tcode{bit_cast<T*>(optional_ref)}
+or to encode \tcode{optional<T&>} using \tcode{memcpy}
+with \em{some} guarantees regarding its layout.
 
-\h3{Wording}
+\Bnote{
+The layout assumptions could still be false for an implementation
+where the layout of "wrapper \tcode{struct}s" and the types they wrap is different,
+but that concern is largely hypothetical.
+}
+
+\h2{Wording}
+
+The wording changes are relative to \ref(N5014).
 
 Immediately following \eelis{optional.optional.ref.general#1},
 append a paragraph as follows:

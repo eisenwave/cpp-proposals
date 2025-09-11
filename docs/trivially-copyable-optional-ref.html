@@ -1508,11 +1508,11 @@ if (theme !== null) {
 <div class=wg21-head><h1>Make <code><h- data-h=id>optional</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_op>&gt;</h-></code> trivially copyable</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/D3836R0>D3836R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2025-09-10</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3836R0>P3836R0</a></dd>
+  <dt>Date:</dt>            <dd><tt->2025-09-11</tt-></dd>
   <dt>Audience:</dt>        <dd>LEWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
-  <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;<br/>Nevin Liber &lt;<a href=mailto:nevin@cplusplusguy.com class=sans>nevin@cplusplusguy.com</a>&gt;</dd>
+  <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;<br/>Nevin Liber &lt;<a href=mailto:nliber@anl.gov class=sans>nliber@anl.gov</a>&gt;</dd>
   <dt>GitHub Issue:</dt>    <dd><a href=https://wg21.link/P3836/github class=sans>wg21.link/P3836/github</a></dd>
   <dt>Source:</dt>          <dd><a href=https://github.com/eisenwave/cpp-proposals/blob/master/src/trivially-copyable-optional-ref.cow class=sans>github.com/eisenwave/cpp-proposals/blob/master/src/trivially-copyable-optional-ref.cow</a></dd>
 </dl>
@@ -1520,9 +1520,11 @@ if (theme !== null) {
 </div>
 
 <abstract-block><p><intro-></intro-> 
-Due to a wording oversight,
+Possibly due to a wording oversight,
 <code><h- data-h=id>optional</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_op>&gt;</h-></code> is not guaranteed to be trivially copyable.
 We propose to fix this in C++26.
+Due to certain design questions that concern LEWG,
+this issue is not simply handled as an LWG issue.
 </p></abstract-block>
 
 <h2 id=contents><a class=para href=#contents></a>Contents</h2>
@@ -1535,9 +1537,9 @@ We propose to fix this in C++26.
 <a href=#motivation><h2>Motivation</h2></a>
 <div class=toc-num data-level=2>3</div>
 <a href=#design><h2>Design</h2></a>
-<div class=toc-num data-level=3>3.1</div>
-<a href=#wording><h3>Wording</h3></a>
 <div class=toc-num data-level=2>4</div>
+<a href=#wording><h2>Wording</h2></a>
+<div class=toc-num data-level=2>5</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
@@ -1555,7 +1557,7 @@ is trivial.
 Boost is not.
 </p></blockquote>
 
-<p>However, due to a wording oversight,
+<p>However, possibly due to a wording oversight,
 trivial construction is not actually guaranteed,
 nor is trivial copyability in general.
 This status quo is inconsistent with the design of <code><h- data-h=id>optional</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-></code> as a whole:
@@ -1565,7 +1567,7 @@ Therefore, <code><h- data-h=id>optional</h-><h- data-h=sym_op>&lt;</h-><h- data-
 unlike <code><h- data-h=id>optional</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_op>&gt;</h-></code>.
 </p>
 <p>This issue should be fixed in C++26.
-A national body comment by Argonne National Laboratory
+A US national body comment by Argonne National Laboratory
 requesting a solution has been submitted.
 </p>
 <h3 id=wording-problem><a class=para href=#wording-problem></a>1.1. Wording problem</h3>
@@ -1635,13 +1637,20 @@ so no trivial operation is strictly guaranteed.
 
 <p>We propose the second option
 because trivial copyability is much more useful when the layout of a type is somewhat constrained.
-This makes it possible to <code><h- data-h=id>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>*</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>optional_ref</h-><h- data-h=sym_par>)</h-></code>,
-among other things,
-at least if <code><h- data-h=id>T</h-></code>'s object representation is not any different
-when wrapped in a standard-layout class.
+This makes it possible to <code><h- data-h=id>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>*</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>optional_ref</h-><h- data-h=sym_par>)</h-></code>
+or to encode <code><h- data-h=id>optional</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_op>&gt;</h-></code> using <code><h- data-h=id>memcpy</h-></code>
+with <em>some</em> guarantees regarding its layout.
 </p>
-<h3 id=wording><a class=para href=#wording></a>3.1. Wording</h3>
+<note-block><p><intro-></intro-> 
+The layout assumptions could still be false for an implementation
+where the layout of "wrapper <code><h- data-h=kw>struct</h-></code>s" and the types they wrap is different,
+but that concern is largely hypothetical.
+</p></note-block>
 
+<h2 id=wording><a class=para href=#wording></a>4. Wording</h2>
+
+<p>The wording changes are relative to <a href="https://wg21%2elink/n5014">[N5014]</a>.
+</p>
 <p>Immediately following <a href=https://eel.is/c++draft/optional.optional.ref.general#1>[optional.optional.ref.general] paragraph 1</a>,
 append a paragraph as follows:
 </p>
@@ -1654,7 +1663,7 @@ and no base class <code><h- data-h=id>B</h-></code> for which <code><h- data-h=i
 is <code><h- data-h=bool>false</h-></code>.
 </p></ins-block>
 
-<h2 id=references><a class=para href=#references></a>4. References</h2>
+<h2 id=references><a class=para href=#references></a>5. References</h2>
 
 
 <div class=bib><div id=bib-item-N5014 class=bib-item>
