@@ -1,0 +1,179 @@
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+  title = Named function arguments
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D3777R0}}
+  \dt{Date:}            \dd{\tt{2025-09-14}}
+  \dt{Audience:}        \dd{LEWG, SG16}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{\
+Jan Schultke <\mail{janschultke@gmail.com}>\br
+Murat Can Çağrı <\mail{cancagri.dev@gmail.com}>\br
+Matthias Wippich <\mail{mfwippich@gmail.com}>\
+}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3777/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/named-args.cow)}
+}
+\hr
+}
+
+\Babstract{
+
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+We propose a syntax for calling C++ functions with named arguments:
+
+\cppblock{
+f(.x = 0, .y = 1, .z = 2);
+}
+
+There is no consensus yet on whether changes to C++ function declarations are needed
+to opt into this call syntax.
+
+\h3{Why not just use a \tt{struct} and designated initializers?}
+
+A common criticism of the idea is that rather than using named arguments,
+one could use a \tcode{struct}.
+
+\Bex{
+\cppblock{
+struct lerp_args {
+  double a, b, t;
+};
+double lerp(lerp_args args);
+
+lerp({ .a = 10., .b = 20., .t = 0.5 });
+}
+}
+
+While this seemingly solves the issue,
+upon further thought,
+this is not a good solution for the following reasons:
+
+\ul{
+  \li{
+    \b{No templates.}
+    The \tcode{lerp} approach cannot be used in a template like
+    \tcode{template<class T> T lerp(lerp_args<T>)},
+    or at least, a call like \tcode{lerp(lerp_args{/* ... */})} would be necessary.
+    To be fair, this problem may be solved by permitting CTAD for function parameters,
+    for some cases.
+    It does not work for forwarding references.
+    However, even if that approach worked,
+    it would require the user to create \em{really} complicated class templates
+    for parameter sets like the ones we have in \header{algorithm}.
+  }
+  \li{
+    \b{Worse overload resolution.}
+    With the proposed semantics,
+    overloads are eliminated as non-viable candidates extremely early,
+    on the basis of not having matching parameter names.
+    For the \tcode{struct} approach,
+    when an overload cannot be called due to a name mismatch,
+    this happens at a later stage:
+    when forming implicit conversion sequences.
+  }
+  \li{
+    \b{Complexity and inconvenience.}
+    Users don't want to maintain these additional parameter \tcode{struct}s.
+    They make a simple problem of passing named arguments more tedious than it needs to be.
+    Realistically, if someone proposed to add an overload to \tcode{std::lerp}
+    that took \tcode{std::lerp_args}, they would be laughed out of LEWG.
+    While the existing declaration is obviously problematic,
+    it would be a huge burden
+    on the committee to maintain these additional argument \tcode{struct}s.
+    Library authors in general face the same problem.
+  }
+  \li{
+    \b{Dilemma of choice.}
+    Even when designing new functions from scratch,
+    it \em{feels} unnecessary and much more complex to pass all arguments via \tcode{struct}
+    rather than simply writing a function.
+    In a code base where passing arguments via \tcode{struct} is common,
+    one constantly has to make the choice whether to pass normally, via \tcode{struct},
+    or perhaps both.
+    This adds up to wasted developer time.
+    Named arguments let us have our cake and eat it too.
+  }
+  \li{
+    \b{ABI and performance considerations.}
+    In most ABIs, when a \tcode{struct} is sufficiently large,
+    it will not be passed by register.
+    In the example above, in the x86-64 psABI \tcode{lerp_args} is passed via the stack
+    rather than each \tcode{double} occupying an \tt{xmmm} register
+    like in the equivalent function taking three \tcode{double} parameters.
+  }
+  \li{
+    \b{Freezing API.}
+    With \tcode{lerp} as specified as above,
+    the user is able to store and pass around \tcode{lerp_args},
+    meaning that any change to it, such as turning it into a class template
+    could break API and ABI.
+    In general, creating a \tcode{struct} for a set of parameters freezes that parameter set.
+    This would be unacceptable in e.g. the C++ standard library.
+    The functions specified there are deliberately stated to be "non-addressable"
+    so that changes to overload sets can be made.
+    For example, a single function in \header{algorithm} stated to take an iterator
+    could actually be implemented using two separate overloads:
+    one for forward iterators and one for random access iterators.
+  }
+}
+
+\h2{Motivation}
+
+\h2{Design}
+
+
+
+\h2{References}
+
+\bib(
+  id = N4172,
+  title = Named arguments,
+  date = 2014-10-07,
+  author = Ehsan Akhgari\, Botond Ballo,
+  link = https://wg21.link/n4172,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4172.htm,
+)\
+\bib(
+  id = N5014,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-08-05,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+)\
+\bib(
+  id = P1229R0,
+  title = Labelled Parameters,
+  date = 2014-10-07,
+  author = Jorg Brown,
+  link = https://wg21.link/p1229r0,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1229r0.html,
+)\
+\bib(
+  id = P0671R2,
+  title = Self-explanatory Function Arguments,
+  date = 2018-05-07,
+  author = Axel Naumann,
+  link = https://wg21.link/p0671r2,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0671r2.html,
+)\
+\bib(
+  id = P1229R0,
+  title = Labelled Parameters,
+  date = 2018-10-08,
+  author = Jorg Brown,
+  link = https://wg21.link/p1229r0,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1229r0.html,
+)\
+
+\make_bib
