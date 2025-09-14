@@ -20,7 +20,7 @@ Matthias Wippich <\mail{mfwippich@gmail.com}>\
 }
 
 \Babstract{
-
+We propose a syntax for calling C++ functions with named arguments.
 }
 
 \h2(listed=false){Contents}
@@ -37,6 +37,14 @@ f(.x = 0, .y = 1, .z = 2);
 
 There is no consensus yet on whether changes to C++ function declarations are needed
 to opt into this call syntax.
+
+A call syntax like this has been suggested multiple times historically
+in \ref(N4172), \ref(P0671R2), and \ref(P1229R0),
+but never in a way that found consensus in WG21.
+Nonetheless, this shows that there is interest in the feature,
+and perhaps,
+if approached right,
+the idea could succeed.
 
 \h3{Why not just use a \tt{struct} and designated initializers?}
 
@@ -131,7 +139,67 @@ this is not a good solution for the following reasons:
 
 \h2{Design}
 
+\h3{Forwarding named arguments}
 
+Past proposals have faced concerns over the ability to forward argument names,
+such as in:
+
+\cppblock{
+template<class... Args>
+T& emplace(Args&&... args) {
+  T* p = new (storage) T(std::forward<Args>(args)...);
+  // ...
+  return *p;
+}
+}
+
+While the following syntax is \u{not} proposed,
+it is possible to allow forwarding in the future,
+with mechanics like:
+
+\cppblock{
+template<class... Args, std::meta::info... names>
+T& emplace(Args&&... args .names) {
+    T* p = new (storage) T(.[: names :]... = std::forward<Args>(args)...);
+    // ...
+    return *p;
+}
+}
+
+Now that C++26 has reflection,
+there seems to be a realistic path to forwarding argument names.
+While the syntax is obviously up for debate,
+the basic idea is:
+
+\ul{
+  \li{
+    "\tcode{args .names}"
+    deduces a pack of argument names as \tcode{std::meta::info}.
+    Note that this cannot be done with \tcode{std::string_view}
+    because it is not a structural type,
+    and even if it was,
+    it is unclear what the pointer inside would point to.
+    "\tcode{args .names}" could also work bidirectionally,
+    i.e. it could be used to specify the parameter names separately.
+  }
+  \li{
+    "\tcode{.[: names :]...}"
+    performs a pack expansion of an argument name slice.
+    In other words, each of the names in \tcode{names}
+    would be used as an argument name when calling \tcode{T}'s constructor.
+  }
+}
+
+If it was possible to deduce argument names,
+this would also enable support for named arguments in \tcode{std::format}:
+
+\cppblock{
+template<typename... Args, meta::info... names>
+string format(format_string<Args...>, Args&&... args .names);
+
+format("{x}", .x = 100); // Args  = [ int ]
+                         // names = [ "x" ]
+}
 
 \h2{References}
 

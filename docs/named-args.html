@@ -1521,9 +1521,9 @@ Matthias Wippich &lt;<a href=mailto:mfwippich@gmail.com class=sans>mfwippich@gma
 <hr/>
 </div>
 
-<abstract-block><p><intro-></intro-> </p>
-
-</abstract-block>
+<abstract-block><p><intro-></intro-> 
+We propose a syntax for calling C++ functions with named arguments.
+</p></abstract-block>
 
 <h2 id=contents><a class=para href=#contents></a>Contents</h2>
 
@@ -1535,6 +1535,8 @@ Matthias Wippich &lt;<a href=mailto:mfwippich@gmail.com class=sans>mfwippich@gma
 <a href=#motivation><h2>Motivation</h2></a>
 <div class=toc-num data-level=2>3</div>
 <a href=#design><h2>Design</h2></a>
+<div class=toc-num data-level=3>3.1</div>
+<a href=#forwarding-named-arguments><h3>Forwarding named arguments</h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#references><h2>References</h2></a>
 </div>
@@ -1547,6 +1549,14 @@ Matthias Wippich &lt;<a href=mailto:mfwippich@gmail.com class=sans>mfwippich@gma
 
 <p>There is no consensus yet on whether changes to C++ function declarations are needed
 to opt into this call syntax.
+</p>
+<p>A call syntax like this has been suggested multiple times historically
+in <a href="https://wg21%2elink/n4172">[N4172]</a>, <a href="https://wg21%2elink/p0671r2">[P0671R2]</a>, and <a href="https://wg21%2elink/p1229r0">[P1229R0]</a>,
+but never in a way that found consensus in WG21.
+Nonetheless, this shows that there is interest in the feature,
+and perhaps,
+if approached right,
+the idea could succeed.
 </p>
 <h3 id=why-not-just-use-a-struct-and-designated-initializers><a class=para href=#why-not-just-use-a-struct-and-designated-initializers></a>1.1. Why not just use a <tt->struct</tt-> and designated initializers?</h3>
 
@@ -1639,7 +1649,61 @@ this is not a good solution for the following reasons:
 
 <h2 id=design><a class=para href=#design></a>3. Design</h2>
 
+<h3 id=forwarding-named-arguments><a class=para href=#forwarding-named-arguments></a>3.1. Forwarding named arguments</h3>
 
+<p>Past proposals have faced concerns over the ability to forward argument names,
+such as in:
+</p>
+<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-><h- data-h=sym_op>...</h-> <h- data-h=id>Args</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=id>T</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>emplace</h-><h- data-h=sym_par>(</h-><h- data-h=id>Args</h-><h- data-h=sym_op>&amp;&amp;</h-><h- data-h=sym_op>...</h-> <h- data-h=id>args</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=id>T</h-><h- data-h=sym_op>*</h-> <h- data-h=id>p</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw>new</h-> <h- data-h=sym_par>(</h-><h- data-h=id>storage</h-><h- data-h=sym_par>)</h-> <h- data-h=id>T</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>forward</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>Args</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>args</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>...</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_op>*</h-><h- data-h=id>p</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>While the following syntax is <u>not</u> proposed,
+it is possible to allow forwarding in the future,
+with mechanics like:
+</p>
+<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-><h- data-h=sym_op>...</h-> <h- data-h=id>Args</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>meta</h-><h- data-h=sym_op>::</h-><h- data-h=id>info</h-><h- data-h=sym_op>...</h-> <h- data-h=id>names</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=id>T</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>emplace</h-><h- data-h=sym_par>(</h-><h- data-h=id>Args</h-><h- data-h=sym_op>&amp;&amp;</h-><h- data-h=sym_op>...</h-> <h- data-h=id>args</h-> <h- data-h=sym_op>.</h-><h- data-h=id>names</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=id>T</h-><h- data-h=sym_op>*</h-> <h- data-h=id>p</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw>new</h-> <h- data-h=sym_par>(</h-><h- data-h=id>storage</h-><h- data-h=sym_par>)</h-> <h- data-h=id>T</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_punc>:</h-> <h- data-h=id>names</h-> <h- data-h=sym_punc>:</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_op>...</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>forward</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>Args</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>args</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>...</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_op>*</h-><h- data-h=id>p</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>Now that C++26 has reflection,
+there seems to be a realistic path to forwarding argument names.
+While the syntax is obviously up for debate,
+the basic idea is:
+</p>
+<ul>
+  <li>
+    "<code><h- data-h=id>args</h-> <h- data-h=sym_op>.</h-><h- data-h=id>names</h-></code>"
+    deduces a pack of argument names as <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>meta</h-><h- data-h=sym_op>::</h-><h- data-h=id>info</h-></code>.
+    Note that this cannot be done with <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>string_view</h-></code>
+    because it is not a structural type,
+    and even if it was,
+    it is unclear what the pointer inside would point to.
+    "<code><h- data-h=id>args</h-> <h- data-h=sym_op>.</h-><h- data-h=id>names</h-></code>" could also work bidirectionally,
+    i.e. it could be used to specify the parameter names separately.
+  </li>
+  <li>
+    "<code><h- data-h=sym_op>.</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_punc>:</h-> <h- data-h=id>names</h-> <h- data-h=sym_punc>:</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_op>...</h-></code>"
+    performs a pack expansion of an argument name slice.
+    In other words, each of the names in <code><h- data-h=id>names</h-></code>
+    would be used as an argument name when calling <code><h- data-h=id>T</h-></code>'s constructor.
+  </li>
+</ul>
+
+<p>If it was possible to deduce argument names,
+this would also enable support for named arguments in <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-></code>:
+</p>
+<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>typename</h-><h- data-h=sym_op>...</h-> <h- data-h=id>Args</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>meta</h-><h- data-h=sym_op>::</h-><h- data-h=id>info</h-><h- data-h=sym_op>...</h-> <h- data-h=id>names</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=id>string</h-> <h- data-h=id>format</h-><h- data-h=sym_par>(</h-><h- data-h=id>format_string</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>Args</h-><h- data-h=sym_op>...</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>Args</h-><h- data-h=sym_op>&amp;&amp;</h-><h- data-h=sym_op>...</h-> <h- data-h=id>args</h-> <h- data-h=sym_op>.</h-><h- data-h=id>names</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=id>format</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>{x}</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>100</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Args  = [ int ]</h->
+                         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> names = [ "x" ]</h-></code-block>
 
 <h2 id=references><a class=para href=#references></a>4. References</h2>
 
