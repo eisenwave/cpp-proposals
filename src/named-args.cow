@@ -47,7 +47,7 @@ and perhaps,
 if approached the right way,
 the idea could succeed.
 
-\h3{Why not just use a \tt{struct} and designated initializers?}
+\h3(id=why-no-struct){Why not just use a \tt{struct} and designated initializers?}
 
 A common criticism of the idea is that rather than using named arguments,
 one could use a \tcode{struct}.
@@ -195,6 +195,241 @@ so that changes to overload sets can be made.
 For example, a single function in \header{algorithm} stated to take an iterator
 could actually be implemented using two separate overloads:
 one for forward iterators and one for random access iterators.
+
+\h3{Other workarounds}
+
+While creating a \tcode{struct} is most commonly cited as a workaround,
+other options to provide named arguments are sometimes mentioned:
+
+\cppblock{
+// proposed, for reference
+lerp(.a = 50, .b = 100, .t = 0.5);
+
+// "Fluent Interface"
+lerp{}
+  .a(50)
+  .b(100)
+  .t(0.5)
+  ();
+
+// "parameter types"
+lerp(Range{50, 100}, 0.5);
+}
+
+In short, \ref(https://en.wikipedia.org/wiki/Fluent_interface){Fluent Interfaces}
+use member function chaining so that each argument is provided individually
+to some kind of "builder class".
+The parameter types technique involves various parameter-specific types
+rather than working with scalar values,
+which often makes misuse of functions less likely thanks to the type system.
+These workarounds share most of the problems described in \ref(#why-no-struct).
+Situationally, they can be quite reasonable.
+For example, bundling the \tcode{a} and \tcode{b} parameters of \tcode{lerp}
+in a \tcode{Range} class does make it unlikely that the function is misused,
+and it's relatively lightweight.
+
+As good as they sometimes are,
+these workarounds only chip away at the massive problems we have.
+For example, to prevent misuses of the \tcode{string} constructor,
+are we seriously proposing to write code like this in the future?
+
+\cppblock{
+\del{cout << string(100, 'a');}
+\ins{cout << string(size_arg{100}, char_arg{'a'});}
+}
+
+Should C++ developers generally be expected to design their APIs like this?
+In practice, neither LEWG nor library developers at large want this.
+It takes an absurd amount of API design effort,
+extra written code,
+and slower compilation.
+A side-by-side comparison should make it obvious why these techniques are undesirable:
+
+\style{
+  .center {
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+\table(class=center){
+  \tr{
+    \th{Parameter types}
+    \th{Named arguments}
+  }
+  \tr{
+  \td{
+    \codeblock(cpp,borders=false){
+struct size_arg {
+  size_t value;
+};
+struct char_arg {
+  char value;
+};
+// ...
+string(size_arg size, char_arg c);
+// ...
+cout << string(size_arg{100}, char_arg{'a'});
+}
+  }
+  \td{
+    \codeblock(cpp,borders=false){
+string(size_t size, char c);
+// ...
+cout << string(.size = 100, .c = 'a');
+}
+  } 
+  }
+}
+
+\Bnote{
+For the sake of simplicity,
+this comparison ignores some nuances,
+like \tcode{basic_string}, \tcode{CharT}, \tcode{size_type}, etc.
+With those details involved,
+parameter types become even less attractive because the technique would require
+creating a large amount of class templates and relying on CTAD
+rather than working with simple \tcode{struct}s.
+}
+
+\h2{Prior Art}
+
+\h3{N4172 "Named arguments"}
+
+\ref(N4172) proposed the following syntax:
+
+\cppblock{
+void draw_rect(int left, int top, int width, int height, bool fill_rect = false);
+int main()
+{
+  // Both of the function calls below pass the same set of arguments to draw_rect.
+  draw_rect(top: 10, left: 100, width: 640, height: 480);
+  draw_rect(100, 10, height: 480, fill_rect: false, width: 640);
+}
+}
+
+Functionally, our proposal is almost identical to \ref(N4172),
+with a few key differences:
+
+\ul{
+  \li{We use the designated initializer syntax \tcode{.top = 10}.}
+  \li{
+    N4172 forfeits the possibility of perfect forwarding because the authors
+    "are not aware of a way to make this work without making parameter names part of a function's type".
+    We have a plausible solution,
+    described in \ref(#forwarding-named-arguments).
+  }
+}
+
+The proposal received overwhelmingly negative feedback,
+with the following poll being taken:
+
+\Bquote{
+Poll: Should we encourage Botond to continue work on this proposal?
+Yes=6, No=11.
+}
+
+The major criticism were:
+
+\ul{
+  \li{Large amount of technical work "without any new functionality".}
+  \li{Encouraging large parameter lists.}
+  \li{Consistency problems for parameter names.}
+  \li{Parameter names becoming part of the API.}
+}
+
+We believe that our proposal meaningfully addresses all of these criticisms.
+The language has evolved significantly since 2025,
+and the perspective on many of these issues changed.
+
+\h3{P0671R2 "Self-explanatory function arguments"}
+
+\ref(P0671R2) proposes the following syntax:
+
+\cppblock{
+double Gauss(double x, double mean, double width, double height);
+Gauss(0.1, mean: 0., width: 2., height: 1.);
+}
+
+While the R2 proposal is strikingly similar to what we have
+(with different argument syntax though),
+R2 was never seen by the committee,
+and to our knowledge, it "died" in SG17.
+
+However, R0 was seen in EWG at Toronto 2017, with largely negative feedback;
+see \ref(MinutesP0671R0).
+R0 has a syntax such as \tcode{double !mean} which is incompatible
+with existing declarations, so it is unclear how relevant the negative feedback still is.
+Much of the feedback revolved around API design and possible library workarounds,
+something that we address in great detail in \ref(#introduction).
+
+\h3{P1229R0 "Labelled Parameters"}
+
+\ref(P1229R0) takes a dramatically different approach to the previous parameters.
+In essence, it adds the syntax:
+
+\cppblock{
+// declaration
+void memcpy(to: void*, from: void*, n: size_t);
+// call
+memcpy(to: buf, from: in, n: bytes);
+}
+
+This syntax is sugar, and expands to the following underlying code:
+
+\cppblock{
+// declaration
+void memcpy(std::labelled<std::label<char, 't', 'o'>, void*>,
+            std::labelled<std::label<char, 'f', 'r', 'o', 'm'>, const void*>,
+            std::labelled<std::label<char, 'n'>, size_t>);
+// call
+memcpy(std::labelled<std::label<char, 't', 'o'>>(buf),
+       std::labelled<std::label<char, 'f', 'r', 'o', 'm'>>(in),
+       std::labelled<std::label<char, 'n'>>(bytes));
+}
+
+Unsurprisingly, this idea did not find consensus.
+The paper was seen in SG17 at San Diego 2018 with negative feedback;
+see \ref(MinutesP1229R0)
+(though we don't have record of polls):
+
+\Bquote{
+Anon: (voted against seeing the paper again)
+I want the feature, but I want to use it everywhere,
+so I'm uneasy with functions having to take \tcode{std::label}.
+I want a more intrusive language feature
+
+Anon: (voted against seeing the paper again)
+I want to see a more full-fledged feature for this.
+This paper seems like a half-measure.
+I want to be able to reorder, have optional parameters, etc.
+
+Anon: (voted against seeing the paper again)
+this has extensive impacts on the type system, ADL, overloading, etc.
+These are complicated parts of the language.
+It introduces identifiers in new places, and they leak out of the function scope.
+These things weren't addressed in the paper,
+and I would want to see extensive exploration of these things. 
+}
+
+We see further problems with \ref(P1229R0):
+
+\ul{
+  \li{
+    There is no "upgrade path" that the C++ standard library could reasonably take
+    to support this new syntax.
+  }
+  \li{
+    Crucial benefits of our proposal such as
+    \ref(#simplifying-overload-resolution)
+    cannot function as a quasi-library solution.
+  }
+  \li{
+    The proposed \tcode{label: arg} syntax is asymmetrical with
+    designated initializers,
+    which is now an obvious problem from a C++20 perspective.
+  }
+}
 
 \h2{Motivation}
 
@@ -483,6 +718,8 @@ It is also not obvious how to handle smaller parameter lists of ≥ 3 parameters
 Just three parameters can be mentally demanding, and are not usually enough to warrant
 a separate \tcode{struct}.
 
+\h4{Note on encouraging large parameter lists}
+
 Some people may argue that named arguments would encourage users to write
 functions with overly many parameters.
 We argue that the amount of parameters to a program's subroutine is innate.
@@ -494,7 +731,96 @@ Parameters can only be shuffled into different places,
 and there is no inherent reason why a function parameter list
 would be a bad place compared to all these other alternatives.
 
+\h3{Arbitrary keyword arguments}
+
+There are certain use cases where
+we would want to support a large set of "flags", "attributes", or "keyword arguments"
+in our functions.
+This is clearly illustrated by proposals such as \ref(P2019R8),
+which proposes the following syntax:
+
+\cppblock{
+std::jthread thr(std::thread::name_hint("worker"),
+                 std::thread::stack_size_hint(16384),
+                 [] { std::puts("standard"); });
+}
+
+Since the set of supported "thread attributes" may change in the future
+and may include implementation-defined attributes,
+we cannot simply use a \tcode{struct} aggregate that bundles up the attributes.
+Otherwise, future changes would be an ABI break.
+
+With named arguments, and with the hypothetical syntax in \ref(#forwarding-named-arguments)
+(not yet proposed),
+we could solve this issue as follows:
+
+\cppblock{
+namespace std{
+  template<class... Attr, meta::info... AttrNames>
+    std::tuple<\exposid{unspecified}> kwargs(Attr&&... attr .AttrNames);
+
+  class jthread {
+  public:
+    template<class... Attr, class F, class... Args>
+      jthread(std::tuple<Attr...>, F&&, Args&&...);
+    // ...
+  };
+}
+
+// Attr = [std::string_view, int]
+// AttrNames = ["name_hint", "stack_size_hint"],
+//             i.e. we deduce a pack of argument name reflections
+std::tuple attr = std::kwargs(.name_hint = "worker"sv, .stack_size_hint = 16384);
+
+std::jthread thr(std::move(attr), [] { std::puts("standard"); });
+}
+
+This exact syntax may not actually be feasible or desirable,
+but the principle should be clear:
+arbitrary keyword arguments are much more concise and natural than creating a distinct type
+for each "attribute".
+
 \h2{Design}
+
+\h3{Overload resolution impact}
+
+In short, C++ function calls are resolved in the following stages:
+
+\ol{
+  \li{name lookup}
+  \li{collecting viable candidates}
+  \li{selecting the best viable candidate using various tie breakers}
+}
+
+Named arguments are resolved during the second stage,
+i.e. when collecting viable candidates.
+Essentially,
+argument names are just a means of matching arguments to parameters.
+Positional calls do this by matching arguments to parameters from left to right,
+named calls do it by name.
+Whether a call uses positional or named arguments is irrelevant to which overload is better.
+
+\h3{Mixing named and positional arguments}
+
+We propose a heavily restricted form of mixing name and positional arguments.
+Namely, all positional arguments have to come first:
+
+\cppblock{
+draw_text(.text = "awoo", .font_size = 18); // OK, named only
+draw_text("awoo", .font_size = 18);         // OK, positional then named
+draw_text(.font_size = 18, "awoo");         // error: positional argument following named argument
+}
+
+This is useful because there are often tag parameters at the start,
+or parameters whose names are either obvious or irrelevant.
+
+\Bex{
+The following calls could be valid:
+\cppblock{
+format("{x} {y}", .x = 10, .y = 20);
+emit_html_element("div", .id = "container");
+}
+}
 
 \h3{Forwarding named arguments}
 
@@ -558,6 +884,120 @@ format("{x}", .x = 100); // Args  = [ int ]
                          // names = [ "x" ]
 }
 
+\h3{\tt{[[positional]]}}
+
+While library authors in C++ don't feel comfortable
+with making a parameter name a permanent part of the API,
+experience from other languages with named argument support (e.g. Kotlin)
+tells us that "parameter name permanence" is largely a non-issue.
+It is rare that a parameter name would have to be changed.
+
+Nonetheless, there are certain instances where parameter name stability
+cannot be guaranteed,
+and to cover this case,
+we propose a \tcode{[[positional]]} attribute,
+which may be applied to a function declaration.
+This attribute enables a warning if a function is called with named arguments:
+
+\Bex{
+\cppblock{
+[[positional]] void f(int x);
+f(.x = 0); // warning: f should only be called with positional arguments
+}
+}
+
+Such an attribute is particularly useful for functions where only positional calls make sense.
+
+\Bex{
+Consider the following function template:
+\cppblock{
+template<class T>
+[[positional]] T max(const T& x, const T& y) {
+  return x < y ? y : x;
+}
+}
+
+Because we "disallow" named arguments,
+we retain the freedom to turn this into a variadic function template later:
+\cppblock{
+template<class T, class... Us>
+  requires (std::is_same_v<T, Us> && ...)
+[[positional]] T max(const T& x, const Us&... ys) {
+  // ...
+}
+}
+}
+
+That being said,
+calling functions \tcode{max} with named arguments is dubious in the first place,
+and it is unlikely that much — or any code would be broken by changing \tcode{y}.
+
+\h2{Impact on the standard}
+
+In summary,
+a few parts of the core language are affected,
+such as function call syntax and overload resolution.
+The standard library impact is minimal because named argument support
+is not enabled by this paper.
+We merely add some policies in library wording.
+
+\h3{Integration into the standard library}
+
+None of the proposals in \ref(#prior-art) discuss
+how named arguments could be integrated into the C++ standard library,
+despite this being an extremely important point of motivation and an important design aspect.
+There are a few key observations:
+
+\ul{
+  \li{
+    When named arguments may be used,
+    parameter names are effectively part of the API,
+    and changing parameter names is a breaking change.
+  }
+  \li{
+    Standard library implementations typically use reserved identifiers such as \tcode{__x}
+    instead of \tcode{x} for parameter names
+    in order to avoid conflicts with macros defined by the user.
+  }
+  \li{
+    None of the functions in the standard were standardized with "normative parameters".
+    LEWG never discussed or approved these parameter names as a language feature,
+    they are all editorial.
+  }
+}
+
+While allowing named arguments in the standard library is a long-term goal,
+we do not yet propose it here.
+Instead, we propose a general policy that the function parameter specified
+in the standard library are not stable and may be different in the implementation.
+This approach has precedent for SFINAE/expression-validity testing,
+for reflecting on standard library declarations,
+and other issues.
+
+Subsequent proposals would gradually enable named arguments on a per-header basis.
+For headers that are "named-argument-enabled",
+\tcode{[[positional]]} would be specified on the few functions that
+require parameter name instability.
+While named arguments are not always useful (e.g. what's the point of \tcode{sqrt(.x = 2)}?),
+they are rarely harmful
+and rely on a parameter name that is likely to change,
+especially in a document as stable as the C++ standard.
+
+Any function that has reserved identifiers as parameter names (e.g. \tcode{f(int __x)})
+is recommended to behave as if \tcode{[[positional]]} was implicitly applied to it,
+meaning that to implement this proposal,
+no standard library code would need to be changed.
+
+\h2{Implementation experience}
+
+See \ref(ClangFork) for an experimental implementation.
+
+\h2{Wording}
+
+None yet.
+Will be provided in a future revision
+once some design aspects have settled.
+
 \h2{References}
 
 \bib(
@@ -591,6 +1031,35 @@ format("{x}", .x = 100); // Args  = [ int ]
   author = Jorg Brown,
   link = https://wg21.link/p1229r0,
   long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1229r0.html,
+)\
+\bib(
+  id = P2019R8,
+  title = Thread attributes,
+  date = 2025-01-23,
+  author = Corentin Jabot,
+  link = https://wg21.link/P2019R8,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2019r8.pdf,
+)\
+\bib(
+  id = MinutesN4172,
+  title = N4172 EWG Minutes from Urbana-Champaign 2014,
+  link = https://wiki.edg.com/bin/view/Wg21urbanachampaign/FunctionFacilities,
+)\
+\bib(
+  id = MinutesP0671R0,
+  title = P0671R0 EWG Minutes from Toronto 2017,
+  link = https://wiki.edg.com/bin/view/Wg21toronto2017/P0671R0,
+)\
+\bib(
+  id = MinutesP1229R0,
+  title = P1229R0 SG17 Minutes from San Diego 2018,
+  link = https://wiki.edg.com/bin/view/Wg21sandiego2018/P1229R0,
+)\
+\bib(
+  id = ClangFork,
+  title = named-args branch of term-est/llvm-project repository,
+  author = Murat Can Çağrı,
+  link = https://github.com/term-est/llvm-project/tree/named-args,
 )\
 
 \make_bib

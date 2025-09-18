@@ -1531,7 +1531,7 @@ We propose a syntax for calling C++ functions with named arguments.
 <div class=toc><div class=toc-num data-level=2>1</div>
 <a href=#introduction><h2>Introduction</h2></a>
 <div class=toc-num data-level=3>1.1</div>
-<a href=#why-not-just-use-a-struct-and-designated-initializers><h3>Why not just use a <tt->struct</tt-> and designated initializers?</h3></a>
+<a href=#why-no-struct><h3>Why not just use a <tt->struct</tt-> and designated initializers?</h3></a>
 <div class=toc-num data-level=4>1.1.1</div>
 <a href=#no-templates><h4>No templates</h4></a>
 <div class=toc-num data-level=4>1.1.2</div>
@@ -1544,21 +1544,49 @@ We propose a syntax for calling C++ functions with named arguments.
 <a href=#abi-and-performance-considerations><h4>ABI and performance considerations</h4></a>
 <div class=toc-num data-level=4>1.1.6</div>
 <a href=#freezing-api><h4>Freezing API</h4></a>
+<div class=toc-num data-level=3>1.2</div>
+<a href=#other-workarounds><h3>Other workarounds</h3></a>
 <div class=toc-num data-level=2>2</div>
-<a href=#motivation><h2>Motivation</h2></a>
+<a href=#prior-art><h2>Prior Art</h2></a>
 <div class=toc-num data-level=3>2.1</div>
-<a href=#simplifying-overload-resolution><h3>Simplifying overload resolution</h3></a>
+<a href=#n4172-named-arguments><h3>N4172 "Named arguments"</h3></a>
 <div class=toc-num data-level=3>2.2</div>
-<a href=#improving-error-messages><h3>Improving error messages</h3></a>
+<a href=#p0671r2-self-explanatory-function-arguments><h3>P0671R2 "Self-explanatory function arguments"</h3></a>
 <div class=toc-num data-level=3>2.3</div>
-<a href=#preventing-common-bugs><h3>Preventing common bugs</h3></a>
-<div class=toc-num data-level=3>2.4</div>
-<a href=#avoiding-magic-numbers><h3>Avoiding magic numbers</h3></a>
+<a href=#p1229r0-labelled-parameters><h3>P1229R0 "Labelled Parameters"</h3></a>
 <div class=toc-num data-level=2>3</div>
-<a href=#design><h2>Design</h2></a>
+<a href=#motivation><h2>Motivation</h2></a>
 <div class=toc-num data-level=3>3.1</div>
-<a href=#forwarding-named-arguments><h3>Forwarding named arguments</h3></a>
+<a href=#simplifying-overload-resolution><h3>Simplifying overload resolution</h3></a>
+<div class=toc-num data-level=3>3.2</div>
+<a href=#improving-error-messages><h3>Improving error messages</h3></a>
+<div class=toc-num data-level=3>3.3</div>
+<a href=#preventing-common-bugs><h3>Preventing common bugs</h3></a>
+<div class=toc-num data-level=3>3.4</div>
+<a href=#avoiding-magic-numbers><h3>Avoiding magic numbers</h3></a>
+<div class=toc-num data-level=4>3.4.1</div>
+<a href=#note-on-encouraging-large-parameter-lists><h4>Note on encouraging large parameter lists</h4></a>
+<div class=toc-num data-level=3>3.5</div>
+<a href=#arbitrary-keyword-arguments><h3>Arbitrary keyword arguments</h3></a>
 <div class=toc-num data-level=2>4</div>
+<a href=#design><h2>Design</h2></a>
+<div class=toc-num data-level=3>4.1</div>
+<a href=#overload-resolution-impact><h3>Overload resolution impact</h3></a>
+<div class=toc-num data-level=3>4.2</div>
+<a href=#mixing-named-and-positional-arguments><h3>Mixing named and positional arguments</h3></a>
+<div class=toc-num data-level=3>4.3</div>
+<a href=#forwarding-named-arguments><h3>Forwarding named arguments</h3></a>
+<div class=toc-num data-level=3>4.4</div>
+<a href=#positional><h3><tt->[[positional]]</tt-></h3></a>
+<div class=toc-num data-level=2>5</div>
+<a href=#impact-on-the-standard><h2>Impact on the standard</h2></a>
+<div class=toc-num data-level=3>5.1</div>
+<a href=#integration-into-the-standard-library><h3>Integration into the standard library</h3></a>
+<div class=toc-num data-level=2>6</div>
+<a href=#implementation-experience><h2>Implementation experience</h2></a>
+<div class=toc-num data-level=2>7</div>
+<a href=#wording><h2>Wording</h2></a>
+<div class=toc-num data-level=2>8</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
@@ -1579,7 +1607,7 @@ and perhaps,
 if approached the right way,
 the idea could succeed.
 </p>
-<h3 id=why-not-just-use-a-struct-and-designated-initializers><a class=para href=#why-not-just-use-a-struct-and-designated-initializers></a>1.1. Why not just use a <tt->struct</tt-> and designated initializers?</h3>
+<h3 id=why-no-struct><a class=para href=#why-no-struct></a>1.1. Why not just use a <tt->struct</tt-> and designated initializers?</h3>
 
 <p>A common criticism of the idea is that rather than using named arguments,
 one could use a <code><h- data-h=kw>struct</h-></code>.
@@ -1620,7 +1648,7 @@ this happens at a later stage:
 when forming implicit conversion sequences.
 </p>
 <note-block><p><intro-></intro-> 
-See also <a href=#simplifying-overload-resolution>§2.1. Simplifying overload resolution</a>.
+See also <a href=#simplifying-overload-resolution>§3.1. Simplifying overload resolution</a>.
 </p></note-block>
 
 <h4 id=complexity-and-inconvenience><a class=para href=#complexity-and-inconvenience></a>1.1.3. Complexity and inconvenience</h4>
@@ -1705,7 +1733,7 @@ This is especially unfortunate considering that functions such as
 argument names at the call site.
 </p>
 <note-block><p><intro-></intro-> 
-See also <a href=#preventing-common-bugs>§2.3. Preventing common bugs</a>.
+See also <a href=#preventing-common-bugs>§3.3. Preventing common bugs</a>.
 </p></note-block>
 
 <h4 id=freezing-api><a class=para href=#freezing-api></a>1.1.6. Freezing API</h4>
@@ -1722,9 +1750,228 @@ For example, a single function in <code><h- data-h=str>&lt;algorithm&gt;</h-></c
 could actually be implemented using two separate overloads:
 one for forward iterators and one for random access iterators.
 </p>
-<h2 id=motivation><a class=para href=#motivation></a>2. Motivation</h2>
+<h3 id=other-workarounds><a class=para href=#other-workarounds></a>1.2. Other workarounds</h3>
 
-<h3 id=simplifying-overload-resolution><a class=para href=#simplifying-overload-resolution></a>2.1. Simplifying overload resolution</h3>
+<p>While creating a <code><h- data-h=kw>struct</h-></code> is most commonly cited as a workaround,
+other options to provide named arguments are sometimes mentioned:
+</p>
+<code-block><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> proposed, for reference</h->
+<h- data-h=id>lerp</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>a</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>50</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>b</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>100</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>t</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num>5</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> "Fluent Interface"</h->
+<h- data-h=id>lerp</h-><h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h->
+  <h- data-h=sym_op>.</h-><h- data-h=id>a</h-><h- data-h=sym_par>(</h-><h- data-h=num>50</h-><h- data-h=sym_par>)</h->
+  <h- data-h=sym_op>.</h-><h- data-h=id>b</h-><h- data-h=sym_par>(</h-><h- data-h=num>100</h-><h- data-h=sym_par>)</h->
+  <h- data-h=sym_op>.</h-><h- data-h=id>t</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num>5</h-><h- data-h=sym_par>)</h->
+  <h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> "parameter types"</h->
+<h- data-h=id>lerp</h-><h- data-h=sym_par>(</h-><h- data-h=id>Range</h-><h- data-h=sym_brac>{</h-><h- data-h=num>50</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>100</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num>5</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>In short, <a href=https://en.wikipedia.org/wiki/Fluent_interface>Fluent Interfaces</a>
+use member function chaining so that each argument is provided individually
+to some kind of "builder class".
+The parameter types technique involves various parameter-specific types
+rather than working with scalar values,
+which often makes misuse of functions less likely thanks to the type system.
+These workarounds share most of the problems described in <a href=#why-no-struct>§1.1. Why not just use a <tt->struct</tt-> and designated initializers?</a>.
+Situationally, they can be quite reasonable.
+For example, bundling the <code><h- data-h=id>a</h-></code> and <code><h- data-h=id>b</h-></code> parameters of <code><h- data-h=id>lerp</h-></code>
+in a <code><h- data-h=id>Range</h-></code> class does make it unlikely that the function is misused,
+and it's relatively lightweight.
+</p>
+<p>As good as they sometimes are,
+these workarounds only chip away at the massive problems we have.
+For example, to prevent misuses of the <code><h- data-h=id>string</h-></code> constructor,
+are we seriously proposing to write code like this in the future?
+</p>
+<code-block><del><h- data-h=id>cout</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=id>string</h-><h- data-h=sym_par>(</h-><h- data-h=num>100</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>a</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></del>
+<ins><h- data-h=id>cout</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=id>string</h-><h- data-h=sym_par>(</h-><h- data-h=id>size_arg</h-><h- data-h=sym_brac>{</h-><h- data-h=num>100</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>char_arg</h-><h- data-h=sym_brac>{</h-><h- data-h=str_dlim>'</h-><h- data-h=str>a</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins></code-block>
+
+<p>Should C++ developers generally be expected to design their APIs like this?
+In practice, neither LEWG nor library developers at large want this.
+It takes an absurd amount of API design effort,
+extra written code,
+and slower compilation.
+A side-by-side comparison should make it obvious why these techniques are undesirable:
+</p>
+<style>
+  .center {
+    margin-left: auto;
+    margin-right: auto;
+  }
+</style>
+
+<table class=center>
+  <tr>
+    <th>Parameter types</th>
+    <th>Named arguments</th>
+  </tr>
+  <tr>
+  <td>
+    <code-block class=borderless><h- data-h=kw>struct</h-> <h- data-h=id>size_arg</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=id_type>size_t</h-> <h- data-h=id>value</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>struct</h-> <h- data-h=id>char_arg</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw_type>char</h-> <h- data-h=id>value</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
+<h- data-h=id>string</h-><h- data-h=sym_par>(</h-><h- data-h=id>size_arg</h-> <h- data-h=id>size</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>char_arg</h-> <h- data-h=id>c</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
+<h- data-h=id>cout</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=id>string</h-><h- data-h=sym_par>(</h-><h- data-h=id>size_arg</h-><h- data-h=sym_brac>{</h-><h- data-h=num>100</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>char_arg</h-><h- data-h=sym_brac>{</h-><h- data-h=str_dlim>'</h-><h- data-h=str>a</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+  </td>
+  <td>
+    <code-block class=borderless><h- data-h=id>string</h-><h- data-h=sym_par>(</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>size</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-> <h- data-h=id>c</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
+<h- data-h=id>cout</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=id>string</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>size</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>100</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>c</h-> <h- data-h=sym_op>=</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>a</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+  </td> 
+  </tr>
+</table>
+
+<note-block><p><intro-></intro-> 
+For the sake of simplicity,
+this comparison ignores some nuances,
+like <code><h- data-h=id>basic_string</h-></code>, <code><h- data-h=id>CharT</h-></code>, <code><h- data-h=id>size_type</h-></code>, etc.
+With those details involved,
+parameter types become even less attractive because the technique would require
+creating a large amount of class templates and relying on CTAD
+rather than working with simple <code><h- data-h=kw>struct</h-></code>s.
+</p></note-block>
+
+<h2 id=prior-art><a class=para href=#prior-art></a>2. Prior Art</h2>
+
+<h3 id=n4172-named-arguments><a class=para href=#n4172-named-arguments></a>2.1. N4172 "Named arguments"</h3>
+
+<p><a href="https://wg21%2elink/n4172">[N4172]</a> proposed the following syntax:
+</p>
+<code-block><h- data-h=kw_type>void</h-> <h- data-h=id>draw_rect</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>left</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>top</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>width</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>height</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>fill_rect</h-> <h- data-h=sym_op>=</h-> <h- data-h=bool>false</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw_type>int</h-> <h- data-h=id>main</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h->
+<h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Both of the function calls below pass the same set of arguments to draw_rect.</h->
+  <h- data-h=id>draw_rect</h-><h- data-h=sym_par>(</h-><h- data-h=id>top</h-><h- data-h=sym_punc>:</h-> <h- data-h=num>10</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>left</h-><h- data-h=sym_punc>:</h-> <h- data-h=num>100</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>width</h-><h- data-h=sym_punc>:</h-> <h- data-h=num>640</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>height</h-><h- data-h=sym_punc>:</h-> <h- data-h=num>480</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=id>draw_rect</h-><h- data-h=sym_par>(</h-><h- data-h=num>100</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>10</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>height</h-><h- data-h=sym_punc>:</h-> <h- data-h=num>480</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>fill_rect</h-><h- data-h=sym_punc>:</h-> <h- data-h=bool>false</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>width</h-><h- data-h=sym_punc>:</h-> <h- data-h=num>640</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>Functionally, our proposal is almost identical to <a href="https://wg21%2elink/n4172">[N4172]</a>,
+with a few key differences:
+</p>
+<ul>
+  <li>We use the designated initializer syntax <code><h- data-h=sym_op>.</h-><h- data-h=id>top</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-></code>.</li>
+  <li>
+    N4172 forfeits the possibility of perfect forwarding because the authors
+    "are not aware of a way to make this work without making parameter names part of a function's type".
+    We have a plausible solution,
+    described in <a href=#forwarding-named-arguments>§4.3. Forwarding named arguments</a>.
+  </li>
+</ul>
+
+<p>The proposal received overwhelmingly negative feedback,
+with the following poll being taken:
+</p>
+<blockquote>
+<p>Poll: Should we encourage Botond to continue work on this proposal?
+Yes=6, No=11.
+</p></blockquote>
+
+<p>The major criticism were:
+</p>
+<ul>
+  <li>Large amount of technical work "without any new functionality".</li>
+  <li>Encouraging large parameter lists.</li>
+  <li>Consistency problems for parameter names.</li>
+  <li>Parameter names becoming part of the API.</li>
+</ul>
+
+<p>We believe that our proposal meaningfully addresses all of these criticisms.
+The language has evolved significantly since 2025,
+and the perspective on many of these issues changed.
+</p>
+<h3 id=p0671r2-self-explanatory-function-arguments><a class=para href=#p0671r2-self-explanatory-function-arguments></a>2.2. P0671R2 "Self-explanatory function arguments"</h3>
+
+<p><a href="https://wg21%2elink/p0671r2">[P0671R2]</a> proposes the following syntax:
+</p>
+<code-block><h- data-h=kw_type>double</h-> <h- data-h=id>Gauss</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>mean</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>width</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>height</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=id>Gauss</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num>1</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>mean</h-><h- data-h=sym_punc>:</h-> <h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>width</h-><h- data-h=sym_punc>:</h-> <h- data-h=num>2</h-><h- data-h=num_dlim>.</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>height</h-><h- data-h=sym_punc>:</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>.</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>While the R2 proposal is strikingly similar to what we have
+(with different argument syntax though),
+R2 was never seen by the committee,
+and to our knowledge, it "died" in SG17.
+</p>
+<p>However, R0 was seen in EWG at Toronto 2017, with largely negative feedback;
+see <a href="https://wiki%2eedg%2ecom/bin/view/Wg21toronto2017/P0671R0">[MinutesP0671R0]</a>.
+R0 has a syntax such as <code><h- data-h=kw_type>double</h-> <h- data-h=sym_op>!</h-><h- data-h=id>mean</h-></code> which is incompatible
+with existing declarations, so it is unclear how relevant the negative feedback still is.
+Much of the feedback revolved around API design and possible library workarounds,
+something that we address in great detail in <a href=#introduction>§1. Introduction</a>.
+</p>
+<h3 id=p1229r0-labelled-parameters><a class=para href=#p1229r0-labelled-parameters></a>2.3. P1229R0 "Labelled Parameters"</h3>
+
+<p><a href="https://wg21%2elink/p1229r0">[P1229R0]</a> takes a dramatically different approach to the previous parameters.
+In essence, it adds the syntax:
+</p>
+<code-block><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> declaration</h->
+<h- data-h=kw_type>void</h-> <h- data-h=id>memcpy</h-><h- data-h=sym_par>(</h-><h- data-h=id>to</h-><h- data-h=sym_punc>:</h-> <h- data-h=kw_type>void</h-><h- data-h=sym_op>*</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>from</h-><h- data-h=sym_punc>:</h-> <h- data-h=kw_type>void</h-><h- data-h=sym_op>*</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>n</h-><h- data-h=sym_punc>:</h-> <h- data-h=id_type>size_t</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> call</h->
+<h- data-h=id>memcpy</h-><h- data-h=sym_par>(</h-><h- data-h=id>to</h-><h- data-h=sym_punc>:</h-> <h- data-h=id>buf</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>from</h-><h- data-h=sym_punc>:</h-> <h- data-h=id>in</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>n</h-><h- data-h=sym_punc>:</h-> <h- data-h=id>bytes</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>This syntax is sugar, and expands to the following underlying code:
+</p>
+<code-block><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> declaration</h->
+<h- data-h=kw_type>void</h-> <h- data-h=id>memcpy</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>labelled</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>label</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>t</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>o</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>void</h-><h- data-h=sym_op>*</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>,</h->
+            <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>labelled</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>label</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>f</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>r</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>o</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>m</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>void</h-><h- data-h=sym_op>*</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>,</h->
+            <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>labelled</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>label</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>n</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_type>size_t</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> call</h->
+<h- data-h=id>memcpy</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>labelled</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>label</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>t</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>o</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>buf</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h->
+       <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>labelled</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>label</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>f</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>r</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>o</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>m</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>in</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h->
+       <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>labelled</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>label</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>n</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>bytes</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>Unsurprisingly, this idea did not find consensus.
+The paper was seen in SG17 at San Diego 2018 with negative feedback;
+see <a href="https://wiki%2eedg%2ecom/bin/view/Wg21sandiego2018/P1229R0">[MinutesP1229R0]</a>
+(though we don't have record of polls):
+</p>
+<blockquote>
+<p>Anon: (voted against seeing the paper again)
+I want the feature, but I want to use it everywhere,
+so I'm uneasy with functions having to take <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>label</h-></code>.
+I want a more intrusive language feature
+</p>
+<p>Anon: (voted against seeing the paper again)
+I want to see a more full-fledged feature for this.
+This paper seems like a half-measure.
+I want to be able to reorder, have optional parameters, etc.
+</p>
+<p>Anon: (voted against seeing the paper again)
+this has extensive impacts on the type system, ADL, overloading, etc.
+These are complicated parts of the language.
+It introduces identifiers in new places, and they leak out of the function scope.
+These things weren't addressed in the paper,
+and I would want to see extensive exploration of these things. 
+</p></blockquote>
+
+<p>We see further problems with <a href="https://wg21%2elink/p1229r0">[P1229R0]</a>:
+</p>
+<ul>
+  <li>
+    There is no "upgrade path" that the C++ standard library could reasonably take
+    to support this new syntax.
+  </li>
+  <li>
+    Crucial benefits of our proposal such as
+    <a href=#simplifying-overload-resolution>§3.1. Simplifying overload resolution</a>
+    cannot function as a quasi-library solution.
+  </li>
+  <li>
+    The proposed <code><h- data-h=id>label</h-><h- data-h=sym_punc>:</h-> <h- data-h=id>arg</h-></code> syntax is asymmetrical with
+    designated initializers,
+    which is now an obvious problem from a C++20 perspective.
+  </li>
+</ul>
+
+<h2 id=motivation><a class=para href=#motivation></a>3. Motivation</h2>
+
+<h3 id=simplifying-overload-resolution><a class=para href=#simplifying-overload-resolution></a>3.1. Simplifying overload resolution</h3>
 
 <p>Named arguments can drastically simplify overload resolution
 by disqualifying (almost) all candidates on the basis of name mismatch.
@@ -1767,7 +2014,7 @@ The long-term plan for the standard library should be to add
 named argument support wherever useful.
 </p></note-block>
 
-<h3 id=improving-error-messages><a class=para href=#improving-error-messages></a>2.2. Improving error messages</h3>
+<h3 id=improving-error-messages><a class=para href=#improving-error-messages></a>3.2. Improving error messages</h3>
 
 <p>Named calls are also tremendously useful when the user makes a mistake in calling a function
 in an overload set.
@@ -1873,7 +2120,7 @@ This meaningfully addresses one of the greatest and longest-standing complaints
 that C++ users have:
 overly long and complicated errors.
 </p>
-<h3 id=preventing-common-bugs><a class=para href=#preventing-common-bugs></a>2.3. Preventing common bugs</h3>
+<h3 id=preventing-common-bugs><a class=para href=#preventing-common-bugs></a>3.3. Preventing common bugs</h3>
 
 <bug-block><p><intro-></intro-> 
 Functions such as <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>lerp</h-></code> or <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clamp</h-></code>
@@ -1935,7 +2182,7 @@ because the user expected it to work like <code><h- data-h=id>copy_n</h-></code>
 These mistakes are generally impossible with named arguments
 because the position of the source and destination parameters are irrelevant.
 </p>
-<h3 id=avoiding-magic-numbers><a class=para href=#avoiding-magic-numbers></a>2.4. Avoiding magic numbers</h3>
+<h3 id=avoiding-magic-numbers><a class=para href=#avoiding-magic-numbers></a>3.4. Avoiding magic numbers</h3>
 
 <p>Named arguments can significantly improve the readability of a function call.
 </p>
@@ -1981,6 +2228,8 @@ It is also not obvious how to handle smaller parameter lists of ≥ 3 parameters
 Just three parameters can be mentally demanding, and are not usually enough to warrant
 a separate <code><h- data-h=kw>struct</h-></code>.
 </p>
+<h4 id=note-on-encouraging-large-parameter-lists><a class=para href=#note-on-encouraging-large-parameter-lists></a>3.4.1. Note on encouraging large parameter lists</h4>
+
 <p>Some people may argue that named arguments would encourage users to write
 functions with overly many parameters.
 We argue that the amount of parameters to a program's subroutine is innate.
@@ -1992,9 +2241,90 @@ Parameters can only be shuffled into different places,
 and there is no inherent reason why a function parameter list
 would be a bad place compared to all these other alternatives.
 </p>
-<h2 id=design><a class=para href=#design></a>3. Design</h2>
+<h3 id=arbitrary-keyword-arguments><a class=para href=#arbitrary-keyword-arguments></a>3.5. Arbitrary keyword arguments</h3>
 
-<h3 id=forwarding-named-arguments><a class=para href=#forwarding-named-arguments></a>3.1. Forwarding named arguments</h3>
+<p>There are certain use cases where
+we would want to support a large set of "flags", "attributes", or "keyword arguments"
+in our functions.
+This is clearly illustrated by proposals such as <a href="https://wg21%2elink/P2019R8">[P2019R8]</a>,
+which proposes the following syntax:
+</p>
+<code-block><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>jthread</h-> <h- data-h=id>thr</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>thread</h-><h- data-h=sym_op>::</h-><h- data-h=id>name_hint</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>worker</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h->
+                 <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>thread</h-><h- data-h=sym_op>::</h-><h- data-h=id>stack_size_hint</h-><h- data-h=sym_par>(</h-><h- data-h=num>16384</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h->
+                 <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_brac>{</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>puts</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>standard</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>Since the set of supported "thread attributes" may change in the future
+and may include implementation-defined attributes,
+we cannot simply use a <code><h- data-h=kw>struct</h-></code> aggregate that bundles up the attributes.
+Otherwise, future changes would be an ABI break.
+</p>
+<p>With named arguments, and with the hypothetical syntax in <a href=#forwarding-named-arguments>§4.3. Forwarding named arguments</a>
+(not yet proposed),
+we could solve this issue as follows:
+</p>
+<code-block><h- data-h=kw>namespace</h-> <h- data-h=id>std</h-><h- data-h=sym_brac>{</h->
+  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-><h- data-h=sym_op>...</h-> <h- data-h=id>Attr</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>meta</h-><h- data-h=sym_op>::</h-><h- data-h=id>info</h-><h- data-h=sym_op>...</h-> <h- data-h=id>AttrNames</h-><h- data-h=sym_op>&gt;</h->
+    <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>tuple</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=id>unspecified</h-></i><h- data-h=sym_op>&gt;</h-> <h- data-h=id>kwargs</h-><h- data-h=sym_par>(</h-><h- data-h=id>Attr</h-><h- data-h=sym_op>&amp;&amp;</h-><h- data-h=sym_op>...</h-> <h- data-h=id>attr</h-> <h- data-h=sym_op>.</h-><h- data-h=id>AttrNames</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+
+  <h- data-h=kw>class</h-> <h- data-h=id>jthread</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw>public</h-><h- data-h=sym_punc>:</h->
+    <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-><h- data-h=sym_op>...</h-> <h- data-h=id>Attr</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-><h- data-h=sym_op>...</h-> <h- data-h=id>Args</h-><h- data-h=sym_op>&gt;</h->
+      <h- data-h=id>jthread</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>tuple</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>Attr</h-><h- data-h=sym_op>...</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F</h-><h- data-h=sym_op>&amp;&amp;</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>Args</h-><h- data-h=sym_op>&amp;&amp;</h-><h- data-h=sym_op>...</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
+  <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h->
+
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Attr = [std::string_view, int]</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> AttrNames = ["name_hint", "stack_size_hint"],</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt>             i.e. we deduce a pack of argument name reflections</h->
+<h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>tuple</h-> <h- data-h=id>attr</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>kwargs</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>name_hint</h-> <h- data-h=sym_op>=</h-> <h- data-h=str_dlim>"</h-><h- data-h=str>worker</h-><h- data-h=str_dlim>"</h-><h- data-h=str_deco>sv</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>stack_size_hint</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>16384</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>jthread</h-> <h- data-h=id>thr</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>move</h-><h- data-h=sym_par>(</h-><h- data-h=id>attr</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_brac>{</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>puts</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>standard</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>This exact syntax may not actually be feasible or desirable,
+but the principle should be clear:
+arbitrary keyword arguments are much more concise and natural than creating a distinct type
+for each "attribute".
+</p>
+<h2 id=design><a class=para href=#design></a>4. Design</h2>
+
+<h3 id=overload-resolution-impact><a class=para href=#overload-resolution-impact></a>4.1. Overload resolution impact</h3>
+
+<p>In short, C++ function calls are resolved in the following stages:
+</p>
+<ol>
+  <li>name lookup</li>
+  <li>collecting viable candidates</li>
+  <li>selecting the best viable candidate using various tie breakers</li>
+</ol>
+
+<p>Named arguments are resolved during the second stage,
+i.e. when collecting viable candidates.
+Essentially,
+argument names are just a means of matching arguments to parameters.
+Positional calls do this by matching arguments to parameters from left to right,
+named calls do it by name.
+Whether a call uses positional or named arguments is irrelevant to which overload is better.
+</p>
+<h3 id=mixing-named-and-positional-arguments><a class=para href=#mixing-named-and-positional-arguments></a>4.2. Mixing named and positional arguments</h3>
+
+<p>We propose a heavily restricted form of mixing name and positional arguments.
+Namely, all positional arguments have to come first:
+</p>
+<code-block><h- data-h=id>draw_text</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>text</h-> <h- data-h=sym_op>=</h-> <h- data-h=str_dlim>"</h-><h- data-h=str>awoo</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>font_size</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>18</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, named only</h->
+<h- data-h=id>draw_text</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>awoo</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>font_size</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>18</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, positional then named</h->
+<h- data-h=id>draw_text</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>font_size</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>18</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>"</h-><h- data-h=str>awoo</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> error: positional argument following named argument</h-></code-block>
+
+<p>This is useful because there are often tag parameters at the start,
+or parameters whose names are either obvious or irrelevant.
+</p>
+<example-block><p><intro-></intro-> 
+The following calls could be valid:
+</p><code-block><h- data-h=id>format</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>{x} {y}</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>y</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>20</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=id>emit_html_element</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>div</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>id</h-> <h- data-h=sym_op>=</h-> <h- data-h=str_dlim>"</h-><h- data-h=str>container</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+</example-block>
+
+<h3 id=forwarding-named-arguments><a class=para href=#forwarding-named-arguments></a>4.3. Forwarding named arguments</h3>
 
 <p>Past proposals have faced concerns over the ability to forward argument names,
 such as in:
@@ -2050,7 +2380,115 @@ this would also enable support for named arguments in <code><h- data-h=id>std</h
 <h- data-h=id>format</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>{x}</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>100</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Args  = [ int ]</h->
                          <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> names = [ "x" ]</h-></code-block>
 
-<h2 id=references><a class=para href=#references></a>4. References</h2>
+<h3 id=positional><a class=para href=#positional></a>4.4. <tt->[[positional]]</tt-></h3>
+
+<p>While library authors in C++ don't feel comfortable
+with making a parameter name a permanent part of the API,
+experience from other languages with named argument support (e.g. Kotlin)
+tells us that "parameter name permanence" is largely a non-issue.
+It is rare that a parameter name would have to be changed.
+</p>
+<p>Nonetheless, there are certain instances where parameter name stability
+cannot be guaranteed,
+and to cover this case,
+we propose a <code><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=id>positional</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-></code> attribute,
+which may be applied to a function declaration.
+This attribute enables a warning if a function is called with named arguments:
+</p>
+<example-block><p><intro-></intro-> 
+</p><code-block><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=id>positional</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> warning: f should only be called with positional arguments</h-></code-block>
+</example-block>
+
+<p>Such an attribute is particularly useful for functions where only positional calls make sense.
+</p>
+<example-block><p><intro-></intro-> 
+Consider the following function template:
+</p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=id>positional</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=id>T</h-> <h- data-h=id>max</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>?</h-> <h- data-h=id>y</h-> <h- data-h=sym_punc>:</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>Because we "disallow" named arguments,
+we retain the freedom to turn this into a variadic function template later:
+</p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-><h- data-h=sym_op>...</h-> <h- data-h=id>Us</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>requires</h-> <h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>is_same_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>Us</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=sym_op>...</h-><h- data-h=sym_par>)</h->
+<h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=id>positional</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=id>T</h-> <h- data-h=id>max</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=id>Us</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_op>...</h-> <h- data-h=id>ys</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
+<h- data-h=sym_brac>}</h-></code-block>
+</example-block>
+
+<p>That being said,
+calling functions <code><h- data-h=id>max</h-></code> with named arguments is dubious in the first place,
+and it is unlikely that much — or any code would be broken by changing <code><h- data-h=id>y</h-></code>.
+</p>
+<h2 id=impact-on-the-standard><a class=para href=#impact-on-the-standard></a>5. Impact on the standard</h2>
+
+<p>In summary,
+a few parts of the core language are affected,
+such as function call syntax and overload resolution.
+The standard library impact is minimal because named argument support
+is not enabled by this paper.
+We merely add some policies in library wording.
+</p>
+<h3 id=integration-into-the-standard-library><a class=para href=#integration-into-the-standard-library></a>5.1. Integration into the standard library</h3>
+
+<p>None of the proposals in <a href=#prior-art>§2. Prior Art</a> discuss
+how named arguments could be integrated into the C++ standard library,
+despite this being an extremely important point of motivation and an important design aspect.
+There are a few key observations:
+</p>
+<ul>
+  <li>
+    When named arguments may be used,
+    parameter names are effectively part of the API,
+    and changing parameter names is a breaking change.
+  </li>
+  <li>
+    Standard library implementations typically use reserved identifiers such as <code><h- data-h=id>__x</h-></code>
+    instead of <code><h- data-h=id>x</h-></code> for parameter names
+    in order to avoid conflicts with macros defined by the user.
+  </li>
+  <li>
+    None of the functions in the standard were standardized with "normative parameters".
+    LEWG never discussed or approved these parameter names as a language feature,
+    they are all editorial.
+  </li>
+</ul>
+
+<p>While allowing named arguments in the standard library is a long-term goal,
+we do not yet propose it here.
+Instead, we propose a general policy that the function parameter specified
+in the standard library are not stable and may be different in the implementation.
+This approach has precedent for SFINAE/expression-validity testing,
+for reflecting on standard library declarations,
+and other issues.
+</p>
+<p>Subsequent proposals would gradually enable named arguments on a per-header basis.
+For headers that are "named-argument-enabled",
+<code><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=id>positional</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-></code> would be specified on the few functions that
+require parameter name instability.
+While named arguments are not always useful (e.g. what's the point of <code><h- data-h=id>sqrt</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>2</h-><h- data-h=sym_par>)</h-></code>?),
+they are rarely harmful
+and rely on a parameter name that is likely to change,
+especially in a document as stable as the C++ standard.
+</p>
+<p>Any function that has reserved identifiers as parameter names (e.g. <code><h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>__x</h-><h- data-h=sym_par>)</h-></code>)
+is recommended to behave as if <code><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=id>positional</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-></code> was implicitly applied to it,
+meaning that to implement this proposal,
+no standard library code would need to be changed.
+</p>
+<h2 id=implementation-experience><a class=para href=#implementation-experience></a>6. Implementation experience</h2>
+
+<p>See <a href="https://github%2ecom/term-est/llvm-project/tree/named-args">[ClangFork]</a> for an experimental implementation.
+</p>
+<h2 id=wording><a class=para href=#wording></a>7. Wording</h2>
+
+<p>None yet.
+Will be provided in a future revision
+once some design aspects have settled.
+</p>
+<h2 id=references><a class=para href=#references></a>8. References</h2>
 
 
 <div class=bib><div id=bib-item-N4172 class=bib-item>
@@ -2073,6 +2511,24 @@ this would also enable support for named arguments in <code><h- data-h=id>std</h
 <span class=bib-author>Jorg Brown.</span>
 <span class=bib-title>Labelled Parameters</span>
 <span class=bib-date>2018-10-08</span>
-<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2018/p1229r0%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1229r0.html</a></div></div>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2018/p1229r0%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1229r0.html</a></div><div id=bib-item-P2019R8 class=bib-item>
+<a href="https://wg21%2elink/P2019R8">[P2019R8]</a>
+<span class=bib-author>Corentin Jabot.</span>
+<span class=bib-title>Thread attributes</span>
+<span class=bib-date>2025-01-23</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/p2019r8%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2019r8.pdf</a></div><div id=bib-item-MinutesN4172 class=bib-item>
+<a href="https://wiki%2eedg%2ecom/bin/view/Wg21urbanachampaign/FunctionFacilities">[MinutesN4172]</a>
+<span class=bib-title>N4172 EWG Minutes from Urbana-Champaign 2014</span>
+<a href="https://wiki%2eedg%2ecom/bin/view/Wg21urbanachampaign/FunctionFacilities" class=bib-link>https://wiki.edg.com/bin/view/Wg21urbanachampaign/FunctionFacilities</a></div><div id=bib-item-MinutesP0671R0 class=bib-item>
+<a href="https://wiki%2eedg%2ecom/bin/view/Wg21toronto2017/P0671R0">[MinutesP0671R0]</a>
+<span class=bib-title>P0671R0 EWG Minutes from Toronto 2017</span>
+<a href="https://wiki%2eedg%2ecom/bin/view/Wg21toronto2017/P0671R0" class=bib-link>https://wiki.edg.com/bin/view/Wg21toronto2017/P0671R0</a></div><div id=bib-item-MinutesP1229R0 class=bib-item>
+<a href="https://wiki%2eedg%2ecom/bin/view/Wg21sandiego2018/P1229R0">[MinutesP1229R0]</a>
+<span class=bib-title>P1229R0 SG17 Minutes from San Diego 2018</span>
+<a href="https://wiki%2eedg%2ecom/bin/view/Wg21sandiego2018/P1229R0" class=bib-link>https://wiki.edg.com/bin/view/Wg21sandiego2018/P1229R0</a></div><div id=bib-item-ClangFork class=bib-item>
+<a href="https://github%2ecom/term-est/llvm-project/tree/named-args">[ClangFork]</a>
+<span class=bib-author>Murat Can Çağrı.</span>
+<span class=bib-title>named-args branch of term-est/llvm-project repository</span>
+<a href="https://github%2ecom/term-est/llvm-project/tree/named-args" class=bib-link>https://github.com/term-est/llvm-project/tree/named-args</a></div></div>
 </main></body>
 </html>
