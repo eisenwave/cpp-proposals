@@ -1514,7 +1514,8 @@ if (theme !== null) {
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;<br/>
 Murat Can Çağrı &lt;<a href=mailto:cancagri.dev@gmail.com class=sans>cancagri.dev@gmail.com</a>&gt;<br/>
-Matthias Wippich &lt;<a href=mailto:mfwippich@gmail.com class=sans>mfwippich@gmail.com</a>&gt;</dd>
+Matthias Wippich &lt;<a href=mailto:mfwippich@gmail.com class=sans>mfwippich@gmail.com</a>&gt;<br/>
+Lénárd Szolnoki &lt;<a href=mailto:cpp@lenardszolnoki.com class=sans>cpp@lenardszolnoki.com</a>&gt;</dd>
   <dt>GitHub Issue:</dt>    <dd><a href=https://wg21.link/P3777/github class=sans>wg21.link/P3777/github</a></dd>
   <dt>Source:</dt>          <dd><a href=https://github.com/eisenwave/cpp-proposals/blob/master/src/named-args.cow class=sans>github.com/eisenwave/cpp-proposals/blob/master/src/named-args.cow</a></dd>
 </dl>
@@ -1531,8 +1532,28 @@ We propose a syntax for calling C++ functions with named arguments.
 <a href=#introduction><h2>Introduction</h2></a>
 <div class=toc-num data-level=3>1.1</div>
 <a href=#why-not-just-use-a-struct-and-designated-initializers><h3>Why not just use a <tt->struct</tt-> and designated initializers?</h3></a>
+<div class=toc-num data-level=4>1.1.1</div>
+<a href=#no-templates><h4>No templates</h4></a>
+<div class=toc-num data-level=4>1.1.2</div>
+<a href=#worse-overload-resolution><h4>Worse overload resolution</h4></a>
+<div class=toc-num data-level=4>1.1.3</div>
+<a href=#complexity-and-inconvenience><h4>Complexity and inconvenience</h4></a>
+<div class=toc-num data-level=4>1.1.4</div>
+<a href=#dilemma-of-choice><h4>Dilemma of choice</h4></a>
+<div class=toc-num data-level=4>1.1.5</div>
+<a href=#abi-and-performance-considerations><h4>ABI and performance considerations</h4></a>
+<div class=toc-num data-level=4>1.1.6</div>
+<a href=#freezing-api><h4>Freezing API</h4></a>
 <div class=toc-num data-level=2>2</div>
 <a href=#motivation><h2>Motivation</h2></a>
+<div class=toc-num data-level=3>2.1</div>
+<a href=#simplifying-overload-resolution><h3>Simplifying overload resolution</h3></a>
+<div class=toc-num data-level=3>2.2</div>
+<a href=#improving-error-messages><h3>Improving error messages</h3></a>
+<div class=toc-num data-level=3>2.3</div>
+<a href=#preventing-common-bugs><h3>Preventing common bugs</h3></a>
+<div class=toc-num data-level=3>2.4</div>
+<a href=#avoiding-magic-numbers><h3>Avoiding magic numbers</h3></a>
 <div class=toc-num data-level=2>3</div>
 <a href=#design><h2>Design</h2></a>
 <div class=toc-num data-level=3>3.1</div>
@@ -1555,7 +1576,7 @@ in <a href="https://wg21%2elink/n4172">[N4172]</a>, <a href="https://wg21%2elink
 but never in a way that found consensus in WG21.
 Nonetheless, this shows that there is interest in the feature,
 and perhaps,
-if approached right,
+if approached the right way,
 the idea could succeed.
 </p>
 <h3 id=why-not-just-use-a-struct-and-designated-initializers><a class=para href=#why-not-just-use-a-struct-and-designated-initializers></a>1.1. Why not just use a <tt->struct</tt-> and designated initializers?</h3>
@@ -1576,77 +1597,401 @@ one could use a <code><h- data-h=kw>struct</h-></code>.
 upon further thought,
 this is not a good solution for the following reasons:
 </p>
+<h4 id=no-templates><a class=para href=#no-templates></a>1.1.1. No templates</h4>
+
+<p>The <code><h- data-h=id>lerp</h-></code> approach cannot be used in a template like
+<code><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>T</h-> <h- data-h=id>lerp</h-><h- data-h=sym_par>(</h-><h- data-h=id>lerp_args</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>)</h-></code>,
+or at least, a call like <code><h- data-h=id>lerp</h-><h- data-h=sym_par>(</h-><h- data-h=id>lerp_args</h-><h- data-h=sym_brac>{</h-><h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-></code> would be necessary.
+To be fair, this problem may be solved by permitting CTAD for function parameters,
+for some cases.
+It does not work for forwarding references.
+However, even if that approach worked,
+it would require the user to create <em>really</em> complicated class templates
+for parameter sets like the ones we have in <code><h- data-h=str>&lt;algorithm&gt;</h-></code>.
+</p>
+<h4 id=worse-overload-resolution><a class=para href=#worse-overload-resolution></a>1.1.2. Worse overload resolution</h4>
+
+<p>With the proposed semantics,
+overloads are eliminated as non-viable candidates extremely early,
+on the basis of not having matching parameter names.
+For the <code><h- data-h=kw>struct</h-></code> approach,
+when an overload cannot be called due to a name mismatch,
+this happens at a later stage:
+when forming implicit conversion sequences.
+</p>
+<note-block><p><intro-></intro-> 
+See also <a href=#simplifying-overload-resolution>§2.1. Simplifying overload resolution</a>.
+</p></note-block>
+
+<h4 id=complexity-and-inconvenience><a class=para href=#complexity-and-inconvenience></a>1.1.3. Complexity and inconvenience</h4>
+
+<p>Users don't want to maintain these additional parameter <code><h- data-h=kw>struct</h-></code>s.
+They make a simple problem of passing named arguments more tedious than it needs to be.
+Realistically, if someone proposed to add an overload to <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>lerp</h-></code>
+that took <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>lerp_args</h-></code>, they would be laughed out of LEWG.
+While the existing declaration is obviously problematic,
+it would be a huge burden
+on the committee to maintain these additional argument <code><h- data-h=kw>struct</h-></code>s.
+Library authors in general face the same problem.
+</p>
+<h4 id=dilemma-of-choice><a class=para href=#dilemma-of-choice></a>1.1.4. Dilemma of choice</h4>
+
+<p>Even when designing new functions from scratch,
+it <em>feels</em> unnecessary and much more complex to pass all arguments via <code><h- data-h=kw>struct</h-></code>
+rather than simply writing a function.
+In a code base where passing arguments via <code><h- data-h=kw>struct</h-></code> is common,
+one constantly has to make the choice whether to pass normally, via <code><h- data-h=kw>struct</h-></code>,
+or perhaps both.
+This adds up to wasted developer time.
+Named arguments let us have our cake and eat it too.
+</p>
+<h4 id=abi-and-performance-considerations><a class=para href=#abi-and-performance-considerations></a>1.1.5. ABI and performance considerations</h4>
+
+<p>In most ABIs, when a <code><h- data-h=kw>struct</h-></code> is sufficiently large,
+it will not be passed by register.
+Inlining can sometimes solve this issue,
+but especially for larger mathematical functions,
+it should not be relied upon,
+and these ABI issues can result in degraded performance.
+</p>
+<example-block><p><intro-></intro-> 
+Consider the following code sample
+(with bad and naive implementation of linear interpolation):
+</p>
+<code-block><h- data-h=kw>struct</h-> <h- data-h=id>lerp_args</h-> <h- data-h=sym_brac>{</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>a</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>t</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h->
+
+<h- data-h=kw_type>double</h-> <h- data-h=id>lerp</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>double</h-> <h- data-h=id>a</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>t</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_par>(</h-><h- data-h=num>1</h-> <h- data-h=sym_op>-</h-> <h- data-h=id>t</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=id>a</h-> <h- data-h=sym_op>+</h-> <h- data-h=id>t</h-> <h- data-h=sym_op>*</h-> <h- data-h=id>b</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h->
+<h- data-h=kw_type>double</h-> <h- data-h=id>lerp</h-><h- data-h=sym_par>(</h-><h- data-h=id>lerp_args</h-> <h- data-h=id>args</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_par>(</h-><h- data-h=num>1</h-> <h- data-h=sym_op>-</h-> <h- data-h=id>args</h-><h- data-h=sym_op>.</h-><h- data-h=id>t</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=id>args</h-><h- data-h=sym_op>.</h-><h- data-h=id>a</h-> <h- data-h=sym_op>+</h-> <h- data-h=id>t</h-> <h- data-h=sym_op>*</h-> <h- data-h=id>args</h-><h- data-h=sym_op>.</h-><h- data-h=id>b</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>The second overload is not only clunkier to write,
+it also results in worse <tt->-O2</tt-> codegen with Clang 21 (targeting the x86-64 psABI):
+</p>
+<code-block><h- data-h=id_labl_decl>.LCPI0_0:</h->
+        <h- data-h=id_labl_decl>.quad</h->   <h- data-h=num_deco>0x</h-><h- data-h=num>3ff0000000000000</h->
+<h- data-h=id_labl>lerp(double, double, double)</h-><h- data-h=sym_op>:</h->
+        <h- data-h=asm_ins>movsd</h->   <h- data-h=id_var>xmm3</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>qword</h-> <h- data-h=kw_type>ptr</h-> <h- data-h=sym_sqr>[</h-><h- data-h=id_var>rip</h-> <h- data-h=sym_op>+</h-> <h- data-h=id_labl_decl>.LCPI0_0</h-><h- data-h=sym_sqr>]</h-> <h- data-h=cmt_dlim>;</h-><h- data-h=cmt> load 1.0 rip-relative</h->
+        <h- data-h=asm_ins>subsd</h->   <h- data-h=id_var>xmm3</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_var>xmm2</h->
+        <h- data-h=asm_ins>mulsd</h->   <h- data-h=id_var>xmm1</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_var>xmm2</h->
+        <h- data-h=asm_ins>mulsd</h->   <h- data-h=id_var>xmm0</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_var>xmm3</h->
+        <h- data-h=asm_ins>addsd</h->   <h- data-h=id_var>xmm0</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_var>xmm1</h->
+        <h- data-h=asm_ins>ret</h->
+
+<h- data-h=id_labl_decl>.LCPI1_0:</h->
+        <h- data-h=id_labl_decl>.quad</h->   <h- data-h=num_deco>0x</h-><h- data-h=num>3ff0000000000000</h->
+<h- data-h=id_labl>lerp(lerp_args)</h-><h- data-h=sym_op>:</h->
+        <h- data-h=asm_ins>movsd</h->   <h- data-h=id_var>xmm1</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>qword</h-> <h- data-h=kw_type>ptr</h-> <h- data-h=sym_sqr>[</h-><h- data-h=id_var>rsp</h-> <h- data-h=sym_op>+</h-> <h- data-h=num>24</h-><h- data-h=sym_sqr>]</h->       <h- data-h=cmt_dlim>;</h-><h- data-h=cmt> load t from stack</h->
+        <h- data-h=asm_ins>movsd</h->   <h- data-h=id_var>xmm0</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>qword</h-> <h- data-h=kw_type>ptr</h-> <h- data-h=sym_sqr>[</h-><h- data-h=id_var>rip</h-> <h- data-h=sym_op>+</h-> <h- data-h=id_labl_decl>.LCPI1_0</h-><h- data-h=sym_sqr>]</h-> <h- data-h=cmt_dlim>;</h-><h- data-h=cmt> load 1.0 rip-relative</h->
+        <h- data-h=asm_ins>subsd</h->   <h- data-h=id_var>xmm0</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_var>xmm1</h->
+        <h- data-h=asm_ins>mulsd</h->   <h- data-h=id_var>xmm1</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>qword</h-> <h- data-h=kw_type>ptr</h-> <h- data-h=sym_sqr>[</h-><h- data-h=id_var>rsp</h-> <h- data-h=sym_op>+</h-> <h- data-h=num>16</h-><h- data-h=sym_sqr>]</h->       <h- data-h=cmt_dlim>;</h-><h- data-h=cmt> load b from stack</h->
+        <h- data-h=asm_ins>mulsd</h->   <h- data-h=id_var>xmm0</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>qword</h-> <h- data-h=kw_type>ptr</h-> <h- data-h=sym_sqr>[</h-><h- data-h=id_var>rsp</h-> <h- data-h=sym_op>+</h-> <h- data-h=num>8</h-><h- data-h=sym_sqr>]</h->        <h- data-h=cmt_dlim>;</h-><h- data-h=cmt> load a from stack</h->
+        <h- data-h=asm_ins>addsd</h->   <h- data-h=id_var>xmm0</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_var>xmm1</h->
+        <h- data-h=asm_ins>ret</h-></code-block>
+
+<p>This problem is extremely common, not specific to the x86-64 ABI.
+To name one other example,
+in the Basic C ABI for WebAssembly,
+<code><h- data-h=id>lerp</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>double</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>double</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>double</h-><h- data-h=sym_par>)</h-></code> would compile to <code><h- data-h=sym_par>(</h-><h- data-h=id>f64</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>f64</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>f64</h-><h- data-h=sym_par>)</h-></code> parameters
+whereas <code><h- data-h=id>lerp_args</h-></code> would be passed indirectly, i.e. via <code><h- data-h=sym_par>(</h-><h- data-h=id>i32</h-><h- data-h=sym_par>)</h-></code> memory address.
+</p></example-block>
+
+<p>These ABI problems make the prospect of using a <code><h- data-h=kw>struct</h-></code>
+extremely unattractive for high-performance mathematical functions.
+This is especially unfortunate considering that functions such as
+<code><h- data-h=id>lerp</h-></code> and <code><h- data-h=id>clamp</h-></code> could significantly benefit from
+argument names at the call site.
+</p>
+<note-block><p><intro-></intro-> 
+See also <a href=#preventing-common-bugs>§2.3. Preventing common bugs</a>.
+</p></note-block>
+
+<h4 id=freezing-api><a class=para href=#freezing-api></a>1.1.6. Freezing API</h4>
+
+<p>With <code><h- data-h=id>lerp</h-></code> as specified as above,
+the user is able to store and pass around <code><h- data-h=id>lerp_args</h-></code>,
+meaning that any change to it, such as turning it into a class template
+could break API and ABI.
+In general, creating a <code><h- data-h=kw>struct</h-></code> for a set of parameters freezes that parameter set.
+This would be unacceptable in e.g. the C++ standard library.
+The functions specified there are deliberately stated to be "non-addressable"
+so that changes to overload sets can be made.
+For example, a single function in <code><h- data-h=str>&lt;algorithm&gt;</h-></code> stated to take an iterator
+could actually be implemented using two separate overloads:
+one for forward iterators and one for random access iterators.
+</p>
+<h2 id=motivation><a class=para href=#motivation></a>2. Motivation</h2>
+
+<h3 id=simplifying-overload-resolution><a class=para href=#simplifying-overload-resolution></a>2.1. Simplifying overload resolution</h3>
+
+<p>Named arguments can drastically simplify overload resolution
+by disqualifying (almost) all candidates on the basis of name mismatch.
+</p>
+<example-block><p><intro-></intro-> 
+When calling <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>ranges</h-><h- data-h=sym_op>::</h-><h- data-h=id>sort</h-></code> with named arguments,
+we can disqualify all but one overload based on name mismatch:
+</p>
+<code-block><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>vector</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>Employee</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>employees</h-> <h- data-h=sym_op>=</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-><h- data-h=sym_punc>;</h->
+<h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>ranges</h-><h- data-h=sym_op>::</h-><h- data-h=id>sort</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>r</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>employees</h-><h- data-h=sym_punc>,</h->
+                  <h- data-h=sym_op>.</h-><h- data-h=id>comp</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>compare_case_insensitive</h-><h- data-h=sym_punc>,</h->
+                  <h- data-h=sym_op>.</h-><h- data-h=id>proj</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_op>&amp;</h-><h- data-h=id>Employee</h-><h- data-h=sym_op>::</h-><h- data-h=id>get_name</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>By comparison, if we make a positional call with the three arguments,
+we have many potential candidates:
+</p>
+<code-block><h- data-h=id>ranges</h-><h- data-h=sym_op>::</h-><h- data-h=id>sort</h-><h- data-h=sym_par>(</h-><h- data-h=id>I</h-> <h- data-h=id>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>S</h-> <h- data-h=id>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>Comp</h-> <h- data-h=id>comp</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>Proj</h-> <h- data-h=id>proj</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> #1</h->
+<h- data-h=id>ranges</h-><h- data-h=sym_op>::</h-><h- data-h=id>sort</h-><h- data-h=sym_par>(</h-><h- data-h=id>R</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=id>r</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>Comp</h-> <h- data-h=id>comp</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>Proj</h-> <h- data-h=id>proj</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> #2</h->
+<h- data-h=id>ranges</h-><h- data-h=sym_op>::</h-><h- data-h=id>sort</h-><h- data-h=sym_par>(</h-><h- data-h=id>Ep</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=id>exec</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>I</h-> <h- data-h=id>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>S</h-> <h- data-h=id>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>Comp</h-> <h- data-h=id>comp</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>Proj</h-> <h- data-h=id>proj</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> #3</h->
+<h- data-h=id>ranges</h-><h- data-h=sym_op>::</h-><h- data-h=id>sort</h-><h- data-h=sym_par>(</h-><h- data-h=id>Ep</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=id>exec</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>R</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=id>r</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>Comp</h-> <h- data-h=id>comp</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>Proj</h-> <h- data-h=id>proj</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> #4</h-></code-block>
+
+<p>#1, #3, and #4 are only disqualified once template argument deduction
+has taken place;
+they are not viable due to constraints such as <code><h- data-h=id>random_access_iterator</h-></code>
+not being satisfied.
+</p></example-block>
+
+<p>Named calls can completely bypass complex processes
+such as template argument deduction,
+constraint satisfaction checks,
+or comparison of implicit conversion sequences when names don't match.
+This is expected to significantly improve compilation speed,
+especially for large and complex overload sets like the ones in <code><h- data-h=str>&lt;ranges&gt;</h-></code>.
+</p>
+<note-block><p><intro-></intro-> 
+Adding named argument support to <code><h- data-h=str>&lt;ranges&gt;</h-></code>
+is not part of this proposal,
+but the design allows for such support to be added subsequently without breaking changes.
+The long-term plan for the standard library should be to add
+named argument support wherever useful.
+</p></note-block>
+
+<h3 id=improving-error-messages><a class=para href=#improving-error-messages></a>2.2. Improving error messages</h3>
+
+<p>Named calls are also tremendously useful when the user makes a mistake in calling a function
+in an overload set.
+Rather than requiring lengthy explanations about unsatisfied constraints
+or implicit conversions sequences that cannot be formed,
+the error message can simply say that a call was not possible due to
+argument and parameter name mismatches.
+</p>
+<example-block><p><intro-></intro-> 
+Assume that the user intended to call the <code><h- data-h=id>S</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-><h- data-h=sym_par>)</h-></code>
+overload in the following sample:
+</p>
+<code-block><h- data-h=kw>struct</h-> <h- data-h=id>S</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=id>S</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>void</h-><h- data-h=sym_op>*</h-> <h- data-h=id>p</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=id>S</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=id>S</h-> <h- data-h=id>s</h-><h- data-h=sym_par>(</h-><h- data-h=num>100</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>Clang 21 (similar to EDG 6.7) outputs the following error:
+</p>
+<code-block>&lt;source&gt;:6:3: error: no matching constructor for initialization of 'S'
+    6 | S s(100);
+      |   ^ ~~~
+&lt;source&gt;:1:8: note: candidate constructor (the implicit copy constructor) not viable: no known
+conversion from 'int' to 'const S' for 1st argument
+    1 | struct S {
+      |        ^
+&lt;source&gt;:1:8: note: candidate constructor (the implicit move constructor) not viable: no known
+conversion from 'int' to 'S' for 1st argument
+    1 | struct S {
+      |        ^
+&lt;source&gt;:2:5: note: candidate constructor not viable: no known conversion from 'int' to 'void *'
+for 1st argument
+    2 |     S(void* p);
+      |     ^ ~~~~~~~
+&lt;source&gt;:3:5: note: candidate constructor not viable: requires 2 arguments, but 1 was provided
+    3 |     S(int x, int y);
+      |     ^ ~~~~~~~~~~~~</code-block>
+
+<p>The constructor the user actually wanted to call is found at the very end of the error message,
+buried under irrelevant explanations relating to why there is no viable conversion
+from <code><h- data-h=kw_type>int</h-></code> to <code><h- data-h=kw>const</h-> <h- data-h=id>S</h-></code> in order to call the copy constructor, etc.
+</p>
+<p>GCC 15 is even worse
+because it does not even mention the constructor the user intended to call;
+it speculates that we tried to call <code><h- data-h=id>S</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>void</h-><h- data-h=sym_op>*</h-><h- data-h=sym_par>)</h-></code>, which is wrong:
+</p>
+<code-block>&lt;source&gt;:6:5: error: invalid conversion from 'int' to 'void*' [-fpermissive]
+    6 | S s(100);
+      |     ^~~
+      |     |
+      |     int
+&lt;source&gt;:2:13: note: initializing argument 1 of 'S::S(void*)'
+    2 |     S(void* p);
+      |       ~~~~~~^</code-block>
+
+<p>MSVC 19.43 combines the worst of Clang and GCC;
+it lists every constructor <em>except</em> the relevant one:
+</p>
+<code-block>&lt;source&gt;(6): error C2665: 'S::S': no overloaded function could convert all the argument types
+&lt;source&gt;(4): note: could be 'S::S(S &amp;&amp;)'
+&lt;source&gt;(6): note: 'S::S(S &amp;&amp;)': cannot convert argument 1 from 'int' to 'S &amp;&amp;'
+&lt;source&gt;(6): note: Reason: cannot convert from 'int' to 'S'
+&lt;source&gt;(4): note: or       'S::S(const S &amp;)'
+&lt;source&gt;(6): note: 'S::S(const S &amp;)': cannot convert argument 1 from 'int' to 'const S &amp;'
+&lt;source&gt;(6): note: Reason: cannot convert from 'int' to 'const S'
+&lt;source&gt;(2): note: or       'S::S(void *)'
+&lt;source&gt;(6): note: 'S::S(void *)': cannot convert argument 1 from 'int' to 'void *'
+&lt;source&gt;(6): note: Conversion from integral type to pointer type requires reinterpret_cast,
+C-style cast or parenthesized function-style cast
+&lt;source&gt;(6): note: while trying to match the argument list '(int)'</code-block>
+
+<hr/>
+
+<p>The diagnostic quality for named calls is expected to be better:
+</p>
+<code-block><h- data-h=id>S</h-> <h- data-h=id>s</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>100</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>This could hypothetically give us the following output:
+</p>
+<code-block>&lt;source&gt;:6:3: error: no matching constructor for initialization of 'S'
+    6 | S s(.x = 100);
+      |   ^ ~~~
+&lt;source&gt;:3:5: note: candidate constructor not viable: no argument for parameter 'y' provided
+    3 |     S(int x, int y);
+      |              ^ ~~~
+&lt;source&gt;:1:8: note: 3 other constructors are not viable because they have no 'x' parameter
+    1 | struct S {
+      |        ^</code-block>
+
+<p>The problem in the example is not simply a quality-of-implementation issue;
+the compiler cannot magically guess which constructor we intended to call.
+Attempting initialization with the argument <code><h- data-h=num>100</h-></code> could be an attempt
+at calling pretty much any constructor,
+and every compiler handles this situation in a uniquely broken way.
+</p></example-block>
+
+<p>When we make calls with named arguments,
+the compiler can take a much better guess at which constructor we meant to call
+(presumably, the one with matching parameter names).
+This meaningfully addresses one of the greatest and longest-standing complaints
+that C++ users have:
+overly long and complicated errors.
+</p>
+<h3 id=preventing-common-bugs><a class=para href=#preventing-common-bugs></a>2.3. Preventing common bugs</h3>
+
+<bug-block><p><intro-></intro-> 
+Functions such as <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>lerp</h-></code> or <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clamp</h-></code>
+are extremely easy to misuse with positional arguments:
+</p><code-block><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clamp</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, clamp x in [0, 1]</h->
+<h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clamp</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> compiles, but does the wrong thing</h->
+<h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clamp</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> compiles, but does the wrong thing</h-></code-block>
+
+<p>While the <code><h- data-h=id>v</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>lo</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>hi</h-></code> order of parameters used in the C++ standard library
+is the most common convention,
+there is no universal rule for the signature of a <code><h- data-h=id>clamp</h-></code> function,
+leading to this potential mistake.
+Confusingly, the "range arguments" are provided last for <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clamp</h-></code>
+but first for <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>lerp</h-></code>,
+so the standard library is not even internally consistent about these things.
+</p>
+<p>The same mistake is impossible with a named call:
+</p>
+<code-block><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clamp</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>v</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>lo</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>hi</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK</h->
+<h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clamp</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>lo</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>v</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>hi</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK</h->
+<h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clamp</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>lo</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>hi</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>v</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK</h-></code-block>
+</bug-block>
+
+<p><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>lerp</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>lerp</h-></code> are by no means the only examples
+of standard library functions where such mistakes can be made.
+</p>
+<bug-block><p><intro-></intro-> 
+Despite the following line being an obvious mistake,
+no compiler issues a warning (at the time of writing)
+due to the fact that all conversions are value-preserving:
+</p><code-block><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>cout</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>string</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>'</h-><h- data-h=str>a</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>This calls the <code><h- data-h=id>string</h-><h- data-h=sym_par>(</h-><h- data-h=id>size_type</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_par>)</h-></code> constructor,
+resulting in 97 U+0010 END OF LINE characters being printed.
+Such a mistake is totally preventable:
+</p>
+<code-block><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>cout</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>string</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>ch</h-> <h- data-h=sym_op>=</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>a</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>count</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+</bug-block>
+
+<p>Another possible source of mistakes lies in the fact that there are two competing conventions
+for how to order inputs and outputs in function signatures:
+</p>
 <ul>
   <li>
-    <b>No templates.</b>
-    The <code><h- data-h=id>lerp</h-></code> approach cannot be used in a template like
-    <code><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>T</h-> <h- data-h=id>lerp</h-><h- data-h=sym_par>(</h-><h- data-h=id>lerp_args</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>)</h-></code>,
-    or at least, a call like <code><h- data-h=id>lerp</h-><h- data-h=sym_par>(</h-><h- data-h=id>lerp_args</h-><h- data-h=sym_brac>{</h-><h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-></code> would be necessary.
-    To be fair, this problem may be solved by permitting CTAD for function parameters,
-    for some cases.
-    It does not work for forwarding references.
-    However, even if that approach worked,
-    it would require the user to create <em>really</em> complicated class templates
-    for parameter sets like the ones we have in <code><h- data-h=str>&lt;algorithm&gt;</h-></code>.
+    <b>Output first.</b>
+    For example, <code><h- data-h=id>memcpy</h-></code>, <code><h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;&lt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>ostream</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_punc>,</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-><h- data-h=sym_par>)</h-></code>,
+    <code><h- data-h=id>getline</h-></code>, <code><h- data-h=id>exchange</h-></code>, <code><h- data-h=id>to_chars</h-></code>, etc.
   </li>
   <li>
-    <b>Worse overload resolution.</b>
-    With the proposed semantics,
-    overloads are eliminated as non-viable candidates extremely early,
-    on the basis of not having matching parameter names.
-    For the <code><h- data-h=kw>struct</h-></code> approach,
-    when an overload cannot be called due to a name mismatch,
-    this happens at a later stage:
-    when forming implicit conversion sequences.
-  </li>
-  <li>
-    <b>Complexity and inconvenience.</b>
-    Users don't want to maintain these additional parameter <code><h- data-h=kw>struct</h-></code>s.
-    They make a simple problem of passing named arguments more tedious than it needs to be.
-    Realistically, if someone proposed to add an overload to <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>lerp</h-></code>
-    that took <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>lerp_args</h-></code>, they would be laughed out of LEWG.
-    While the existing declaration is obviously problematic,
-    it would be a huge burden
-    on the committee to maintain these additional argument <code><h- data-h=kw>struct</h-></code>s.
-    Library authors in general face the same problem.
-  </li>
-  <li>
-    <b>Dilemma of choice.</b>
-    Even when designing new functions from scratch,
-    it <em>feels</em> unnecessary and much more complex to pass all arguments via <code><h- data-h=kw>struct</h-></code>
-    rather than simply writing a function.
-    In a code base where passing arguments via <code><h- data-h=kw>struct</h-></code> is common,
-    one constantly has to make the choice whether to pass normally, via <code><h- data-h=kw>struct</h-></code>,
-    or perhaps both.
-    This adds up to wasted developer time.
-    Named arguments let us have our cake and eat it too.
-  </li>
-  <li>
-    <b>ABI and performance considerations.</b>
-    In most ABIs, when a <code><h- data-h=kw>struct</h-></code> is sufficiently large,
-    it will not be passed by register.
-    In the example above, in the x86-64 psABI <code><h- data-h=id>lerp_args</h-></code> is passed via the stack
-    rather than each <code><h- data-h=kw_type>double</h-></code> occupying an <tt->xmmm</tt-> register
-    like in the equivalent function taking three <code><h- data-h=kw_type>double</h-></code> parameters.
-  </li>
-  <li>
-    <b>Freezing API.</b>
-    With <code><h- data-h=id>lerp</h-></code> as specified as above,
-    the user is able to store and pass around <code><h- data-h=id>lerp_args</h-></code>,
-    meaning that any change to it, such as turning it into a class template
-    could break API and ABI.
-    In general, creating a <code><h- data-h=kw>struct</h-></code> for a set of parameters freezes that parameter set.
-    This would be unacceptable in e.g. the C++ standard library.
-    The functions specified there are deliberately stated to be "non-addressable"
-    so that changes to overload sets can be made.
-    For example, a single function in <code><h- data-h=str>&lt;algorithm&gt;</h-></code> stated to take an iterator
-    could actually be implemented using two separate overloads:
-    one for forward iterators and one for random access iterators.
+    <b>Output last.</b>
+    For example, <code><h- data-h=id>copy</h-></code>, <code><h- data-h=id>partial_sort_copy</h-></code>,
+    <code><h- data-h=kw>operator</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>ostream</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_punc>,</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-><h- data-h=sym_par>)</h-></code>, <code><h- data-h=id>fwrite</h-></code>, etc.
   </li>
 </ul>
 
-<h2 id=motivation><a class=para href=#motivation></a>2. Motivation</h2>
+<p>This inconsistency can easily result in mistakes,
+such as mixing up the source and destination buffer of <code><h- data-h=id>memcpy</h-></code>
+because the user expected it to work like <code><h- data-h=id>copy_n</h-></code>.
+These mistakes are generally impossible with named arguments
+because the position of the source and destination parameters are irrelevant.
+</p>
+<h3 id=avoiding-magic-numbers><a class=para href=#avoiding-magic-numbers></a>2.4. Avoiding magic numbers</h3>
 
+<p>Named arguments can significantly improve the readability of a function call.
+</p>
+<example-block><p><intro-></intro-> 
+The following function call would raise the
+<tt->readability-magic-numbers</tt-> ClangTidy diagnostic:
+</p>
+<code-block><h- data-h=id>draw_text</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>awoo</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>18</h-><h- data-h=sym_punc>,</h-> <h- data-h=bool>true</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>The meaning of the arguments is clearer with names provided:
+</p>
+<code-block><h- data-h=id>draw_text</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>text</h-> <h- data-h=sym_op>=</h-> <h- data-h=str_dlim>"</h-><h- data-h=str>awoo</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>size</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>18</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>kerning</h-> <h- data-h=sym_op>=</h-> <h- data-h=bool>true</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+</example-block>
+
+<p>Users have come up with variety of workarounds to avoid magic numbers/flags:
+</p>
+<ul>
+  <li>Creating separate variables such as <code><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>kerning</h-> <h- data-h=sym_op>=</h-> <h- data-h=bool>true</h-></code>.</li>
+  <li>
+    Using ClangTidy's <tt->bugprone-argument-comment</tt-> check
+    and writing <code><h- data-h=cmt_dlim>/*</h-><h- data-h=cmt>kerning=</h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=bool>true</h-></code>.
+  </li>
+  <li>
+    Creating wrapper types like <code><h- data-h=kw>enum</h-> <h- data-h=kw>class</h-> <h- data-h=id>Kerning</h-> <h- data-h=sym_punc>:</h-> <h- data-h=kw_type>bool</h-> <h- data-h=sym_brac>{</h-> <h- data-h=id>no</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>yes</h-> <h- data-h=sym_brac>}</h-></code>
+    and providing a <code><h- data-h=id>Kerning</h-><h- data-h=sym_op>::</h-><h- data-h=id>yes</h-></code> argument.
+  </li>
+  <li>
+    Creating <code><h- data-h=kw>struct</h-> <h- data-h=id>Options</h-></code> aggregates and calling
+    <code><h- data-h=id>draw_text</h-><h- data-h=sym_par>(</h-><h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_op>.</h-><h- data-h=id>kerning</h-> <h- data-h=sym_op>=</h-> <h- data-h=bool>false</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-></code>.
+  </li>
+</ul>
+
+<p>While all of these workarounds <em>technically</em> solve the problem,
+there is no clear answer to which of these is best,
+resulting in competing styles and dilemmas of choice.
+Named arguments would largely obsolete these workarounds.
+</p>
+<p>At some large amount of parameters,
+users typically create <code><h- data-h=kw>struct</h-></code>s to bundle up options,
+but even then, it's not obvious whether every parameter should be in that <code><h- data-h=kw>struct</h-></code>
+or if some could remain outside (e.g. a <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>string_view</h-> <h- data-h=id>text</h-></code> parameter).
+It is also not obvious how to handle smaller parameter lists of ≥ 3 parameters.
+Just three parameters can be mentally demanding, and are not usually enough to warrant
+a separate <code><h- data-h=kw>struct</h-></code>.
+</p>
+<p>Some people may argue that named arguments would encourage users to write
+functions with overly many parameters.
+We argue that the amount of parameters to a program's subroutine is innate.
+Whether parameters are provided as function parameters, a <code><h- data-h=kw>struct</h-></code>,
+options for a builder class, or something else,
+the amount of parameters remains the same;
+text rendering doesn't become any simpler just because the font size is in a <code><h- data-h=kw>struct</h-></code>.
+Parameters can only be shuffled into different places,
+and there is no inherent reason why a function parameter list
+would be a bad place compared to all these other alternatives.
+</p>
 <h2 id=design><a class=para href=#design></a>3. Design</h2>
 
 <h3 id=forwarding-named-arguments><a class=para href=#forwarding-named-arguments></a>3.1. Forwarding named arguments</h3>

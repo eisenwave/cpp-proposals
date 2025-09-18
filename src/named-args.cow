@@ -11,7 +11,8 @@
   \dt{Reply-to:}        \dd{\
 Jan Schultke <\mail{janschultke@gmail.com}>\br
 Murat Can Çağrı <\mail{cancagri.dev@gmail.com}>\br
-Matthias Wippich <\mail{mfwippich@gmail.com}>\
+Matthias Wippich <\mail{mfwippich@gmail.com}>\br
+Lénárd Szolnoki <\mail{cpp@lenardszolnoki.com}>\
 }
   \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3777/github)}
   \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/named-args.cow)}
@@ -43,7 +44,7 @@ in \ref(N4172), \ref(P0671R2), and \ref(P1229R0),
 but never in a way that found consensus in WG21.
 Nonetheless, this shows that there is interest in the feature,
 and perhaps,
-if approached right,
+if approached the right way,
 the idea could succeed.
 
 \h3{Why not just use a \tt{struct} and designated initializers?}
@@ -66,76 +67,432 @@ While this seemingly solves the issue,
 upon further thought,
 this is not a good solution for the following reasons:
 
+\h4{No templates}
+
+The \tcode{lerp} approach cannot be used in a template like
+\tcode{template<class T> T lerp(lerp_args<T>)},
+or at least, a call like \tcode{lerp(lerp_args{/* ... */})} would be necessary.
+To be fair, this problem may be solved by permitting CTAD for function parameters,
+for some cases.
+It does not work for forwarding references.
+However, even if that approach worked,
+it would require the user to create \em{really} complicated class templates
+for parameter sets like the ones we have in \header{algorithm}.
+
+\h4{Worse overload resolution}
+
+With the proposed semantics,
+overloads are eliminated as non-viable candidates extremely early,
+on the basis of not having matching parameter names.
+For the \tcode{struct} approach,
+when an overload cannot be called due to a name mismatch,
+this happens at a later stage:
+when forming implicit conversion sequences.
+
+\Bnote{
+See also \ref(#simplifying-overload-resolution).
+}
+
+\h4{Complexity and inconvenience}
+
+Users don't want to maintain these additional parameter \tcode{struct}s.
+They make a simple problem of passing named arguments more tedious than it needs to be.
+Realistically, if someone proposed to add an overload to \tcode{std::lerp}
+that took \tcode{std::lerp_args}, they would be laughed out of LEWG.
+While the existing declaration is obviously problematic,
+it would be a huge burden
+on the committee to maintain these additional argument \tcode{struct}s.
+Library authors in general face the same problem.
+
+\h4{Dilemma of choice}
+
+Even when designing new functions from scratch,
+it \em{feels} unnecessary and much more complex to pass all arguments via \tcode{struct}
+rather than simply writing a function.
+In a code base where passing arguments via \tcode{struct} is common,
+one constantly has to make the choice whether to pass normally, via \tcode{struct},
+or perhaps both.
+This adds up to wasted developer time.
+Named arguments let us have our cake and eat it too.
+
+\h4{ABI and performance considerations}
+
+In most ABIs, when a \tcode{struct} is sufficiently large,
+it will not be passed by register.
+Inlining can sometimes solve this issue,
+but especially for larger mathematical functions,
+it should not be relied upon,
+and these ABI issues can result in degraded performance.
+
+\Bex{
+Consider the following code sample
+(with bad and naive implementation of linear interpolation):
+
+\cppblock{
+struct lerp_args { double a, b, t; }
+
+double lerp(double a, double b, double t) {
+  return (1 - t) * a + t * b;
+}
+double lerp(lerp_args args) {
+  return (1 - args.t) * args.a + t * args.b;
+}
+}
+
+The second overload is not only clunkier to write,
+it also results in worse \tt{-O2} codegen with Clang 21 (targeting the x86-64 psABI):
+
+\codeblock(asm){
+.LCPI0_0:
+        .quad   0x3ff0000000000000
+\hl(id-label){lerp(double, double, double)}:
+        movsd   xmm3, qword ptr [rip + .LCPI0_0] ; load 1.0 rip-relative
+        subsd   xmm3, xmm2
+        mulsd   xmm1, xmm2
+        mulsd   xmm0, xmm3
+        addsd   xmm0, xmm1
+        ret
+
+.LCPI1_0:
+        .quad   0x3ff0000000000000
+\hl(id-label){lerp(lerp_args)}:
+        movsd   xmm1, qword ptr [rsp + 24]       ; load t from stack
+        movsd   xmm0, qword ptr [rip + .LCPI1_0] ; load 1.0 rip-relative
+        subsd   xmm0, xmm1
+        mulsd   xmm1, qword ptr [rsp + 16]       ; load b from stack
+        mulsd   xmm0, qword ptr [rsp + 8]        ; load a from stack
+        addsd   xmm0, xmm1
+        ret
+}
+
+This problem is extremely common, not specific to the x86-64 ABI.
+To name one other example,
+in the Basic C ABI for WebAssembly,
+\tcode{lerp(double, double, double)} would compile to \tcode{(f64, f64, f64)} parameters
+whereas \tcode{lerp_args} would be passed indirectly, i.e. via \tcode{(i32)} memory address.
+}
+
+These ABI problems make the prospect of using a \tcode{struct}
+extremely unattractive for high-performance mathematical functions.
+This is especially unfortunate considering that functions such as
+\tcode{lerp} and \tcode{clamp} could significantly benefit from
+argument names at the call site.
+
+\Bnote{
+See also \ref(#preventing-common-bugs).
+}
+
+\h4{Freezing API}
+
+With \tcode{lerp} as specified as above,
+the user is able to store and pass around \tcode{lerp_args},
+meaning that any change to it, such as turning it into a class template
+could break API and ABI.
+In general, creating a \tcode{struct} for a set of parameters freezes that parameter set.
+This would be unacceptable in e.g. the C++ standard library.
+The functions specified there are deliberately stated to be "non-addressable"
+so that changes to overload sets can be made.
+For example, a single function in \header{algorithm} stated to take an iterator
+could actually be implemented using two separate overloads:
+one for forward iterators and one for random access iterators.
+
+\h2{Motivation}
+
+\h3{Simplifying overload resolution}
+
+Named arguments can drastically simplify overload resolution
+by disqualifying (almost) all candidates on the basis of name mismatch.
+
+\Bex{
+When calling \tcode{std::ranges::sort} with named arguments,
+we can disqualify all but one overload based on name mismatch:
+
+\cppblock{
+std::vector<Employee> employees = /* ... */;
+std::ranges::sort(.r = employees,
+                  .comp = compare_case_insensitive,
+                  .proj = &Employee::get_name);
+}
+
+By comparison, if we make a positional call with the three arguments,
+we have many potential candidates:
+
+\cppblock{
+ranges::sort(I first, S last, Comp comp = {}, Proj proj = {}); // #1
+ranges::sort(R&& r, Comp comp = {}, Proj proj = {}); // #2
+ranges::sort(Ep&& exec, I first, S last, Comp comp = {}, Proj proj = {}); // #3
+ranges::sort(Ep&& exec, R&& r, Comp comp = {}, Proj proj = {}); // #4
+}
+
+#1, #3, and #4 are only disqualified once template argument deduction
+has taken place;
+they are not viable due to constraints such as \tcode{random_access_iterator}
+not being satisfied.
+}
+
+Named calls can completely bypass complex processes
+such as template argument deduction,
+constraint satisfaction checks,
+or comparison of implicit conversion sequences when names don't match.
+This is expected to significantly improve compilation speed,
+especially for large and complex overload sets like the ones in \header{ranges}.
+
+\Bnote{
+Adding named argument support to \header{ranges}
+is not part of this proposal,
+but the design allows for such support to be added subsequently without breaking changes.
+The long-term plan for the standard library should be to add
+named argument support wherever useful.
+}
+
+\h3{Improving error messages}
+
+Named calls are also tremendously useful when the user makes a mistake in calling a function
+in an overload set.
+Rather than requiring lengthy explanations about unsatisfied constraints
+or implicit conversions sequences that cannot be formed,
+the error message can simply say that a call was not possible due to
+argument and parameter name mismatches.
+
+\Bex{
+Assume that the user intended to call the \tcode{S(int, int)}
+overload in the following sample:
+
+\cppblock{
+struct S {
+  S(void* p);
+  S(int x, int y);
+};
+
+S s(100);
+}
+
+Clang 21 (similar to EDG 6.7) outputs the following error:
+
+\codeblock(text){
+<source>:6:3: error: no matching constructor for initialization of 'S'
+    6 | S s(100);
+      |   ^ ~~~
+<source>:1:8: note: candidate constructor (the implicit copy constructor) not viable: no known
+conversion from 'int' to 'const S' for 1st argument
+    1 | struct S \N{LEFT CURLY BRACKET}
+      |        ^
+<source>:1:8: note: candidate constructor (the implicit move constructor) not viable: no known
+conversion from 'int' to 'S' for 1st argument
+    1 | struct S \N{LEFT CURLY BRACKET}
+      |        ^
+<source>:2:5: note: candidate constructor not viable: no known conversion from 'int' to 'void *'
+for 1st argument
+    2 |     S(void* p);
+      |     ^ ~~~~~~~
+<source>:3:5: note: candidate constructor not viable: requires 2 arguments, but 1 was provided
+    3 |     S(int x, int y);
+      |     ^ ~~~~~~~~~~~~
+}
+
+The constructor the user actually wanted to call is found at the very end of the error message,
+buried under irrelevant explanations relating to why there is no viable conversion
+from \tcode{int} to \tcode{const S} in order to call the copy constructor, etc.
+
+GCC 15 is even worse
+because it does not even mention the constructor the user intended to call;
+it speculates that we tried to call \tcode{S(void*)}, which is wrong:
+
+\codeblock(text){
+<source>:6:5: error: invalid conversion from 'int' to 'void*' [-fpermissive]
+    6 | S s(100);
+      |     ^~~
+      |     |
+      |     int
+<source>:2:13: note: initializing argument 1 of 'S::S(void*)'
+    2 |     S(void* p);
+      |       ~~~~~~^
+}
+
+MSVC 19.43 combines the worst of Clang and GCC;
+it lists every constructor \em{except} the relevant one:
+
+\codeblock(text){
+<source>(6): error C2665: 'S::S': no overloaded function could convert all the argument types
+<source>(4): note: could be 'S::S(S &&)'
+<source>(6): note: 'S::S(S &&)': cannot convert argument 1 from 'int' to 'S &&'
+<source>(6): note: Reason: cannot convert from 'int' to 'S'
+<source>(4): note: or       'S::S(const S &)'
+<source>(6): note: 'S::S(const S &)': cannot convert argument 1 from 'int' to 'const S &'
+<source>(6): note: Reason: cannot convert from 'int' to 'const S'
+<source>(2): note: or       'S::S(void *)'
+<source>(6): note: 'S::S(void *)': cannot convert argument 1 from 'int' to 'void *'
+<source>(6): note: Conversion from integral type to pointer type requires reinterpret_cast,
+C-style cast or parenthesized function-style cast
+<source>(6): note: while trying to match the argument list '(int)'
+}
+
+\hr
+
+The diagnostic quality for named calls is expected to be better:
+
+\cppblock{
+S s(.x = 100);
+}
+
+This could hypothetically give us the following output:
+
+\codeblock(text){
+<source>:6:3: error: no matching constructor for initialization of 'S'
+    6 | S s(.x = 100);
+      |   ^ ~~~
+<source>:3:5: note: candidate constructor not viable: no argument for parameter 'y' provided
+    3 |     S(int x, int y);
+      |              ^ ~~~
+<source>:1:8: note: 3 other constructors are not viable because they have no 'x' parameter
+    1 | struct S \N{LEFT CURLY BRACKET}
+      |        ^
+}
+
+The problem in the example is not simply a quality-of-implementation issue;
+the compiler cannot magically guess which constructor we intended to call.
+Attempting initialization with the argument \tcode{100} could be an attempt
+at calling pretty much any constructor,
+and every compiler handles this situation in a uniquely broken way.
+}
+
+When we make calls with named arguments,
+the compiler can take a much better guess at which constructor we meant to call
+(presumably, the one with matching parameter names).
+This meaningfully addresses one of the greatest and longest-standing complaints
+that C++ users have:
+overly long and complicated errors.
+
+\h3{Preventing common bugs}
+
+\Bug{
+Functions such as \tcode{std::lerp} or \tcode{std::clamp}
+are extremely easy to misuse with positional arguments:
+\cppblock{
+std::clamp(x, 0.f, 1.f); // OK, clamp x in [0, 1]
+std::clamp(0.f, x, 1.f); // compiles, but does the wrong thing
+std::clamp(0.f, 1.f, x); // compiles, but does the wrong thing
+}
+
+While the \tcode{v, lo, hi} order of parameters used in the C++ standard library
+is the most common convention,
+there is no universal rule for the signature of a \tcode{clamp} function,
+leading to this potential mistake.
+Confusingly, the "range arguments" are provided last for \tcode{std::clamp}
+but first for \tcode{std::lerp},
+so the standard library is not even internally consistent about these things.
+
+The same mistake is impossible with a named call:
+
+\cppblock{
+std::clamp(.v = x, .lo = 0.f, .hi = 1.f); // OK
+std::clamp(.lo = 0.f, .v = x, .hi = 1.f); // OK
+std::clamp(.lo = 0.f, .hi = 1.f, .v = x); // OK
+}
+}
+
+\tcode{std::lerp} and \tcode{std::lerp} are by no means the only examples
+of standard library functions where such mistakes can be made.
+
+\Bug{
+Despite the following line being an obvious mistake,
+no compiler issues a warning (at the time of writing)
+due to the fact that all conversions are value-preserving:
+\cppblock{
+std::cout << std::string('a', 10);
+}
+
+This calls the \tcode{string(size_type, char)} constructor,
+resulting in 97 U+0010 END OF LINE characters being printed.
+Such a mistake is totally preventable:
+
+\cppblock{
+std::cout << std::string(.ch = 'a', .count = 10);
+}
+}
+
+Another possible source of mistakes lies in the fact that there are two competing conventions
+for how to order inputs and outputs in function signatures:
+
 \ul{
   \li{
-    \b{No templates.}
-    The \tcode{lerp} approach cannot be used in a template like
-    \tcode{template<class T> T lerp(lerp_args<T>)},
-    or at least, a call like \tcode{lerp(lerp_args{/* ... */})} would be necessary.
-    To be fair, this problem may be solved by permitting CTAD for function parameters,
-    for some cases.
-    It does not work for forwarding references.
-    However, even if that approach worked,
-    it would require the user to create \em{really} complicated class templates
-    for parameter sets like the ones we have in \header{algorithm}.
+    \b{Output first.}
+    For example, \tcode{memcpy}, \tcode{operator<<(ostream&, /* ... */)},
+    \tcode{getline}, \tcode{exchange}, \tcode{to_chars}, etc.
   }
   \li{
-    \b{Worse overload resolution.}
-    With the proposed semantics,
-    overloads are eliminated as non-viable candidates extremely early,
-    on the basis of not having matching parameter names.
-    For the \tcode{struct} approach,
-    when an overload cannot be called due to a name mismatch,
-    this happens at a later stage:
-    when forming implicit conversion sequences.
-  }
-  \li{
-    \b{Complexity and inconvenience.}
-    Users don't want to maintain these additional parameter \tcode{struct}s.
-    They make a simple problem of passing named arguments more tedious than it needs to be.
-    Realistically, if someone proposed to add an overload to \tcode{std::lerp}
-    that took \tcode{std::lerp_args}, they would be laughed out of LEWG.
-    While the existing declaration is obviously problematic,
-    it would be a huge burden
-    on the committee to maintain these additional argument \tcode{struct}s.
-    Library authors in general face the same problem.
-  }
-  \li{
-    \b{Dilemma of choice.}
-    Even when designing new functions from scratch,
-    it \em{feels} unnecessary and much more complex to pass all arguments via \tcode{struct}
-    rather than simply writing a function.
-    In a code base where passing arguments via \tcode{struct} is common,
-    one constantly has to make the choice whether to pass normally, via \tcode{struct},
-    or perhaps both.
-    This adds up to wasted developer time.
-    Named arguments let us have our cake and eat it too.
-  }
-  \li{
-    \b{ABI and performance considerations.}
-    In most ABIs, when a \tcode{struct} is sufficiently large,
-    it will not be passed by register.
-    In the example above, in the x86-64 psABI \tcode{lerp_args} is passed via the stack
-    rather than each \tcode{double} occupying an \tt{xmmm} register
-    like in the equivalent function taking three \tcode{double} parameters.
-  }
-  \li{
-    \b{Freezing API.}
-    With \tcode{lerp} as specified as above,
-    the user is able to store and pass around \tcode{lerp_args},
-    meaning that any change to it, such as turning it into a class template
-    could break API and ABI.
-    In general, creating a \tcode{struct} for a set of parameters freezes that parameter set.
-    This would be unacceptable in e.g. the C++ standard library.
-    The functions specified there are deliberately stated to be "non-addressable"
-    so that changes to overload sets can be made.
-    For example, a single function in \header{algorithm} stated to take an iterator
-    could actually be implemented using two separate overloads:
-    one for forward iterators and one for random access iterators.
+    \b{Output last.}
+    For example, \tcode{copy}, \tcode{partial_sort_copy},
+    \tcode{operator>>(ostream&, /* ... */)}, \tcode{fwrite}, etc.
   }
 }
 
-\h2{Motivation}
+This inconsistency can easily result in mistakes,
+such as mixing up the source and destination buffer of \tcode{memcpy}
+because the user expected it to work like \tcode{copy_n}.
+These mistakes are generally impossible with named arguments
+because the position of the source and destination parameters are irrelevant.
+
+\h3{Avoiding magic numbers}
+
+Named arguments can significantly improve the readability of a function call.
+
+\Bex{
+The following function call would raise the
+\tt{readability-magic-numbers} ClangTidy diagnostic:
+
+\cppblock{
+draw_text("awoo", 18, true);
+}
+
+The meaning of the arguments is clearer with names provided:
+
+\cppblock{
+draw_text(.text = "awoo", .size = 18, .kerning = true);
+}
+}
+
+Users have come up with variety of workarounds to avoid magic numbers/flags:
+
+\ul{
+  \li{Creating separate variables such as \tcode{constexpr bool kerning = true}.}
+  \li{
+    Using ClangTidy's \tt{bugprone-argument-comment} check
+    and writing \tcode{/*kerning=*/ true}.
+  }
+  \li{
+    Creating wrapper types like \tcode{enum class Kerning : bool { no, yes }}
+    and providing a \tcode{Kerning::yes} argument.
+  }
+  \li{
+    Creating \tcode{struct Options} aggregates and calling
+    \tcode{draw_text({ /* ... */ .kerning = false })}.
+  }
+}
+
+While all of these workarounds \em{technically} solve the problem,
+there is no clear answer to which of these is best,
+resulting in competing styles and dilemmas of choice.
+Named arguments would largely obsolete these workarounds.
+
+At some large amount of parameters,
+users typically create \tcode{struct}s to bundle up options,
+but even then, it's not obvious whether every parameter should be in that \tcode{struct}
+or if some could remain outside (e.g. a \tcode{std::string_view text} parameter).
+It is also not obvious how to handle smaller parameter lists of ≥ 3 parameters.
+Just three parameters can be mentally demanding, and are not usually enough to warrant
+a separate \tcode{struct}.
+
+Some people may argue that named arguments would encourage users to write
+functions with overly many parameters.
+We argue that the amount of parameters to a program's subroutine is innate.
+Whether parameters are provided as function parameters, a \tcode{struct},
+options for a builder class, or something else,
+the amount of parameters remains the same;
+text rendering doesn't become any simpler just because the font size is in a \tcode{struct}.
+Parameters can only be shuffled into different places,
+and there is no inherent reason why a function parameter list
+would be a bad place compared to all these other alternatives.
 
 \h2{Design}
 
