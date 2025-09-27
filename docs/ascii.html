@@ -1573,6 +1573,8 @@ We propose lightweight, locale-independent alternatives.
 <a href=#ascii-case-insensitive-views-and-case-transformation-algorithms><h3>ASCII case-insensitive views and case transformation algorithms</h3></a>
 <div class=toc-num data-level=3>3.11</div>
 <a href=#why-just-ascii><h3>Why just ASCII?</h3></a>
+<div class=toc-num data-level=3>3.12</div>
+<a href=#namespace-ascii><h3><code><h- data-h=kw>namespace</h-> <h- data-h=id>ascii</h-></code></h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#implementation-experience><h2>Implementation experience</h2></a>
 <div class=toc-num data-level=2>5</div>
@@ -1589,6 +1591,8 @@ We propose lightweight, locale-independent alternatives.
 
 <ul>
   <li>Fix a bug in the <code><h- data-h=id>get_hex_digit_value</h-></code> example in <a href=#is-ascii>§3.2. <code><h- data-h=id>is_ascii</h-></code></a></li>
+  <li>Split <code><h- data-h=id>is_ascii_digit</h-></code> into two overloads</li>
+  <li>Add design discussion in <a href=#namespace-ascii>§3.12. <code><h- data-h=kw>namespace</h-> <h- data-h=id>ascii</h-></code></a></li>
 </ul>
 
 <h3 id=changes-since-r2><a class=para href=#changes-since-r2></a>1.2. Changes since R2</h3>
@@ -1908,9 +1912,11 @@ may result in treating U+0130 LATIN CAPITAL LETTER I WITH DOT ABOVE as U+0030 DI
 <h3 id=base-parameter><a class=para href=#base-parameter></a>3.3. <code><h- data-h=id>base</h-></code> parameter in <code><h- data-h=id>is_ascii_digit</h-></code></h3>
 
 <p>Similar to <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code>,
-<code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>is_ascii_digit</h-></code> can also take a <code><h- data-h=id>base</h-></code> parameter:
+<code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>is_ascii_digit</h-></code> can also take a <code><h- data-h=id>base</h-></code> parameter.
+There are two overloads:
 </p>
-<code-block><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>is_ascii_digit</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>character-type</h-></i> <h- data-h=id>c</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+<code-block><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>is_ascii_digit</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>character-type</h-></i> <h- data-h=id>c</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>base</h-><h- data-h=sym_par>)</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> not noexcept </h-><h- data-h=cmt_dlim>*/</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>is_ascii_digit</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>character-type</h-></i> <h- data-h=id>c</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <p>If <code><h- data-h=id>base</h-></code> ≤ <code><h- data-h=num>10</h-></code>,
 the range of valid ASCII digit character is simply limited.
@@ -1925,6 +1931,11 @@ This is a non-hardened precondition because all functions in <code><h- data-h=st
 are low-level, high-performance, and spiritually numeric.
 Hardened preconditions are not used within that context.
 </p>
+<note-block><p><intro-></intro-> 
+The benefit of having two separate overloads is mainly
+that the one without a <code><h- data-h=id>base</h-></code> parameter can be made <code><h- data-h=kw>noexcept</h-></code>.
+</p></note-block>
+
 <h3 id=binary-and-octal-is-digit><a class=para href=#binary-and-octal-is-digit></a>3.4. <code><h- data-h=id>is_ascii_bit</h-></code> and <code><h- data-h=id>is_ascii_octal_digit</h-></code></h3>
 
 <p>C++ and various other programming languages support binary and octal literals,
@@ -2195,7 +2206,23 @@ However, this is not proposed for multiple reasons:
   </li>
 </ul>
 
+<h3 id=namespace-ascii><a class=para href=#namespace-ascii></a>3.12. <code><h- data-h=kw>namespace</h-> <h- data-h=id>ascii</h-></code></h3>
 
+<p>Instead of "pseudo-namespacing" the proposed functions by including <code><h- data-h=id>ascii</h-></code> in the name,
+it would also be possible to create a new <code><h- data-h=kw>namespace</h-> <h- data-h=id>ascii</h-></code>
+which houses all functions.
+This would have the notable benefit of letting the user opt into shorter functions like:
+</p><code-block><h- data-h=kw>using</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>ascii</h-><h- data-h=sym_op>::</h-><h- data-h=id>is_lower</h-><h- data-h=sym_punc>;</h->
+<h- data-h=id>is_lower</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>'</h-><h- data-h=str>a</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>However, we chose not to do this because it is unusual to create distinct namespace
+for these small sets of utilities.
+Furthermore, it may be desirable to have SIMD overloads of these utilities in the future.
+This begs the question:
+would it be <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>simd</h-><h- data-h=sym_op>::</h-><h- data-h=id>ascii</h-><h- data-h=sym_op>::</h-><h- data-h=id>is_lower</h-></code> or <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>ascii</h-><h- data-h=sym_op>::</h-><h- data-h=id>simd</h-><h- data-h=sym_op>::</h-><h- data-h=id>is_lower</h-></code>?
+Would it be <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>views</h-><h- data-h=sym_op>::</h-><h- data-h=id>ascii</h-><h- data-h=sym_op>::</h-><h- data-h=id>lower</h-></code> or <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>ascii</h-><h- data-h=sym_op>::</h-><h- data-h=id>views</h-><h- data-h=sym_op>::</h-><h- data-h=id>lower</h-></code>?
+The simpler option is to avoid namespaces.
+</p>
 <h2 id=implementation-experience><a class=para href=#implementation-experience></a>4. Implementation experience</h2>
 
 <p>A naive implementation of all proposed functions can be found at <a href="https://godbolt%2eorg/z/5nvWzdf8G">[CompilerExplorer]</a>,
@@ -2270,6 +2297,7 @@ in lieu of <code><i><h- data-h=id>character-type</h-></i></code>.
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>is_ascii</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>character-type</h-></i> <h- data-h=id>c</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>is_ascii_digit</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>character-type</h-></i> <h- data-h=id>c</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>is_ascii_digit</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>character-type</h-></i> <h- data-h=id>c</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>is_ascii_bit</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>character-type</h-></i> <h- data-h=id>c</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>is_ascii_octal_digit</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>character-type</h-></i> <h- data-h=id>c</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>is_ascii_hex_digit</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>character-type</h-></i> <h- data-h=id>c</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
@@ -2307,7 +2335,7 @@ in lieu of <code><i><h- data-h=id>character-type</h-></i></code>.
 <code><h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char32_t</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>c</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&lt;=</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>7F</h-></code>.
 </p></div>
 
-<code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>is_ascii_digit</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>character-type</h-></i> <h- data-h=id>c</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+<code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>is_ascii_digit</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>character-type</h-></i> <h- data-h=id>c</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>base</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 <div class=indent>
 <p><i>Preconditions</i>:
 <code><h- data-h=id>base</h-></code> has a value between 2 and 36 (inclusive).
@@ -2323,6 +2351,12 @@ in lieu of <code><i><h- data-h=id>character-type</h-></i></code>.
 A function call expression that violates the precondition
 in the <i>Preconditions</i>: element
 is not a core constant expression.
+</p></div>
+
+<code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>is_ascii_digit</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>character-type</h-></i> <h- data-h=id>c</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+<div class=indent>
+<p><i>Returns</i>:
+<code><h- data-h=id>is_ascii_digit</h-><h- data-h=sym_par>(</h-><h- data-h=id>c</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-></code>.
 </p></div>
 
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>is_ascii_bit</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>character-type</h-></i> <h- data-h=id>c</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>

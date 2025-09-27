@@ -37,6 +37,8 @@ We propose lightweight, locale-independent alternatives.
 
 \ul{
   \li{Fix a bug in the \tcode{get_hex_digit_value} example in \ref(#is-ascii)}
+  \li{Split \tcode{is_ascii_digit} into two overloads}
+  \li{Add design discussion in \ref(#namespace-ascii)}
 }
 
 \h3{Changes since R2}
@@ -362,10 +364,12 @@ int get_hex_digit_value(char32_t c) {
 \h3(id=base-parameter){\tcode{base} parameter in \tcode{is_ascii_digit}}
 
 Similar to \tcode{std::to_chars},
-\tcode{std::is_ascii_digit} can also take a \tcode{base} parameter:
+\tcode{std::is_ascii_digit} can also take a \tcode{base} parameter.
+There are two overloads:
 
 \cppblock{
-constexpr bool is_ascii_digit(\ctype c, int base = 10);
+constexpr bool is_ascii_digit(\ctype c, int base) /* not noexcept */;
+constexpr bool is_ascii_digit(\ctype c) noexcept;
 }
 
 If \tcode{base} ≤ \tcode{10},
@@ -380,6 +384,11 @@ the given \tcode{base} has to be between 2 and 36 (inclusive).
 This is a non-hardened precondition because all functions in \header{ascii}
 are low-level, high-performance, and spiritually numeric.
 Hardened preconditions are not used within that context.
+
+\Bnote{
+The benefit of having two separate overloads is mainly
+that the one without a \tcode{base} parameter can be made \tcode{noexcept}.
+}
 
 \h3(id=binary-and-octal-is-digit){\tcode{is_ascii_bit} and \tcode{is_ascii_octal_digit}}
 
@@ -659,6 +668,24 @@ However, this is not proposed for multiple reasons:
   }
 }
 
+\h3{\tcode{namespace ascii}}
+
+Instead of "pseudo-namespacing" the proposed functions by including \tcode{ascii} in the name,
+it would also be possible to create a new \tcode{namespace ascii}
+which houses all functions.
+This would have the notable benefit of letting the user opt into shorter functions like:
+\cppblock{
+using std::ascii::is_lower;
+is_lower('a');
+}
+
+However, we chose not to do this because it is unusual to create distinct namespace
+for these small sets of utilities.
+Furthermore, it may be desirable to have SIMD overloads of these utilities in the future.
+This begs the question:
+would it be \tcode{std::simd::ascii::is_lower} or \tcode{std::ascii::simd::is_lower}?
+Would it be \tcode{std::views::ascii::lower} or \tcode{std::ascii::views::lower}?
+The simpler option is to avoid namespaces.
 
 \h2{Implementation experience}
 
@@ -737,6 +764,7 @@ namespace std {
   constexpr bool is_ascii(\ctype c) noexcept;
 
   constexpr bool is_ascii_digit(\ctype c, int base = 10);
+  constexpr bool is_ascii_digit(\ctype c) noexcept;
   constexpr bool is_ascii_bit(\ctype c) noexcept;
   constexpr bool is_ascii_octal_digit(\ctype c) noexcept;
   constexpr bool is_ascii_hex_digit(\ctype c) noexcept;
@@ -778,7 +806,7 @@ constexpr bool is_ascii(\ctype c) noexcept;
 }
 
 \itemdecl{
-constexpr bool is_ascii_digit(\ctype c, int base = 10);
+constexpr bool is_ascii_digit(\ctype c, int base);
 }
 \itemdescr{
 \expects
@@ -796,6 +824,14 @@ constexpr bool is_ascii_digit(\ctype c, int base = 10);
 A function call expression that violates the precondition
 in the \expects element
 is not a core constant expression.
+}
+
+\itemdecl{
+constexpr bool is_ascii_digit(\ctype c) noexcept;
+}
+\itemdescr{
+\returns
+\tcode{is_ascii_digit(c, 10)}.
 }
 
 \itemdecl{
