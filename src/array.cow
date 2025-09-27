@@ -1,16 +1,16 @@
-\import{libwg21.cow}
+\cowel_include{libwg21.cow}
 
-\wg21-head[
-    title = \tcode{std::array} is a wrapper for an array!
-]{
+\wg21_head(
+  title = \tcode{std::array} is a wrapper for an array!
+){
 \dl{
-    \dt{Document number:} \dd{\docnum{P3737R0}}
-    \dt{Date:}            \dd{\tt{2025-06-08}}
-    \dt{Audience:}        \dd{LEWG}
-    \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
-    \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-    \dt{GitHub Issue:}    \dd{\ref[https://wg21.link/P3737/github]}
-    \dt{Source:}          \dd{\ref[https://github.com/Eisenwave/cpp-proposals/blob/master/src/array.cow]}
+  \dt{Document number:} \dd{\docnum{P3737R1}}
+  \dt{Date:}            \dd{\tt{2025-09-27}}
+  \dt{Audience:}        \dd{LEWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3737/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/array.cow)}
 }
 \hr
 }
@@ -22,9 +22,37 @@ However, its specification in the standard is considerably more permissive
 and should be simplified.
 }
 
-\h2[listed=no]{Contents}
+\h2(listed=false){Contents}
 
-\make-contents
+\make_contents
+
+\h2{Revision history}
+
+\h3{Changes since R0}
+
+\ul{
+  \li{
+    Formulated an overall design strategy in \ref(#design-considerations).
+  }
+  \li{
+    Removed any changes related to \tcode{array<T, 0>::front()} and \tcode{array<T, 0>::back()}.
+    Instead, R1 assumes that \ref(LWG4276) will be accepted.
+  }
+  \li{
+    Excluded bit-field members from appearing in \tcode{std::array}.
+  }
+  \li{
+    Made trivial copyability and trivial default construction
+    of \tcode{std::array<T,0>} unconditional;
+    see \ref(#zero-length-trivially-copyable).
+  }
+  \li{
+    Rebased \ref(#wording) on \ref(N5014) and made minor wording tweaks.
+  }
+  \li{
+    Minor editorial changes throughout the paper.
+  }
+}
 
 \h2{Introduction}
 
@@ -36,39 +64,39 @@ with an explanation along the lines of:
 \Bquote{
 \tcode{std::array} is just a wrapper for a C-style array:
 \cppblock{
-template <typename T, size_t N>
+template<class T, size_t N>
 struct array {
-    T __array[N];
-    // ...
-}
+  T __array[N];
+  // ...
+};
 }
 }
 
 While this explanation is not correct for zero-length \tcode{std::array}s,
 it does match how the template is implemented in every standard library for \tcode{N != 0},
-and there is very little reason not to implemented it in this obvious fashion.
+and there is very little reason not to implement it in this obvious fashion.
 
-\h3[id=specification]{What the standard says}
+\h3(id=specification){What the standard says}
 
 The actual specification of \tcode{std::array} is not so simple,
 and is a combination of multiple constraints on the implementation:
 \ul{
-\li{
-It is a class template,
-a contiguous container\iref{array.overview#1},
-and a reversible container (with an exception; see \eelis{array.overview#3}),
-and it meets some requirements of a sequence container.
-}
-\li{
-It can be list-initialized with up to N elements
-whose types are convertible to \tcode{T}\iref{array.overview#2}.
-This is obviously not exhaustive; initialization with \tcode{{}} or
-\tcode{{other_array}} should also be possible.
-}
-\li{
-It is a structural type if \tcode{T} is a structural type\iref{array.overview#4},
-and therefore, also a literal class type in that event.
-}
+  \li{
+    It is a class template,
+    a contiguous container\iref{array.overview#1},
+    and a reversible container (with an exception; see \eelis{array.overview#3}),
+    and it meets some requirements of a sequence container.
+  }
+  \li{
+    It can be list-initialized with up to N elements
+    whose types are convertible to \tcode{T}\iref{array.overview#2}.
+    This is obviously not exhaustive; initialization with \tcode{{}} or
+    \tcode{{other_array}} should also be possible.
+  }
+  \li{
+    It is a structural type if \tcode{T} is a structural type\iref{array.overview#4},
+    and therefore, also a literal class type in that event.
+  }
 }
 
 Additionally, while this does not strictly specify anything about the layout,
@@ -97,7 +125,7 @@ The use of double braces in the \i{Returns} specification
 would be nonsensical if \tcode{std::array} was not
 "a wrapper for an array".
 
-\h3[id=unexpected]{What the standard does not say}
+\h3(id=unexpected){What the standard does not say}
 
 Notably, there are quite a couple of guarantees that are absent.
 
@@ -105,38 +133,38 @@ Notably, there are quite a couple of guarantees that are absent.
 It would be compliant to implement \tcode{std::array} as follows:
 \cppblock{
 struct alignas(1024) malice_and_evil {
-    constexpr malice_and_evil() { }
-    malice_and_evil(const malice_and_evil&) { }
+  constexpr malice_and_evil() { }
+  malice_and_evil(const malice_and_evil&) { }
 };
 
-template <typename T, size_t N>
+template<class T, size_t N>
 struct array {
-    T __array[N];
-    malice_and_evil evil;
+  T __array[N];
+  malice_and_evil evil;
 };
 }
 }
 
 Such an implementation technically satisfies all the requirements for \tcode{std::array}, but
 \ul{
-\li{copying the array would not be a constant expression,}
-\li{\tcode{std::array} would not be trivially copyable for any type, and}
-\li{its size and alignment would be much greater than that of \tcode{T[N]}.}
+  \li{copying the array would not be a constant expression,}
+  \li{\tcode{std::array} would not be trivially copyable for any type, and}
+  \li{its size and alignment would be much greater than that of \tcode{T[N]}.}
 }
 
 \Bex{
 An even more insane implementation would be:
 \cppblock{
 struct gobbler {
-    constexpr gobbler() = default;
-    constexpr gobbler(auto&&) {}
+  constexpr gobbler() = default;
+  constexpr gobbler(auto&&) {}
 };
 
-template <typename T, size_t N>
+template<class T, size_t N>
 struct array {
-    gobbler __gobblers[N];
-    T __array[N]; // necessary to satisfy contiguous container requirements etc.
-    // ...
+  gobbler __gobblers[N];
+  T __array[N]; // necessary to satisfy contiguous container requirements etc.
+  // ...
 };
 }
 Since \eelis{array} never states what effect list-initialization has for a \tcode{std::array},
@@ -151,7 +179,7 @@ All list-initialization could be "gobbled up".
 It seems like the vagueness in the specification serves no practical purpose;
 it is unclear what implementations could do with the additional freedom,
 other than pranking their users.
-It would be beneficial to the C++ community if the simplified explanation in \ref[#introduction]
+It would be beneficial to the C++ community if the simplified explanation in \ref(#introduction)
 was what the standard actually said.
 
 A stricter specification would provide additional useful guarantees
@@ -162,7 +190,7 @@ which \em{technically} rely on implementation details, not on standard behavior.
 \h3{Isn't this a waste of time?}
 
 While it could be argued that only a malicious implementation would violate our user
-expectations as in \ref[#unexpected] and it is therefore time-wasting to restrict
+expectations as in \ref(#unexpected) and it is therefore time-wasting to restrict
 \tcode{std::array} any further,
 it would be unusual for WG21 to shy away from standardizing universally existing practice
 and to recommend users to rely on non-standard implementation details,
@@ -172,6 +200,11 @@ perhaps we should not grant it.
 
 \h2{Design considerations}
 
+The overall design strategy is to standardize the "greatest common denominator"
+of libc++ and libstdc++.
+No breaking changes should be made;
+existing practice should be standardized.
+
 While the specification for arrays of nonzero length is rather obvious,
 it is unclear how many guarantees we want to provide for zero-length arrays.
 For example, should \tcode{std::array<std::string, 0>} be trivially copyable,
@@ -179,11 +212,11 @@ even though \tcode{std::string} is not?
 
 Within \eelis{array.zero},
 there are some long-standing issues going back to 2012.
-LWG has visited this subclause many times in \ref[LWG2157],
+LWG has visited this subclause many times in \ref(LWG2157),
 but never fully completed a solution.
-This work has been absorbed mostly unmodified into \ref[#wording].
+This work has been absorbed mostly unmodified into \ref(#wording).
 
-\h3{Zero-length \tcode{std::array} status quo}
+\h3(id=zero-length-status-quo){Zero-length \tcode{std::array} status quo}
 
 The zero-length case is also where we see some implementation divergence in size and alignment
 of the array.
@@ -204,7 +237,7 @@ The following table shows how major standard libraries implement zero-length \tc
   }
 }
 
-\table[id=lib-table, class=center striped]{
+\table(id=lib-table, class=center striped){
   \tr{
     \th{Library}
     \th{Implementation}
@@ -213,21 +246,21 @@ The following table shows how major standard libraries implement zero-length \tc
     \th{Assignable}
   }
   \tr{
-    \td{\ref[https://github.com/microsoft/STL/blob/7841cf88ff9af837fb980f2d2d4ac0f267e714c7/stl/inc/array#L761-L763]{MSVC STL}}
+    \td{\ref(https://github.com/microsoft/STL/blob/7841cf88ff9af837fb980f2d2d4ac0f267e714c7/stl/inc/array#L761-L763){MSVC STL}}
     \td{contains \tcode{T} if \tcode{T} is default-constructible,\br{}otherwise \tcode{struct{}}}
     \td{\tcode{sizeof(T)} or \tcode{1}}
     \td{depends on \tcode{T}}
     \td{depends on \tcode{T}}
   }
   \tr{
-    \td{\ref[https://github.com/gcc-mirror/gcc/blob/e477e7cd104af96c55379f69125db3f1c350c9ed/libstdc\N{PERCENT SIGN}2B\N{PERCENT SIGN}2B-v3/include/std/array#L72-L81]{libstdc++}}
+    \td{\ref(https://github.com/gcc-mirror/gcc/blob/e477e7cd104af96c55379f69125db3f1c350c9ed/libstdc\N{PERCENT SIGN}2B\N{PERCENT SIGN}2B-v3/include/std/array#L72-L81){libstdc++}}
     \td{contains \tcode{struct{}}}
     \td{\tcode{1}}
     \td{always}
     \td{always}
   }
   \tr{
-    \td{\ref[https://github.com/gcc-mirror/gcc/blob/e477e7cd104af96c55379f69125db3f1c350c9ed/libstdc\N{PERCENT SIGN}2B\N{PERCENT SIGN}2B-v3/include/std/array#L72-L81]{libc++}}
+    \td{\ref(https://github.com/gcc-mirror/gcc/blob/e477e7cd104af96c55379f69125db3f1c350c9ed/libstdc\N{PERCENT SIGN}2B\N{PERCENT SIGN}2B-v3/include/std/array#L72-L81){libc++}}
     \td{contains (possibly const)\br{}\tcode{__empty[sizeof(T)]}}
     \td{\tcode{sizeof(T)}}
     \td{always}
@@ -236,29 +269,33 @@ The following table shows how major standard libraries implement zero-length \tc
 }
 
 \Bug{
-The MSVC STL implementation is non-compliant and insane.
+The MSVC STL implementation is non-compliant.
 Despite \tcode{std::array<T,0>} being a \em{zero-length} container with
 \em{no} elements,
-it will actually hold one element (and call its constructors and destructors)
+it actually holds one element (and call its constructors and destructors)
 as long as \tcode{T} is default-constructible.
+
+This bug has been reported, and fixing it would break ABI (\ref(STL5583)).
 }
 
-\h4[id=conclusion-status-quo]{Conclusion}
+\h4(id=conclusion-status-quo){Conclusion}
 
 Generally speaking,
 it is desirable if a zero-length \tcode{std::array} behaves as similarly
 to a regular \tcode{std::array} of the same element type.
 libc++ is the only implementation that does this well.
-The "greatest common denominator" between these implementations should be standardized, which is:
+The "greatest common denominator" between these implementations
+(excluding MSVC STL)
+should be standardized, which is:
 
 \ul{
-  \li{\tcode{std::array<T, 0>} is trivially copyable if \tcode{T} is.}
+  \li{\tcode{std::array<T, 0>} is trivially copyable.}
   \li{\tcode{std::array<T, 0>} is assignable if \tcode{T} is.}
   \li{\tcode{std::array<T, 0>} has size and alignment at most that of \tcode{T}.}
   \li{\tcode{std::array<T, 0>} is not an empty class.}
 }
 
-Without breaking ABI, that implementation would look something like:
+An implementation satisfying these requirements would look something like:
 \cppblock{
 struct __empty {};
 
@@ -269,26 +306,21 @@ struct array<T, 0> {
 
   // No alignas for libstdc++.
   alignas(T) __empty_type arr;
+
+  // ...
 };
 }
 
-\h3{Trivial copyability of zero-length arrays}
+\h3(id=zero-length-trivially-copyable){Trivial copyability of zero-length arrays}
 
-Whether a type is trivially copyable has ABI impact.
-It may change whether the type is passed via register or one the stack,
-and so we cannot mandate any change to this behavior without breaking ABI.
+Both libc++ and libstdc++ provide a trivially copyable
+and trivially default-constructible \tcode{std::array<T, 0>}.
 
-For MSVC, a \tcode{std::array<int,0>} is trivially copyable,
-but a \tcode{std::array<std::string,0>} is not.
-This seems reasonable;
-there is no strong motivation for making arrays trivially copyable even if
-a nonzero variant of the same array wouldn't have been.
-In fact, it could be argued that this is surprising and inconsistent.
-
-\h4[id=conclusion-trivial-copy]{Conclusion}
-
-Mandate that \tcode{std::array<T,0>} is trivially copyable if \tcode{T} is.
-Otherwise leave this up to implementations.
+While it could be argued that these properties should only be guaranteed when \tcode{T}
+has them too,
+there is no clear benefit to the implementation or wording to make these
+guarantees conditional,
+and we are simply standardizing existing practice with this design.
 
 \h3{Double-brace initialization for zero-length arrays}
 
@@ -303,7 +335,7 @@ An empty base class would make the array as a whole an empty class,
 and this would be an ABI break,
 so it is out of the question.
 
-\h4[id=conclusion-double-brace-init]{Conclusion}
+\h4(id=conclusion-double-brace-init){Conclusion}
 
 Standardize the existing practice of having a non-static data member which enables
 double-brace initialization.
@@ -348,21 +380,22 @@ Changing the size of the type would break ABI.
 The only way to conjure up a \tcode{T*} out of thin air would be to use
 \tcode{reinterpret_cast}, but that would not work in constant expressions.
 
-\h4[id=conclusion-begin-end]{Conclusion}
+\h4(id=conclusion-begin-end){Conclusion}
 
 Delete the uniqueness requirement.
 Without specifying anything special for zero-length arrays,
 it still acts as an empty range, and \tcode{begin() == end()} is \tcode{true},
 which is all we really need.
 
-\h3[id=front-is-unreachable]{\tcode{std::array<T,0>::front()} is \tcode{std::unreachable()}?!}
+\h3(id=front-is-unreachable){\tcode{std::array<T,0>::front()} is \tcode{std::unreachable()}?!}
 
-\tcode{std::array<T, 0>::front()} is entirely undefined,
-making it equivalent to \tcode{std::unreachable()},
-which feels out-of-place especially following C++26,
-where \tcode{front()} normally has a \i{Hardened preconditions} specification.
+This proposal assumes that \ref(LWG4276) will be accepted,
+meaning that \tcode{front()} and \tcode{back()} will unconditionally
+fail a hardened precondition.
+The status quo is that these functions have undefined behavior,
+making them alternative spellings of \tcode{std::unreachable}.
 
-Note that deleting \tcode{front()} and \tcode{back()} for zero-length arrays is not feasible because
+Deleting \tcode{front()} and \tcode{back()} for zero-length arrays is not feasible because
 of (existing) code along the lines of:
 
 \cppblock{
@@ -376,24 +409,34 @@ that is logically unreachable,
 so it should not result in a compiler error, which would be the consequence of
 \tcode{= delete;}.
 
-\h4[id=conclusion-front-back]{Conclusion}
+\Bnote{
+This proposal could remove \tcode{constexpr} from these functions to
+avoid "library UB" during constant evaluation
+but following \ref(LWG4276), this is no longer necessary.
 
-Make \tcode{front()} and \tcode{back()} always result in a contract violation,
-as if they had \i{Hardened preconditions} that are always violated.
-However, if the implementation is not hardened,
-these functions should simply terminate instead of being another spelling for
-\tcode{std::unreachable()}.
+There is no observable difference between the various reasons why
+an expression is disqualified from being a constant expression,
+so whether this happens due to failing a hardened precondition or
+because a call to a non-\tcode{constexpr} function takes place is irrelevant.
+}
 
 \h2{Impact on implementations}
 
-Existing implementations of \tcode{std::array} are virtually unaffected.
-One exception to this is that the behavior of \tcode{std::array<T, 0>::front()}
-is no longer undefined;
-see below for specifics.
+For \tcode{std::array}s of nonzero length,
+every implementation already complies with the proposed changes.
+For zero-length \tcode{std::array}s, libstdc++ and libc++ already comply
+with the proposed changes.
+
+The MSVC STL implements zero-length \tcode{std::array}s incorrectly
+and does not comply with C++26 (or any prior standard),
+and fixing this would require an ABI break.
+See (\ref(STL5583), \ref(#zero-length-status-quo)).
+If that ABI break ever happens,
+the implementation can simply be aligned with what is being proposed here.
 
 \h2{Wording}
 
-The following changes are relative to \ref[N5008].
+The following changes are relative to \ref(N5014).
 
 \h3{[array.overview]}
 
@@ -404,9 +447,9 @@ The header \tt{<array>} defines a class template
 for storing fixed-size sequences of objects.
 \del{An \tcode{array} is a contiguous container\iref{container.reqmts}.}
 An \del{instance} \ins{object} of \ins{type} \tcode{array<T, N>}
-stores \tcode{N} elements of type \tcode{T}, so that
-\del{\tcode{size() == N} is an invariant}
-\ins{\tcode{size()} always equals \tcode{N}}.
+stores \tcode{N} elements of type \tcode{T}, so that \tcode{size()}
+\del{\tcode{== N} is an invariant}
+\ins{always equals \tcode{N}}.
 }
 
 Change \eelis{array.overview#2} as follows:
@@ -415,17 +458,17 @@ Change \eelis{array.overview#2} as follows:
 An \tcode{array} is an aggregate\iref{dcl.init.aggr} \del{that can be
 list-initialized with up
 to \tcode{N} elements whose types are convertible to \tcode{T}}
-\ins{with no base classes.
+\ins{with no base classes and no bit-field members.
 A specialization \tcode{array<T, N>}
 has a single public non-static data member of type
 \nobr{"array of \tcode{N} \tcode{T}"}
 if \tcode{N} is nonzero;
 otherwise the contents are specified in \eelis{array.zero}}.
 
-\ins{\wg21-note{
-An \tcode{array} is trivially copyable, standard-layout, and a structural type
-if \tcode{T} is trivially copyable, standard-layout,
-and a structural type, respectively.
+\ins{\note{
+An \tcode{array} is trivially copyable, trivially default-constructible,
+standard-layout, and a structural type
+if \tcode{T} has these properties, respectively.
 }}
 }
 
@@ -459,7 +502,7 @@ each pair of corresponding elements in \tcode{a1} and \tcode{a2}
 are template-argument-equivalent.
 }
 
-\macro[\black_comment]{\hl[sym-punc]{//}\serif{\i{\hl[sym-punc]{ \put}}}}
+\cowel_macro(black_comment){\hl(sym-punc){//}\serif{\i{\hl(sym-punc){ \cowel_put}}}}
 
 Change \eelis{array.overview#5} as follows:
 
@@ -469,12 +512,12 @@ namespace std {
   template<class T, size_t N>
   struct array {
     \ins{// \serif{non-static data members}
-    T \exposid{arr}[N];                          // \serif{name is exposition-only}}
+    T \exposid{arr}[N];                          // \serif{exposition-only}}
 
     \black_comment{types}
     using value_type             = T;
     using pointer                = T*;
-    \html{[\N{HORIZONTAL ELLIPSIS}]}
+    \etc
   };
 }
 }
@@ -482,9 +525,10 @@ namespace std {
 
 \h3{[array.zero]}
 
-Delete all paragraphs within \eelis{array.zero}:
+Delete all paragraphs within \eelis{array.zero}
+(paragraph 3 may have already been deleted by \ref(LWG4276)):
 
-\Vset[pnum]{0}
+\Vset(pnum){0}
 
 \Bdel{
 \pnum
@@ -503,7 +547,7 @@ Member function \tcode{swap()} shall have a
 non-throwing exception specification.
 }
 
-\Vset[pnum]{0}
+\Vset(pnum){0}
 
 Insert new paragraphs within \eelis{array.zero}:
 
@@ -511,54 +555,72 @@ Insert new paragraphs within \eelis{array.zero}:
 \pnum
 A specialization \tcode{array<T, 0>} does not have an \placeholder{arr} data member.
 Instead, it has a non-static data member of
-unspecified, trivially copyable, standard-layout, empty aggregate type \tcode{U}
+unspecified, trivially copyable, standard-layout, empty aggregate \tcode{U}
 with no base classes
 and with the same cv-qualification as \tcode{T}.
 The size and alignment of \tcode{U} is an implementation-defined choice between \tcode{1} and
 the size and alignment of \tcode{T}.
 
 \pnum
-The value representation of an \tcode{array<T, 0>} is empty.
+The value representation of a specialization \tcode{array<T, 0>} is empty.
 
 \pnum
-The \tcode{begin}, \tcode{end}, \tcode{cbegin}, \tcode{cend}, \tcode{rbegin}, \tcode{rend},
-and \tcode{data}
-member functions of an \tcode{array<T, 0>}
-return value-initialized results.
-
-\pnum
-The \tcode{fill} and \tcode{swap} member functions
-of an \tcode{array<T, 0>}
-are equivalent to functions with a \grammarterm{function-body} \tcode{{}},
-and have a non-throwing exception specification.
-
-\pnum
-\tcode{std::terminate} is invoked when execution reaches the end of
-member functions \tcode{operator[]}, \tcode{front}, or \tcode{back}
-of an \tcode{array<T, 0>}.
-\br\wg21-example{
-This can occur if the implementation is not hardened,
-or if the contract violation\iref{basic.contract.eval}
-resulting from the function call is evaluated with ignore semantic.
-} 
+A specialization \tcode{array<T, 0>} has identical member functions
+as the primary template,
+except that
+\ul{
+\:  \li{
+\:    the \tcode{operator[]}, \tcode{front}, and \tcode{back}
+\:    member functions are not \tcode{constexpr};
+\:  }
+  \li{
+    the \tcode{begin}, \tcode{end},
+    \tcode{cbegin}, \tcode{cend},
+    \tcode{rbegin}, \tcode{rend},
+    and \tcode{data}
+    member functions return value-initialized results, and
+  }
+  \li{
+    the \tcode{fill} and \tcode{swap} member functions have no effect
+    and have a non-throwing exception specification.
+  }
+}
+\note{
+Any call to \tcode{front}, \tcode{back}, or \tcode{operator[]}
+violates a hardened precondition\iref{structure.specifications}.
+}
 }
 
 \h2{References}
 
-\bib[
-    id = N5008,
-    title = Working Draft\, Programming Languages — C++,
-    date = 2025-03-15,
-    author = Thomas Köppe,
-    link = https://wg21.link/n5008,
-    long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5008.pdf
-]
-\bib[
-    id = LWG2157,
-    title = How does std::array<T\,0> initialization work when T is not default-constructible?,
-    author = Daryle Walker,
-    date = 2012-05-08,
-    link = https://cplusplus.github.io/LWG/issue2157
-]
+\bib(
+  id = N5014,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-08-05,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+)\
+\bib(
+  id = LWG2157,
+  title = How does std::array<T\,0> initialization work when T is not default-constructible?,
+  author = Daryle Walker,
+  date = 2012-05-08,
+  link = https://cplusplus.github.io/LWG/issue2157,
+)\
+\bib(
+  id = LWG4276,
+  title = front() and back() are not hardened for zero-length std::arrays,
+  author = Jan Schultke,
+  date = 2025-06-08,
+  link = https://cplusplus.github.io/LWG/issue4276,
+)\
+\bib(
+  id = STL5583,
+  title = <array>: std::array<T\,0> calls constructors and destructors of T,
+  author = Jan Schultke,
+  date = 2025-06-13,
+  link = https://github.com/microsoft/STL/issues/5583,
+)\
 
-\make-bib
+\make_bib
