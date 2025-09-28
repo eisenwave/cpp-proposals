@@ -1,14 +1,16 @@
 \cowel_include{libwg21.cow}
 
 \wg21_head(
-  title = Make \tcode{optional<T&>} trivially copyable
+  title = Make \tcode{optional<T&>} trivially copyable\br{}(US NB comment 134)
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3836R0}}
-  \dt{Date:}            \dd{\tt{2025-09-11}}
+  \dt{Document number:} \dd{\docnum{P3836R1}}
+  \dt{Date:}            \dd{\tt{2025-09-28}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
-  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br{}Nevin Liber <\mail{nliber@anl.gov}>}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
+                            Nevin Liber <\mail{nliber@anl.gov}>\br
+                            Steve Downey <\mail{sdowney@gmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3836/github)}
   \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/trivially-copyable-optional-ref.cow)}
 }
@@ -26,6 +28,16 @@ this issue is not simply handled as an LWG issue.
 \h2(listed=false){Contents}
 
 \make_contents
+
+\h2{Revision history}
+
+\h3{Changes since R0}
+
+\ul{
+  \li{added Steve Downey as co-author}
+  \li{referenced related US NB comment 134}
+  \li{rewrote \ref(#wording)}
+}
 
 \h2{Introduction}
 
@@ -51,8 +63,7 @@ Therefore, \tcode{optional<int*>} is required to be trivially copyable,
 unlike \tcode{optional<int&>}.
 
 This issue should be fixed in C++26.
-A US national body comment by Argonne National Laboratory
-requesting a solution has been submitted.
+Our paper corresponds to the US national body comment 134.
 
 \h3{Wording problem}
 
@@ -84,7 +95,7 @@ If the only non-static data member was \tcode{\exposid{val}},
 \tcode{optional<T&>} would be trivially copyable
 according to \eelis{class.prop#def:class,trivially_copyable}.
 However, the implementation has the freedom to add extra non-static
-data members,
+data members, bit-fields, and base classes,
 so no trivial operation is strictly guaranteed.
 
 \h2{Motivation}
@@ -142,12 +153,14 @@ append a paragraph as follows:
 
 \Bins{
 A class type \tcode{optional<T&>}
-is a trivially copyable class and standard-layout class\iref{class.prop}.
-A class type \tcode{optional<T&>}
-has no non-static data members other than \tcode{\exposid{val}}
-and no base class \tcode{B} for which \tcode{is_empty_v<B>}\iref{meta.unary.prop}
-is \tcode{false}.
+is a trivially copyable class and standard-layout class\iref{class.prop},
+and has the same object representation, size, and alignment
+as a class \tcode{C} defined like \tcode{class C { T* \exposid{val}; };}.
 }
+
+\h2{Acknowledgements}
+
+Thanks to Brian Bi for reviewing the flawed wording in R0 of this paper.
 
 \h2{References}
 
@@ -165,7 +178,7 @@ is \tcode{false}.
   date = 2025-04-04,
   author = Steve Downey\, Peter Sommerlad,
   link = https://wg21.link/p2988r12,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2988r12.pdf
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2988r12.pdf,
 )\
 
 \make_bib
