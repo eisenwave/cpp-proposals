@@ -1658,6 +1658,22 @@ This makes it possible to <code><h- data-h=id>bit_cast</h-><h- data-h=sym_op>&lt
 or to encode <code><h- data-h=id>optional</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_op>&gt;</h-></code> using <code><h- data-h=id>memcpy</h-></code>
 with <em>some</em> guarantees regarding its layout.
 </p>
+<example-block><p><intro-></intro-> 
+If <code><h- data-h=id>optional</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_op>&gt;</h-></code> is trivially copyable <em>and</em> its layout is that of a pointer,
+we can do the following:
+</p>
+<code-block><h- data-h=kw_type>int</h-><h- data-h=sym_op>*</h-> <h- data-h=id>legacy_api</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> returns nullable pointer</h->
+
+<h- data-h=id>optional</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>modern_api</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+<del>  <h- data-h=kw_type>int</h-><h- data-h=sym_op>*</h-> <h- data-h=id>p</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>legacy_api</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=id>p</h-> <h- data-h=sym_op>?</h-> <h- data-h=sym_op>*</h-><h- data-h=id>p</h-> <h- data-h=sym_punc>:</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>optional</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h-></del>
+<ins>  <h- data-h=kw_ctrl>return</h-> <h- data-h=id>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>optional</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>legacy_api</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>There are no "null references", so bit-casting is the easiest way
+to wrap old pointer-based APIs like this.
+</p></example-block>
+
 <note-block><p><intro-></intro-> 
 The layout assumptions could still be false for an implementation
 where the layout of "wrapper <code><h- data-h=kw>struct</h-></code>s" and the types they wrap is different,

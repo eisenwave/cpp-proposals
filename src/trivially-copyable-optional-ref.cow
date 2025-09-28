@@ -138,6 +138,24 @@ This makes it possible to \tcode{bit_cast<T*>(optional_ref)}
 or to encode \tcode{optional<T&>} using \tcode{memcpy}
 with \em{some} guarantees regarding its layout.
 
+\Bex{
+If \tcode{optional<int&>} is trivially copyable \em{and} its layout is that of a pointer,
+we can do the following:
+
+\cppblock{
+int* legacy_api(); // returns nullable pointer
+
+optional<int&> modern_api() {
+\del{  int* p = legacy_api();
+  return p ? *p : std::optional<int&>{};}
+\ins{  return bit_cast<optional<int&>>(legacy_api());}
+}
+}
+
+There are no "null references", so bit-casting is the easiest way
+to wrap old pointer-based APIs like this.
+}
+
 \Bnote{
 The layout assumptions could still be false for an implementation
 where the layout of "wrapper \tcode{struct}s" and the types they wrap is different,
