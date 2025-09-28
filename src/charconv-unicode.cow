@@ -1,0 +1,150 @@
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+  title = Unicode character support for integer overloads \tt{<charconv>}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{P3688R0}}
+  \dt{Date:}            \dd{\tt{2025-05-19}}
+  \dt{Audience:}        \dd{LEWG, SG16}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3688/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/ascii.cow)}
+}
+\hr
+}
+
+\Babstract{
+We should add support for \tcode{char8_t}, \tcode{char16_t}, and \tcode{char32_t}
+in \tcode{std::to_chars} and \tcode{std::from_chars}.
+Unambitiously, I only propose to make this change to the integer overloads for now.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+Support for \tcode{char8_t} and other Unicode character types
+in \tcode{std::to_chars} and \tcode{std::from_chars} is clearly useful.
+File formats such as JSON require the use of Unicode character encodings,
+so an application that deals with JSON may want to use \tcode{char8_t} in its APIs
+and internally.
+This leads to problems like:
+
+\cppblock{
+void append_json_number(std::vector<char8_t>& out, int x) {
+    // what do I do?
+}
+}
+
+The user could use the \tcode{std::to_chars(char*, char*, int, int)} overload
+and then transcode to UTF-8 as \tcode{char8_t},
+but the standard library provides no transcoding facilities yet.
+Even if there was support, using \tcode{char} is an unnecessary middle man.
+
+What makes this problem especially frustrating is that existing implementations
+could already work with any character type, but are artificially restricted to \tcode{char}.
+That is, for the integer overloads at least.
+
+The floating-point overloads can be implemented in terms of using the
+\tcode{char} overload internally,
+and transcoding to Unicode encodings for the interface.
+This does not require full Unicode transcoding support;
+no known implementation of \tcode{printf} exists that involves
+non-ASCII characters in \tcode{char8_t}, \tcode{char16_t}, or \tcode{char32_t}.
+At most, transcoding between e.g. EBCDIC and ASCII may be required.
+
+\h2{Wording}
+
+\h3(show-number=false){[charconv.syn]}
+
+In \eelis{charconv.syn}, change the synopsis as follows:
+
+\Bdiff{
+\itemdecl{
+namespace std {
+  // \serif{floating-point format for primitive numerical conversion}
+  enum class chars_format {
+    scientific = unspecified,
+    fixed = unspecified,
+    hex = unspecified,
+    general = fixed | scientific
+  };
+
+  // \serif{[charconv.to.chars], primitive numerical output conversion}
+  struct to_chars_result {                                              // \serif{freestanding}
+    char* ptr;
+    errc ec;
+    friend bool operator==(const to_chars_result&, const to_chars_result&) = default;
+    constexpr explicit operator bool() const noexcept { return ec == errc{}; }
+  };
+
+  constexpr to_chars_result to_chars(char* first, char* last,           // \serif{freestanding}
+                                     \exposid{integer-type} value, int base = 10);
+  to_chars_result to_chars(char* first, char* last,                     // \serif{freestanding}
+                           bool value, int base = 10) = delete;
+\ins{  constexpr to_chars_result to_chars(char8_t* first, char8_t* last,           // \serif{freestanding}
+                                     \exposid{integer-type} value, int base = 10);
+  to_chars_result to_chars(char8_t* first, char8_t* last,                     // \serif{freestanding}
+                           bool value, int base = 10) = delete;
+  constexpr to_chars_result to_chars(char16_t* first, char16_t* last,           // \serif{freestanding}
+                                     \exposid{integer-type} value, int base = 10);
+  to_chars_result to_chars(char16_t* first, char16_t* last,                     // \serif{freestanding}
+                           bool value, int base = 10) = delete;
+  constexpr to_chars_result to_chars(char32_t* first, char32_t* last,           // \serif{freestanding}
+                                     \exposid{integer-type} value, int base = 10);
+  to_chars_result to_chars(char32_t* first, char32_t* last,                     // \serif{freestanding}
+                           bool value, int base = 10) = delete;}
+
+  to_chars_result to_chars(char* first, char* last,                     // \serif{freestanding-deleted}
+                           floating-point-type value);
+  to_chars_result to_chars(char* first, char* last,                     // \serif{freestanding-deleted}
+                           floating-point-type value, chars_format fmt);
+  to_chars_result to_chars(char* first, char* last,                     // \serif{freestanding-deleted}
+                           floating-point-type value, chars_format fmt, int precision);
+
+  // \serif{[charconv.from.chars], primitive numerical input conversion}
+  struct from_chars_result {                                            // \serif{freestanding}
+    const char* ptr;
+    errc ec;
+    friend bool operator==(const from_chars_result&, const from_chars_result&) = default;
+    constexpr explicit operator bool() const noexcept { return ec == errc{}; }
+  };
+
+  constexpr from_chars_result from_chars(const char* first, const char* last,   // \serif{freestanding}
+                                         integer-type& value, int base = 10);
+
+  from_chars_result from_chars(const char* first, const char* last,     // \serif{freestanding-deleted}
+                               floating-point-type& value,
+                               chars_format fmt = chars_format::general);
+}
+}
+}
+
+\h3(show-number=false){[charconv.to.chars]}
+
+
+
+\h2{References}
+
+\bib(
+  id = N5014,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-08-05,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+)\
+\bib(
+  id = P3312R1,
+  title = Overload Set Types,
+  date = 2025-04-16,
+  author = Bengt Gustafsson,
+  link = https://wg21.link/p3312r1,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3312r1.pdf
+)\
+
+\make_bib
