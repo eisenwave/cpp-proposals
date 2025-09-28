@@ -2,11 +2,11 @@
 
 \wg21_head(
   title = Deprecate implicit conversions
-          between \tt{char8_t}\, \tt{char16_t}\, and \tt{char32_t}
+          between \tt{char8_t} and \tt{char16_t}\, \tt{char32_t}\, or \tt{wchar_t}
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3695R1}}
-  \dt{Date:}            \dd{\tt{2025-09-09}}
+  \dt{Document number:} \dd{\docnum{P3695R2}}
+  \dt{Date:}            \dd{\tt{2025-09-28}}
   \dt{Audience:}        \dd{EWG, SG16}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Author:}          \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -17,7 +17,8 @@
 }
 
 \Babstract{
-Implicit conversions between \tcode{char8_t} and \tcode{char16_t} or and \tcode{char32_t}
+Implicit conversions between \tcode{char8_t}
+and \tcode{char16_t}, \tcode{char32_t}, or \tcode{wchar_t}
 are bug-prone and thus harmful to the language.
 I propose to deprecate them.
 }
@@ -27,6 +28,45 @@ I propose to deprecate them.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R1}
+
+R0 of the paper was seen by SG16, with the following poll results:
+
+\Bquote{
+\b{P3695R1: Recommend deprecating conversions between char and the charN_t types.}
+\ul{
+  \li{Attendees: 10}
+  \li{No objection to unanimous \b{dissent}.}
+}
+
+\b{P3695R1: Recommend deprecating conversions between char8_t and wchar_t.}
+\ul{
+  \li{Attendees: 10}
+  \li{No objection to unanimous consent.}
+}
+
+\b{P3695R1: Recommend deprecating conversions between char16_t and char32_t.}
+\ul{
+  \li{Attendees: 10}
+  \li{\five_way_poll(0,0,3,7,0)}
+  \li{Consensus against.}
+}
+}
+
+Consequently, the following changes were made:
+
+\ul{
+  \li{
+    also deprecated conversion between \tcode{char8_t} and \tcode{wchar_t};
+    see \ref(#char-and-wchar_t)
+  }
+  \li{changed title and abstract to reflect this new direction}
+  \li{rewrote \ref(#char16_t-char32_t)}
+  \li{expanded note on tautology warnings in \ref(#this-really-happens)}
+  \li{added \ref(#narrowing-conversions)}
+  \li{restructured \ref(#wording) and added editorial notes}
+}
 
 \h3{Changes since R0}
 
@@ -96,7 +136,7 @@ and they are problematic for the same reason as \tcode{int} → \tcode{short},
 not because of anything specific to character types.
 The listed bugs are interesting \em{precisely because} no information is lost.
 
-\h3{It's not hypothetical. This really happens.}
+\h3(id=this-really-happens){It's not hypothetical. This really happens.}
 
 These kinds of bugs are not far-fetched hypotheticals either;
 I have written such bugs myself,
@@ -116,6 +156,10 @@ constexpr bool is_umlaut(char32_t c) {
 Compilers do have warnings which detect comparisons which are always \tcode{false},
 but technically, \tcode{char8_t} can have the values \tcode{0xf6} and \tcode{0xa0},
 so it is undetectable.
+
+Using \tcode{char} may raise more tautology warnings because if \tcode{char} is signed,
+it can only hold values up to \tcode{127},
+meaning it never compares equal to, e.g. \tcode{0xa0}.
 }
 
 \h3{The underlying problem}
@@ -130,7 +174,7 @@ However, that is their primary purpose, and the assumption holds true for any Un
 \h2{Scope}
 
 I propose to deprecate implicit conversions between
-\tcode{char8_t} and \tcode{char16_t} or \tcode{char32_t}.
+\tcode{char8_t} and \tcode{char16_t}, \tcode{char32_t}, or \tcode{wchar_t}.
 As demonstrated above, these are extremely bug-prone.
 Conversions between \tcode{char16_t} and \tcode{char32_t} are not affected.
 
@@ -146,8 +190,8 @@ will have the same single-code-unit value in UTF-8, UTF-16, and UTF-32.
 However, even those should be deprecated because:
 \ul{
   \li{
-    Keeping these valid would essentially leak implementation details of Unicode encodings
-    into the C++ core language,
+    Keeping these valid would essentially leak implementation details of UTF-8
+    into the set of implicit conversions in the C++ core language,
     which seems like unclean design.
   }
   \li{
@@ -158,46 +202,123 @@ However, even those should be deprecated because:
   }
   \li{
     It would make this "feature" (or lack thereof) harder to teach than it needs to be.
-    The rule can be very simple: different \tcode{charN_t} cannot be converted to one another.
+    The rule can be very simple: \tcode{char8_t} and some other character types
+    cannot be converted to one another.
     Simple rules are easy to teach.
   }
 }
 
 \h3(id=char16_t-char32_t){What about \tcode{char16_t} and \tcode{char32_t}?}
 
+\Bnote{
+The following explanation assumes that \tcode{char16_t} and \tcode{char32_t}
+are used to store a UTF-16 and UTF-32 code unit, respectively.
+}
+
 Following some negative feedback on \ref(ClangWarning),
 the proposal no longer seeks to deprecate conversions between \tcode{char16_t} and \tcode{char32_t}.
-While these are not guaranteed to be meaningful,
-crucially,
-both UTF-16 and UTF-32 encodings consist of code points, not code units.
+While these conversions are not guaranteed to be meaningful,
+there are no false positives in comparisons of UTF-16 and UTF-32 code units,
+and the comparison is quite likely to be correct.
 
-The difference is that UTF-16 may also include "surrogate code points"
-which may be combined with a subsequent code point.
-Surrogate code points do not exist in UTF-32.
-Consequently, comparing correct UTF-16 to UTF-32 does not yield false positives.
-It is impossible for correctly encoded \tcode{char32_t} to compare equal to \tcode{char16_t}
-unless they represent the same code point.
-However, it is possible to have false negatives
-when searching for a UTF-32 code point in UTF-16 text,
-considering that some code points need to be encoded using surrogates.
+\Bnote{
+There are no false positives in \tcode{char16_t} ↔ \tcode{char32_t}
+because any code point in [U+0000, U+D7FF] or [U+E000, U+FFFF]
+is encoded using a single code unit equivalent to the code point value,
+in both UTF-16 and UTF-32.
 
-It also also much less likely that \tcode{char16_t} and \tcode{char32_t} actually manifest as a bug.
+Other code points are encoded using high surrogates ([\tt{0xD800}, \tt{0xDBFF}])
+and low surrogates ([\tt{0xDC00}, \tt{0xDFFF}]).
+The corresponding surrogate code points in [U+D800, U+DFFF] cannot be encoded in UTF-32.
+}
+
+It is possible to have false negatives
+when searching for a UTF-32 code unit
+outside the Basic Multilingual Plane (BMP) in UTF-16 text.
+However, these searches are tautologically false because values
+≥ \tt{0x10000} cannot (usually) be represented by \tcode{char16_t},
+so compilers may catch some of them already.
+
+It also also much less likely that \tcode{char16_t} ↔ \tcode{char32_t}
+conversions actually manifest as a bug.
 An application that only uses, say, Basic Latin characters and German or Norwegian
 umlauts can use \tcode{char16_t} and \tcode{char32_t} interchangeably.
 By contrast, mixing \tcode{char8_t} with other Unicode character types will almost
 certainly blow up in the user's face if the application processes any kind of non-ASCII text.
 
+Last but not least, UTF-8 is becoming the "default encoding", especially on the web,
+while UTF-16 is increasingly becoming a "legacy encoding".
+This makes it unattractive to raise warnings for \tcode{char16_t}
+when the surrounding code may exist mostly for compatibility purposes,
+and C++ users are not interested in sinking much time into its maintenance.
+Substantially more code may be affected by a \tcode{char16_t} ↔ \tcode{char32_t}
+deprecation because both types were introduced in C++11,
+unlikely \tcode{char8_t}, which was added in C++20.
+See also \ref(WikipediaEncodingPopularity):
+
+\Bquote{
+Recently it has become clear that the overhead of translating from/to UTF-8 on input and output,
+and dealing with potential encoding errors in the input UTF-8,
+overwhelms any benefits UTF-16 could offer.
+So newer software systems are starting to use UTF-8.
+The default string primitive used in newer programming languages,
+such as Go, Julia, Rust and Swift 5, assume UTF-8 encoding.
+PyPy also uses UTF-8 for its strings, and Python is looking into storing all strings in UTF-8.
+Microsoft now recommends the use of UTF-8 for applications using the Windows API,
+while continuing to maintain a legacy "Unicode" (meaning UTF-16) interface.
+}
+
+In summary, in \tcode{char16_t} ↔ \tcode{char32_t} comparisons,
+there are no false positives,
+the only false negatives are tautologically false (warnings exist),
+bugs are unlikely to manifest
+because code points outside the BMP are relatively uncommon,
+and if deprecation warnings were raised,
+that may happen in low-priority legacy code.
+
+\Bnote{
+Not one participant in SG16 voted in favor of deprecating \tcode{char16_t} ↔ \tcode{char32_t}
+conversions; see \ref(#changes-since-r1).
+}
+
 \h3(id=char-and-wchar_t){What about \tcode{char} and \tcode{wchar_t}?}
 
-\tcode{char} and \tcode{wchar_t} have existed for too long to make any deprecation
-of their behavior realistic at this point.
-There are approximately ten trillion lines of C++ code using \tcode{char}\sup{[\i{citation needed}]}.
+As recommended by SG16,
+I propose to leave \tcode{char} intact,
+but deprecate conversions between \tcode{char8_t} and \tcode{wchar_t}.
+Since \tcode{wchar_t} almost certainly has a different encoding than \tcode{char8_t},
+this conversions is as problematic as the \tcode{char16_t} and \tcode{char32_t} conversions.
 
-It would still be plausible to deprecate say, conversions between \tcode{char} and \tcode{charN_t}.
-However, there's a good chance that these are valid
-because UTF-8 text is often stored in \tcode{char[]},
-and UTF-16 or UTF-32 text is often stored in \tcode{wchar_t[]}.
-On the contrary, \tcode{char8_t} and \tcode{char32_t} almost certainly use different encodings.
+The following conversions are \u{not} deprecated:
+
+\ul{
+  \li{
+    \tcode{char} ↔ \tcode{char8_t} is not deprecated because the encoding of both sides
+    is likely UTF-8, in which case the conversion is obviously safe.
+    Substantial amounts of code may already rely on this.
+  }
+  \li{
+    \tcode{wchar_t} ↔ \tcode{char16_t} and \tcode{wchar_t} ↔ \tcode{char32_t}
+    can also be safe, depending on the platform.
+    Windows-only code can likely treat \tcode{wchar_t} and \tcode{char16_t}
+    interchangeably,
+    and Linux-only code may treat \tcode{wchar_t} and \tcode{char32_t} interchangeably.
+  }
+}
+
+Furthermore, deprecating \em{any} conversion from \tcode{char}
+to other character types is a bad idea,
+and was unanimously recommended against by SG16.
+In some code bases, \tcode{char} is used \em{purely} for ASCII characters and strings.
+In such code bases, comparing \tcode{char} to any other character type
+is always correct,
+assuming that an ASCII-compatible encoding is used everywhere.
+
+It may also be possible to deprecate conversions with \tcode{char}
+depending on ordinary literal encoding,
+but \tcode{char} is not necessarily using literal encoding,
+and doing so would invite non-portable code that fails to compile on e.g. EBCDIC platforms,
+to the great surprise of the author.
 
 \h3(id=integer-comparisons){What about conversions with integers?}
 
@@ -232,6 +353,36 @@ int main() {
     f(u8'a'); 
 }
 }
+}
+
+\h3(id=narrowing-conversions){Why not make these conversions narrowing?}
+
+Another possible option (instead of deprecation or following deprecation)
+is to make the affected \tcode{char8_t} conversions narrowing conversions.
+This would make \tcode{char32_t{c}} for some \tcode{char8_t c} ill-formed,
+but the implicit conversion from \tcode{char8_t} to \tcode{char32_t}
+would remain valid.
+
+There are multiple problems with this approach,
+which is why it is not proposed:
+\ul{
+  \li{
+    \tcode{char8_t} to \tcode{char32_t} is a widening conversion,
+    making the term "narrowing conversion" comically misleading.
+  }
+  \li{
+    A long time has passed since C++11,
+    and there is a lot of code using list-initialization now.
+    This means that the "blast radius" of the change may still be quite large.
+    If we accept that a non-trivial amount of warnings is raised in existing code,
+    this half-measure seems unattractive.
+  }
+  \li{
+    A lot of the problematic cases are not initialization,
+    but comparisons as shown in \ref(#introduction).
+    Narrowing conversions play no role in equality comparison
+    or in the usual arithmetic conversions.
+  }
 }
 
 \h2{Impact on existing code}
@@ -282,47 +433,27 @@ it does not warn on "safe comparisons" (\ref(#safe-comparisons)).
 
 The following changes are relative to \ref(N5014).
 
-Change \eelis{basic.fundamental#9} as follows:
+\h3(show-number=false){[conv.integral]}
+
+Change \eelis{conv.integral#1} as follows,
+and split it into two paragraphs:
 
 \Bdiff{
-\ins{The types \tcode{char8_t}, \tcode{char16_t}, and \tcode{char32_t}
-are collectively called \i{Unicode character types}.}
-Type \tcode{char8_t} denotes a distinct type
-whose underlying type is \tcode{unsigned char}.
-Types \tcode{char16_t} and \tcode{char32_t} denote distinct types
-whose underlying types are \tcode{uint_least16_t} and \tcode{uint_least32_t},
-respectively, in \tt{<cstdint>}.
-}
+1 A prvalue of an integer type
+can be converted to a prvalue of another integer type.
+\ins{The conversion is deprecated ([depr.conv.unicode]) if
+one of the types involved in the conversion is \tcode{char8_t},
+and the other type is \tcode{char16_t}, \tcode{char32_t}, or \tcode{wchar_t}.}
 
-Change \eelis{conv.integral#1} as follows:
-
-\Bdiff{
-A prvalue of an integer type \ins{\tcode{S}}
-can be converted to a prvalue of another integer type \ins{\tcode{D}}.
-\ins{The conversion is deprecated ([depr.conv.unicode]) if}
-\ul{
-  \li{\ins{
-    \tcode{S} is \tcode{char8_t} and
-    \tcode{D} is \tcode{char16_t} or \tcode{char32_t},
-    or \tcode{D} is \tcode{char8_t} and
-    \tcode{S} is \tcode{char16_t} or \tcode{char32_t}; and
-  }}
-  \li{\ins{
-    the conversion is not necessitated by a \tcode{static_cast} (\eelis{expr.static.cast}).
-  }}
-}
 \ins{\note{
-This deprecation also applies to cv-qualified Unicode character types
-because prvalues of such types are adjusted to cv-unqualified types; see \eelis{expr.type}.
-}}\br
-\del{A prvalue of an unscoped enumeration type can be converted to a prvalue of an integer type.}
+This deprecation also applies to cv-qualified types
+because prvalues of such types are adjusted to cv-unqualified types\iref{expr.type}.
+}}
+
+\ins{2} A prvalue of an unscoped enumeration type can be converted to a prvalue of an integer type.
 }
 
-Insert a new paragraph immediately following \eelis{conv.integral#1}:
-
-\Bins{
-A prvalue of an unscoped enumeration type can be converted to a prvalue of an integer type.
-}
+\h3(show-number=false){[expr.arith.conv]}
 
 Change \eelis{expr.arith.conv#1} as follows:
 
@@ -341,7 +472,7 @@ This pattern is called the \i{usual arithmetic conversions}, which are defined a
   \li{
     Otherwise, each operand is converted to a common type \tcode{C}.
     \ins{The conversion is deprecated if one operand is \tcode{char8_t}
-    and the other operand is \tcode{char16_t} or \tcode{char32_t}.}
+    and the other operand is \tcode{char16_t}, \tcode{char32_t}, or \tcode{wchar_t}.}
     The integral promotion rules\iref{conv.prom} are used
     to determine a type \tcode{T1} and type \tcode{T2} for each operand.
     Then the following rules are applied to determine C:
@@ -352,6 +483,52 @@ This pattern is called the \i{usual arithmetic conversions}, which are defined a
 }
 }
 
+\Btip{
+Integral promotion converts character types to \tcode{int} or \tcode{unsigned int},
+so if we didn't add this wording,
+the conversion would not be deprecated.
+}
+
+\h3(show-number=false){[expr.static.cast]}
+
+Immediately prior to \eelis{expr.static.cast#5},
+insert a new paragraph:
+
+\Bins{
+An expression \math{\mi{E}} of type \i{cv} \tcode{char8_t}
+can be explicitly converted to
+\i{cv} \tcode{char16_t}, \i{cv} \tcode{char32_t}, or \i{cv} \tcode{wchar_t}
+and vice-versa.
+The effect is equivalent to
+explicitly converting to \tcode{unsigned char},
+then to the target type.
+
+\note{
+Integral conversions\iref{conv.integral}
+between these types have the same effect and are deprecated,
+unlike this explicit conversion\iref{depr.conv.unicode}.
+}
+}
+
+\Btip{
+The wording for \tcode{static_cast} needs to permit possibly cv-qualified types with "\i{cv}".
+While cv-qualifications get dropped from expressions\iref{expr.type},
+we still need to say that you can write e.g. \tcode{static_cast<const char8_t>}.
+Cv-qualifications do not get dropped automatically from the \grammarterm{type-id}.
+}
+
+Do \u{not} change \eelis{expr.static.cast#5};
+it is cited here for reference:
+
+\Bquote{
+Otherwise, an expression \math{\mi{E}} can be explicitly converted to a type \tcode{T}
+if there is an implicit conversion sequence\iref{over.best.ics}
+from \math{\mi{E}} to \tcode{T}, \etc.
+\etc, the result object is direct-initialized from \math{\mi{E}}.
+}
+
+\h3(show-number=false){[depr.conv.unicode]}
+
 Insert a new subclause in \eelis{depr} between \eelis{depr.local} and \eelis{depr.capture.this},
 containing a single paragraph:
 
@@ -361,18 +538,16 @@ containing a single paragraph:
 The following conversions are deprecated:
 \ul{
   \li{
-    Integral conversions (\eelis{conv.integral})
-    not necessitated by a \tcode{static_cast},
-    where the source type and destination type are
-    two different Unicode character types\iref{basic.fundamental},
-    one of which is \tcode{char8_t}.
+    Integral conversions\iref{conv.integral},
+    where out of the types involved in the conversion,
+    one is \tcode{char8_t}
+    and the other is \tcode{char16_t}, \tcode{char32_t}, or \tcode{wchar_t}.
   }
   \li{
-    Usual arithmetic conversions (\eelis{expr.arith.conv})
-    where the operands
-    after lvalue-to-rvalue conversion (\eelis{conv.lval})
-    are two different Unicode character types,
-    one of which is \tcode{char8_t}.
+    Usual arithmetic conversions\iref{expr.arith.conv}
+    where out of the operand types after lvalue-to-rvalue conversion\iref{conv.lval},
+    one is \tcode{char8_t}
+    and the other is \tcode{char16_t}, \tcode{char32_t}, or \tcode{wchar_t}.
   }
 }
 \example{
@@ -382,11 +557,11 @@ bool is_oe(char8_t c) {
 }
 void f() {
     char32_t c = u8'x';                   // \serif{deprecated}
-    char32_t c = u'x';                    // \serif{OK, no \tcode{char8_t} involved}
-    char32_t c = 'x';                     // \serif{OK, }\tcode{char}\serif{ is not a Unicode character type}
+    char32_t c = u'x';                    // \serif{OK, conversion from \tcode{char16_t} to \tcode{char32_t}}
+    char8_t c = 'x';                      // \serif{OK, conversion from \tcode{char} to \tcode{char8_t}}
     is_oe(U'ö');                          // \serif{deprecated}
-    is_oe(static_cast<char8_t>(U'ö'));    // \serif{OK, integral conversion necessitated by a }\tcode{static_cast}
-    is_oe((char8_t)U'ö');                 // \serif{OK, explicit conversion performed by a }\tcode{static_cast}
+    is_oe(static_cast<char8_t>(U'ö'));    // \serif{OK, explicit conversion\iref{expr.static.cast}}
+    is_oe((char8_t)U'ö');                 // \serif{OK, explicit conversion}
 }
 }
 }
@@ -418,6 +593,11 @@ void f() {
   id = CompilerExplorer,
   title = Demonstration of -Wcharacter-conversion,
   link = https://compiler-explorer.com/z/8j9qqe8MY
+)\
+\bib(
+  id = WikipediaEncodingPopularity,
+  title = Popularity of text encodings — Popularity internally in software,
+  link = https://en.wikipedia.org/wiki/Popularity_of_text_encodings#Popularity_internally_in_software,
 )\
 \bib(
   id = P1161R3,

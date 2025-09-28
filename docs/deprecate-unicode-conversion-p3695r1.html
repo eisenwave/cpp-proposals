@@ -1435,7 +1435,7 @@ if (theme !== null) {
 }
   </script>
 <title>Deprecate implicit conversions
-          between char8_t and char16_t, char32_t, or wchar_t</title></head>
+          between char8_t, char16_t, and char32_t</title></head>
 <body>
 <div id=settings tabindex=0>
     <div id=theme-icon></div>
@@ -1507,11 +1507,11 @@ if (theme !== null) {
 </style>
 
 <div class=wg21-head><h1>Deprecate implicit conversions
-          between <tt->char8_t</tt-> and <tt->char16_t</tt->, <tt->char32_t</tt->, or <tt->wchar_t</tt-></h1>
+          between <tt->char8_t</tt->, <tt->char16_t</tt->, and <tt->char32_t</tt-></h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3695R2>P3695R2</a></dd>
-  <dt>Date:</dt>            <dd><tt->2025-09-28</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3695R1>P3695R1</a></dd>
+  <dt>Date:</dt>            <dd><tt->2025-09-09</tt-></dd>
   <dt>Audience:</dt>        <dd>EWG, SG16</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Author:</dt>          <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1522,8 +1522,7 @@ if (theme !== null) {
 </div>
 
 <abstract-block><p><intro-></intro-> 
-Implicit conversions between <code><h- data-h=kw_type>char8_t</h-></code>
-and <code><h- data-h=kw_type>char16_t</h-></code>, <code><h- data-h=kw_type>char32_t</h-></code>, or <code><h- data-h=kw_type>wchar_t</h-></code>
+Implicit conversions between <code><h- data-h=kw_type>char8_t</h-></code> and <code><h- data-h=kw_type>char16_t</h-></code> or and <code><h- data-h=kw_type>char32_t</h-></code>
 are bug-prone and thus harmful to the language.
 I propose to deprecate them.
 </p></abstract-block>
@@ -1533,13 +1532,11 @@ I propose to deprecate them.
 <div class=toc><div class=toc-num data-level=2>1</div>
 <a href=#revision-history><h2>Revision history</h2></a>
 <div class=toc-num data-level=3>1.1</div>
-<a href=#changes-since-r1><h3>Changes since R1</h3></a>
-<div class=toc-num data-level=3>1.2</div>
 <a href=#changes-since-r0><h3>Changes since R0</h3></a>
 <div class=toc-num data-level=2>2</div>
 <a href=#introduction><h2>Introduction</h2></a>
 <div class=toc-num data-level=3>2.1</div>
-<a href=#this-really-happens><h3>It's not hypothetical. This really happens.</h3></a>
+<a href=#its-not-hypothetical%2e-this-really-happens%2e><h3>It's not hypothetical. This really happens.</h3></a>
 <div class=toc-num data-level=3>2.2</div>
 <a href=#the-underlying-problem><h3>The underlying problem</h3></a>
 <div class=toc-num data-level=2>3</div>
@@ -1554,8 +1551,6 @@ I propose to deprecate them.
 <a href=#integer-comparisons><h3>What about conversions with integers?</h3></a>
 <div class=toc-num data-level=3>3.5</div>
 <a href=#after-deprecation><h3>What comes after deprecation?</h3></a>
-<div class=toc-num data-level=3>3.6</div>
-<a href=#narrowing-conversions><h3>Why not make these conversions narrowing?</h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#impact-on-existing-code><h2>Impact on existing code</h2></a>
 <div class=toc-num data-level=3>4.1</div>
@@ -1564,63 +1559,13 @@ I propose to deprecate them.
 <a href=#implementation-experience><h2>Implementation experience</h2></a>
 <div class=toc-num data-level=2>6</div>
 <a href=#wording><h2>Wording</h2></a>
-<div class=toc-num data-level=3>6.1</div>
-<a href=#conv%2eintegral><h3>[conv.integral]</h3></a>
-<div class=toc-num data-level=3>6.2</div>
-<a href=#expr%2earith%2econv><h3>[expr.arith.conv]</h3></a>
-<div class=toc-num data-level=3>6.3</div>
-<a href=#expr%2estatic%2ecast><h3>[expr.static.cast]</h3></a>
-<div class=toc-num data-level=3>6.4</div>
-<a href=#depr%2econv%2eunicode><h3>[depr.conv.unicode]</h3></a>
 <div class=toc-num data-level=2>7</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
 <h2 id=revision-history><a class=para href=#revision-history></a>1. Revision history</h2>
 
-<h3 id=changes-since-r1><a class=para href=#changes-since-r1></a>1.1. Changes since R1</h3>
-
-<p>R0 of the paper was seen by SG16, with the following poll results:
-</p>
-<blockquote>
-<p><b>P3695R1: Recommend deprecating conversions between char and the charN_t types.</b>
-</p><ul>
-  <li>Attendees: 10</li>
-  <li>No objection to unanimous <b>dissent</b>.</li>
-</ul>
-
-<p><b>P3695R1: Recommend deprecating conversions between char8_t and wchar_t.</b>
-</p><ul>
-  <li>Attendees: 10</li>
-  <li>No objection to unanimous consent.</li>
-</ul>
-
-<p><b>P3695R1: Recommend deprecating conversions between char16_t and char32_t.</b>
-</p><ul>
-  <li>Attendees: 10</li>
-  <li><table class=five-way-poll>
-<tr><th>SF</th><th>F</th><th>N</th><th>A</th><th>SA</th></tr>
-<tr><td>0</td><td>0</td><td>3</td><td>7</td><td>0</td></tr>
-</table></li>
-  <li>Consensus against.</li>
-</ul>
-</blockquote>
-
-<p>Consequently, the following changes were made:
-</p>
-<ul>
-  <li>
-    also deprecated conversion between <code><h- data-h=kw_type>char8_t</h-></code> and <code><h- data-h=kw_type>wchar_t</h-></code>;
-    see <a href=#char-and-wchar_t>§3.3. What about <code><h- data-h=kw_type>char</h-></code> and <code><h- data-h=kw_type>wchar_t</h-></code>?</a>
-  </li>
-  <li>changed title and abstract to reflect this new direction</li>
-  <li>rewrote <a href=#char16_t-char32_t>§3.2. What about <code><h- data-h=kw_type>char16_t</h-></code> and <code><h- data-h=kw_type>char32_t</h-></code>?</a></li>
-  <li>expanded note on tautology warnings in <a href=#this-really-happens>§2.1. It's not hypothetical. This really happens.</a></li>
-  <li>added <a href=#narrowing-conversions>§3.6. Why not make these conversions narrowing?</a></li>
-  <li>restructured <a href=#wording>§6. Wording</a> and added editorial notes</li>
-</ul>
-
-<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.2. Changes since R0</h3>
+<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.1. Changes since R0</h3>
 
 <ul>
   <li>
@@ -1682,7 +1627,7 @@ and they are problematic for the same reason as <code><h- data-h=kw_type>int</h-
 not because of anything specific to character types.
 The listed bugs are interesting <em>precisely because</em> no information is lost.
 </p>
-<h3 id=this-really-happens><a class=para href=#this-really-happens></a>2.1. It's not hypothetical. This really happens.</h3>
+<h3 id=its-not-hypothetical.-this-really-happens.><a class=para href=#its-not-hypothetical%2e-this-really-happens%2e></a>2.1. It's not hypothetical. This really happens.</h3>
 
 <p>These kinds of bugs are not far-fetched hypotheticals either;
 I have written such bugs myself,
@@ -1700,10 +1645,6 @@ so most functions in the style of <code><h- data-h=id>is_umlaut</h-></code> have
 Compilers do have warnings which detect comparisons which are always <code><h- data-h=bool>false</h-></code>,
 but technically, <code><h- data-h=kw_type>char8_t</h-></code> can have the values <code><h- data-h=num_deco>0x</h-><h- data-h=num>f6</h-></code> and <code><h- data-h=num_deco>0x</h-><h- data-h=num>a0</h-></code>,
 so it is undetectable.
-</p>
-<p>Using <code><h- data-h=kw_type>char</h-></code> may raise more tautology warnings because if <code><h- data-h=kw_type>char</h-></code> is signed,
-it can only hold values up to <code><h- data-h=num>127</h-></code>,
-meaning it never compares equal to, e.g. <code><h- data-h=num_deco>0x</h-><h- data-h=num>a0</h-></code>.
 </p></note-block>
 
 <h3 id=the-underlying-problem><a class=para href=#the-underlying-problem></a>2.2. The underlying problem</h3>
@@ -1718,7 +1659,7 @@ However, that is their primary purpose, and the assumption holds true for any Un
 <h2 id=scope><a class=para href=#scope></a>3. Scope</h2>
 
 <p>I propose to deprecate implicit conversions between
-<code><h- data-h=kw_type>char8_t</h-></code> and <code><h- data-h=kw_type>char16_t</h-></code>, <code><h- data-h=kw_type>char32_t</h-></code>, or <code><h- data-h=kw_type>wchar_t</h-></code>.
+<code><h- data-h=kw_type>char8_t</h-></code> and <code><h- data-h=kw_type>char16_t</h-></code> or <code><h- data-h=kw_type>char32_t</h-></code>.
 As demonstrated above, these are extremely bug-prone.
 Conversions between <code><h- data-h=kw_type>char16_t</h-></code> and <code><h- data-h=kw_type>char32_t</h-></code> are not affected.
 </p>
@@ -1734,8 +1675,8 @@ will have the same single-code-unit value in UTF-8, UTF-16, and UTF-32.
 <p>However, even those should be deprecated because:
 </p><ul>
   <li>
-    Keeping these valid would essentially leak implementation details of UTF-8
-    into the set of implicit conversions in the C++ core language,
+    Keeping these valid would essentially leak implementation details of Unicode encodings
+    into the C++ core language,
     which seems like unclean design.
   </li>
   <li>
@@ -1746,123 +1687,46 @@ will have the same single-code-unit value in UTF-8, UTF-16, and UTF-32.
   </li>
   <li>
     It would make this "feature" (or lack thereof) harder to teach than it needs to be.
-    The rule can be very simple: <code><h- data-h=kw_type>char8_t</h-></code> and some other character types
-    cannot be converted to one another.
+    The rule can be very simple: different <code><h- data-h=id_type>charN_t</h-></code> cannot be converted to one another.
     Simple rules are easy to teach.
   </li>
 </ul>
 
 <h3 id=char16_t-char32_t><a class=para href=#char16_t-char32_t></a>3.2. What about <code><h- data-h=kw_type>char16_t</h-></code> and <code><h- data-h=kw_type>char32_t</h-></code>?</h3>
 
-<note-block><p><intro-></intro-> 
-The following explanation assumes that <code><h- data-h=kw_type>char16_t</h-></code> and <code><h- data-h=kw_type>char32_t</h-></code>
-are used to store a UTF-16 and UTF-32 code unit, respectively.
-</p></note-block>
-
 <p>Following some negative feedback on <a href="https://github%2ecom/llvm/llvm-project/pull/138708">[ClangWarning]</a>,
 the proposal no longer seeks to deprecate conversions between <code><h- data-h=kw_type>char16_t</h-></code> and <code><h- data-h=kw_type>char32_t</h-></code>.
-While these conversions are not guaranteed to be meaningful,
-there are no false positives in comparisons of UTF-16 and UTF-32 code units,
-and the comparison is quite likely to be correct.
+While these are not guaranteed to be meaningful,
+crucially,
+both UTF-16 and UTF-32 encodings consist of code points, not code units.
 </p>
-<note-block><p><intro-></intro-> 
-There are no false positives in <code><h- data-h=kw_type>char16_t</h-></code> ↔ <code><h- data-h=kw_type>char32_t</h-></code>
-because any code point in [U+0000, U+D7FF] or [U+E000, U+FFFF]
-is encoded using a single code unit equivalent to the code point value,
-in both UTF-16 and UTF-32.
+<p>The difference is that UTF-16 may also include "surrogate code points"
+which may be combined with a subsequent code point.
+Surrogate code points do not exist in UTF-32.
+Consequently, comparing correct UTF-16 to UTF-32 does not yield false positives.
+It is impossible for correctly encoded <code><h- data-h=kw_type>char32_t</h-></code> to compare equal to <code><h- data-h=kw_type>char16_t</h-></code>
+unless they represent the same code point.
+However, it is possible to have false negatives
+when searching for a UTF-32 code point in UTF-16 text,
+considering that some code points need to be encoded using surrogates.
 </p>
-<p>Other code points are encoded using high surrogates ([<tt->0xD800</tt->, <tt->0xDBFF</tt->])
-and low surrogates ([<tt->0xDC00</tt->, <tt->0xDFFF</tt->]).
-The corresponding surrogate code points in [U+D800, U+DFFF] cannot be encoded in UTF-32.
-</p></note-block>
-
-<p>It is possible to have false negatives
-when searching for a UTF-32 code unit
-outside the Basic Multilingual Plane (BMP) in UTF-16 text.
-However, these searches are tautologically false because values
-≥ <tt->0x10000</tt-> cannot (usually) be represented by <code><h- data-h=kw_type>char16_t</h-></code>,
-so compilers may catch some of them already.
-</p>
-<p>It also also much less likely that <code><h- data-h=kw_type>char16_t</h-></code> ↔ <code><h- data-h=kw_type>char32_t</h-></code>
-conversions actually manifest as a bug.
+<p>It also also much less likely that <code><h- data-h=kw_type>char16_t</h-></code> and <code><h- data-h=kw_type>char32_t</h-></code> actually manifest as a bug.
 An application that only uses, say, Basic Latin characters and German or Norwegian
 umlauts can use <code><h- data-h=kw_type>char16_t</h-></code> and <code><h- data-h=kw_type>char32_t</h-></code> interchangeably.
 By contrast, mixing <code><h- data-h=kw_type>char8_t</h-></code> with other Unicode character types will almost
 certainly blow up in the user's face if the application processes any kind of non-ASCII text.
 </p>
-<p>Last but not least, UTF-8 is becoming the "default encoding", especially on the web,
-while UTF-16 is increasingly becoming a "legacy encoding".
-This makes it unattractive to raise warnings for <code><h- data-h=kw_type>char16_t</h-></code>
-when the surrounding code may exist mostly for compatibility purposes,
-and C++ users are not interested in sinking much time into its maintenance.
-Substantially more code may be affected by a <code><h- data-h=kw_type>char16_t</h-></code> ↔ <code><h- data-h=kw_type>char32_t</h-></code>
-deprecation because both types were introduced in C++11,
-unlikely <code><h- data-h=kw_type>char8_t</h-></code>, which was added in C++20.
-See also <a href="https://en%2ewikipedia%2eorg/wiki/Popularity_of_text_encodings#Popularity_internally_in_software">[WikipediaEncodingPopularity]</a>:
-</p>
-<blockquote>
-<p>Recently it has become clear that the overhead of translating from/to UTF-8 on input and output,
-and dealing with potential encoding errors in the input UTF-8,
-overwhelms any benefits UTF-16 could offer.
-So newer software systems are starting to use UTF-8.
-The default string primitive used in newer programming languages,
-such as Go, Julia, Rust and Swift 5, assume UTF-8 encoding.
-PyPy also uses UTF-8 for its strings, and Python is looking into storing all strings in UTF-8.
-Microsoft now recommends the use of UTF-8 for applications using the Windows API,
-while continuing to maintain a legacy "Unicode" (meaning UTF-16) interface.
-</p></blockquote>
-
-<p>In summary, in <code><h- data-h=kw_type>char16_t</h-></code> ↔ <code><h- data-h=kw_type>char32_t</h-></code> comparisons,
-there are no false positives,
-the only false negatives are tautologically false (warnings exist),
-bugs are unlikely to manifest
-because code points outside the BMP are relatively uncommon,
-and if deprecation warnings were raised,
-that may happen in low-priority legacy code.
-</p>
-<note-block><p><intro-></intro-> 
-Not one participant in SG16 voted in favor of deprecating <code><h- data-h=kw_type>char16_t</h-></code> ↔ <code><h- data-h=kw_type>char32_t</h-></code>
-conversions; see <a href=#changes-since-r1>§1.1. Changes since R1</a>.
-</p></note-block>
-
 <h3 id=char-and-wchar_t><a class=para href=#char-and-wchar_t></a>3.3. What about <code><h- data-h=kw_type>char</h-></code> and <code><h- data-h=kw_type>wchar_t</h-></code>?</h3>
 
-<p>As recommended by SG16,
-I propose to leave <code><h- data-h=kw_type>char</h-></code> intact,
-but deprecate conversions between <code><h- data-h=kw_type>char8_t</h-></code> and <code><h- data-h=kw_type>wchar_t</h-></code>.
-Since <code><h- data-h=kw_type>wchar_t</h-></code> almost certainly has a different encoding than <code><h- data-h=kw_type>char8_t</h-></code>,
-this conversions is as problematic as the <code><h- data-h=kw_type>char16_t</h-></code> and <code><h- data-h=kw_type>char32_t</h-></code> conversions.
+<p><code><h- data-h=kw_type>char</h-></code> and <code><h- data-h=kw_type>wchar_t</h-></code> have existed for too long to make any deprecation
+of their behavior realistic at this point.
+There are approximately ten trillion lines of C++ code using <code><h- data-h=kw_type>char</h-></code><sup>[<i>citation needed</i>]</sup>.
 </p>
-<p>The following conversions are <u>not</u> deprecated:
-</p>
-<ul>
-  <li>
-    <code><h- data-h=kw_type>char</h-></code> ↔ <code><h- data-h=kw_type>char8_t</h-></code> is not deprecated because the encoding of both sides
-    is likely UTF-8, in which case the conversion is obviously safe.
-    Substantial amounts of code may already rely on this.
-  </li>
-  <li>
-    <code><h- data-h=kw_type>wchar_t</h-></code> ↔ <code><h- data-h=kw_type>char16_t</h-></code> and <code><h- data-h=kw_type>wchar_t</h-></code> ↔ <code><h- data-h=kw_type>char32_t</h-></code>
-    can also be safe, depending on the platform.
-    Windows-only code can likely treat <code><h- data-h=kw_type>wchar_t</h-></code> and <code><h- data-h=kw_type>char16_t</h-></code>
-    interchangeably,
-    and Linux-only code may treat <code><h- data-h=kw_type>wchar_t</h-></code> and <code><h- data-h=kw_type>char32_t</h-></code> interchangeably.
-  </li>
-</ul>
-
-<p>Furthermore, deprecating <em>any</em> conversion from <code><h- data-h=kw_type>char</h-></code>
-to other character types is a bad idea,
-and was unanimously recommended against by SG16.
-In some code bases, <code><h- data-h=kw_type>char</h-></code> is used <em>purely</em> for ASCII characters and strings.
-In such code bases, comparing <code><h- data-h=kw_type>char</h-></code> to any other character type
-is always correct,
-assuming that an ASCII-compatible encoding is used everywhere.
-</p>
-<p>It may also be possible to deprecate conversions with <code><h- data-h=kw_type>char</h-></code>
-depending on ordinary literal encoding,
-but <code><h- data-h=kw_type>char</h-></code> is not necessarily using literal encoding,
-and doing so would invite non-portable code that fails to compile on e.g. EBCDIC platforms,
-to the great surprise of the author.
+<p>It would still be plausible to deprecate say, conversions between <code><h- data-h=kw_type>char</h-></code> and <code><h- data-h=id_type>charN_t</h-></code>.
+However, there's a good chance that these are valid
+because UTF-8 text is often stored in <code><h- data-h=kw_type>char</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>]</h-></code>,
+and UTF-16 or UTF-32 text is often stored in <code><h- data-h=kw_type>wchar_t</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>]</h-></code>.
+On the contrary, <code><h- data-h=kw_type>char8_t</h-></code> and <code><h- data-h=kw_type>char32_t</h-></code> almost certainly use different encodings.
 </p>
 <h3 id=integer-comparisons><a class=para href=#integer-comparisons></a>3.4. What about conversions with integers?</h3>
 
@@ -1896,36 +1760,6 @@ the following code would eventually change its meaning:
     <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=str_deco>u8</h-><h- data-h=str_dlim>'</h-><h- data-h=str>a</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> 
 <h- data-h=sym_brac>}</h-></code-block>
 </example-block>
-
-<h3 id=narrowing-conversions><a class=para href=#narrowing-conversions></a>3.6. Why not make these conversions narrowing?</h3>
-
-<p>Another possible option (instead of deprecation or following deprecation)
-is to make the affected <code><h- data-h=kw_type>char8_t</h-></code> conversions narrowing conversions.
-This would make <code><h- data-h=kw_type>char32_t</h-><h- data-h=sym_brac>{</h-><h- data-h=id>c</h-><h- data-h=sym_brac>}</h-></code> for some <code><h- data-h=kw_type>char8_t</h-> <h- data-h=id>c</h-></code> ill-formed,
-but the implicit conversion from <code><h- data-h=kw_type>char8_t</h-></code> to <code><h- data-h=kw_type>char32_t</h-></code>
-would remain valid.
-</p>
-<p>There are multiple problems with this approach,
-which is why it is not proposed:
-</p><ul>
-  <li>
-    <code><h- data-h=kw_type>char8_t</h-></code> to <code><h- data-h=kw_type>char32_t</h-></code> is a widening conversion,
-    making the term "narrowing conversion" comically misleading.
-  </li>
-  <li>
-    A long time has passed since C++11,
-    and there is a lot of code using list-initialization now.
-    This means that the "blast radius" of the change may still be quite large.
-    If we accept that a non-trivial amount of warnings is raised in existing code,
-    this half-measure seems unattractive.
-  </li>
-  <li>
-    A lot of the problematic cases are not initialization,
-    but comparisons as shown in <a href=#introduction>§2. Introduction</a>.
-    Narrowing conversions play no role in equality comparison
-    or in the usual arithmetic conversions.
-  </li>
-</ul>
 
 <h2 id=impact-on-existing-code><a class=para href=#impact-on-existing-code></a>4. Impact on existing code</h2>
 
@@ -1975,27 +1809,47 @@ it does not warn on "safe comparisons" (<a href=#safe-comparisons>§3.1. What ab
 
 <p>The following changes are relative to <a href="https://wg21%2elink/n5014">[N5014]</a>.
 </p>
-<h3 id=conv.integral><a class=para href=#conv%2eintegral></a>[conv.integral]</h3>
-
-<p>Change <a href=https://eel.is/c++draft/conv.integral#1>[conv.integral] paragraph 1</a> as follows,
-and split it into two paragraphs:
+<p>Change <a href=https://eel.is/c++draft/basic.fundamental#9>[basic.fundamental] paragraph 9</a> as follows:
 </p>
 <diff-block>
-<p>1 A prvalue of an integer type
-can be converted to a prvalue of another integer type.
-<ins>The conversion is deprecated ([depr.conv.unicode]) if
-one of the types involved in the conversion is <code><h- data-h=kw_type>char8_t</h-></code>,
-and the other type is <code><h- data-h=kw_type>char16_t</h-></code>, <code><h- data-h=kw_type>char32_t</h-></code>, or <code><h- data-h=kw_type>wchar_t</h-></code>.</ins></p>
-
-<p><ins>[<i>Note</i>: 
-This deprecation also applies to cv-qualified types
-because prvalues of such types are adjusted to cv-unqualified types (<a href=https://eel.is/c++draft/expr.type>[expr.type]</a>).
- — <i>end note</i>]</ins></p>
-
-<p><ins>2</ins> A prvalue of an unscoped enumeration type can be converted to a prvalue of an integer type.
+<p><ins>The types <code><h- data-h=kw_type>char8_t</h-></code>, <code><h- data-h=kw_type>char16_t</h-></code>, and <code><h- data-h=kw_type>char32_t</h-></code>
+are collectively called <i>Unicode character types</i>.</ins>
+Type <code><h- data-h=kw_type>char8_t</h-></code> denotes a distinct type
+whose underlying type is <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code>.
+Types <code><h- data-h=kw_type>char16_t</h-></code> and <code><h- data-h=kw_type>char32_t</h-></code> denote distinct types
+whose underlying types are <code><h- data-h=id_type>uint_least16_t</h-></code> and <code><h- data-h=id_type>uint_least32_t</h-></code>,
+respectively, in <tt->&lt;cstdint&gt;</tt->.
 </p></diff-block>
 
-<h3 id=expr.arith.conv><a class=para href=#expr%2earith%2econv></a>[expr.arith.conv]</h3>
+<p>Change <a href=https://eel.is/c++draft/conv.integral#1>[conv.integral] paragraph 1</a> as follows:
+</p>
+<diff-block>
+<p>A prvalue of an integer type <ins><code><h- data-h=id>S</h-></code></ins>
+can be converted to a prvalue of another integer type <ins><code><h- data-h=id>D</h-></code></ins>.
+<ins>The conversion is deprecated ([depr.conv.unicode]) if</ins>
+</p><ul>
+  <li><ins>
+    <code><h- data-h=id>S</h-></code> is <code><h- data-h=kw_type>char8_t</h-></code> and
+    <code><h- data-h=id>D</h-></code> is <code><h- data-h=kw_type>char16_t</h-></code> or <code><h- data-h=kw_type>char32_t</h-></code>,
+    or <code><h- data-h=id>D</h-></code> is <code><h- data-h=kw_type>char8_t</h-></code> and
+    <code><h- data-h=id>S</h-></code> is <code><h- data-h=kw_type>char16_t</h-></code> or <code><h- data-h=kw_type>char32_t</h-></code>; and
+  </ins></li>
+  <li><ins>
+    the conversion is not necessitated by a <code><h- data-h=kw>static_cast</h-></code> (<a href=https://eel.is/c++draft/expr.static.cast>[expr.static.cast]</a>).
+  </ins></li>
+</ul>
+<p><ins>[<i>Note</i>: 
+This deprecation also applies to cv-qualified Unicode character types
+because prvalues of such types are adjusted to cv-unqualified types; see <a href=https://eel.is/c++draft/expr.type>[expr.type]</a>.
+ — <i>end note</i>]</ins><br/>
+<del>A prvalue of an unscoped enumeration type can be converted to a prvalue of an integer type.</del>
+</p></diff-block>
+
+<p>Insert a new paragraph immediately following <a href=https://eel.is/c++draft/conv.integral#1>[conv.integral] paragraph 1</a>:
+</p>
+<ins-block>
+<p>A prvalue of an unscoped enumeration type can be converted to a prvalue of an integer type.
+</p></ins-block>
 
 <p>Change <a href=https://eel.is/c++draft/expr.arith.conv#1>[expr.arith.conv] paragraph 1</a> as follows:
 </p>
@@ -2014,7 +1868,7 @@ This pattern is called the <i>usual arithmetic conversions</i>, which are define
   <li>
     Otherwise, each operand is converted to a common type <code><h- data-h=id>C</h-></code>.
     <ins>The conversion is deprecated if one operand is <code><h- data-h=kw_type>char8_t</h-></code>
-    and the other operand is <code><h- data-h=kw_type>char16_t</h-></code>, <code><h- data-h=kw_type>char32_t</h-></code>, or <code><h- data-h=kw_type>wchar_t</h-></code>.</ins>
+    and the other operand is <code><h- data-h=kw_type>char16_t</h-></code> or <code><h- data-h=kw_type>char32_t</h-></code>.</ins>
     The integral promotion rules (<a href=https://eel.is/c++draft/conv.prom>[conv.prom]</a>) are used
     to determine a type <code><h- data-h=id>T1</h-></code> and type <code><h- data-h=id>T2</h-></code> for each operand.
     Then the following rules are applied to determine C:
@@ -2025,52 +1879,6 @@ This pattern is called the <i>usual arithmetic conversions</i>, which are define
 </ul>
 </diff-block>
 
-<tip-block><p><intro-></intro-> 
-Integral promotion converts character types to <code><h- data-h=kw_type>int</h-></code> or <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-></code>,
-so if we didn't add this wording,
-the conversion would not be deprecated.
-</p></tip-block>
-
-<h3 id=expr.static.cast><a class=para href=#expr%2estatic%2ecast></a>[expr.static.cast]</h3>
-
-<p>Immediately prior to <a href=https://eel.is/c++draft/expr.static.cast#5>[expr.static.cast] paragraph 5</a>,
-insert a new paragraph:
-</p>
-<ins-block>
-<p>An expression <math display=inline><mi>E</mi></math> of type <i>cv</i> <code><h- data-h=kw_type>char8_t</h-></code>
-can be explicitly converted to
-<i>cv</i> <code><h- data-h=kw_type>char16_t</h-></code>, <i>cv</i> <code><h- data-h=kw_type>char32_t</h-></code>, or <i>cv</i> <code><h- data-h=kw_type>wchar_t</h-></code>
-and vice-versa.
-The effect is equivalent to
-explicitly converting to <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code>,
-then to the target type.
-</p>
-<p>[<i>Note</i>: 
-Integral conversions (<a href=https://eel.is/c++draft/conv.integral>[conv.integral]</a>)
-between these types have the same effect and are deprecated,
-unlike this explicit conversion (<a href=https://eel.is/c++draft/depr.conv.unicode>[depr.conv.unicode]</a>).
- — <i>end note</i>]
-</p></ins-block>
-
-<tip-block><p><intro-></intro-> 
-The wording for <code><h- data-h=kw>static_cast</h-></code> needs to permit possibly cv-qualified types with "<i>cv</i>".
-While cv-qualifications get dropped from expressions (<a href=https://eel.is/c++draft/expr.type>[expr.type]</a>),
-we still need to say that you can write e.g. <code><h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char8_t</h-><h- data-h=sym_op>&gt;</h-></code>.
-Cv-qualifications do not get dropped automatically from the <g-term>type-id</g-term>.
-</p></tip-block>
-
-<p>Do <u>not</u> change <a href=https://eel.is/c++draft/expr.static.cast#5>[expr.static.cast] paragraph 5</a>;
-it is cited here for reference:
-</p>
-<blockquote>
-<p>Otherwise, an expression <math display=inline><mi>E</mi></math> can be explicitly converted to a type <code><h- data-h=id>T</h-></code>
-if there is an implicit conversion sequence (<a href=https://eel.is/c++draft/over.best.ics>[over.best.ics]</a>)
-from <math display=inline><mi>E</mi></math> to <code><h- data-h=id>T</h-></code>, […].
-[…], the result object is direct-initialized from <math display=inline><mi>E</mi></math>.
-</p></blockquote>
-
-<h3 id=depr.conv.unicode><a class=para href=#depr%2econv%2eunicode></a>[depr.conv.unicode]</h3>
-
 <p>Insert a new subclause in <a href=https://eel.is/c++draft/depr>[depr]</a> between <a href=https://eel.is/c++draft/depr.local>[depr.local]</a> and <a href=https://eel.is/c++draft/depr.capture.this>[depr.capture.this]</a>,
 containing a single paragraph:
 </p>
@@ -2080,16 +1888,18 @@ containing a single paragraph:
 <p>The following conversions are deprecated:
 </p><ul>
   <li>
-    Integral conversions (<a href=https://eel.is/c++draft/conv.integral>[conv.integral]</a>),
-    where out of the types involved in the conversion,
-    one is <code><h- data-h=kw_type>char8_t</h-></code>
-    and the other is <code><h- data-h=kw_type>char16_t</h-></code>, <code><h- data-h=kw_type>char32_t</h-></code>, or <code><h- data-h=kw_type>wchar_t</h-></code>.
+    Integral conversions (<a href=https://eel.is/c++draft/conv.integral>[conv.integral]</a>)
+    not necessitated by a <code><h- data-h=kw>static_cast</h-></code>,
+    where the source type and destination type are
+    two different Unicode character types (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>),
+    one of which is <code><h- data-h=kw_type>char8_t</h-></code>.
   </li>
   <li>
     Usual arithmetic conversions (<a href=https://eel.is/c++draft/expr.arith.conv>[expr.arith.conv]</a>)
-    where out of the operand types after lvalue-to-rvalue conversion (<a href=https://eel.is/c++draft/conv.lval>[conv.lval]</a>),
-    one is <code><h- data-h=kw_type>char8_t</h-></code>
-    and the other is <code><h- data-h=kw_type>char16_t</h-></code>, <code><h- data-h=kw_type>char32_t</h-></code>, or <code><h- data-h=kw_type>wchar_t</h-></code>.
+    where the operands
+    after lvalue-to-rvalue conversion (<a href=https://eel.is/c++draft/conv.lval>[conv.lval]</a>)
+    are two different Unicode character types,
+    one of which is <code><h- data-h=kw_type>char8_t</h-></code>.
   </li>
 </ul>
 <p>[<i>Example</i>: 
@@ -2098,11 +1908,11 @@ containing a single paragraph:
 <h- data-h=sym_brac>}</h->
 <h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
     <h- data-h=kw_type>char32_t</h-> <h- data-h=id>c</h-> <h- data-h=sym_op>=</h-> <h- data-h=str_deco>u8</h-><h- data-h=str_dlim>'</h-><h- data-h=str>x</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>;</h->                   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>deprecated</h-></f-serif>
-    <h- data-h=kw_type>char32_t</h-> <h- data-h=id>c</h-> <h- data-h=sym_op>=</h-> <h- data-h=str_deco>u</h-><h- data-h=str_dlim>'</h-><h- data-h=str>x</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>;</h->                    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>OK, conversion from </h-><code><h- data-h=kw_type>char16_t</h-></code><h- data-h=cmt> to </h-><code><h- data-h=kw_type>char32_t</h-></code></f-serif>
-    <h- data-h=kw_type>char8_t</h-> <h- data-h=id>c</h-> <h- data-h=sym_op>=</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>x</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>;</h->                      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>OK, conversion from </h-><code><h- data-h=kw_type>char</h-></code><h- data-h=cmt> to </h-><code><h- data-h=kw_type>char8_t</h-></code></f-serif>
+    <h- data-h=kw_type>char32_t</h-> <h- data-h=id>c</h-> <h- data-h=sym_op>=</h-> <h- data-h=str_deco>u</h-><h- data-h=str_dlim>'</h-><h- data-h=str>x</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>;</h->                    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>OK, no </h-><code><h- data-h=kw_type>char8_t</h-></code><h- data-h=cmt> involved</h-></f-serif>
+    <h- data-h=kw_type>char32_t</h-> <h- data-h=id>c</h-> <h- data-h=sym_op>=</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>x</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>;</h->                     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>OK, </h-></f-serif><code><h- data-h=kw_type>char</h-></code><f-serif><h- data-h=cmt> is not a Unicode character type</h-></f-serif>
     <h- data-h=id>is_oe</h-><h- data-h=sym_par>(</h-><h- data-h=str_deco>U</h-><h- data-h=str_dlim>'</h-><h- data-h=str>ö</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                          <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>deprecated</h-></f-serif>
-    <h- data-h=id>is_oe</h-><h- data-h=sym_par>(</h-><h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char8_t</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=str_deco>U</h-><h- data-h=str_dlim>'</h-><h- data-h=str>ö</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>OK, explicit conversion</h-><h- data-h=cmt> (</h-><a href=https://eel.is/c++draft/expr.static.cast>[expr.static.cast]</a><h- data-h=cmt>)</h-></f-serif>
-    <h- data-h=id>is_oe</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char8_t</h-><h- data-h=sym_par>)</h-><h- data-h=str_deco>U</h-><h- data-h=str_dlim>'</h-><h- data-h=str>ö</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>OK, explicit conversion</h-></f-serif>
+    <h- data-h=id>is_oe</h-><h- data-h=sym_par>(</h-><h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char8_t</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=str_deco>U</h-><h- data-h=str_dlim>'</h-><h- data-h=str>ö</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>OK, integral conversion necessitated by a </h-></f-serif><code><h- data-h=kw>static_cast</h-></code>
+    <h- data-h=id>is_oe</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char8_t</h-><h- data-h=sym_par>)</h-><h- data-h=str_deco>U</h-><h- data-h=str_dlim>'</h-><h- data-h=str>ö</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>OK, explicit conversion performed by a </h-></f-serif><code><h- data-h=kw>static_cast</h-></code>
 <h- data-h=sym_brac>}</h-></code-block>
 <p> — <i>end example</i>]
 </p></ins-block>
@@ -2126,10 +1936,7 @@ containing a single paragraph:
 <a href="https://github%2ecom/llvm/llvm-project/pull/138708" class=bib-link>https://github.com/llvm/llvm-project/pull/138708</a></div><div id=bib-item-CompilerExplorer class=bib-item>
 <a href="https://compiler-explorer%2ecom/z/8j9qqe8MY">[CompilerExplorer]</a>
 <span class=bib-title>Demonstration of -Wcharacter-conversion</span>
-<a href="https://compiler-explorer%2ecom/z/8j9qqe8MY" class=bib-link>https://compiler-explorer.com/z/8j9qqe8MY</a></div><div id=bib-item-WikipediaEncodingPopularity class=bib-item>
-<a href="https://en%2ewikipedia%2eorg/wiki/Popularity_of_text_encodings#Popularity_internally_in_software">[WikipediaEncodingPopularity]</a>
-<span class=bib-title>Popularity of text encodings — Popularity internally in software</span>
-<a href="https://en%2ewikipedia%2eorg/wiki/Popularity_of_text_encodings#Popularity_internally_in_software" class=bib-link>https://en.wikipedia.org/wiki/Popularity_of_text_encodings#Popularity_internally_in_software</a></div><div id=bib-item-P1161R3 class=bib-item>
+<a href="https://compiler-explorer%2ecom/z/8j9qqe8MY" class=bib-link>https://compiler-explorer.com/z/8j9qqe8MY</a></div><div id=bib-item-P1161R3 class=bib-item>
 <a href="https://wg21%2elink/P1161R3">[P1161R3]</a>
 <span class=bib-author>Corentin Jabot.</span>
 <span class=bib-title>Deprecate uses of the comma operator in subscripting expressions</span>
