@@ -1,0 +1,358 @@
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+  title = \tcode{std::to_signed} and \tcode{std::to_unsigned}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{P3643R2}}
+  \dt{Date:}            \dd{\tt{2025-09-29}}
+  \dt{Audience:}        \dd{LEWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3643/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/to-signed-unsigned.cow)}
+}
+\hr
+}
+
+\Babstract{
+Add \tcode{std::to_signed} and \tcode{std::to_unsigned} function templates
+in the style of \tcode{std::to_underlying}.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Revision history}
+
+\h3{Changes since R1}
+
+\ul{
+  \li{ported proposal from Bikeshed to COWEL}
+  \li{added \ref(#dual-purpose)}
+  \li{reordered \ref(#design) and \ref(#possible-implementation)}
+  \li{added discussion on constraints in \ref(#design)}
+  \li{fixed typo in \ref(#wording): \del{x} \ins{value}}
+}
+
+\h3{Changes since R0}
+
+\ul{
+  \li{
+    tightened constraints in \ref(#wording) to exclude
+    cv-qualified types in general, not just \i{cv} \tcode{bool}
+  }
+  \li{added \tcode{\hl(comment){freestanding}} comment to feature-test macro}
+}
+
+\h2{Introduction}
+
+In integer numerics and bit-manipulation code,
+it is common to implement functionality in terms of the corresponding signed/unsigned type:
+
+\cppblock{
+template<class T>
+T arithmetic_shift_right(T x, int s) {
+  return T(std::make_signed_t<T>(x) >> s);
+}
+
+template<class T>
+T wrapping_add(T x, T y) {
+  constexpr unsigned to_int_promotion_defense = 0;
+  return T(to_int_promotion_defense
+         + std::make_unsigned_t<T>(x)
+         + std::make_unsigned_t<T>(y));
+}
+}
+
+This technique \em{technically} works, but suffers from some problems:
+
+\ul{
+  \li{
+    The use of C-style/function-style casts may conflict with the project's style.
+    When \tcode{static_cast} is used instead, this code becomes substantially more verbose.
+  }
+  \li{
+    Since \tcode{T} has to be spelled out in code,
+    abbreviated function templates cannot be used instead
+    (or at least, \tcode{decltype(x)} would be required for the cast).
+  }
+  \li{
+    Repeating the type \tcode{T} may be prone to mistakes.
+    Nothing guarantees us that \tcode{T} is of type \tcode{T}
+    when writing an expression \tcode{std::make_signed_t<T>(x)}.
+    In larger code samples, mismatching types and variables is a bug waiting to happen.
+    To be safe, we would have to write \tcode{std::make_signed_t<decltype(x)>(x)}.
+    However, this still repeats the expression \tcode{x}.
+  }
+}
+
+The greater the distance between \tcode{T} and the use of \tt{std::make_{un}signed} are,
+the easier it is to make a mistake.
+
+To solve these issues, this proposal adds the function templates
+\tcode{std::to_signed(x)} and \tcode{std::to_unsigned(x)},
+which deduce \tcode{T} from \tcode{x}.
+This is concise and always uses the correct type.
+
+\h3{Existing developer practice}
+
+A GitHub code search for
+
+\Bquote{
+\ref(
+  https://github.com/search?type=code&q=%2F%5B%5Ea-zA-Z_%5D%28to_signed%7Cto_unsigned%29%7Cstatic_cast%3C%28typename%29%3F+%3F%28%28%3A%3A%29%3Fstd%3A%3A%29%3F%28make_signed%7Cmake_unsigned%29%2F+-is%3Afork+language%3Ac%2B%2B
+){\small{\tcode{/[^a-zA-Z_](to_signed|to_unsigned)|static_cast<(typename)? ?((::)?std::)?(make_signed|make_unsigned)/
+\br{}-is:fork language:c++}}}
+}
+
+\N{HORIZONTAL ELLIPSIS} shows that roughly 13.8K C++ files
+already use a non-standard \tcode{to_unsigned} and \tcode{to_signed},
+or which \tcode{static_cast} to \tcode{make_signed} or \tcode{make_unsigned}.
+
+By comparison,
+
+\Bquote{
+\ref(
+  https://github.com/search?q=%2F%5B%5Ea-zA-Z_%5D%28to_underlying%29%7Cstatic_cast%3C%28typename%29%3F+%3F%28%28%3A%3A%29%3Fstd%3A%3A%29%3F%28underlying_type%29%2F+-is%3Afork+language%3Ac%2B%2B&type=code
+){\small{\tcode{/[^a-zA-Z_](to_underlying)|static_cast<(typename)? ?((::)?std::)?(underlying_type)/\br{}
+-is:fork language:c++}}}
+}
+
+\N{HORIZONTAL ELLIPSIS} yields 43K C++ files
+which use \tcode{to_underlying},
+or which \tcode{static_cast} to \tcode{std::underlying_type}.
+
+The proposal \ref(P1682R3) for \tcode{std::to_underlying} had similar rationale, and at the time,
+the author was only able to discover 1000 search results for \tcode{to_underlying}.
+
+\h3{Dual purpose}
+
+In addition to the purpose of changing signedness of integers,
+the proposed functions have another purpose:
+mapping other integral and enumeration types onto signed or unsigned integer types.
+
+\Bex{
+Assuming 32-bit \tcode{unsigned},
+the use of \tcode{to_unsigned} reduces the amount of
+template instantiations below:
+
+\cppblock{
+// BAD, two instantiations of popcnt that are functionally equivalent:
+popcnt(U'x');              // calls popcnt<char32_t>
+popcnt(123u);              // calls popcnt<unsigned>
+
+// GOOD, only one instantiation of popcnt:
+popcnt(to_unsigned(U'x')); // calls popcnt<unsigned>
+popcnt(to_unsigned(123u)); // calls popcnt<unsigned>
+}
+
+Of course, the instantiation of \tcode{to_unsigned} is added,
+but its cost is quickly outweighed by avoiding instantiations
+of much larger and complicated templates throughout the code base.
+}
+
+Just like \tcode{make_signed} and \tcode{make_unsigned},
+\tcode{to_signed} and \tcode{to_unsigned} map the much larger set of integral types
+onto the smaller set of signed and unsigned integer types.
+This reduces template instantiations and may improve compilation speed and reduce code size.
+
+\h2{Impact on the standard}
+
+This proposal is a pure library extension.
+
+\h2{Design}
+
+This proposal follows precedent:
+Similar to \tcode{to_underlying}, the proposed functions are located in \header{utility}.
+The naming scheme is based on \tcode{to_underlying}
+and the search results in \ref(#existing-developer-practice).
+
+\h3{Constraints}
+
+The design of \tcode{to_signed} and \tcode{to_unsigned}
+should be SFINAE-friendly because that is useful.
+
+\Bex{
+Being able to test whether \tcode{std::to_signed(x)}
+is valid lets us constrain the interface of \tcode{arithmetic_shift_right}.
+
+\cppblock{
+template<class T>
+  requires requires (T x) { std::to_signed(x); }
+T arithmetic_shift_right(T x, int s) {
+  return T(std::to_signed(x) >> s);
+}
+}
+}
+
+As for the constraints of the proposed functions,
+there are multiple options:
+
+\ul{
+  \li{
+    ❌ \b{Only permit signed or unsigned integer types.}
+    This would be needlessly restrictive because e.g.
+    \tcode{make_signed<char16_t>} is also valid (and yields e.g. \tcode{signed short}),
+    which makes it possible to implement the \tcode{arithmetic_shift_right} function
+    in \ref(#introduction) for that \tcode{char16_t} as well.
+    In general, it would make generic programming harder if only some of the integral
+    types were supported.
+  }
+  \li{
+    ✔️ \b{Permit what \tcode{make_signed} supports.}
+    That is, integral or enumeration types other than \tcode{bool}.
+    This is proposed.
+    There is no compelling reason from deviating from the restrictions imposed by
+    \tcode{make_signed} and \tcode{make_unsigned},
+    as their restrictions de-facto define for which types a sign conversion makes sense.
+  }
+  \li{
+    ❌ \b{Permit \tcode{\exposid{integer-like}} types.}
+    This is out-of scope, and would effectively replace \tcode{\exposid{to-unsigned-like}}.
+    Integer-like types are an open set of types, possibly including user-defined types.
+    This effectively turns the proposed function into a customization point.
+    Seeing that \tcode{\exposid{integer-like}} is a concept which only
+    exists in \eelis{ranges},
+    the proposed functions should then be \tcode{std::ranges::to_signed}
+    and \tcode{std::ranges::to_unsigned}.
+    However, the goal of the proposal is to provide a simple numerical function,
+    not add a ranges-specific customization point object.
+  }
+  \li{
+    ❌ \b{Permit arithmetic types.}
+    This would mirror \tcode{std::is_signed_v},
+    which is also \tcode{true} for floating-point types.
+    This would create a weird asymmetry, where \tcode{to_signed(float)} is a no-op,
+    and \tcode{to_unsigned(float)} is ill-formed.
+    The result of the proposed functions is always a signed or unsigned integer type,
+    and permitting \tcode{float} would muddy the waters here.
+  }
+}
+
+\h2{Possible implementation}
+
+\cppblock{
+template<class T>
+concept __sign_convertible
+  = (is_integral_v<T> || is_enum_v<T>)
+  && !is_same_v<T, bool>
+  && !is_const_v<T>
+  && !is_volatile_v<T>;
+
+template<__sign_convertible T>
+constexpr make_signed_t<T> to_signed(T x) noexcept {
+  return static_cast<make_signed_t<T>>(x);
+}
+
+template<__sign_convertible T>
+constexpr make_unsigned_t<T> to_unsigned(T x) noexcept {
+  return static_cast<make_unsigned_t<T>>(x);
+}
+}
+
+\h2{Wording}
+
+The proposed wording is relative to \ref(N5014).
+
+In subclause \eelis{version.syn},
+add the following feature-testing macro:
+
+\Bins{
+\itemdecl{
+#define __cpp_lib_to_signed  20XXXXL // \serif{freestanding, also in \tt{<utility>}}
+}
+}
+
+In subclause \eelis{utility.syn},
+change the synopsis as follows:
+
+\Bdiff{
+\itemdecl{
+namespace std {
+  \etc
+
+\ins{  // \serif{[utility.sign.conv], sign conversion}
+  template<class T>
+    constexpr make_signed_t<T> to_signed(T value) noexcept;
+  template<class T>
+    constexpr make_unsigned_t<T> to_unsigned(T value) noexcept;}
+
+  // \serif{[utility.underlying], to_underlying}
+  template<class T>
+    constexpr underlying_type_t<T> to_underlying(T value) noexcept;
+
+  \etc
+}
+}
+}
+
+In subclause \eelis{utility},
+add a subclause immediately prior to \eelis{utility.underlying}:
+
+\Bins{
+\cowel_html_element(h3){Sign conversion \stable_ref{utility.sign.conv}}
+
+\itemdecl{
+template<class T>
+  constexpr make_signed_t<T> to_signed(T value) noexcept;
+}
+\itemdescr{
+\constraints
+\tcode{T} is a cv-unqualified integral or enumeration type other than \tcode{bool}.
+
+\returns
+\tcode{static_cast<make_signed_t<T>>(value)}\iref{meta.trans.sign}.
+}
+
+\itemdecl{
+template<class T>
+  constexpr make_unsigned_t<T> to_unsigned(T value) noexcept;
+}
+\itemdescr{
+\constraints
+\tcode{T} is a cv-unqualified integral or enumeration type other than \tcode{bool}.
+
+\returns
+\tcode{static_cast<make_unsigned_t<T>>(value)}\iref{meta.trans.sign}.
+}
+}
+
+\Bwarn{
+Because \tcode{make_unsigned_t} uses \i{Mandates},
+\tcode{to_unsigned} is arguably not SFINAE-friendly.
+For example, \tcode{make_unsigned_t<int*>} is ill-formed (?) without being instantiated.
+I don't attempt to fix this; I assume that the above specification "just works".
+
+In practice, compilers do not eagerly instantiate \tcode{make_signed_t}
+when the constraints of the function template are not satisfied,
+so this specification works.
+}
+
+\h2{Acknowledgements}
+
+Thanks to Dalton Messmer for reviewing R1 of this paper,
+leaving thoughtful comments that contributed to an improved R2
+which discusses many design aspects in more detail.
+
+\h2{References}
+
+\bib(
+  id = N5014,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-08-05,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+)\
+\bib(
+  id = P1682R3,
+  title = std::to_underlying for enumerations,
+  date = 2021-01-22,
+  author = JeanHeyd Meneide,
+  link = https://wg21.link/p1682r3,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p1682r3.html,
+)\
+
+\make_bib
