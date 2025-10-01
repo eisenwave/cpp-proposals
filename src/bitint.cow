@@ -1,11 +1,11 @@
 \cowel_include{libwg21.cow}
 
 \wg21_head(
-    title = Bit-precise integers
+  title = Bit-precise integers
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3666R0}}
-  \dt{Date:}            \dd{\tt{2025-09-11}}
+  \dt{Document number:} \dd{\docnum{P3666R1}}
+  \dt{Date:}            \dd{\tt{2025-10-01}}
   \dt{Audience:}        \dd{SG6, SG22, EWG, LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -28,7 +28,36 @@ this proposal introduces a new set of fundamental types to C++.
 
 \h2{Revision history}
 
-This is the first revision.
+\h3{Changes since R0}
+
+\ul{
+  \li{
+    updated \ref(#bit-int-1) following the publication of \ref(N3699)
+  }
+  \li{
+    added \ref(#make_signed-and-make_unsigned)
+    and corresponding wording changes in \ref(#meta.trans.sign)
+  }
+  \li{
+    permitted bit-precise integers as underlying types of enumerations
+    as proposed in \ref(N3705);
+    see \ref(#underlying-bitint) and \ref(#dcl.enum)
+  }
+  \li{
+    further changed \ref(#conv.prom) wording,
+    taking promotion of enumerations with underlying bit-precise integer type into account
+  }
+  \li{
+    added \ref(#diff.lex) Annex C entry for the difference in the type of \tcode{0wb}
+  }
+  \li{
+    various minor wording tweaks and added notes
+  }
+  \li{
+    converted green notes into aqua "editor's notes" to more more clearly
+    distinguish them from wording changes
+  }
+}
 
 \h2{Introduction}
 
@@ -424,7 +453,7 @@ A developer would face \em{severe} difficulties
 when porting C code which makes use of these capabilities to C++
 and if bit-precise integers were a class type in C++.
 
-\h4{Common spelling of \tcode{unsigned _BitInt(N)}}
+\h4{Common spelling of \tt{unsigned _BitInt(N)}}
 
 If bit-precise integers were class types in C++,
 this would cause a serious problem with a common spelling
@@ -582,13 +611,13 @@ In conclusion,
 if \tcode{std::bit_int} was a library type,
 C++ users who use this style would lose what they consider a valuable safety guarantee.
 
-\Bnote{
+\editnote{
 It can be argued that using list-initialization for this purpose is an anti-pattern
 and only solves a subset of the issues that compiler warnings and linter warnings should address.
 Personally, I have no strong position on this issue.
 }
 
-\h4{Tiny integers are useful in C++}
+\h4(id=tiny-integers){Tiny integers are useful in C++}
 
 In some cases, tiny \tcode{bit_int}'s may be useful as the underlying type of an enumeration:
 
@@ -604,12 +633,8 @@ If we used e.g. \tcode{unsigned char} instead,
 there would be 252 other possible values that simply have no name,
 and this may be detrimental to compiler optimization of \tcode{switch} statements etc.
 
-\Bnote{
-Using bit-precise integers as the underlying type of enumerations
-is not currently proposed (\ref(#underlying-bitint)).
-However, it is likely that it will be supported in the future
-(after some follow-up proposal),
-so I still consider this motivation to be valid.
+\editnote{
+See also \ref(#underlying-bitint).
 }
 
 \h4{Special deduction rules}
@@ -760,7 +785,7 @@ then the class template actively harmful bloat:
 }
 
 
-\h3{Why the \tcode{_BitInt} keyword spelling?}
+\h3{Why the \tt{_BitInt} keyword spelling?}
 
 I also propose to standardize the keyword spelling
 \tcode{_BitInt} and \tcode{unsigned _BitInt}.
@@ -818,24 +843,49 @@ so this is standardizing existing practice.
 
 \h3(id=underlying-bitint){Underlying type of enumerations}
 
-The following C code is ill-formed:
+The following C code is not valid C23,
+but may become valid if \ref(N3705) is accepted.
 
 \cppblock{
 // error: '_BitInt(32)' is an invalid underlying type
-enum S : _BitInt(32) { x = 0 };
+enum E : _BitInt(32) { x = 0 };
 }
 
-There is no obvious reason why \tcode{_BitInt} must not be a valid underlying type.
-However, since this feature is not needed for C compatibility,
-I do not consider bit-precise integers as underlying types to be part of the MVP.
-A follow-up proposal could add this feature later,
-possibly in coordination with WG14.
+There is no obvious reason why \tcode{_BitInt} must not be a valid underlying type,
+neither in C nor in C++.
+For C++, it seems better to simply allow bit-precise integers in this context
+because it is useful; see \ref(#tiny-integers).
+
+Also note that as proposed in \ref(N3705),
+bit-precise integers should only be the underlying types of enumerations
+when the user explicitly specifies this with \tcode{: _BitInt(N)}:
+
+\cppblock{
+enum class E : _BitInt(1024) {
+  X = 0x1'0000'0000'0000'0000'0000'0000'0000'0000wb // OK
+};
+
+enum E {
+  X = 0x1'0000'0000'0000'0000'0000'0000'0000'0000wb // error (most likely)
+};
+}
+
+As proposed in \ref(N3705) and as in the case of bit-precise bit-fields,
+integer promotion should not take place for enumerations
+whose underlying type is bit-precise.
+If the implementation-defined underlying type of enumerations
+could be chosen to be bit-precise,
+this would make it implementation-defined whether integer promotion takes place,
+by proxy.
+It would also be a compatibility pitfall;
+C requires bit-precise underlying types to be specified explicitly,
+so any choice the implementation makes could interfere with future standardization.
 
 \Bnote{
-See \ref(N3550) §6.7.3.3 "Enumeration specifiers" for restrictions.
+See \ref(N3550) §6.7.3.3 "Enumeration specifiers" for current restrictions.
+Note that in C, "enumerated types" are also classified as "integer types",
+unlike in C++.
 }
-
-This behavior should be mirrored.
 
 \h3{Should bit-precise integers be optional?}
 
@@ -857,10 +907,9 @@ mostly for historical reasons
 This is an irregularity that could make generic programming harder in C++.
 
 However, there are already plans to lift the restriction for C2y;
-see \ref(N3644).
-Following v3 of the proposal,
-\tcode{_BitInt(1)} is expected to be valid type,
-and \tcode{0wb} should be of type \tcode{_BitInt(1)} rather than \tcode{_BitInt(2)}.
+see \ref(N3699) "Integer Sets, v3".
+That proposal makes \tcode{_BitInt(1)} a valid type,
+and \tcode{0wb} is changed to be of type \tcode{_BitInt(1)} rather than \tcode{_BitInt(2)}.
 That proposal also contains some practical motivation for why
 a single-bit should be permitted.
 
@@ -1687,6 +1736,66 @@ that is confusing and inconsistent with C
 or to make \tcode{is_integral_v} inconsistent with the term "integral type".
 Both of these alternatives seem terrible.
 
+\h3{\tt{make_signed} and \tt{make_unsigned}}
+
+To prevent breaking existing code,
+the behavior of \tcode{make_signed} and \tcode{make_unsigned} needs to be
+made future-proof:
+
+\cppblock{
+make_unsigned_t<char32_t> // previously unsigned int, becomes _BitInt(32) unless we reword
+}
+
+The rank of \tcode{unsigned int} is greater than the rank of
+\tcode{unsigned _BitInt(32)} (assuming those have the same width; see \eelis{conv.rank}).
+Therefore, \tcode{make_unsigned_t} would need to be \tcode{unsigned _BitInt(32)},
+since it produces\iref{meta.trans.sign}
+
+\Bquote{
+unsigned integer type with smallest rank\iref{conv.rank}
+for which \tcode{sizeof(T) == sizeof(type)}
+}
+
+Furthermore, the current wording would
+give the user an implementation-defined type in the following scenario:
+
+\cppblock{
+enum E : _BitInt(32) { };
+make_signed_t<E> x; // might be _BitInt(32)
+}
+
+\tcode{make_signed_t<E>} could be either \tcode{_BitInt(32)} or an extended integer type
+with lower conversion rank than \tcode{_BitInt(32)}.
+However, for simplicity, \tcode{make_signed} and \tcode{make_unsigned}
+should always produce a bit-precise integer type when they are fed a bit-precise integer type
+or an enumeration whose underlying type is a bit-precise integer.
+
+Overall, \tcode{make_signed} can be made future-proof with the following set of rules:
+
+\ul{
+  \li{
+    For signed integers and unsigned integers,
+    it does the "obvious thing".
+  }
+  \li{
+    For types whose underlying type is a bit-precise integer,
+    it behaves like \tcode{make_signed_t<underlying_type_t<T>>}.
+    This only affects enumeration types, since integral types like \tcode{char32_t}
+    are currently specified not to have a bit-precise underlying type.
+  }
+  \li{
+    For any other integral type (\tcode{char32_t}, other enumerations, etc.),
+    it denotes the smallest \b{standard or extended} signed integer type that fits
+    that integral type.
+  }
+}
+
+\tcode{make_unsigned} should behave correspondingly.
+
+\Bnote{
+See \ref(#meta.trans.sign) for wording.
+}
+
 \h3(id=misc-support){Miscellaneous library support}
 
 There are many more standard library parts to which support for bit-precise integers is added.
@@ -2158,6 +2267,11 @@ change the grammar as follows:
 }
 }
 
+\editnote{
+The name \grammarterm{bit-precise-int-suffix} is identical to the one used in C.
+See \ref(N3550) §6.4.5.2 Integer literals.
+}
+
 Change table \eelis{tab:lex.icon.type} as follows:
 
 \Bdiff{
@@ -2314,7 +2428,7 @@ Change table \eelis{tab:lex.icon.type} as follows:
 }
 }
 
-\Bnote{
+\editnote{
 The existing rows are adjusted for consistency.
 We usually aim to use the \q{quoted} spellings of types
 like \bit_int_of_width{\math{\mi{N}}}
@@ -2394,10 +2508,10 @@ the other signed integer types are provided to meet special needs.
 }
 }
 
-\Bwarn{
+\editnote{
 This change deviates from C at the time of writing;
 C2y does not yet allow \tcode{_BitInt(1)},
-but may allow it following \ref(N3644).
+but may allow it following \ref(N3699).
 }
 
 Change \eelis{basic.fundamental#2} as follows:
@@ -2549,7 +2663,7 @@ conversions\iref{expr.arith.conv}.
 
 \h4(show-number=false){[conv.prom]}
 
-\Bnote{
+\editnote{
 These changes mirror the C semantics described in
 \ref(N3550) §6.3.2.1 Boolean, characters, and integers.
 }
@@ -2576,6 +2690,56 @@ a prvalue of type \tcode{int}
 if \tcode{int} can represent all the values of the source type;
 otherwise, the source prvalue can be converted to
 a prvalue of type \tcode{unsigned int}.
+}
+
+Change \eelis{conv.prom#3} as follows:
+
+\Bdiff{
+A prvalue of an unscoped enumeration type whose underlying type
+is not fixed\ins{\cowel_html_element(sup){1}}
+can be converted to a prvalue of the first of the following types
+that can represent all the values of the enumeration\iref{dcl.enum}:
+\tcode{int},
+\tcode{unsigned int},
+\tcode{long int},
+\tcode{unsigned long int},
+\tcode{long long int}, or
+\tcode{unsigned long long int}.
+If none of the types in that list can represent all the values of the enumeration,
+a prvalue of an unscoped enumeration type
+\ins{whose underlying type is not a bit-precise integer type}
+can be converted
+to a prvalue of the extended integer type with lowest integer conversion rank\iref{conv.rank}
+greater than the rank of \tcode{long long}
+in which all the values of the enumeration can be represented.
+If there are two such extended types, the signed one is chosen.
+
+\ins{\cowel_html_element(sup){1)}
+This promotion rule excludes bit-precise integers
+because the implementation cannot choose
+a bit-precise integer type as the underlying type of an enumeration
+with no fixed underlying type\iref{dcl.enum}.}
+}
+
+Change \eelis{conv.prom#4} as follows:
+
+\Bdiff{
+A prvalue of an unscoped enumeration type whose underlying type is fixed\iref{dcl.enum}
+can be converted to a prvalue of its underlying type.
+Moreover, if integral promotion can be applied to its underlying type,
+a prvalue of an unscoped enumeration type whose underlying type is fixed
+can also be converted to a prvalue of the promoted underlying type.
+
+\note{
+A converted bit-field of enumeration type
+is treated as any other value of that type for promotion purposes.
+}
+
+\ins{\note{
+If the underlying type is a bit-precise integer type,
+conversion to a prvalue of that type is possible,
+but integral promotion cannot be applied to the underlying type.
+}}
 }
 
 Change \eelis{conv.prom#5} as follows:
@@ -2606,7 +2770,7 @@ The only exceptions to this rule are the following:
   \li{
     \tcode{signed} or \tcode{unsigned} can be combined with
     \tcode{char}, \tcode{long}, \tcode{short}, \del{or} \tcode{int}\ins{, or
-    a \grammarterm{bit-precise-int-type-specifier}.}
+    a \grammarterm{bit-precise-int-type-specifier}\iref{dcl.type.simple}.}
   }
   \li{\tcode{short} or \tcode{long} can be combined with \tcode{int}.}
   \li{\tcode{long} can be combined with \tcode{double}.}
@@ -2657,6 +2821,11 @@ The simple type specifiers are
   \dt{\ins{\grammarterm{bit-precise-int-type-specifier}:}}
   \dd{\ins{\tcode{_BitInt} \tcode{(} constant-expression \tcode{)}}}
 }
+}
+
+\editnote{
+The name \grammarterm{bit-precise-int-type-specifier}
+is symmetrical with \grammarterm{bit-precise-int-suffix}.
 }
 
 Change table \eelis{tab:dcl.type.simple} as follows:
@@ -2768,23 +2937,19 @@ The program is ill-formed unless
 }\iref{climits.syn}.
 }
 
-\h4(show-number=false){[dcl.enum]}
-
-\Bnote{
-The intent is to ban \tcode{_BitInt} from being the underlying type of enumerations,
-matching the current restrictions in C.
-See \ref(#underlying-bitint).
+\editnote{
+This added paragraph is inspired by \eelis{dcl.array#1},
+which similarly specifies the array size to be a converted constant expression
+of type \tcode{std::size_t}.
 }
 
-Change \eelis{dcl.enum#2} as follows:
+\h4(show-number=false){[dcl.enum]}
 
-\Bdiff{
-\etc
-The \grammarterm{type-specifier-seq} of an \grammarterm{enum-base}
-shall name an integral type
-\ins{other than a bit-precise integer type};
-any cv-qualification is ignored.
-\etc
+\editnote{
+The intent is to ban \tcode{_BitInt} from \em{implicitly}
+being the underlying type of enumerations,
+matching the proposed restrictions in \ref(N3705).
+See \ref(#underlying-bitint).
 }
 
 Change \eelis{dcl.enum#5} as follows:
@@ -3028,6 +3193,32 @@ __cpp_bit_int 20XXXXL
 }
 }
 
+\h4(show-number=false){[diff.lex]}
+
+\editnote{
+See \ref(#bit-int-1).
+}
+
+In \eelis{diff.lex},
+add a new entry:
+
+\Bins{
+\b{Affected subclause}:
+\eelis{lex.icon}\br
+\b{Change}:
+The type of \tcode{0wb} is changed from \tcode{_BitInt(2)} to \tcode{_BitInt(1)}.\br
+\b{Rationale}:
+It is expected that a future C standard makes the same change,
+as part of making \tcode{_BitInt(1)} a valid type.\br
+\b{Effect on the original feature}:
+Change to semantics of well-defined feature.\br
+\b{Difficulty of converting}:
+Usually, no changes are required
+because the type of \tcode{0wb} is inconsequential.\br
+\b{How widely used}:
+Seldom.
+}
+
 \:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 \h3{Library}
@@ -3121,6 +3312,125 @@ the same as the C standard library header \tt{limits.h}\del{,
 except that it does not define the macro \tcode{BITINT_MAXWIDTH}}.
 }
 
+\h4(show-number=false){[meta.trans.sign]}
+
+\editnote{
+See \ref(#make_signed-and-make_unsigned).
+}
+
+Change table \eelis{tab:meta.trans.sign} as follows:
+
+\Bdiff{
+\table(class=wording){
+  \tr{
+    \th{Template}
+    \th{Comments}
+  }
+  \tr{
+    \td{
+      \itemdecl{
+template<class T>
+struct make_signed;
+}
+    }
+    \td{
+      \ins{Specializations have an alias member \tcode{type} determined as follows:}
+      \ul{
+        \li{
+          If \tcode{T} is a \del{(possibly cv-qualified)}
+          signed integer type\iref{basic.fundamental} \del{then the member typedef} \ins{,}
+          \tcode{type} denotes \tcode{T} \del{;} \ins{.}
+        }
+        \li{
+          \del{otherwise} \ins{Otherwise}, if \tcode{T} is
+          \del{a (possibly cv-qualified)}
+          \ins{an} unsigned integer type \del{then} \ins{,}
+          \tcode{type} denotes the corresponding signed integer type
+          \del{, with the same cv-qualifiers as \tcode{T};} \ins{.}
+        }
+        \li{\ins{
+          Otherwise, if \tcode{T}'s underlying type \tcode{U}
+          is a bit-precise signed integer type,
+          \tcode{type} denotes \tcode{U}.
+        }}
+        \li{\ins{
+          Otherwise, if \tcode{T}'s underlying type \tcode{U}
+          is a bit-precise unsigned integer type,
+          \tcode{type} denotes the corresponding signed integer type of \tcode{U}.
+        }}
+        \li{
+          \del{otherwise} \ins{Otherwise},
+          \ins{if \tcode{T} is cv-unqualified,}
+          \tcode{type} denotes the \ins{standard or extended} signed integer type
+          with smallest rank\iref{conv.rank}
+          for which \tcode{sizeof(T)} \del{==} \ins{equals} \tcode{sizeof(type)}
+          \del{, with the same cv-qualifiers as \tcode{T}}.
+        }
+        \li{\ins{
+          Otherwise, \tcode{T} is a cv-qualified type.
+          \tcode{type} denotes the type determined by applying the rules above
+          to \tcode{remove_cv_t<T>},
+          with the same cv-qualifiers as \tcode{T}.
+        }}
+      }
+      \mandates
+      \tcode{T} is an integral or enumeration type other than \tcode{\cv bool}.
+    }
+  }
+  \tr{
+    \td{
+      \itemdecl{
+template<class T>
+struct make_unsigned;
+}
+    }
+    \td{
+      \ins{Specializations have an alias member \tcode{type} determined as follows:}
+      \ul{
+        \li{
+          If \tcode{T} is a \del{(possibly cv-qualified)}
+          unsigned integer type\iref{basic.fundamental} \del{then the member typedef} \ins{,}
+          \tcode{type} denotes \tcode{T} \del{;} \ins{.}
+        }
+        \li{
+          \del{otherwise} \ins{Otherwise}, if \tcode{T} is a
+          \del{(possibly cv-qualified)}
+          signed integer type \del{then} \ins{,}
+          \tcode{type} denotes the corresponding unsigned integer type
+          \del{, with the same cv-qualifiers as \tcode{T};} \ins{.}
+        }
+        \li{\ins{
+          Otherwise, if \tcode{T}'s underlying type \tcode{U}
+          is a bit-precise unsigned integer type,
+          \tcode{type} denotes \tcode{U}.
+        }}
+        \li{\ins{
+          Otherwise, if \tcode{T}'s underlying type \tcode{U}
+          is a bit-precise signed integer type,
+          \tcode{type} denotes the corresponding unsigned integer type of \tcode{U}.
+        }}
+        \li{
+          \del{otherwise} \ins{Otherwise},
+          \ins{if \tcode{T} is cv-unqualified,}
+          \tcode{type} denotes the \ins{standard or extended} unsigned integer type
+          with smallest rank\iref{conv.rank}
+          for which \tcode{sizeof(T)} \del{==} \ins{equals} \tcode{sizeof(type)}
+          \del{, with the same cv-qualifiers as \tcode{T}}.
+        }
+        \li{\ins{
+          Otherwise, \tcode{T} is a cv-qualified type.
+          \tcode{type} denotes the type determined by applying the rules above
+          to \tcode{remove_cv_t<T>},
+          with the same cv-qualifiers as \tcode{T}.
+        }}
+      }
+      \mandates
+      \tcode{T} is an integral or enumeration type other than \tcode{\cv bool}.
+    }
+  }
+}
+}
+
 \h4(show-number=false){[stdbit.h.syn]}
 
 Change \eelis{stdbit.h.syn#2} as follows:
@@ -3140,7 +3450,7 @@ Change \eelis{stdbit.h.syn#2} as follows:
 
 \h4(show-number=false){[range.iota.view]}
 
-\Bnote{See \ref(#preventing-iota-view-abi-break).}
+\editnote{See \ref(#preventing-iota-view-abi-break).}
 
 Change \eelis{range.iota.view#1} as follows:
 
@@ -3202,7 +3512,7 @@ The type \tcode{Size} is convertible to an integral type
 }
 }
 
-\Bnote{
+\editnote{
 Implementing this requirement for bit-precise integer types is generally impossible,
 barring compiler magic.
 The libc++ implementation is done by calling an overload in the set:
@@ -3264,6 +3574,16 @@ Change \eelis{alg.generate#2} as follows:
 }
 
 \h4(show-number=false){[charconv.syn]}
+
+\editnote{
+See \ref(#printing-support).
+
+As explained in that section,
+it would be a breaking change to turn the existing overloads into function templates.
+
+The removal of \del{cv-unqualified} below is not an accident:
+signed and unsigned integer types do not include any cv-qualified types.
+}
 
 Change \eelis{charconv.syn#1} as follows:
 
@@ -3334,11 +3654,9 @@ namespace std {
 
 \h4(show-number=false){[charconv.to.chars]}
 
-Change \eelis{charconv.to.chars} as follows:
+Change \eelis{charconv.to.chars#lib:to_chars} as follows:
 
 \Bdiff{
-\etc
-
 \itemdecl{
 constexpr to_chars_result to_chars(char* first, char* last, \exposid{integer-type} value, int base = 10);
 \ins{template<class T>
@@ -3351,18 +3669,24 @@ constexpr to_chars_result to_chars(char* first, char* last, \exposid{integer-typ
 
 \expects
 \tcode{base} has a value between 2 and 36 (inclusive).
-}
 
-\etc
+\effects
+The value of \tcode{value} is converted to a string of digits
+in the given base (with no redundant leading zeroes).
+Digits in the range 10..35 (inclusive)
+are represented as lowercase characters \tcode{a}..\tcode{z}.
+If \tcode{value} is less than zero, the representation starts with \tcode{'-'}.
+
+\throws
+Nothing.
+}
 }
 
 \h4(show-number=false){[charconv.from.chars]}
 
-Change \eelis{charconv.from.chars} as follows:
+Change \eelis{charconv.from.chars#lib:from_chars} as follows:
 
 \Bdiff{
-\etc
-
 \itemdecl{
 constexpr from_chars_result from_chars(const char* first, const char* last,
                                        \exposid{integer-type}& value, int base = 10);
@@ -3377,12 +3701,25 @@ constexpr from_chars_result from_chars(const char* first, const char* last,
 
 \expects
 \tcode{base} has a value between 2 and 36 (inclusive).
-}
 
-\etc
+\effects
+The pattern is the expected form of the subject sequence
+in the \tcode{"C"} locale for the given nonzero base,
+as described for \tcode{strtol},
+except that no \tcode{"0x"} or \tcode{"0X"} prefix shall appear if the value of base is 16,
+and except that \tcode{'-'} is the only sign that may appear,
+and only if value has a signed type.
+
+\throws
+Nothing.
+}
 }
 
 \h4(show-number=false){[string.syn]}
+
+\editnote{
+See \ref(#printing-support).
+}
 
 Change \eelis{string.syn} as follows:
 
@@ -3504,7 +3841,7 @@ template<class T> \ins{constexpr} wstring to_wstring(T val);
 
 \h4(show-number=false){[cmath.syn]}
 
-\Bnote{
+\editnote{
 \eelis{cmath.syn#3} is deliberately not changed,
 meaning that \tcode{bit_int} may be passed to e.g. \tcode{sqrt}.
 See \ref(#bitint-cmath).
@@ -3545,7 +3882,7 @@ from the overloads provided by the implementation.
 
 \h4(show-number=false){[c.math.abs]}
 
-\Bnote{
+\editnote{
 See \ref(#bitint-abs).
 }
 
@@ -3578,7 +3915,7 @@ Equivalent to \tcode{j >= 0 ? j : -j}.
 has the lowest possible integer value of its type\iref{expr.pre}.}}
 }
 
-\Bnote{
+\editnote{
 Specifying the undefined behavior as a \i{Preconditions} specification
 would be worse because it may cause library UB during constant evaluation.
 
@@ -3653,7 +3990,7 @@ as the corresponding type-generic macro with the same name
 specified in \IsoC, 7.20.
 }
 
-\Bnote{
+\editnote{
 This matches the restrictions in \ref(N3550), 7.20 "Checked Integer Arithmetic".
 "cv-unqualified" is struck because it is redundant.
 }
@@ -3694,7 +4031,7 @@ There are specializations of the \tcode{atomic} class template for
 \tcode{char16_t},
 \tcode{char32_t},
 \tcode{wchar_t},}
-\ins{standard integer types,
+\ins{standard integer types\iref{basic.fundamental},
 bit-precise integer types,
 character types,}
 and any other types needed by the typedefs
@@ -3839,11 +4176,18 @@ of messages worth of valuable feedback.
   link = https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3550.pdf,
 )\
 \bib(
-  id = N3644,
-  title = Integer Sets\, v2,
-  date = 2025-07-05,
+  id = N3699,
+  title = Integer Sets\, v3,
+  date = 2025-09-02,
   author = Robert C. Seacord,
-  link = https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3644.pdf,
+  link = https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3699.pdf,
+)\
+\bib(
+  id = N3705,
+  title = bit-precise enum,
+  date = 2025-09-05,
+  author = Phillip Klaus Krause,
+  link = https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3705.htm,
 )\
 
 \make_bib
