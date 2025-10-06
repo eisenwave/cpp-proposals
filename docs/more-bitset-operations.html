@@ -1587,9 +1587,39 @@ and to enable efficient iteration over the one-bits or zero-bits.
 <div class=toc-num data-level=2>2</div>
 <a href=#introduction><h2>Introduction</h2></a>
 <div class=toc-num data-level=2>3</div>
-<a href=#design><h2>Design</h2></a>
+<a href=#proposed-changes><h2>Proposed changes</h2></a>
 <div class=toc-num data-level=2>4</div>
+<a href=#design><h2>Design considerations</h2></a>
+<div class=toc-num data-level=3>4.1</div>
+<a href=#reverse><h3><code><h- data-h=id>reverse</h-></code></h3></a>
+<div class=toc-num data-level=4>4.1.1</div>
+<a href=#in-place-reversal-vs%2e-reverse-copy><h4>In-place reversal vs. reverse-copy</h4></a>
+<div class=toc-num data-level=4>4.1.2</div>
+<a href=#reversebitset><h4><code><h- data-h=id>reverse</h-><h- data-h=sym_par>(</h-><h- data-h=id>bitset</h-><h- data-h=sym_par>)</h-></code></h4></a>
+<div class=toc-num data-level=3>4.2</div>
+<a href=#common-interface-with-bit><h3>Common interface with <code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code></h3></a>
+<div class=toc-num data-level=3>4.3</div>
+<a href=#counting-overloads><h3>Counting overloads</h3></a>
+<div class=toc-num data-level=4>4.3.1</div>
+<a href=#alternative-designs-facilitating-iteration><h4>Alternative designs facilitating iteration</h4></a>
+<div class=toc-num data-level=5>4.3.1.1</div>
+<a href=#infallible-countr_zero><h5>Infallible <code><h- data-h=id>countr_zero</h-></code></h5></a>
+<div class=toc-num data-level=5>4.3.1.2</div>
+<a href=#find_next_one><h5><code><h- data-h=id>find_next_one</h-></code></h5></a>
+<div class=toc-num data-level=5>4.3.1.3</div>
+<a href=#no-novel-overloads><h5>No novel overloads</h5></a>
+<div class=toc-num data-level=4>4.3.2</div>
+<a href=#new-overloads-for-bit><h4>New overloads for <code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code>?</h4></a>
+<div class=toc-num data-level=2>5</div>
+<a href=#impact-on-existing-code><h2>Impact on existing code</h2></a>
+<div class=toc-num data-level=2>6</div>
+<a href=#implementation-experience><h2>Implementation experience</h2></a>
+<div class=toc-num data-level=2>7</div>
+<a href=#proposed-wording><h2>Proposed wording</h2></a>
+<div class=toc-num data-level=2>8</div>
 <a href=#references><h2>References</h2></a>
+<div class=toc-num data-level=2>9</div>
+<a href=#appendix-a--compiler-explorer-backup><h2>Appendix A — Compiler Explorer backup</h2></a>
 </div>
 
 <h2 id=revision-history><a class=para href=#revision-history></a>1. Revision history</h2>
@@ -1604,7 +1634,7 @@ and to enable efficient iteration over the one-bits or zero-bits.
     now that it has been published
   </li>
   <li>
-    greatly expanded <a href=#design>§3. Design</a> based on feedback from LEWGI
+    greatly expanded <a href=#design>§4. Design considerations</a> based on feedback from LEWGI
   </li>
 </ul>
 
@@ -1634,9 +1664,307 @@ At the time of writing, it is used in 119K files on GitHub; see <a href="https:/
 expose the underlying integer sequence of the implementation.
 Therefore, it is not possible for the user to implement these operations efficiently themselves.
 </p>
-<h2 id=design><a class=para href=#design></a>3. Design</h2>
 
-<h2 id=references><a class=para href=#references></a>4. References</h2>
+<h2 id=proposed-changes><a class=para href=#proposed-changes></a>3. Proposed changes</h2>
+
+<p>For each of the functions from the bit manipulation library that are not yet available
+in <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bitset</h-></code>, add a member function.
+Add a small amount of further useful member functions.
+</p>
+<style>
+  th {
+    text-align: left;
+  }
+  .center {
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .striped tr:nth-child(even) td {
+    background-color: var(--deep-background-color);
+  }
+</style>
+
+<table class="center striped">
+  <tr>
+    <th><code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code> function</th>
+    <th>Proposed <code><h- data-h=id>bitset</h-></code> member</th>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>has_single_bit</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-><h- data-h=sym_par>)</h-></code></td>
+    <td><code><h- data-h=id>one</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code></td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>countl_zero</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-><h- data-h=sym_par>)</h-></code></td>
+    <td><code><h- data-h=id>countl_zero</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code></td>
+  </tr>
+  <tr>
+    <td></td>
+    <td><code><h- data-h=id>countl_zero</h-><h- data-h=sym_par>(</h-><h- data-h=id_type>size_t</h-><h- data-h=sym_par>)</h-></code></td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>countl_one</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-><h- data-h=sym_par>)</h-></code></td>
+    <td><code><h- data-h=id>countl_one</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code></td>
+  </tr>
+  <tr>
+    <td></td>
+    <td><code><h- data-h=id>countl_one</h-><h- data-h=sym_par>(</h-><h- data-h=id_type>size_t</h-><h- data-h=sym_par>)</h-></code></td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>countr_zero</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-><h- data-h=sym_par>)</h-></code></td>
+    <td><code><h- data-h=id>countr_zero</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code></td>
+  </tr>
+  <tr>
+    <td></td>
+    <td><code><h- data-h=id>countr_zero</h-><h- data-h=sym_par>(</h-><h- data-h=id_type>size_t</h-><h- data-h=sym_par>)</h-></code></td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>countr_one</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-><h- data-h=sym_par>)</h-></code></td>
+    <td><code><h- data-h=id>countr_one</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code></td>
+  </tr>
+  <tr>
+    <td></td>
+    <td><code><h- data-h=id>countr_one</h-><h- data-h=sym_par>(</h-><h- data-h=id_type>size_t</h-><h- data-h=sym_par>)</h-></code></td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>rotl</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-><h- data-h=sym_par>)</h-></code></td>
+    <td><code><h- data-h=id>rotl</h-><h- data-h=sym_par>(</h-><h- data-h=id_type>size_t</h-><h- data-h=sym_par>)</h-></code></td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>rotr</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-><h- data-h=sym_par>)</h-></code></td>
+    <td><code><h- data-h=id>rotr</h-><h- data-h=sym_par>(</h-><h- data-h=id_type>size_t</h-><h- data-h=sym_par>)</h-></code></td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_reverse</h-></code> (<a href="https://wg21%2elink/p3104r4">[P3104R4]</a>)</td>
+    <td><code><h- data-h=id>reverse</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code></td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_repeat</h-></code> (<a href="https://wg21%2elink/p3104r4">[P3104R4]</a>)</td>
+    <td><code><h- data-h=id>repeat</h-><h- data-h=sym_par>(</h-><h- data-h=id_type>size_t</h-><h- data-h=sym_par>)</h-></code></td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_compress</h-></code> (<a href="https://wg21%2elink/p3104r4">[P3104R4]</a>)</td>
+    <td>N/A</td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_expand</h-></code> (<a href="https://wg21%2elink/p3104r4">[P3104R4]</a>)</td>
+    <td>N/A</td>
+  </tr>
+</table>
+
+<p>The additional overloads for the counting functions allow counting from a starting position.
+This can be useful for iterating over all set bits:
+</p>
+<code-block><h- data-h=id>bitset</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>128</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>bits</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw_ctrl>for</h-> <h- data-h=sym_par>(</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>i</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h-> <h- data-h=id>i</h-> <h- data-h=sym_op>!=</h-> <h- data-h=num>128</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_op>++</h-><h- data-h=id>i</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=id>i</h-> <h- data-h=sym_op>+=</h-> <h- data-h=id>bits</h-><h- data-h=sym_op>.</h-><h- data-h=id>countr_zero</h-><h- data-h=sym_par>(</h-><h- data-h=id>i</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=id>i</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>128</h-><h- data-h=sym_par>)</h-> <h- data-h=kw_ctrl>break</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>Note: <code><h- data-h=id>byteswap</h-></code> and <code><h- data-h=id>bit_cast</h-></code> counterparts are not proposed, only functions solely
+dedicated to the manipulation of bit sequences.
+</p>
+
+<h2 id=design><a class=para href=#design></a>4. Design considerations</h2>
+
+<p>The names and signatures of the proposed member functions is a mixture of
+<code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code> function templates and the existing conventions of <code><h- data-h=id>bitset</h-></code>.
+Sadly, it is impossible to be consistent with both parts of the standard library.
+For example, <code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code> functions typically prefer <code><h- data-h=kw_type>int</h-></code> parameters for offsets,
+whereas <code><h- data-h=id>bitset</h-></code> uses <code><h- data-h=id_type>size_t</h-></code> virtually everywhere.
+<code><h- data-h=id>bitset</h-></code> also has a very brief convention of <code><h- data-h=id>none</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> or <code><h- data-h=id>all</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>,
+where <code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code> has a <code><h- data-h=id>has_single_bit</h-></code> function.
+</p>
+<p>This proposal generally prefers local consistency, i.e. it is more important to
+be consistent with <code><h- data-h=id>bitset</h-></code> than functions from a different part of the standard
+library, even if those distant functions are similar in purpose.
+</p>
+<h3 id=reverse><a class=para href=#reverse></a>4.1. <code><h- data-h=id>reverse</h-></code></h3>
+
+<p><code><h- data-h=id>reverse</h-></code> is a novel invention, not taken from <code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code>.
+However, a <code><h- data-h=id>bit_reverse</h-></code> counterpart is proposed in <a href="https://wg21%2elink/p3104r2">[P3104R2]</a> "Bit permutations".
+</p>
+<p>This function is added because the method for reversing integers may be tremendously faster than
+doing so bit by bit.
+ARM has a dedicated <code><h- data-h=id>RBIT</h-></code> instruction for reversing bits,
+which could be leveraged.
+</p>
+<h4 id=in-place-reversal-vs.-reverse-copy><a class=para href=#in-place-reversal-vs%2e-reverse-copy></a>4.1.1. In-place reversal vs. reverse-copy</h4>
+
+<p>I propose <code><h- data-h=id>reverse</h-></code> to modify a <code><h- data-h=id>bitset</h-></code> in-place rather than creating a reversed copy.
+The interface of <code><h- data-h=id>bitset</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-></code> can already accommodate large <code><h- data-h=id>N</h-></code>,
+and use cases with large <code><h- data-h=id>N</h-></code> exist.
+</p>
+<p>Compilers also should not be expected to find the optimization from a <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>ranges</h-><h- data-h=sym_op>::</h-><h- data-h=id>reverse_copy</h-></code>
+with later assignment to an in-place <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>reverse</h-></code>.
+</p>
+<div>
+In [[CompilerExplorer1]], Clang does not find the optimization from:
+
+<code-block><h- data-h=kw_type>void</h-> <h- data-h=id>reverse_in_place</h-><h- data-h=sym_par>(</h-><h- data-h=id>bitset</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>x</h-><h- data-h=sym_op>.</h-><h- data-h=id>reverse_copy</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+... to the in-place counterpart for a 4096-bit <code><h- data-h=id>bitset</h-></code>.
+Instead, it allocates 512 bytes of stack space,
+performs a reverse-copy, and <code><h- data-h=id>memcpy</h-></code>s the result back into <code><h- data-h=id>x</h-></code>.
+</div>
+
+<p>I believe that all operations of a <code><h- data-h=id>bitset</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-></code> with large <code><h- data-h=id>N</h-></code> should remain usable,
+and copying the whole set for an operation may be unacceptable due to danger of overflowing the stack
+and/or performance considerations.
+</p>
+<p>A perfect optimization would be very difficult due to substantial differences between the <code><h- data-h=id>reverse</h-></code>
+and <code><h- data-h=id>reverse_copy</h-></code> algorithms.
+</p>
+
+<h4 id=reversebitset><a class=para href=#reversebitset></a>4.1.2. <code><h- data-h=id>reverse</h-><h- data-h=sym_par>(</h-><h- data-h=id>bitset</h-><h- data-h=sym_par>)</h-></code></h4>
+
+<p>Instead of a <code><h- data-h=id>reverse</h-></code> member function, it would also be possible to add an
+overload for the <code><h- data-h=id>reverse</h-></code> algorithm which accepts a <code><h- data-h=id>bitset</h-></code>.
+There exists precedent (e.g. <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>move</h-></code>),
+although this is not the first design which comes to mind.
+</p>
+<decision-block><p><intro-></intro-> 
+I do not oppose this idea; LEWG needs to vote on this.
+</p></decision-block>
+
+<h3 id=common-interface-with-bit><a class=para href=#common-interface-with-bit></a>4.2. Common interface with <code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code></h3>
+
+<p>Another considered alternative is the creation of a common interface with the
+function templates of <code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code>.
+This would mean adding overloads for say, <code><h- data-h=id>countl_zero</h-></code> and other functions
+which would accept <code><h- data-h=id>bitset</h-></code> in addition to unsigned integers.
+</p>
+<p>This proposal does not pursue this design for multiple reasons:
+</p>
+<ol>
+  <li>
+    The use case of this is unclear.
+    I have personally never needed to write generic code which does bit manipulation
+    on either integers or bitsets, and don't know of any code base where this is done.
+  </li>
+  <li>
+    There is too much friction in the design of <code><h- data-h=id>bitset</h-></code> and <code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code>,
+    such as the use of <code><h- data-h=id_type>size_t</h-></code> vs. <code><h- data-h=kw_type>int</h-></code>,
+    the use of exceptions vs. preconditions, different naming schemes, etc.
+  </li>
+  <li>
+    The functions in <code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code> are all pure, but for <code><h- data-h=id>bitset</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-></code>,
+    copying it for the purpose of function calls and returning modified copies
+    becomes impractical for large <code><h- data-h=id>N</h-></code>.
+    See also [[#in-place-reversal]].
+  </li>
+  <li>
+    A common interface does not eliminate the need for new member functions.
+    It would be very surprising to users if some functionality 
+    was only available through <code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code> (e.g. <code><h- data-h=id>countr_zero</h-></code>)
+    whereas other functionality was available both as a member function and as a <code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code> function
+    (e.g. <code><h- data-h=id>popcount</h-></code>/<code><h- data-h=sym_op>.</h-><h- data-h=id>count</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>).
+    Such a design would be inconsistent, and nonsensical when taken out of its historical context.
+  </li>
+  <li>
+    A future proposal could still create a common interface for <code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code> and <code><h- data-h=id>bitset</h-></code>.
+    The addition of member functions adds no obstacles in this regard.
+  </li>
+</ol>
+
+<p>Also note that most of these issues equally apply to sharing a common interface with <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>simd</h-></code>.
+</p>
+<h3 id=counting-overloads><a class=para href=#counting-overloads></a>4.3. Counting overloads</h3>
+
+<p><code><h- data-h=id>countl_zero</h-></code>, <code><h- data-h=id>countr_zero</h-></code>, <code><h- data-h=id>countl_one</h-></code>, and <code><h- data-h=id>countr_one</h-></code>
+are overloaded member functions which take a <code><h- data-h=id_type>size_t</h-></code> argument or nothing.
+</p>
+<p>This is preferable to a single member function with a defaulted argument because the overloads
+have different <code><h- data-h=kw>noexcept</h-></code> specifications.
+The overloads which take no arguments have a wide contract and can be marked <code><h- data-h=kw>noexcept</h-></code>,
+whereas the overloads taking <code><h- data-h=id_type>size_t</h-></code> may throw <code><h- data-h=id>out_of_range</h-></code>.
+</p>
+<h4 id=alternative-designs-facilitating-iteration><a class=para href=#alternative-designs-facilitating-iteration></a>4.3.1. Alternative designs facilitating iteration</h4>
+
+<p>Besides the proposed design for <code><h- data-h=id>countl_zero</h-></code>,
+there are at least two alternatives, mainly motivated by simplifying iteration.
+As mentioned above, we can iterate over all one-bits of a <code><h- data-h=id>bitset</h-></code> as possible.
+</p>
+<code-block><h- data-h=id>bitset</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>128</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>bits</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw_ctrl>for</h-> <h- data-h=sym_par>(</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>i</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h-> <h- data-h=id>i</h-> <h- data-h=sym_op>!=</h-> <h- data-h=num>128</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_op>++</h-><h- data-h=id>i</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=id>i</h-> <h- data-h=sym_op>+=</h-> <h- data-h=id>bits</h-><h- data-h=sym_op>.</h-><h- data-h=id>countr_zero</h-><h- data-h=sym_par>(</h-><h- data-h=id>i</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=id>i</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>128</h-><h- data-h=sym_par>)</h-> <h- data-h=kw_ctrl>break</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<decision-block><p><intro-></intro-> 
+LEWG should vote on whether to go ahead with the current design
+or prefer one of the alternatives below.
+</p></decision-block>
+
+<h5 id=infallible-countr_zero><a class=para href=#infallible-countr_zero></a>4.3.1.1. Infallible <code><h- data-h=id>countr_zero</h-></code></h5>
+
+<p>If <code><h- data-h=id>countr_zero</h-></code> could not throw but returned zero on an index out of bounds,
+this could be shortened to:
+</p><code-block><h- data-h=id>bitset</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>128</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>bits</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw_ctrl>for</h-> <h- data-h=sym_par>(</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>i</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h-> <h- data-h=id>i</h-> <h- data-h=sym_op>+=</h-> <h- data-h=id>bits</h-><h- data-h=sym_op>.</h-><h- data-h=id>countr_zero</h-><h- data-h=sym_par>(</h-><h- data-h=id>i</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>!=</h-> <h- data-h=num>128</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_op>++</h-><h- data-h=id>i</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
+<h- data-h=sym_brac>}</h-></code-block>
+<p>An infallible <code><h- data-h=id>countr_zero</h-></code> would also cater to users who do not want to use
+exceptions, whereas the current proposal perpetuates the existing exception-based design.
+</p>
+<h5 id=find_next_one><a class=para href=#find_next_one></a>4.3.1.2. <code><h- data-h=id>find_next_one</h-></code></h5>
+
+<p>It would be possible to add a member function which increments and advances
+to the next bit in a one operation.
+</p><code-block><h- data-h=id>bitset</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>128</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>bits</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw_ctrl>for</h-> <h- data-h=sym_par>(</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>i</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_par>(</h-><h- data-h=id>i</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>bits</h-><h- data-h=sym_op>.</h-><h- data-h=id>find_next_one</h-><h- data-h=sym_par>(</h-><h- data-h=id>i</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>!=</h-> <h- data-h=id>bitset</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=id>npos</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
+<h- data-h=sym_brac>}</h-></code-block>
+<p>A possible issue is that this operation is extremely specialized towards iteration.
+</p>
+<p>As with <code><h- data-h=id>countr_zero</h-></code>, it also needs be considered whether <code><h- data-h=id>find_next_one</h-></code>
+should handle a bad index by throwing an exception, if LEWG prefers this kind of function.
+</p>
+<h5 id=no-novel-overloads><a class=para href=#no-novel-overloads></a>4.3.1.3. No novel overloads</h5>
+
+<p>It is also possible to drop the overloads taking <code><h- data-h=id_type>size_t</h-></code> from this proposal.
+Perhaps a future proposal focused on iteration for <code><h- data-h=id>bitset</h-></code> could approach the
+issue of facilitating iteration.
+This was most recently attempted in [[P0161R0]].
+</p>
+<p>However, such functions are well within the scope of this proposal, especially if they share
+a name with other proposed members, and they do not pose a substantial design/wording hurdle.
+In short, we may as well do it.
+</p>
+<h4 id=new-overloads-for-bit><a class=para href=#new-overloads-for-bit></a>4.3.2. New overloads for <code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code>?</h4>
+
+<p>The overloads taking <code><h- data-h=id_type>size_t</h-></code> don't need a counterpart in <code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code> because they are very easy to
+emulate:
+</p><code-block><h- data-h=kw_type>int</h-> <h- data-h=id>countl_zero</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>unsigned_integral</h-> <h- data-h=kw>auto</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>off</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>countl_zero</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-> <h- data-h=sym_op>&gt;&gt;</h-> <h- data-h=id>off</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>I consider these too trivial to justify adding such convenience functions to <code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code>,
+even if it would create more symmetry between <code><h- data-h=id>bitset</h-></code> and <code><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit</h-><h- data-h=sym_op>&gt;</h-></code>.
+</p>
+
+<h2 id=impact-on-existing-code><a class=para href=#impact-on-existing-code></a>5. Impact on existing code</h2>
+
+<p>The semantics of existing <code><h- data-h=id>bitset</h-></code> member functions remain unchanged,
+and no existing valid code is broken.
+</p>
+<p>This proposal is purely an extension of the functionality of <code><h- data-h=id>bitset</h-></code>.
+</p>
+<h2 id=implementation-experience><a class=para href=#implementation-experience></a>6. Implementation experience</h2>
+
+<p><a href="https://github%2ecom/ClaasBontus/bitset2">[bitset2]</a> provides  a <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bitset</h-></code> implementation which supports most proposed features.
+There are no obvious obstacles to implementing the new features in common standard library
+implementations.
+</p>
+<h2 id=proposed-wording><a class=para href=#proposed-wording></a>7. Proposed wording</h2>
+
+<p>The proposed changes are relative to the working draft of the standard as of <a href="https://wg21%2elink/n5014">[N5014]</a>.
+</p>
+
+<h2 id=references><a class=para href=#references></a>8. References</h2>
 
 
 <div class=bib><div id=bib-item-N5014 class=bib-item>
@@ -1648,7 +1976,13 @@ Therefore, it is not possible for the user to implement these operations efficie
 <a href="https://github%2ecom/search?type=code&auto_enroll=true&q=%22std::bitset%22+language:cpp">[GitHubCodeSearch]</a>
 <span class=bib-title>GitHub code search for "std::bitset language:cpp"</span>
 <span class=bib-date>2025-10-06</span>
-<a href="https://github%2ecom/search?type=code&auto_enroll=true&q=%22std::bitset%22+language:cpp" class=bib-link>https://github.com/search?type=code&amp;auto_enroll=true&amp;q="std::bitset"+language:cpp</a></div><div id=bib-item-P0553R4 class=bib-item>
+<a href="https://github%2ecom/search?type=code&auto_enroll=true&q=%22std::bitset%22+language:cpp" class=bib-link>https://github.com/search?type=code&amp;auto_enroll=true&amp;q="std::bitset"+language:cpp</a></div><div id=bib-item-bitset2 class=bib-item>
+<a href="https://github%2ecom/ClaasBontus/bitset2">[bitset2]</a>
+<span class=bib-author>Claas Bontus et al..</span>
+<a href="https://github%2ecom/ClaasBontus/bitset2" class=bib-link>https://github.com/ClaasBontus/bitset2</a></div><div id=bib-item-CompilerExplorer1 class=bib-item>
+<a href="https://godbolt%2eorg/z/KrPsrh9bM">[CompilerExplorer1]</a>
+<span class=bib-title>Example of in-place reversal vs. reverse-copy optimization</span>
+<a href="https://godbolt%2eorg/z/KrPsrh9bM" class=bib-link>https://godbolt.org/z/KrPsrh9bM</a></div><div id=bib-item-P0553R4 class=bib-item>
 <a href="https://wg21%2elink/p0553r4">[P0553R4]</a>
 <span class=bib-author>Jens Maurer.</span>
 <span class=bib-title>Bit operations</span>
@@ -1664,5 +1998,37 @@ Therefore, it is not possible for the user to implement these operations efficie
 <span class=bib-title>Bit permutations</span>
 <span class=bib-date>2025-06-28</span>
 <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/p3104r4%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3104r4.html</a></div></div>
+
+<h2 id=appendix-a--compiler-explorer-backup><a class=para href=#appendix-a--compiler-explorer-backup></a>Appendix A — Compiler Explorer backup</h2>
+
+<p>In <a href="https://godbolt%2eorg/z/KrPsrh9bM">[CompilerExplorer1]</a>,
+the source code is:
+</p>
+<code-block><h- data-h=mac>#include &lt;cstdint&gt;</h->
+<h- data-h=mac>#include &lt;algorithm&gt;</h->
+
+<h- data-h=kw>struct</h-> <h- data-h=id>bitset</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>uint64_t</h-> <h- data-h=id>limbs</h-><h- data-h=sym_sqr>[</h-><h- data-h=num>64</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>;</h->
+
+    <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=id>gnu</h-><h- data-h=sym_op>::</h-><h- data-h=id>used</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=kw_type>void</h-> <h- data-h=id>reverse</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+        <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>ranges</h-><h- data-h=sym_op>::</h-><h- data-h=id>reverse</h-><h- data-h=sym_par>(</h-><h- data-h=id>limbs</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+        <h- data-h=kw_ctrl>for</h-> <h- data-h=sym_par>(</h-><h- data-h=kw>auto</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>x</h-> <h- data-h=sym_punc>:</h-> <h- data-h=id>limbs</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+            <h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>__builtin_bitreverse64</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+        <h- data-h=sym_brac>}</h->
+    <h- data-h=sym_brac>}</h->
+
+    <h- data-h=id>bitset</h-> <h- data-h=id>reverse_copy</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=sym_brac>{</h->
+        <h- data-h=id>bitset</h-> <h- data-h=id>result</h-><h- data-h=sym_punc>;</h->
+        <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>ranges</h-><h- data-h=sym_op>::</h-><h- data-h=id>reverse_copy</h-><h- data-h=sym_par>(</h-><h- data-h=id>limbs</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>result</h-><h- data-h=sym_op>.</h-><h- data-h=id>limbs</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+        <h- data-h=kw_ctrl>for</h-> <h- data-h=sym_par>(</h-><h- data-h=kw>auto</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>x</h-> <h- data-h=sym_punc>:</h-> <h- data-h=id>result</h-><h- data-h=sym_op>.</h-><h- data-h=id>limbs</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+            <h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>__builtin_bitreverse64</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+        <h- data-h=sym_brac>}</h->
+        <h- data-h=kw_ctrl>return</h-> <h- data-h=id>result</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=sym_brac>}</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=kw_type>void</h-> <h- data-h=id>reverse_in_place</h-><h- data-h=sym_par>(</h-><h- data-h=id>bitset</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>x</h-><h- data-h=sym_op>.</h-><h- data-h=id>reverse_copy</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
 </main></body>
 </html>

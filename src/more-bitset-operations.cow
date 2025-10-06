@@ -67,7 +67,318 @@ At the time of writing, it is used in 119K files on GitHub; see \ref(GitHubCodeS
 expose the underlying integer sequence of the implementation.
 Therefore, it is not possible for the user to implement these operations efficiently themselves.
 
-\h2{Design}
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+\h2{Proposed changes}
+
+For each of the functions from the bit manipulation library that are not yet available
+in \tcode{std::bitset}, add a member function.
+Add a small amount of further useful member functions.
+
+\style{
+  th {
+    text-align: left;
+  }
+  .center {
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .striped tr:nth-child(even) td {
+    background-color: var(--deep-background-color);
+  }
+}
+
+\table(class=center striped){
+  \tr{
+    \th{\tcode{<bit>} function}
+    \th{Proposed \tcode{bitset} member}
+  }
+  \tr{
+    \td{\tcode{std::has_single_bit(T)}}
+    \td{\tcode{one()}}
+  }
+  \tr{
+    \td{\tcode{std::countl_zero(T)}}
+    \td{\tcode{countl_zero()}}
+  }
+  \tr{
+    \td{}
+    \td{\tcode{countl_zero(size_t)}}
+  }
+  \tr{
+    \td{\tcode{std::countl_one(T)}}
+    \td{\tcode{countl_one()}}
+  }
+  \tr{
+    \td{}
+    \td{\tcode{countl_one(size_t)}}
+  }
+  \tr{
+    \td{\tcode{std::countr_zero(T)}}
+    \td{\tcode{countr_zero()}}
+  }
+  \tr{
+    \td{}
+    \td{\tcode{countr_zero(size_t)}}
+  }
+  \tr{
+    \td{\tcode{std::countr_one(T)}}
+    \td{\tcode{countr_one()}}
+  }
+  \tr{
+    \td{}
+    \td{\tcode{countr_one(size_t)}}
+  }
+  \tr{
+    \td{\tcode{std::rotl(T, int)}}
+    \td{\tcode{rotl(size_t)}}
+  }
+  \tr{
+    \td{\tcode{std::rotr(T, int)}}
+    \td{\tcode{rotr(size_t)}}
+  }
+  \tr{
+    \td{\tcode{std::bit_reverse} (\ref(P3104R4))}
+    \td{\tcode{reverse()}}
+  }
+  \tr{
+    \td{\tcode{std::bit_repeat} (\ref(P3104R4))}
+    \td{\tcode{repeat(size_t)}}
+  }
+  \tr{
+    \td{\tcode{std::bit_compress} (\ref(P3104R4))}
+    \td{N/A}
+  }
+  \tr{
+    \td{\tcode{std::bit_expand} (\ref(P3104R4))}
+    \td{N/A}
+  }
+}
+
+The additional overloads for the counting functions allow counting from a starting position.
+This can be useful for iterating over all set bits:
+
+\cppblock{
+bitset<128> bits;
+for (size_t i = 0; i != 128; ++i) {
+  i += bits.countr_zero(i);
+  if (i == 128) break;
+  // ...
+}
+}
+
+Note: \tcode{byteswap} and \tcode{bit_cast} counterparts are not proposed, only functions solely
+dedicated to the manipulation of bit sequences.
+
+
+\h2(id=design){Design considerations}
+
+The names and signatures of the proposed member functions is a mixture of
+\tcode{<bit>} function templates and the existing conventions of \tcode{bitset}.
+Sadly, it is impossible to be consistent with both parts of the standard library.
+For example, \tcode{<bit>} functions typically prefer \tcode{int} parameters for offsets,
+whereas \tcode{bitset} uses \tcode{size_t} virtually everywhere.
+\tcode{bitset} also has a very brief convention of \tcode{none()} or \tcode{all()},
+where \tcode{<bit>} has a \tcode{has_single_bit} function.
+
+This proposal generally prefers local consistency, i.e. it is more important to
+be consistent with \tcode{bitset} than functions from a different part of the standard
+library, even if those distant functions are similar in purpose.
+
+\h3{\tcode{reverse}}
+
+\tcode{reverse} is a novel invention, not taken from \tcode{<bit>}.
+However, a \tcode{bit_reverse} counterpart is proposed in \ref(P3104R2) "Bit permutations".
+
+This function is added because the method for reversing integers may be tremendously faster than
+doing so bit by bit.
+ARM has a dedicated \tcode{RBIT} instruction for reversing bits,
+which could be leveraged.
+
+\h4{In-place reversal vs. reverse-copy}
+
+I propose \tcode{reverse} to modify a \tcode{bitset} in-place rather than creating a reversed copy.
+The interface of \tcode{bitset<N>} can already accommodate large \tcode{N},
+and use cases with large \tcode{N} exist.
+
+Compilers also should not be expected to find the optimization from a \tcode{std::ranges::reverse_copy}
+with later assignment to an in-place \tcode{std::reverse}.
+
+\div{
+In [[CompilerExplorer1]], Clang does not find the optimization from:
+
+\cppblock{
+void reverse_in_place(bitset& x) {
+  x = x.reverse_copy();
+}
+}
+
+... to the in-place counterpart for a 4096-bit \tcode{bitset}.
+Instead, it allocates 512 bytes of stack space,
+performs a reverse-copy, and \tcode{memcpy}s the result back into \tcode{x}.
+}
+
+I believe that all operations of a \tcode{bitset<N>} with large \tcode{N} should remain usable,
+and copying the whole set for an operation may be unacceptable due to danger of overflowing the stack
+and/or performance considerations.
+
+A perfect optimization would be very difficult due to substantial differences between the \tcode{reverse}
+and \tcode{reverse_copy} algorithms.
+
+
+\h4{\tcode{reverse(bitset)}}
+
+Instead of a \tcode{reverse} member function, it would also be possible to add an
+overload for the \tcode{reverse} algorithm which accepts a \tcode{bitset}.
+There exists precedent (e.g. \tcode{std::move}),
+although this is not the first design which comes to mind.
+
+\Bdecision{
+I do not oppose this idea; LEWG needs to vote on this.
+}
+
+\h3{Common interface with \tcode{<bit>}}
+
+Another considered alternative is the creation of a common interface with the
+function templates of \tcode{<bit>}.
+This would mean adding overloads for say, \tcode{countl_zero} and other functions
+which would accept \tcode{bitset} in addition to unsigned integers.
+
+This proposal does not pursue this design for multiple reasons:
+
+\ol{
+  \li{
+    The use case of this is unclear.
+    I have personally never needed to write generic code which does bit manipulation
+    on either integers or bitsets, and don't know of any code base where this is done.
+  }
+  \li{
+    There is too much friction in the design of \tcode{bitset} and \tcode{<bit>},
+    such as the use of \tcode{size_t} vs. \tcode{int},
+    the use of exceptions vs. preconditions, different naming schemes, etc.
+  }
+  \li{
+    The functions in \tcode{<bit>} are all pure, but for \tcode{bitset<N>},
+    copying it for the purpose of function calls and returning modified copies
+    becomes impractical for large \tcode{N}.
+    See also [[#in-place-reversal]].
+  }
+  \li{
+    A common interface does not eliminate the need for new member functions.
+    It would be very surprising to users if some functionality 
+    was only available through \tcode{<bit>} (e.g. \tcode{countr_zero})
+    whereas other functionality was available both as a member function and as a \tcode{<bit>} function
+    (e.g. \tcode{popcount}/\tcode{.count()}).
+    Such a design would be inconsistent, and nonsensical when taken out of its historical context.
+  }
+  \li{
+    A future proposal could still create a common interface for \tcode{<bit>} and \tcode{bitset}.
+    The addition of member functions adds no obstacles in this regard.
+  }
+}
+
+Also note that most of these issues equally apply to sharing a common interface with \tcode{std::simd}.
+
+\h3{Counting overloads}
+
+\tcode{countl_zero}, \tcode{countr_zero}, \tcode{countl_one}, and \tcode{countr_one}
+are overloaded member functions which take a \tcode{size_t} argument or nothing.
+
+This is preferable to a single member function with a defaulted argument because the overloads
+have different \tcode{noexcept} specifications.
+The overloads which take no arguments have a wide contract and can be marked \tcode{noexcept},
+whereas the overloads taking \tcode{size_t} may throw \tcode{out_of_range}.
+
+\h4{Alternative designs facilitating iteration}
+
+Besides the proposed design for \tcode{countl_zero},
+there are at least two alternatives, mainly motivated by simplifying iteration.
+As mentioned above, we can iterate over all one-bits of a \tcode{bitset} as possible.
+
+\cppblock{
+bitset<128> bits;
+for (size_t i = 0; i != 128; ++i) {
+  i += bits.countr_zero(i);
+  if (i == 128) break;
+  // ...
+}
+}
+
+\Bdecision{
+LEWG should vote on whether to go ahead with the current design
+or prefer one of the alternatives below.
+}
+
+\h5{Infallible \tcode{countr_zero}}
+
+If \tcode{countr_zero} could not throw but returned zero on an index out of bounds,
+this could be shortened to:
+\cppblock{
+bitset<128> bits;
+for (size_t i = 0; i += bits.countr_zero(i) != 128; ++i) {
+  // ...
+}
+}
+An infallible \tcode{countr_zero} would also cater to users who do not want to use
+exceptions, whereas the current proposal perpetuates the existing exception-based design.
+
+\h5{\tcode{find_next_one}}
+
+It would be possible to add a member function which increments and advances
+to the next bit in a one operation.
+\cppblock{
+bitset<128> bits;
+for (size_t i = 0; (i = bits.find_next_one(i)) != bitset<N>::npos; ) {
+  // ...
+}
+}
+A possible issue is that this operation is extremely specialized towards iteration.
+
+As with \tcode{countr_zero}, it also needs be considered whether \tcode{find_next_one}
+should handle a bad index by throwing an exception, if LEWG prefers this kind of function.
+
+\h5{No novel overloads}
+
+It is also possible to drop the overloads taking \tcode{size_t} from this proposal.
+Perhaps a future proposal focused on iteration for \tcode{bitset} could approach the
+issue of facilitating iteration.
+This was most recently attempted in [[P0161R0]].
+
+However, such functions are well within the scope of this proposal, especially if they share
+a name with other proposed members, and they do not pose a substantial design/wording hurdle.
+In short, we may as well do it.
+
+\h4{New overloads for \tcode{<bit>}?}
+
+The overloads taking \tcode{size_t} don't need a counterpart in \tcode{<bit>} because they are very easy to
+emulate:
+\cppblock{
+int countl_zero(std::unsigned_integral auto x, int off) {
+  return std::countl_zero(x >> off);
+}
+}
+
+I consider these too trivial to justify adding such convenience functions to \tcode{<bit>},
+even if it would create more symmetry between \tcode{bitset} and \tcode{<bit>}.
+
+
+\h2{Impact on existing code}
+
+The semantics of existing \tcode{bitset} member functions remain unchanged,
+and no existing valid code is broken.
+
+This proposal is purely an extension of the functionality of \tcode{bitset}.
+
+\h2{Implementation experience}
+
+\ref(bitset2) provides  a \tcode{std::bitset} implementation which supports most proposed features.
+There are no obvious obstacles to implementing the new features in common standard library
+implementations.
+
+\h2{Proposed wording}
+
+The proposed changes are relative to the working draft of the standard as of \ref(N5014).
+
 
 \h2{References}
 
@@ -84,6 +395,16 @@ Therefore, it is not possible for the user to implement these operations efficie
   title = GitHub code search for "std::bitset language:cpp",
   date = 2025-10-06,
   link = https://github.com/search?type=code&auto_enroll=true&q="std::bitset"+language:cpp,
+)\
+\bib(
+  id = bitset2,
+  author = Claas Bontus et al.,
+  link = https://github.com/ClaasBontus/bitset2,
+)\
+\bib(
+  id = CompilerExplorer1,
+  title = Example of in-place reversal vs. reverse-copy optimization,
+  link = https://godbolt.org/z/KrPsrh9bM,
 )\
 \bib(
   id = P0553R4,
@@ -111,3 +432,37 @@ Therefore, it is not possible for the user to implement these operations efficie
 )\
 
 \make_bib
+
+\h2(show-number=false){Appendix A \N{EM DASH} Compiler Explorer backup}
+
+In \ref(CompilerExplorer1),
+the source code is:
+
+\cppblock{
+#include <cstdint>
+#include <algorithm>
+
+struct bitset {
+    std::uint64_t limbs[64];
+
+    [[gnu::used]] void reverse() {
+        std::ranges::reverse(limbs);
+        for (auto& x : limbs) {
+            x = __builtin_bitreverse64(x);
+        }
+    }
+
+    bitset reverse_copy() const {
+        bitset result;
+        std::ranges::reverse_copy(limbs, result.limbs);
+        for (auto& x : result.limbs) {
+            x = __builtin_bitreverse64(x);
+        }
+        return result;
+    }
+};
+
+void reverse_in_place(bitset& x) {
+    x = x.reverse_copy();
+}
+}
