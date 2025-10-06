@@ -1,2725 +1,1668 @@
-<!doctype html><html lang="en">
- <head>
-  <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
-  <meta content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport">
-  <title>P3103R2: More bitset operations</title>
-<style data-fill-with="stylesheet">/******************************************************************************
- *                   Style sheet for the W3C specifications                   *
- *
- * Special classes handled by this style sheet include:
- *
- * Indices
- *   - .toc for the Table of Contents (<ol class="toc">)
- *     + <span class="secno"> for the section numbers
- *   - #toc for the Table of Contents (<nav id="toc">)
- *   - ul.index for Indices (<a href="#ref">term</a><span>, in § N.M</span>)
- *   - table.index for Index Tables (e.g. for properties or elements)
- *
- * Structural Markup
- *   - table.data for general data tables
- *     -> use 'scope' attribute, <colgroup>, <thead>, and <tbody> for best results !
- *     -> use <table class='complex data'> for extra-complex tables
- *     -> use <td class='long'> for paragraph-length cell content
- *     -> use <td class='pre'> when manual line breaks/indentation would help readability
- *   - dl.switch for switch statements
- *   - ol.algorithm for algorithms (helps to visualize nesting)
- *   - .figure and .caption (HTML4) and figure and figcaption (HTML5)
- *     -> .sidefigure for right-floated figures
- *   - ins/del
- *     -> ins/del.c### for candidate and proposed changes (amendments)
- *
- * Code
- *   - pre and code
- *
- * Special Sections
- *   - .note       for informative notes             (div, p, span, aside, details)
- *   - .example    for informative examples          (div, p, pre, span)
- *   - .issue      for issues                        (div, p, span)
- *   - .advisement for loud normative statements     (div, p, strong)
- *   - .annoying-warning for spec obsoletion notices (div, aside, details)
- *   - .correction for "candidate corrections"       (div, aside, details, section)
- *   - .addition   for "candidate additions"         (div, aside, details, section)
- *   - .correction.proposed for "proposed corrections" (div, aside, details, section)
- *   - .addition.proposed   for "proposed additions"   (div, aside, details, section)
- *
- * Definition Boxes
- *   - pre.def   for WebIDL definitions
- *   - table.def for tables that define other entities (e.g. CSS properties)
- *   - dl.def    for definition lists that define other entitles (e.g. HTML elements)
- *
- * Numbering
- *   - .secno for section numbers in .toc and headings (<span class='secno'>3.2</span>)
- *   - .marker for source-inserted example/figure/issue numbers (<span class='marker'>Issue 4</span>)
- *   - ::before styled for CSS-generated issue/example/figure numbers:
- *     -> Documents wishing to use this only need to add
- *        figcaption::before,
- *        .caption::before { content: "Figure "  counter(figure) " ";  }
- *        .example::before { content: "Example " counter(example) " "; }
- *        .issue::before   { content: "Issue "   counter(issue) " ";   }
- *
- * Header Stuff (ignore, just don't conflict with these classes)
- *   - .head for the header
- *   - .copyright for the copyright
- *
- * Outdated warning for old specs
- *
- * Miscellaneous
- *   - .overlarge for things that should be as wide as possible, even if
- *     that overflows the body text area. This can be used on an item or
- *     on its container, depending on the effect desired.
- *     Note that this styling basically doesn't help at all when printing,
- *     since A4 paper isn't much wider than the max-width here.
- *     It's better to design things to fit into a narrower measure if possible.
- *
- *   - js-added ToC jump links (see fixup.js)
- *
- ******************************************************************************/
-
-/* color variables included separately for reliability */
-
-/******************************************************************************/
-/*                                    Body                                    */
-/******************************************************************************/
-
-	html {
-	}
-
-	body {
-		counter-reset: example figure issue;
-
-		/* Layout */
-		max-width: 50em;			  /* limit line length to 50em for readability   */
-		margin: 0 auto;				/* center text within page                    */
-		padding: 1.6em 1.5em 2em 50px; /* assume 16px font size for downlevel clients */
-		padding: 1.6em 1.5em 2em calc(26px + 1.5em); /* leave space for status flag    */
-
-		/* Typography */
-		line-height: 1.5;
-		font-family: sans-serif;
-		widows: 2;
-		orphans: 2;
-		word-wrap: break-word;
-		overflow-wrap: break-word;
-		hyphens: auto;
-
-		color: black;
-		color: var(--text);
-		background: white top left fixed no-repeat;
-		background: var(--bg) top left fixed no-repeat;
-		background-size: 25px auto;
-	}
-
-
-/******************************************************************************/
-/*                         Front Matter & Navigation                          */
-/******************************************************************************/
-
-/** Header ********************************************************************/
-
-	div.head { margin-bottom: 1em; }
-	div.head hr { border-style: solid; }
-
-	div.head h1 {
-		font-weight: bold;
-		margin: 0 0 .1em;
-		font-size: 220%;
-	}
-
-	div.head h2 { margin-bottom: 1.5em;}
-
-/** W3C Logo ******************************************************************/
-
-	.head .logo {
-		float: right;
-		margin: 0.4rem 0 0.2rem .4rem;
-	}
-
-	.head img[src*="logos/W3C"] {
-		display: block;
-		border: solid #1a5e9a;
-		border: solid var(--logo-bg);
-		border-width: .65rem .7rem .6rem;
-		border-radius: .4rem;
-		background: #1a5e9a;
-		background: var(--logo-bg);
-		color: white;
-		color: var(--logo-text);
-		font-weight: bold;
-	}
-
-	.head a:hover > img[src*="logos/W3C"],
-	.head a:focus > img[src*="logos/W3C"] {
-		opacity: .8;
-	}
-
-	.head a:active > img[src*="logos/W3C"] {
-		background: #c00;
-		background: var(--logo-active-bg);
-		border-color: #c00;
-		border-color: var(--logo-active-bg);
-	}
-
-	/* see also additional rules in Link Styling section */
-
-/** Copyright *****************************************************************/
-
-	p.copyright,
-	p.copyright small { font-size: small; }
-
-/** Back to Top / ToC Toggle **************************************************/
-
-	@media print {
-		#toc-nav {
-			display: none;
-		}
-	}
-	@media not print {
-		#toc-nav {
-			position: fixed;
-			z-index: 3;
-			bottom: 0; left: 0;
-			margin: 0;
-			min-width: 1.33em;
-			border-top-right-radius: 2rem;
-			box-shadow: 0 0 2px;
-			font-size: 1.5em;
-		}
-		#toc-nav > a {
-			display: block;
-			white-space: nowrap;
-
-			height: 1.33em;
-			padding: .1em 0.3em;
-			margin: 0;
-
-			box-shadow: 0 0 2px;
-			border: none;
-			border-top-right-radius: 1.33em;
-
-			color: #707070;
-			color: var(--tocnav-normal-text);
-			background: white;
-			background: var(--tocnav-normal-bg);
-		}
-		#toc-nav > a:hover,
-		#toc-nav > a:focus {
-			color: black;
-			color: var(--tocnav-hover-text);
-			background: #f8f8f8;
-			background: var(--tocnav-hover-bg);
-		}
-		#toc-nav > a:active {
-			color: #c00;
-			color: var(--tocnav-active-text);
-			background: white;
-			background: var(--tocnav-active-bg);
-		}
-
-		#toc-nav > #toc-jump {
-			padding-bottom: 2em;
-			margin-bottom: -1.9em;
-		}
-
-		/* statusbar gets in the way on keyboard focus; remove once browsers fix */
-		#toc-nav > a[href="#toc"]:not(:hover):focus:last-child {
-			padding-bottom: 1.5rem;
-		}
-
-		#toc-nav:not(:hover) > a:not(:focus) > span + span {
-			/* Ideally this uses :focus-within on #toc-nav */
-			display: none;
-		}
-		#toc-nav > a > span + span {
-			padding-right: 0.2em;
-		}
-	}
-
-/** ToC Sidebar ***************************************************************/
-
-	/* Floating sidebar */
-	@media screen {
-		body.toc-sidebar #toc {
-			position: fixed;
-			top: 0; bottom: 0;
-			left: 0;
-			width: 23.5em;
-			max-width: 80%;
-			max-width: calc(100% - 2em - 26px);
-			overflow: auto;
-			padding: 0 1em;
-			padding-left: 42px;
-			padding-left: calc(1em + 26px);
-			color: black;
-			color: var(--tocsidebar-text);
-			background: inherit;
-			background-color: #f7f8f9;
-			background-color: var(--tocsidebar-bg);
-			z-index: 1;
-			box-shadow: -.1em 0 .25em rgba(0,0,0,.1) inset;
-			box-shadow: -.1em 0 .25em var(--tocsidebar-shadow) inset;
-		}
-		body.toc-sidebar #toc h2 {
-			margin-top: .8rem;
-			font-variant: small-caps;
-			font-variant: all-small-caps;
-			text-transform: lowercase;
-			font-weight: bold;
-			color: gray;
-			color: hsla(203,20%,40%,.7);
-			color: var(--tocsidebar-heading-text);
-		}
-		body.toc-sidebar #toc-jump:not(:focus) {
-			width: 0;
-			height: 0;
-			padding: 0;
-			position: absolute;
-			overflow: hidden;
-		}
-	}
-	/* Hide main scroller when only the ToC is visible anyway */
-	@media screen and (max-width: 28em) {
-		body.toc-sidebar {
-			overflow: hidden;
-		}
-	}
-
-	/* Sidebar with its own space */
-	@media screen and (min-width: 78em) {
-		body:not(.toc-inline) #toc {
-			position: fixed;
-			top: 0; bottom: 0;
-			left: 0;
-			width: 23.5em;
-			overflow: auto;
-			padding: 0 1em;
-			padding-left: 42px;
-			padding-left: calc(1em + 26px);
-			color: black;
-			color: var(--tocsidebar-text);
-			background: inherit;
-			background-color: #f7f8f9;
-			background-color: var(--tocsidebar-bg);
-			z-index: 1;
-			box-shadow: -.1em 0 .25em rgba(0,0,0,.1) inset;
-			box-shadow: -.1em 0 .25em var(--tocsidebar-shadow) inset;
-		}
-		body:not(.toc-inline) #toc h2 {
-			margin-top: .8rem;
-			font-variant: small-caps;
-			font-variant: all-small-caps;
-			text-transform: lowercase;
-			font-weight: bold;
-			color: gray;
-			color: hsla(203,20%,40%,.7);
-			color: var(--tocsidebar-heading-text);
-		}
-
-		body:not(.toc-inline) {
-			padding-left: 29em;
-		}
-		/* See also Overflow section at the bottom */
-
-		body:not(.toc-inline) #toc-jump:not(:focus) {
-			width: 0;
-			height: 0;
-			padding: 0;
-			position: absolute;
-			overflow: hidden;
-		}
-	}
-	@media screen and (min-width: 90em) {
-		body:not(.toc-inline) {
-			margin: 0 4em;
-		}
-	}
-
-/******************************************************************************/
-/*                                Sectioning                                  */
-/******************************************************************************/
-
-/** Headings ******************************************************************/
-
-	h1, h2, h3, h4, h5, h6, dt {
-		page-break-after: avoid;
-		page-break-inside: avoid;
-		font: 100% sans-serif;   /* Reset all font styling to clear out UA styles */
-		font-family: inherit;	/* Inherit the font family. */
-		line-height: 1.2;		/* Keep wrapped headings compact */
-		hyphens: manual;		/* Hyphenated headings look weird */
-	}
-
-	h2, h3, h4, h5, h6 {
-		margin-top: 3rem;
-	}
-
-	h1, h2, h3 {
-		color: #005A9C;
-		color: var(--heading-text);
-	}
-
-	h1 { font-size: 170%; }
-	h2 { font-size: 140%; }
-	h3 { font-size: 120%; }
-	h4 { font-weight: bold; }
-	h5 { font-style: italic; }
-	h6 { font-variant: small-caps; }
-	dt { font-weight: bold; }
-
-/** Subheadings ***************************************************************/
-
-	h1 + h2,
-	#profile-and-date {
-		/* #profile-and-date is a subtitle in an H2 under the H1 */
-		margin-top: 0;
-	}
-	h2 + h3,
-	h3 + h4,
-	h4 + h5,
-	h5 + h6 {
-		margin-top: 1.2em; /* = 1 x line-height */
-	}
-
-/** Section divider ***********************************************************/
-
-	:not(.head) > :not(.head) + hr {
-		font-size: 1.5em;
-		text-align: center;
-		margin: 1em auto;
-		height: auto;
-		color: black;
-		color: var(--hr-text);
-		border: transparent solid 0;
-		background: transparent;
-	}
-	:not(.head) > hr::before {
-		content: "\2727\2003\2003\2727\2003\2003\2727";
-	}
-
-/******************************************************************************/
-/*                            Paragraphs and Lists                            */
-/******************************************************************************/
-
-	p {
-		margin: 1em 0;
-	}
-
-	dd > p:first-child,
-	li > p:first-child {
-		margin-top: 0;
-	}
-
-	ul, ol {
-		margin-left: 0;
-		padding-left: 2em;
-	}
-
-	li {
-		margin: 0.25em 0 0.5em;
-		padding: 0;
-	}
-
-	dl dd {
-		margin: 0 0 .5em 2em;
-	}
-
-	.head dd + dd { /* compact for header */
-		margin-top: -.5em;
-	}
-
-	/* Style for algorithms */
-	ol.algorithm ol:not(.algorithm),
-	.algorithm > ol ol:not(.algorithm) {
-	border-left: 0.5em solid #DEF;
-	border-left: 0.5em solid var(--algo-border);
-	}
-
-	/* Put nice boxes around each algorithm. */
-	[data-algorithm]:not(.heading) {
-	 padding: .5em;
-	 border: thin solid #ddd;
-	 border: thin solid var(--algo-border);
-	 border-radius: .5em;
-	 margin: .5em calc(-0.5em - 1px);
-	}
-	[data-algorithm]:not(.heading) > :first-child {
-	 margin-top: 0;
-	}
-	[data-algorithm]:not(.heading) > :last-child {
-	 margin-bottom: 0;
-	}
-
-	/* Style for switch/case <dl>s */
-	dl.switch > dd > ol.only,
-	dl.switch > dd > .only > ol {
-	margin-left: 0;
-	}
-	dl.switch > dd > ol.algorithm,
-	dl.switch > dd > .algorithm > ol {
-	margin-left: -2em;
-	}
-	dl.switch {
-	padding-left: 2em;
-	}
-	dl.switch > dt {
-	text-indent: -1.5em;
-	margin-top: 1em;
-	}
-	dl.switch > dt + dt {
-	margin-top: 0;
-	}
-	dl.switch > dt::before {
-	content: '\21AA';
-	padding: 0 0.5em 0 0;
-	display: inline-block;
-	width: 1em;
-	text-align: right;
-	line-height: 0.5em;
-	}
-
-/** Terminology Markup ********************************************************/
-
-
-/******************************************************************************/
-/*                                 Inline Markup                              */
-/******************************************************************************/
-
-/** Terminology Markup ********************************************************/
-	dfn   { /* Defining instance */
-		font-weight: bolder;
-	}
-	a > i { /* Instance of term */
-		font-style: normal;
-	}
-	dt dfn code, code.idl {
-		font-size: inherit;
-	}
-	dfn var {
-		font-style: normal;
-	}
-
-/** Change Marking ************************************************************/
-
-	del {
-		color: #aa0000;
-		color: var(--del-text);
-		background: transparent;
-		background: var(--del-bg);
-		text-decoration: line-through;
-	}
-	ins {
-		color: #006100;
-		color: var(--ins-text);
-		background: transparent;
-		background: var(--ins-bg);
-		text-decoration: underline;
-	}
-
-	/* for amendments (candidate/proposed changes) */
-
-	.amendment ins, .correction ins, .addition ins,
-	ins[class^=c] {
-		text-decoration-style: dotted;
-	}
-	.amendment del, .correction del, .addition del,
-	del[class^=c] {
-		text-decoration-style: dotted;
-	}
-	.amendment.proposed ins, .correction.proposed ins, .addition.proposed ins,
-	ins[class^=c].proposed {
-		text-decoration-style: double;
-	}
-	.amendment.proposed del, .correction.proposed del, .addition.proposed del,
-	del[class^=c].proposed {
-		text-decoration-style: double;
-	}
-
-/** Miscellaneous improvements to inline formatting ***************************/
-
-	sup {
-		vertical-align: super;
-		font-size: 80%
-	}
-
-/******************************************************************************/
-/*                                    Code                                    */
-/******************************************************************************/
-
-/** General monospace/pre rules ***********************************************/
-
-	pre, code, samp {
-		font-family: Menlo, Consolas, "DejaVu Sans Mono", Monaco, monospace;
-		font-size: .9em;
-		hyphens: none;
-		text-transform: none;
-		text-align: left;
-		text-align: start;
-		font-variant: normal;
-		orphans: 3;
-		widows: 3;
-		page-break-before: avoid;
-	}
-	pre code,
-	code code {
-		font-size: 100%;
-	}
-
-	pre {
-		margin-top: 1em;
-		margin-bottom: 1em;
-		overflow: auto;
-	}
-
-/** Inline Code fragments *****************************************************/
-
-	/* Do something nice. */
-
-/******************************************************************************/
-/*                                    Links                                   */
-/******************************************************************************/
-
-/** General Hyperlinks ********************************************************/
-
-	/* We hyperlink a lot, so make it less intrusive */
-	a[href] {
-		color: #034575;
-		color: var(--a-normal-text);
-		text-decoration: underline #707070;
-		text-decoration: underline var(--a-normal-underline);
-		text-decoration-skip-ink: none;
-	}
-	a:visited {
-		color: #034575;
-		color: var(--a-visited-text);
-		text-decoration-color: #bbb;
-		text-decoration-color: var(--a-visited-underline);
-	}
-
-	/* Indicate interaction with the link */
-	a[href]:focus,
-	a[href]:hover {
-		text-decoration-thickness: 2px;
-	}
-	a[href]:active {
-		color: #c00;
-		color: var(--a-active-text);
-		text-decoration-color: #c00;
-		text-decoration-color: var(--a-active-underline);
-	}
-
-	/* Backout above styling for W3C logo */
-	.head .logo,
-	.head .logo a {
-		border: none;
-		text-decoration: none;
-		background: transparent;
-	}
-
-/******************************************************************************/
-/*                                    Images                                  */
-/******************************************************************************/
-
-	img {
-		border-style: none;
-	}
-
-	img, svg {
-		/* Intentionally not color-scheme aware. */
-		background: white;
-	}
-
-	/* For autogen numbers, add
-	  .caption::before, figcaption::before { content: "Figure " counter(figure) ". "; }
-	*/
-
-	figure, .figure, .sidefigure {
-		page-break-inside: avoid;
-		text-align: center;
-		margin: 2.5em 0;
-	}
-	.figure img,	.sidefigure img,	figure img,
-	.figure object, .sidefigure object, figure object {
-		max-width: 100%;
-		margin: auto;
-		height: auto;
-	}
-	.figure pre, .sidefigure pre, figure pre {
-		text-align: left;
-		display: table;
-		margin: 1em auto;
-	}
-	.figure table, figure table {
-		margin: auto;
-	}
-	@media screen and (min-width: 20em) {
-		.sidefigure {
-			float: right;
-			width: 50%;
-			margin: 0 0 0.5em 0.5em;
-		}
-	}
-	.caption, figcaption, caption {
-		font-style: italic;
-		font-size: 90%;
-	}
-	.caption::before, figcaption::before, figcaption > .marker {
-		font-weight: bold;
-	}
-	.caption, figcaption {
-		counter-increment: figure;
-	}
-
-	/* DL list is indented 2em, but figure inside it is not */
-	dd > .figure, dd > figure { margin-left: -2em; }
-
-/******************************************************************************/
-/*                             Colored Boxes                                  */
-/******************************************************************************/
-
-	.issue, .note, .example, .assertion, .advisement, blockquote,
-	.amendment, .correction, .addition {
-		margin: 1em auto;
-		padding: .5em;
-		border: .5em;
-		border-left-style: solid;
-		page-break-inside: avoid;
-	}
-	span.issue, span.note {
-		padding: .1em .5em .15em;
-		border-right-style: solid;
-	}
-
-	blockquote > :first-child,
-	.note  > p:first-child,
-	.issue > p:first-child,
-	.amendment > p:first-child,
-	.correction > p:first-child,
-	.addition > p:first-child {
-		margin-top: 0;
-	}
-	blockquote > :last-child,
-	.note  > p:last-child,
-	.issue > p:last-child,
-	.amendment > p:last-child,
-	.correction > p:last-child,
-	.addition > p:last-child {
-		margin-bottom: 0;
-	}
-
-
-	.issue::before, .issue > .marker,
-	.example::before, .example > .marker,
-	.note::before, .note > .marker,
-	details.note > summary > .marker,
-	.amendment::before, .amendment > .marker,
-	details.amendment > summary > .marker,
-	.addition::before, .addition > .marker,
-	addition.amendment > summary > .marker,
-	.correction::before, .correction > .marker,
-	correction.amendment > summary > .marker
-	{
-		text-transform: uppercase;
-		padding-right: 1em;
-	}
-
-	.example::before, .example > .marker {
-		display: block;
-		padding-right: 0em;
-	}
-
-/** Blockquotes ***************************************************************/
-
-	blockquote {
-		border-color: silver;
-		border-color: var(--blockquote-border);
-		background: transparent;
-		background: var(--blockquote-bg);
-		color: currentcolor;
-		color: var(--blockquote-text);
-	}
-
-/** Open issue ****************************************************************/
-
-	.issue {
-		border-color: #e05252;
-		border-color: var(--issue-border);
-		background: #fbe9e9;
-		background: var(--issue-bg);
-		color: black;
-		color: var(--issue-text);
-		counter-increment: issue;
-		overflow: auto;
-	}
-	.issue::before, .issue > .marker {
-		color: #831616;
-		color: var(--issueheading-text);
-	}
-	/* Add .issue::before { content: "Issue " counter(issue) " "; } for autogen numbers,
-	  or use class="marker" to mark up the issue number in source. */
-
-/** Example *******************************************************************/
-
-	.example {
-		border-color: #e0cb52;
-		border-color: var(--example-border);
-		background: #fcfaee;
-		background: var(--example-bg);
-		color: black;
-		color: var(--example-text);
-		counter-increment: example;
-		overflow: auto;
-		clear: both;
-	}
-	.example::before, .example > .marker {
-		color: #574b0f;
-		color: var(--exampleheading-text);
-	}
-	/* Add .example::before { content: "Example " counter(example) " "; } for autogen numbers,
-	  or use class="marker" to mark up the example number in source. */
-
-/** Non-normative Note ********************************************************/
-
-	.note {
-		border-color: #52e052;
-		border-color: var(--note-border);
-		background: #e9fbe9;
-		background: var(--note-bg);
-		color: black;
-		color: var(--note-text);
-		overflow: auto;
-	}
-
-	.note::before, .note > .marker,
-	details.note > summary {
-		color: hsl(120, 70%, 30%);
-		color: var(--noteheading-text);
-	}
-	/* Add .note::before { content: "Note "; } for autogen label,
-	  or use class="marker" to mark up the label in source. */
-
-	details.note[open] > summary {
-		border-bottom: 1px silver solid;
-		border-bottom: 1px var(--notesummary-underline) solid;
-	}
-
-/** Assertion Box *************************************************************/
-	/*  for assertions in algorithms */
-
-	.assertion {
-		border-color: #AAA;
-		border-color: var(--assertion-border);
-		background: #EEE;
-		background: var(--assertion-bg);
-		color: black;
-		color: var(--assertion-text);
-	}
-
-/** Advisement Box ************************************************************/
-	/*  for attention-grabbing normative statements */
-
-	.advisement {
-		border-color: orange;
-		border-color: var(--advisement-border);
-		border-style: none solid;
-		background: #fec;
-		background: var(--advisement-bg);
-		color: black;
-		color: var(--advisement-text);
-	}
-	strong.advisement {
-		display: block;
-		text-align: center;
-	}
-	.advisement::before, .advisement > .marker {
-		color: #b35f00;
-		color: var(--advisementheading-text);
-	}
-
-/** Amendment Box *************************************************************/
-
-	.amendment, .correction, .addition {
-		border-color: #330099;
-		border-color: var(--amendment-border);
-		background: #F5F0FF;
-		background: var(--amendment-bg);
-		color: black;
-		color: var(--amendment-text);
-	}
-	.amendment.proposed, .correction.proposed, .addition.proposed {
-		border-style: solid;
-		border-block-width: 0.25em;
-	}
-	.amendment::before, .amendment > .marker,
-	details.amendment > summary::before, details.amendment > summary > .marker,
-	.correction::before, .correction > .marker,
-	details.correction > summary::before, details.correction > summary > .marker,
-	.addition::before, .addition > .marker,
-	details.addition > summary::before, details.addition > summary > .marker {
-		color: #220066;
-		color: var(--amendmentheading-text);
-	}
-	.amendment.proposed::before, .amendment.proposed > .marker,
-	details.amendment.proposed > summary::before, details.amendment.proposed > summary > .marker,
-	.correction.proposed::before, .correction.proposed > .marker,
-	details.correction.proposed > summary::before, details.correction.proposed > summary > .marker,
-	.addition.proposed::before, .addition.proposed > .marker,
-	details.addition.proposed > summary::before, details.addition.proposed > summary > .marker {
-		font-weight: bold;
-	}
-
-/** Spec Obsoletion Notice ****************************************************/
-	/* obnoxious obsoletion notice for older/abandoned specs. */
-
-	details {
-		display: block;
-	}
-	summary {
-		font-weight: bolder;
-	}
-
-	.annoying-warning:not(details),
-	details.annoying-warning:not([open]) > summary,
-	details.annoying-warning[open] {
-		background: hsla(40,100%,50%,0.95);
-		background: var(--warning-bg);
-		color: black;
-		color: var(--warning-text);
-		padding: .75em 1em;
-		border: red;
-		border: var(--warning-border);
-		border-style: solid none;
-		box-shadow: 0 2px 8px black;
-		text-align: center;
-	}
-	.annoying-warning :last-child {
-		margin-bottom: 0;
-	}
-
-@media not print {
-	details.annoying-warning[open] {
-		position: fixed;
-		left: 0;
-		right: 0;
-		bottom: 2em;
-		z-index: 1000;
-	}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset=UTF-8 /><meta name=viewport content="width=device-width, initial-scale=1"/><link rel=preconnent href=https://fonts.googleapis.com />
+  <link rel=preconnent href=https://fonts.gstatic.com crossorigin/>
+  <link rel=stylesheet href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&family=Noto+Sans:ital,wght@0,100..900;1,100..900&family=Noto+Serif:ital,wght@0,100..900;1,100..900&display=swap"/>
+  <style>
+html {
+    --sans-serif-family: "Noto Sans", sans-serif;
+    --serif-family: "Noto Serif", serif;
+    --monospace-family: "Fira Code", monospace;
+
+    --light-background-color: white;
+    --light-deep-background-color: #fafafa;
+    --light-text-color: black;
+    --light-border-color: #aaa;
+    --light-table-border-color: #777;
+    --light-del-color: #be1621;
+    --light-del-background-color: #fbe6e8;
+    --light-ins-color: #17752d;
+    --light-ins-background-color: #e4faea;
+    --light-para-color: rgb(10, 73, 136);
+    --light-a-color: rgb(10, 73, 136);
+    --light-a-visited-color: rgb(44, 10, 136);
+    --light-a-hover-color: rgb(15, 93, 170);
+    --light-mark-color: black;
+    --light-mark-background-color: #ffff85;
+    --light-abstract-border-color: #707070;
+    --light-abstract-background-color: #f0f0f0;
+    --light-abstract-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23707070"><path d="M660-160h40v-160h-40v160Zm20-200q8 0 14-6t6-14q0-8-6-14t-14-6q-8 0-14 6t-6 14q0 8 6 14t14 6ZM200-800v640-640 200-200Zm80 400h147q11-23 25.5-43t32.5-37H280v80Zm0 160h123q-3-20-3-40t3-40H280v80ZM200-80q-33 0-56.5-23.5T120-160v-640q0-33 23.5-56.5T200-880h320l240 240v92q-19-6-39-9t-41-3v-40H480v-200H200v640h227q11 23 25.5 43T485-80H200Zm480-400q83 0 141.5 58.5T880-280q0 83-58.5 141.5T680-80q-83 0-141.5-58.5T480-280q0-83 58.5-141.5T680-480Z"/></svg>');
+    --light-blockquote-border-color: #707070;
+    --light-blockquote-background-color: #f0f0f0;
+    --light-blockquote-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="%23707070"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M7.17 17c.51 0 .98-.29 1.2-.74l1.42-2.84c.14-.28.21-.58.21-.89V8c0-.55-.45-1-1-1H5c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h2l-1.03 2.06c-.45.89.2 1.94 1.2 1.94zm10 0c.51 0 .98-.29 1.2-.74l1.42-2.84c.14-.28.21-.58.21-.89V8c0-.55-.45-1-1-1h-4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h2l-1.03 2.06c-.45.89.2 1.94 1.2 1.94z"/></svg>');
+    --light-bug-block-border-color: #9f7b5d;
+    --light-bug-block-background-color: #f0e2d9;
+    --light-bug-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%239f7b5d"><path d="M480-120q-64 0-114.5-33T283-240l-95 54-40-69 103-60q-3-11-5-22.5t-4-22.5H120v-80h122q2-12 4-23.5t5-22.5l-103-60 40-69 94 55q8-14 18.5-27.5T322-612q-2-7-2-14v-14q0-24 7-46t19-41l-66-66 56-57 70 68q17-9 35.5-13.5T480-800q20 0 39 5t36 14l69-69 56 57-66 66q12 19 18.5 41t6.5 46v13.5q0 6.5-2 13.5 11 11 21.5 25t18.5 28l95-54 40 69-104 59q3 11 5.5 22.5T718-440h122v80H718q-2 12-4 23.5t-5 22.5l103 60-40 69-95-55q-32 54-82.5 87T480-120Zm-76-546q17-7 36.5-10.5T480-680q20 0 38.5 3t35.5 10q-8-23-28-38t-46-15q-26 0-47 15.5T404-666Zm76 466q73 0 116.5-61T640-400q0-70-40.5-135T480-600q-78 0-119 64.5T320-400q0 78 43.5 139T480-200Zm-40-80v-240h80v240h-80Z"/></svg>');
+    --light-decision-block-border-color: #ab6fa2;
+    --light-decision-block-background-color: #f4e6f4;
+    --light-decision-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23ab6fa2"><path d="M160-120v-80h480v80H160Zm226-194L160-540l84-86 228 226-86 86Zm254-254L414-796l86-84 226 226-86 86Zm184 408L302-682l56-56 522 522-56 56Z"/></svg>');
+    --light-del-block-border-color: #be1621;
+    --light-del-block-background-color: #fbe6e8;
+    --light-del-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23be1621"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>');
+    --light-details-border-color: #707070;
+    --light-details-background-color: #f0f0f0;
+    --light-details-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23707070"><path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>');
+    --light-diff-block-border-color: #707070;
+    --light-diff-block-background-color: #f0f0f0;
+    --light-diff-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23707070"><path d="M500-520h80v-80h80v-80h-80v-80h-80v80h-80v80h80v80Zm-80 160h240v-80H420v80ZM320-200q-33 0-56.5-23.5T240-280v-560q0-33 23.5-56.5T320-920h280l240 240v400q0 33-23.5 56.5T760-200H320Zm0-80h440v-360L560-840H320v560ZM160-40q-33 0-56.5-23.5T80-120v-560h80v560h440v80H160Zm160-240v-560 560Z"/></svg>');
+    --light-example-block-border-color: #6f8aab;
+    --light-example-block-background-color: #e6e9f4;
+    --light-example-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%236f8aab"><path d="M300-80q-58 0-99-41t-41-99v-520q0-58 41-99t99-41h500v600q-25 0-42.5 17.5T740-220q0 25 17.5 42.5T800-160v80H300Zm-60-267q14-7 29-10t31-3h20v-440h-20q-25 0-42.5 17.5T240-740v393Zm160-13h320v-440H400v440Zm-160 13v-453 453Zm60 187h373q-6-14-9.5-28.5T660-220q0-16 3-31t10-29H300q-26 0-43 17.5T240-220q0 26 17 43t43 17Z"/></svg>');
+    --light-important-block-border-color: #b05252;
+    --light-important-block-background-color: #f4e6e6;
+    --light-important-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23ab6f6f"><path d="M480-120q-33 0-56.5-23.5T400-200q0-33 23.5-56.5T480-280q33 0 56.5 23.5T560-200q0 33-23.5 56.5T480-120Zm-80-240v-480h160v480H400Z"/></svg>');
+    --light-ins-block-border-color: #17752d;
+    --light-ins-block-background-color: #e4faea;
+    --light-ins-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%2317752d"><path d="M440-240h80v-120h120v-80H520v-120h-80v120H320v80h120v120ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v480q0 33-23.5 56.5T720-80H240Zm280-520v-200H240v640h480v-440H520ZM240-800v200-200 640-640Z"/></svg>');
+    --light-note-block-border-color: #6fab6f;
+    --light-note-block-background-color: #e6f4e9;
+    --light-note-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%236fab6f"><path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>');
+    --light-tip-block-border-color: #b0a029;
+    --light-tip-block-background-color: #f4f4e6;
+    --light-tip-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23b0a029"><path d="M480-80q-33 0-56.5-23.5T400-160h160q0 33-23.5 56.5T480-80ZM320-200v-80h320v80H320Zm10-120q-69-41-109.5-110T180-580q0-125 87.5-212.5T480-880q125 0 212.5 87.5T780-580q0 81-40.5 150T630-320H330Zm24-80h252q45-32 69.5-79T700-580q0-92-64-156t-156-64q-92 0-156 64t-64 156q0 54 24.5 101t69.5 79Zm126 0Z"/></svg>');
+    --light-todo-block-border-color: #6faba0;
+    --light-todo-block-background-color: #e6f4f3;
+    --light-todo-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%236faba0"><path d="M680-80q-83 0-141.5-58.5T480-280q0-83 58.5-141.5T680-480q83 0 141.5 58.5T880-280q0 83-58.5 141.5T680-80Zm67-105 28-28-75-75v-112h-40v128l87 87Zm-547 65q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h167q11-35 43-57.5t70-22.5q40 0 71.5 22.5T594-840h166q33 0 56.5 23.5T840-760v250q-18-13-38-22t-42-16v-212h-80v120H280v-120h-80v560h212q7 22 16 42t22 38H200Zm280-640q17 0 28.5-11.5T520-800q0-17-11.5-28.5T480-840q-17 0-28.5 11.5T440-800q0 17 11.5 28.5T480-760Z"/></svg>');
+    --light-warning-block-border-color: #af8141;
+    --light-warning-block-background-color: #f4eee6;
+    --light-warning-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23af8141"><path d="M109-120q-11 0-20-5.5T75-140q-5-9-5.5-19.5T75-180l370-640q6-10 15.5-15t19.5-5q10 0 19.5 5t15.5 15l370 640q6 10 5.5 20.5T885-140q-5 9-14 14.5t-20 5.5H109Zm69-80h604L480-720 178-200Zm302-40q17 0 28.5-11.5T520-280q0-17-11.5-28.5T480-320q-17 0-28.5 11.5T440-280q0 17 11.5 28.5T480-240Zm0-120q17 0 28.5-11.5T520-400v-120q0-17-11.5-28.5T480-560q-17 0-28.5 11.5T440-520v120q0 17 11.5 28.5T480-360Zm0-100Z"/></svg>');
+    --light-theme-icon: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="black"><path d="M480-360q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm0 80q-83 0-141.5-58.5T280-480q0-83 58.5-141.5T480-680q83 0 141.5 58.5T680-480q0 83-58.5 141.5T480-280ZM200-440H40v-80h160v80Zm720 0H760v-80h160v80ZM440-760v-160h80v160h-80Zm0 720v-160h80v160h-80ZM256-650l-101-97 57-59 96 100-52 56Zm492 496-97-101 53-55 101 97-57 59Zm-98-550 97-101 59 57-100 96-56-52ZM154-212l101-97 55 53-97 101-59-57Zm326-268Z"/></svg>');
+
+    --dark-background-color: #202020;
+    --dark-deep-background-color: #1a1a1a;
+    --dark-text-color: #f0f0f0;
+    --dark-border-color: #505050;
+    --dark-table-border-color: #777;
+    --dark-del-background-color: #67060c;
+    --dark-del-color: #ffdcd7;
+    --dark-ins-background-color: #033a16;
+    --dark-ins-color: #aff5b4;
+    --dark-para-color: #5bc0ff;
+    --dark-a-color: #5bc0ff;
+    --dark-a-visited-color: #c6a8ff;
+    --dark-a-hover-color: #afd7ff;
+    --dark-mark-color: #ededa8;
+    --dark-mark-background-color: #525230;
+    --dark-abstract-border-color: #999999;
+    --dark-abstract-background-color: #2c2c2c;
+    --dark-abstract-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23999999"><path d="M660-160h40v-160h-40v160Zm20-200q8 0 14-6t6-14q0-8-6-14t-14-6q-8 0-14 6t-6 14q0 8 6 14t14 6ZM200-800v640-640 200-200Zm80 400h147q11-23 25.5-43t32.5-37H280v80Zm0 160h123q-3-20-3-40t3-40H280v80ZM200-80q-33 0-56.5-23.5T120-160v-640q0-33 23.5-56.5T200-880h320l240 240v92q-19-6-39-9t-41-3v-40H480v-200H200v640h227q11 23 25.5 43T485-80H200Zm480-400q83 0 141.5 58.5T880-280q0 83-58.5 141.5T680-80q-83 0-141.5-58.5T480-280q0-83 58.5-141.5T680-480Z"/></svg>');
+    --dark-blockquote-border-color: #707070;
+    --dark-blockquote-background-color: #2c2c2c;
+    --dark-blockquote-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="%23707070"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M7.17 17c.51 0 .98-.29 1.2-.74l1.42-2.84c.14-.28.21-.58.21-.89V8c0-.55-.45-1-1-1H5c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h2l-1.03 2.06c-.45.89.2 1.94 1.2 1.94zm10 0c.51 0 .98-.29 1.2-.74l1.42-2.84c.14-.28.21-.58.21-.89V8c0-.55-.45-1-1-1h-4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h2l-1.03 2.06c-.45.89.2 1.94 1.2 1.94z"/></svg>');
+    --dark-bug-block-border-color: #ab866f;
+    --dark-bug-block-background-color: #373028;
+    --dark-bug-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23ab866f"><path d="M480-120q-64 0-114.5-33T283-240l-95 54-40-69 103-60q-3-11-5-22.5t-4-22.5H120v-80h122q2-12 4-23.5t5-22.5l-103-60 40-69 94 55q8-14 18.5-27.5T322-612q-2-7-2-14v-14q0-24 7-46t19-41l-66-66 56-57 70 68q17-9 35.5-13.5T480-800q20 0 39 5t36 14l69-69 56 57-66 66q12 19 18.5 41t6.5 46v13.5q0 6.5-2 13.5 11 11 21.5 25t18.5 28l95-54 40 69-104 59q3 11 5.5 22.5T718-440h122v80H718q-2 12-4 23.5t-5 22.5l103 60-40 69-95-55q-32 54-82.5 87T480-120Zm-76-546q17-7 36.5-10.5T480-680q20 0 38.5 3t35.5 10q-8-23-28-38t-46-15q-26 0-47 15.5T404-666Zm76 466q73 0 116.5-61T640-400q0-70-40.5-135T480-600q-78 0-119 64.5T320-400q0 78 43.5 139T480-200Zm-40-80v-240h80v240h-80Z"/></svg>');
+    --dark-details-border-color: #707070;
+    --dark-details-background-color: #2c2c2c;
+    --dark-details-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23707070"><path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>');
+    --dark-decision-block-border-color: #ab6fa2;
+    --dark-decision-block-background-color: #30232d;
+    --dark-decision-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23ab6fa2"><path d="M160-120v-80h480v80H160Zm226-194L160-540l84-86 228 226-86 86Zm254-254L414-796l86-84 226 226-86 86Zm184 408L302-682l56-56 522 522-56 56Z"/></svg>');
+    --dark-del-block-border-color: #be5e64;
+    --dark-del-block-background-color: #302323;
+    --dark-del-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23be5e64"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>');
+    --dark-diff-block-border-color: #707070;
+    --dark-diff-block-background-color: #2c2c2c;
+    --dark-diff-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23707070"><path d="M500-520h80v-80h80v-80h-80v-80h-80v80h-80v80h80v80Zm-80 160h240v-80H420v80ZM320-200q-33 0-56.5-23.5T240-280v-560q0-33 23.5-56.5T320-920h280l240 240v400q0 33-23.5 56.5T760-200H320Zm0-80h440v-360L560-840H320v560ZM160-40q-33 0-56.5-23.5T80-120v-560h80v560h440v80H160Zm160-240v-560 560Z"/></svg>');
+    --dark-example-block-border-color: #6f81ab;
+    --dark-example-block-background-color: #232630;
+    --dark-example-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%236f81ab"><path d="M300-80q-58 0-99-41t-41-99v-520q0-58 41-99t99-41h500v600q-25 0-42.5 17.5T740-220q0 25 17.5 42.5T800-160v80H300Zm-60-267q14-7 29-10t31-3h20v-440h-20q-25 0-42.5 17.5T240-740v393Zm160-13h320v-440H400v440Zm-160 13v-453 453Zm60 187h373q-6-14-9.5-28.5T660-220q0-16 3-31t10-29H300q-26 0-43 17.5T240-220q0 26 17 43t43 17Z"/></svg>');
+    --dark-important-block-border-color: #b06262;
+    --dark-important-block-background-color: #302323;
+    --dark-important-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23b06262"><path d="M480-120q-33 0-56.5-23.5T400-200q0-33 23.5-56.5T480-280q33 0 56.5 23.5T560-200q0 33-23.5 56.5T480-120Zm-80-240v-480h160v480H400Z"/></svg>');
+    --dark-ins-block-border-color: #5bab6d;
+    --dark-ins-block-background-color: #233023;
+    --dark-ins-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%235bab6d"><path d="M440-240h80v-120h120v-80H520v-120h-80v120H320v80h120v120ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v480q0 33-23.5 56.5T720-80H240Zm280-520v-200H240v640h480v-440H520ZM240-800v200-200 640-640Z"/></svg>');
+    --dark-note-block-border-color: #6fab76;
+    --dark-note-block-background-color: #233025;
+    --dark-note-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%236fab76"><path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>');
+    --dark-tip-block-border-color: #a2ab6f;
+    --dark-tip-block-background-color: #2f3023;
+    --dark-tip-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23a2ab6f"><path d="M480-80q-33 0-56.5-23.5T400-160h160q0 33-23.5 56.5T480-80ZM320-200v-80h320v80H320Zm10-120q-69-41-109.5-110T180-580q0-125 87.5-212.5T480-880q125 0 212.5 87.5T780-580q0 81-40.5 150T630-320H330Zm24-80h252q45-32 69.5-79T700-580q0-92-64-156t-156-64q-92 0-156 64t-64 156q0 54 24.5 101t69.5 79Zm126 0Z"/></svg>');
+    --dark-todo-block-border-color: #6fab98;
+    --dark-todo-block-background-color: #23302e;
+    --dark-todo-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%236fab98"><path d="M680-80q-83 0-141.5-58.5T480-280q0-83 58.5-141.5T680-480q83 0 141.5 58.5T880-280q0 83-58.5 141.5T680-80Zm67-105 28-28-75-75v-112h-40v128l87 87Zm-547 65q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h167q11-35 43-57.5t70-22.5q40 0 71.5 22.5T594-840h166q33 0 56.5 23.5T840-760v250q-18-13-38-22t-42-16v-212h-80v120H280v-120h-80v560h212q7 22 16 42t22 38H200Zm280-640q17 0 28.5-11.5T520-800q0-17-11.5-28.5T480-840q-17 0-28.5 11.5T440-800q0 17 11.5 28.5T480-760Z"/></svg>');
+    --dark-warning-block-border-color: #ab9c6f;
+    --dark-warning-block-background-color: #302b23;
+    --dark-warning-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23ab9c6f"><path d="M109-120q-11 0-20-5.5T75-140q-5-9-5.5-19.5T75-180l370-640q6-10 15.5-15t19.5-5q10 0 19.5 5t15.5 15l370 640q6 10 5.5 20.5T885-140q-5 9-14 14.5t-20 5.5H109Zm69-80h604L480-720 178-200Zm302-40q17 0 28.5-11.5T520-280q0-17-11.5-28.5T480-320q-17 0-28.5 11.5T440-280q0 17 11.5 28.5T480-240Zm0-120q17 0 28.5-11.5T520-400v-120q0-17-11.5-28.5T480-560q-17 0-28.5 11.5T440-520v120q0 17 11.5 28.5T480-360Zm0-100Z"/></svg>');
+    --dark-theme-icon: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%23f0f0f0"><path d="M480-120q-150 0-255-105T120-480q0-150 105-255t255-105q14 0 27.5 1t26.5 3q-41 29-65.5 75.5T444-660q0 90 63 153t153 63q55 0 101-24.5t75-65.5q2 13 3 26.5t1 27.5q0 150-105 255T480-120Zm0-80q88 0 158-48.5T740-375q-20 5-40 8t-40 3q-123 0-209.5-86.5T364-660q0-20 3-40t8-40q-78 32-126.5 102T200-480q0 116 82 198t198 82Zm-10-270Z"/></svg>');
+
+    --indent: 2.5em;
+    --border-radius: 0.25em;
 }
 
-	details.annoying-warning:not([open]) > summary {
-		text-align: center;
-	}
-
-/** Entity Definition Boxes ***************************************************/
-
-	.def {
-		padding: .5em 1em;
-		background: #def;
-		background: var(--def-bg);
-		margin: 1.2em 0;
-		border-left: 0.5em solid #8ccbf2;
-		border-left: 0.5em solid var(--def-border);
-		color: black;
-		color: var(--def-text);
-	}
-
-/******************************************************************************/
-/*                                    Tables                                  */
-/******************************************************************************/
-
-	th, td {
-		text-align: left;
-		text-align: start;
-	}
-
-/** Property/Descriptor Definition Tables *************************************/
-
-	table.def {
-		/* inherits .def box styling, see above */
-		width: 100%;
-		border-spacing: 0;
-	}
-
-	table.def td,
-	table.def th {
-		padding: 0.5em;
-		vertical-align: baseline;
-		border-bottom: 1px solid #bbd7e9;
-		border-bottom: 1px solid var(--defrow-border);
-	}
-
-	table.def > tbody > tr:last-child th,
-	table.def > tbody > tr:last-child td {
-		border-bottom: 0;
-	}
-
-	table.def th {
-		font-style: italic;
-		font-weight: normal;
-		padding-left: 1em;
-		width: 3em;
-	}
-
-	/* For when values are extra-complex and need formatting for readability */
-	table td.pre {
-		white-space: pre-wrap;
-	}
-
-	/* A footnote at the bottom of a def table */
-	table.def td.footnote {
-		padding-top: 0.6em;
-	}
-	table.def td.footnote::before {
-		content: " ";
-		display: block;
-		height: 0.6em;
-		width: 4em;
-		border-top: thin solid;
-	}
-
-/** Data tables (and properly marked-up index tables) *************************/
-	/*
-		<table class="data"> highlights structural relationships in a table
-		when correct markup is used (e.g. thead/tbody, th vs. td, scope attribute)
-
-		Use class="complex data" for particularly complicated tables --
-		(This will draw more lines: busier, but clearer.)
-
-		Use class="long" on table cells with paragraph-like contents
-		(This will adjust text alignment accordingly.)
-		Alternately use class="longlastcol" on tables, to have the last column assume "long".
-	*/
-
-	table {
-		word-wrap: normal;
-		overflow-wrap: normal;
-		hyphens: manual;
-	}
-
-	table.data,
-	table.index {
-		margin: 1em auto;
-		border-collapse: collapse;
-		border: hidden;
-		width: 100%;
-	}
-	table.data caption,
-	table.index caption {
-		max-width: 50em;
-		margin: 0 auto 1em;
-	}
-
-	table.data td,  table.data th,
-	table.index td, table.index th {
-		padding: 0.5em 1em;
-		border-width: 1px;
-		border-color: silver;
-		border-color: var(--datacell-border);
-		border-top-style: solid;
-	}
-
-	table.data thead td:empty {
-		padding: 0;
-		border: 0;
-	}
-
-	table.data  thead,
-	table.index thead,
-	table.data  tbody,
-	table.index tbody {
-		border-bottom: 2px solid;
-	}
-
-	table.data colgroup,
-	table.index colgroup {
-		border-left: 2px solid;
-	}
-
-	table.data  tbody th:first-child,
-	table.index tbody th:first-child  {
-		border-right: 2px solid;
-		border-top: 1px solid silver;
-		border-top: 1px solid var(--datacell-border);
-		padding-right: 1em;
-	}
-
-	table.data th[colspan],
-	table.data td[colspan] {
-		text-align: center;
-	}
-
-	table.complex.data th,
-	table.complex.data td {
-		border: 1px solid silver;
-		border: 1px solid var(--datacell-border);
-		text-align: center;
-	}
-
-	table.data.longlastcol td:last-child,
-	table.data td.long {
-		vertical-align: baseline;
-		text-align: left;
-	}
-
-	table.data img {
-		vertical-align: middle;
-	}
-
-
-/*
-Alternate table alignment rules
-
-	table.data,
-	table.index {
-		text-align: center;
-	}
-
-	table.data  thead th[scope="row"],
-	table.index thead th[scope="row"] {
-		text-align: right;
-	}
-
-	table.data  tbody th:first-child,
-	table.index tbody th:first-child  {
-		text-align: right;
-	}
-
-Possible extra rowspan handling
-
-	table.data  tbody th[rowspan]:not([rowspan='1']),
-	table.index tbody th[rowspan]:not([rowspan='1']),
-	table.data  tbody td[rowspan]:not([rowspan='1']),
-	table.index tbody td[rowspan]:not([rowspan='1']) {
-		border-left: 1px solid silver;
-	}
-
-	table.data  tbody th[rowspan]:first-child,
-	table.index tbody th[rowspan]:first-child,
-	table.data  tbody td[rowspan]:first-child,
-	table.index tbody td[rowspan]:first-child{
-		border-left: 0;
-		border-right: 1px solid silver;
-	}
-*/
-
-/******************************************************************************/
-/*                                  Indices                                   */
-/******************************************************************************/
-
-
-/** Table of Contents *********************************************************/
-
-	.toc a {
-		/* More spacing; use padding to make it part of the click target. */
-		padding: 0.1rem 1px 0;
-		/* Larger, more consistently-sized click target */
-		display: block;
-		/* Switch to using border-bottom for underlines */
-		text-decoration: none;
-		border-bottom: 1px solid;
-		/* Reverse color scheme */
-		color: black;
-		color: var(--toclink-text);
-		border-color: #3980b5;
-		border-color: var(--toclink-underline);
-	}
-	.toc a:visited {
-		color: black;
-		color: var(--toclink-visited-text);
-		border-color: #054572;
-		border-color: var(--toclink-visited-underline);
-	}
-	.toc a:focus,
-	.toc a:hover {
-		background: rgba(75%, 75%, 75%, .25);
-		background: var(--a-hover-bg);
-		border-bottom-width: 3px;
-		margin-bottom: -2px;
-	}
-	.toc a:not(:focus):not(:hover) {
-		/* Allow colors to cascade through from link styling */
-		border-bottom-color: transparent;
-	}
-
-	.toc, .toc ol, .toc ul, .toc li {
-		list-style: none; /* Numbers must be inlined into source */
-		/* because generated content isn't search/selectable and markers can't do multilevel yet */
-		margin:  0;
-		padding: 0;
-	}
-	.toc {
-		line-height: 1.1em;
-	}
-
-	/* ToC not indented until third level, but font style & margins show hierarchy */
-	.toc > li			{ font-weight: bold;   }
-	.toc > li li		 { font-weight: normal; }
-	.toc > li li li	  { font-size:   95%;	}
-	.toc > li li li li	{ font-size:   90%;	}
-	.toc > li li li li li { font-size:   85%;	}
-
-	/* @supports not (display:grid) { */
-		.toc > li			{ margin: 1.5rem 0;	}
-		.toc > li li		 { margin: 0.3rem 0;	}
-		.toc > li li li	  { margin-left: 2rem;   }
-
-		/* Section numbers in a column of their own */
-		.toc .secno {
-			float: left;
-			width: 4rem;
-			white-space: nowrap;
-		}
-		.toc > li li li li .secno { font-size: 85%; }
-		.toc > li li li li li .secno { font-size: 100%; }
-
-		.toc li {
-			clear: both;
-		}
-
-		:not(li) > .toc			 { margin-left:  5rem; }
-		.toc .secno				 { margin-left: -5rem; }
-		.toc > li li li .secno	  { margin-left: -7rem; }
-		.toc > li li li li .secno	{ margin-left: -9rem; }
-		.toc > li li li li li .secno { margin-left: -11rem; }
-
-		/* Tighten up indentation in narrow ToCs */
-		@media (max-width: 30em) {
-			:not(li) > .toc			 { margin-left:  4rem; }
-			.toc .secno				 { margin-left: -4rem; }
-			.toc > li li li			 { margin-left:  1rem; }
-			.toc > li li li .secno	  { margin-left: -5rem; }
-			.toc > li li li li .secno	{ margin-left: -6rem; }
-			.toc > li li li li li .secno { margin-left: -7rem; }
-		}
-		/* Loosen it on wide screens */
-		@media screen and (min-width: 78em) {
-			body:not(.toc-inline) :not(li) > .toc			 { margin-left:  4rem; }
-			body:not(.toc-inline) .toc .secno				 { margin-left: -4rem; }
-			body:not(.toc-inline) .toc > li li li			 { margin-left:  1rem; }
-			body:not(.toc-inline) .toc > li li li .secno	  { margin-left: -5rem; }
-			body:not(.toc-inline) .toc > li li li li .secno	{ margin-left: -6rem; }
-			body:not(.toc-inline) .toc > li li li li li .secno { margin-left: -7rem; }
-	}
-	/* } */
-
-	@supports (display:grid) and (display:contents) {
-		/* Use #toc over .toc to override non-@supports rules. */
-		#toc {
-			display: grid;
-			align-content: start;
-			grid-template-columns: auto 1fr;
-			grid-column-gap: 1rem;
-			column-gap: 1rem;
-			grid-row-gap: .6rem;
-			row-gap: .6rem;
-		}
-		#toc h2 {
-			grid-column: 1 / -1;
-			margin-bottom: 0;
-		}
-		#toc ol,
-		#toc li,
-		#toc a {
-			display: contents;
-			/* Switch <a> to subgrid when supported */
-		}
-		#toc span {
-			margin: 0;
-		}
-		#toc > .toc > li > a > span {
-			/* The spans of the top-level list,
-			  comprising the first items of each top-level section. */
-			margin-top: 1.1rem;
-		}
-		#toc#toc .secno { /* Ugh, need more specificity to override base.css */
-			grid-column: 1;
-			width: auto;
-			margin-left: 0;
-		}
-		#toc .content {
-			grid-column: 2;
-			width: auto;
-			margin-right: 1rem;
-			border-bottom: 3px solid transparent;
-			margin-bottom: -3px;
-		}
-		#toc .content:hover,
-		#toc .content:focus {
-			background: rgba(75%, 75%, 75%, .25);
-			background: var(--a-hover-bg);
-			border-bottom-color: #054572;
-			border-bottom-color: var(--toclink-underline);
-		}
-		#toc li li li .content {
-			margin-left: 1rem;
-		}
-		#toc li li li li .content {
-			margin-left: 2rem;
-		}
-	}
-
-
-/** Index *********************************************************************/
-
-	/* Index Lists: Layout */
-	ul.index	  { margin-left: 0; columns: 15em; text-indent: 1em hanging; }
-	ul.index li	{ margin-left: 0; list-style: none; break-inside: avoid; }
-	ul.index li li { margin-left: 1em; }
-	ul.index dl	{ margin-top: 0; }
-	ul.index dt	{ margin: .2em 0 .2em 20px;}
-	ul.index dd	{ margin: .2em 0 .2em 40px;}
-	/* Index Lists: Typography */
-	ul.index ul,
-	ul.index dl { font-size: smaller; }
-	@media not print {
-		ul.index li a + span {
-			white-space: nowrap;
-			color: transparent; }
-		ul.index li a:hover + span,
-		ul.index li a:focus + span {
-			color: #707070;
-			color: var(--indexinfo-text);
-		}
-	}
-
-/** Index Tables *****************************************************/
-	/* See also the data table styling section, which this effectively subclasses */
-
-	table.index {
-		font-size: small;
-		border-collapse: collapse;
-		border-spacing: 0;
-		text-align: left;
-		margin: 1em 0;
-	}
-
-	table.index td,
-	table.index th {
-		padding: 0.4em;
-	}
-
-	table.index tr:hover td:not([rowspan]),
-	table.index tr:hover th:not([rowspan]) {
-		color: black;
-		color: var(--indextable-hover-text);
-		background: #f7f8f9;
-		background: var(--indextable-hover-bg);
-	}
-
-	/* The link in the first column in the property table (formerly a TD) */
-	table.index th:first-child a {
-		font-weight: bold;
-	}
-
-/** Outdated warning **********************************************************/
-
-.outdated-spec {
-	color: black;
-	color: var(--outdatedspec-text);
-	background-color: rgba(0,0,0,0.5);
-	background-color: var(--outdatedspec-bg);
-}
-
-.outdated-warning {
-	position: fixed;
-	bottom: 50%;
-	left: 0;
-	right: 0;
-	margin: 0 auto;
-	width: 50%;
-	background: maroon;
-	background: var(--outdated-bg);
-	color: white;
-	color: var(--outdated-text);
-	border-radius: 1em;
-	box-shadow: 0 0 1em red;
-	box-shadow: 0 0 1em var(--outdated-shadow);
-	padding: 2em;
-	text-align: center;
-	z-index: 2;
-}
-
-.outdated-warning a {
-	color: currentcolor;
-	background: transparent;
-}
-
-.edited-rec-warning {
-	background: darkorange;
-	background: var(--editedrec-bg);
-	box-shadow: 0 0 1em;
-}
-
-.outdated-warning button {
-	color: var(--outdated-text);
-	border-radius: 1em;
-	box-shadow: 0 0 1em red;
-	box-shadow: 0 0 1em var(--outdated-shadow);
-	padding: 2em;
-	text-align: center;
-	z-index: 2;
-}
-
-.outdated-warning a {
-	color: currentcolor;
-	background: transparent;
-}
-
-.edited-rec-warning {
-	background: darkorange;
-	background: var(--editedrec-bg);
-	box-shadow: 0 0 1em;
-}
-
-.outdated-warning button {
-	position: absolute;
-	top: 0;
-	right:0;
-	margin: 0;
-	border: 0;
-	padding: 0.25em 0.5em;
-	background: transparent;
-	color: white;
-	color: var(--outdated-text);
-	font:1em sans-serif;
-	text-align:center;
-}
-
-.outdated-warning span {
-	display: block;
-}
-
-.outdated-collapsed {
-	bottom: 0;
-	border-radius: 0;
-	width: 100%;
-	padding: 0;
-}
-
-/******************************************************************************/
-/*                                    Print                                   */
-/******************************************************************************/
-
-	@media print {
-		/* Pages have their own margins. */
-		html {
-			margin: 0;
-		}
-		/* Serif for print. */
-		body {
-			font-family: serif;
-		}
-
-		.outdated-warning {
-			position: absolute;
-			border-style: solid;
-			border-color: red;
-		}
-
-		.outdated-warning input {
-			display: none;
-		}
-	}
-	@page {
-		margin: 1.5cm 1.1cm;
-	}
-
-
-
-/******************************************************************************/
-/*                             Overflow Control                               */
-/******************************************************************************/
-
-	.figure .caption, .sidefigure .caption, figcaption {
-		/* in case figure is overlarge, limit caption to 50em */
-		max-width: 50rem;
-		margin-left: auto;
-		margin-right: auto;
-	}
-	.overlarge {
-		/* Magic to create good item positioning:
-		  "content column" is 50ems wide at max; less on smaller screens.
-		  Extra space (after ToC + content) is empty on the right.
-
-		  1. When item < content column, centers item in column.
-		  2. When content < item < available, left-aligns.
-		  3. When item > available, fills available + scroll bar.
-		*/
-		display: grid;
-		grid-template-columns: minmax(0, 50em);
-	}
-	.overlarge > table {
-		/* limit preferred width of table */
-		max-width: 50em;
-		margin-left: auto;
-		margin-right: auto;
-	}
-
-	@media (min-width: 55em) {
-		.overlarge {
-			margin-right: calc(13px + 26.5rem - 50vw);
-			max-width: none;
-		}
-	}
-	@media screen and (min-width: 78em) {
-		body:not(.toc-inline) .overlarge {
-			/* 30.5em body padding 50em content area */
-			margin-right: calc(40em - 50vw) !important;
-		}
-	}
-	@media screen and (min-width: 90em) {
-		body:not(.toc-inline) .overlarge {
-			/* 4em html margin 30.5em body padding 50em content area */
-			margin-right: calc(84.5em - 100vw) !important;
-		}
-	}
-
-	@media not print {
-		.overlarge {
-			overflow-x: auto;
-			/* See Lea Verou's explanation background-attachment:
-			* http://lea.verou.me/2012/04/background-attachment-local/
-			*
-			background: top left  / 4em 100% linear-gradient(to right,  #ffffff, rgba(255, 255, 255, 0)) local,
-						top right / 4em 100% linear-gradient(to left, #ffffff, rgba(255, 255, 255, 0)) local,
-						top left  / 1em 100% linear-gradient(to right,  #c3c3c5, rgba(195, 195, 197, 0)) scroll,
-						top right / 1em 100% linear-gradient(to left, #c3c3c5, rgba(195, 195, 197, 0)) scroll,
-						white;
-			background-repeat: no-repeat;
-			*/
-		}
-	}
-</style>
-<style>
-    table, th, td {
-      border: 1px solid black;
-      border-collapse: collapse;
-      vertical-align: top;
+/* BEGIN LIGHT AND DARK THEME */
+
+@media (prefers-color-scheme: light) {
+    html {
+        --background-color: var(--light-background-color);
+        --deep-background-color: var(--light-deep-background-color);
+        --text-color: var(--light-text-color);
+        --border-color: var(--light-border-color);
+        --table-border-color: var(--light-table-border-color);
+        --del-color: var(--light-del-color);
+        --del-background-color: var(--light-del-background-color);
+        --ins-color: var(--light-ins-color);
+        --ins-background-color: var(--light-ins-background-color);
+        --para-color: var(--light-para-color);
+        --a-color: var(--light-a-color);
+        --a-visited-color: var(--light-a-visited-color);
+        --a-hover-color: var(--light-a-hover-color);
+        --mark-color: var(--light-mark-color);
+        --mark-background-color: var(--light-mark-background-color);
+        --abstract-border-color: var(--light-abstract-border-color);
+        --abstract-background-color: var(--light-abstract-background-color);
+        --abstract-image: var(--light-abstract-image);
+        --blockquote-border-color: var(--light-blockquote-border-color);
+        --blockquote-background-color: var(--light-blockquote-background-color);
+        --blockquote-image: var(--light-blockquote-image);
+        --bug-block-border-color: var(--light-bug-block-border-color);
+        --bug-block-background-color: var(--light-bug-block-background-color);
+        --bug-block-image: var(--light-bug-block-image);
+        --decision-block-border-color: var(--light-decision-block-border-color);
+        --decision-block-background-color: var(--light-decision-block-background-color);
+        --decision-block-image: var(--light-decision-block-image);
+        --del-block-border-color: var(--light-del-block-border-color);
+        --del-block-background-color: var(--light-del-block-background-color);
+        --del-block-image: var(--light-del-block-image);
+        --details-border-color: var(--light-details-border-color);
+        --details-background-color: var(--light-details-background-color);
+        --details-image: var(--light-details-image);
+        --diff-block-border-color: var(--light-diff-block-border-color);
+        --diff-block-background-color: var(--light-diff-block-background-color);
+        --diff-block-image: var(--light-diff-block-image);
+        --example-block-border-color: var(--light-example-block-border-color);
+        --example-block-background-color: var(--light-example-block-background-color);
+        --example-block-image: var(--light-example-block-image);
+        --important-block-border-color: var(--light-important-block-border-color);
+        --important-block-background-color: var(--light-important-block-background-color);
+        --important-block-image: var(--light-important-block-image);
+        --ins-block-border-color: var(--light-ins-block-border-color);
+        --ins-block-background-color: var(--light-ins-block-background-color);
+        --ins-block-image: var(--light-ins-block-image);
+        --note-block-border-color: var(--light-note-block-border-color);
+        --note-block-background-color: var(--light-note-block-background-color);
+        --note-block-image: var(--light-note-block-image);
+        --tip-block-border-color: var(--light-tip-block-border-color);
+        --tip-block-background-color: var(--light-tip-block-background-color);
+        --tip-block-image: var(--light-tip-block-image);
+        --todo-block-border-color: var(--light-todo-block-border-color);
+        --todo-block-background-color: var(--light-todo-block-background-color);
+        --todo-block-image: var(--light-todo-block-image);
+        --warning-block-border-color: var(--light-warning-block-border-color);
+        --warning-block-background-color: var(--light-warning-block-background-color);
+        --warning-block-image: var(--light-warning-block-image);
+        --theme-icon: var(--light-theme-icon);
     }
-    th, td {
-      border-left: none;
-      border-right: none;
-      padding: 0px 10px;
-    }
-    th {
-      text-align: center;
-    }
-
-    del { background: #fcc; color: #000; text-decoration: line-through; }
-    ins { background: #cfc; color: #000; }
-    blockquote .highlight:not(.idl) { background: initial; margin: initial; padding: 0.5em }
-    blockquote ul { background: inherit; }
-    blockquote code.highlight:not(.idl) { padding: initial; }
-    blockquote c-[a] { color: inherit; } /* Keyword.Declaration */
-    blockquote c-[b] { color: inherit; } /* Keyword.Type */
-    blockquote c-[c] { color: inherit; } /* Comment */
-    blockquote c-[d] { color: inherit; } /* Comment.Multiline */
-    blockquote c-[e] { color: inherit; } /* Name.Attribute */
-    blockquote c-[f] { color: inherit; } /* Name.Tag */
-    blockquote c-[g] { color: inherit; } /* Name.Variable */
-    blockquote c-[k] { color: inherit; } /* Keyword */
-    blockquote c-[l] { color: inherit; } /* Literal */
-    blockquote c-[m] { color: inherit; } /* Literal.Number */
-    blockquote c-[n] { color: inherit; } /* Name */
-    blockquote c-[o] { color: inherit; } /* Operator */
-    blockquote c-[p] { color: inherit; } /* Punctuation */
-    blockquote c-[s] { color: inherit; } /* Literal.String */
-    blockquote c-[t] { color: inherit; } /* Literal.String.Single */
-    blockquote c-[u] { color: inherit; } /* Literal.String.Double */
-    blockquote c-[cp] { color: inherit; } /* Comment.Preproc */
-    blockquote c-[c1] { color: inherit; } /* Comment.Single */
-    blockquote c-[cs] { color: inherit; } /* Comment.Special */
-    blockquote c-[kc] { color: inherit; } /* Keyword.Constant */
-    blockquote c-[kn] { color: inherit; } /* Keyword.Namespace */
-    blockquote c-[kp] { color: inherit; } /* Keyword.Pseudo */
-    blockquote c-[kr] { color: inherit; } /* Keyword.Reserved */
-    blockquote c-[ld] { color: inherit; } /* Literal.Date */
-    blockquote c-[nc] { color: inherit; } /* Name.Class */
-    blockquote c-[no] { color: inherit; } /* Name.Constant */
-    blockquote c-[nd] { color: inherit; } /* Name.Decorator */
-    blockquote c-[ni] { color: inherit; } /* Name.Entity */
-    blockquote c-[ne] { color: inherit; } /* Name.Exception */
-    blockquote c-[nf] { color: inherit; } /* Name.Function */
-    blockquote c-[nl] { color: inherit; } /* Name.Label */
-    blockquote c-[nn] { color: inherit; } /* Name.Namespace */
-    blockquote c-[py] { color: inherit; } /* Name.Property */
-    blockquote c-[ow] { color: inherit; } /* Operator.Word */
-    blockquote c-[mb] { color: inherit; } /* Literal.Number.Bin */
-    blockquote c-[mf] { color: inherit; } /* Literal.Number.Float */
-    blockquote c-[mh] { color: inherit; } /* Literal.Number.Hex */
-    blockquote c-[mi] { color: inherit; } /* Literal.Number.Integer */
-    blockquote c-[mo] { color: inherit; } /* Literal.Number.Oct */
-    blockquote c-[sb] { color: inherit; } /* Literal.String.Backtick */
-    blockquote c-[sc] { color: inherit; } /* Literal.String.Char */
-    blockquote c-[sd] { color: inherit; } /* Literal.String.Doc */
-    blockquote c-[se] { color: inherit; } /* Literal.String.Escape */
-    blockquote c-[sh] { color: inherit; } /* Literal.String.Heredoc */
-    blockquote c-[si] { color: inherit; } /* Literal.String.Interpol */
-    blockquote c-[sx] { color: inherit; } /* Literal.String.Other */
-    blockquote c-[sr] { color: inherit; } /* Literal.String.Regex */
-    blockquote c-[ss] { color: inherit; } /* Literal.String.Symbol */
-    blockquote c-[vc] { color: inherit; } /* Name.Variable.Class */
-    blockquote c-[vg] { color: inherit; } /* Name.Variable.Global */
-    blockquote c-[vi] { color: inherit; } /* Name.Variable.Instance */
-    blockquote c-[il] { color: inherit; } /* Literal.Number.Integer.Long */
-  </style>
-  <meta content="Bikeshed version 4416b18d5, updated Tue Jan 2 15:52:39 2024 -0800" name="generator">
-  <link href="https://eisenwave.github.io/cpp-proposals/more-bitset-operations.html" rel="canonical">
-  <link href="https://isocpp.org/favicon.ico" rel="icon">
-  <meta content="d9dff42b0e23cdf907263cc600f81260f5f880e9" name="revision">
-<style>
-th {
-    text-align: left;
-}
-</style>
-<style>
-blockquote p {
-    margin-left: 2em;
-}
-
-ins {
-    background: rgba(136, 255, 93, 0.2);
-    color: inherit;
-    text-decoration: none;
-}
-del {
-    background: rgba(255, 93, 93, 0.2);
-    color: inherit;
-    text-decoration: strikethrough;
-}
-</style>
-<style>/* Boilerplate: style-autolinks */
-.css.css, .property.property, .descriptor.descriptor {
-    color: var(--a-normal-text);
-    font-size: inherit;
-    font-family: inherit;
-}
-.css::before, .property::before, .descriptor::before {
-    content: "‘";
-}
-.css::after, .property::after, .descriptor::after {
-    content: "’";
-}
-.property, .descriptor {
-    /* Don't wrap property and descriptor names */
-    white-space: nowrap;
-}
-.type { /* CSS value <type> */
-    font-style: italic;
-}
-pre .property::before, pre .property::after {
-    content: "";
-}
-[data-link-type="property"]::before,
-[data-link-type="propdesc"]::before,
-[data-link-type="descriptor"]::before,
-[data-link-type="value"]::before,
-[data-link-type="function"]::before,
-[data-link-type="at-rule"]::before,
-[data-link-type="selector"]::before,
-[data-link-type="maybe"]::before {
-    content: "‘";
-}
-[data-link-type="property"]::after,
-[data-link-type="propdesc"]::after,
-[data-link-type="descriptor"]::after,
-[data-link-type="value"]::after,
-[data-link-type="function"]::after,
-[data-link-type="at-rule"]::after,
-[data-link-type="selector"]::after,
-[data-link-type="maybe"]::after {
-    content: "’";
-}
-
-[data-link-type].production::before,
-[data-link-type].production::after,
-.prod [data-link-type]::before,
-.prod [data-link-type]::after {
-    content: "";
-}
-
-[data-link-type=element],
-[data-link-type=element-attr] {
-    font-family: Menlo, Consolas, "DejaVu Sans Mono", monospace;
-    font-size: .9em;
-}
-[data-link-type=element]::before { content: "<" }
-[data-link-type=element]::after  { content: ">" }
-
-[data-link-type=biblio] {
-    white-space: pre;
 }
 
 @media (prefers-color-scheme: dark) {
-    :root {
-        --selflink-text: black;
-        --selflink-bg: silver;
-        --selflink-hover-text: white;
+    html {
+        --background-color: var(--dark-background-color);
+        --deep-background-color: var(--dark-deep-background-color);
+        --text-color: var(--dark-text-color);
+        --border-color: var(--dark-border-color);
+        --table-border-color: var(--dark-table-border-color);
+        --del-color: var(--dark-del-color);
+        --del-background-color: var(--dark-del-background-color);
+        --ins-color: var(--dark-ins-color);
+        --ins-background-color: var(--dark-ins-background-color);
+        --para-color: var(--dark-para-color);
+        --a-color: var(--dark-a-color);
+        --a-visited-color: var(--dark-a-visited-color);
+        --a-hover-color: var(--dark-a-hover-color);
+        --mark-color: var(--dark-mark-color);
+        --mark-background-color: var(--dark-mark-background-color);
+        --abstract-border-color: var(--dark-abstract-border-color);
+        --abstract-background-color: var(--dark-abstract-background-color);
+        --abstract-image: var(--dark-abstract-image);
+        --blockquote-border-color: var(--dark-blockquote-border-color);
+        --blockquote-background-color: var(--dark-blockquote-background-color);
+        --blockquote-image: var(--dark-blockquote-image);
+        --bug-block-border-color: var(--dark-bug-block-border-color);
+        --bug-block-background-color: var(--dark-bug-block-background-color);
+        --bug-block-image: var(--dark-bug-block-image);
+        --decision-block-border-color: var(--dark-decision-block-border-color);
+        --decision-block-background-color: var(--dark-decision-block-background-color);
+        --decision-block-image: var(--dark-decision-block-image);
+        --del-block-border-color: var(--dark-del-block-border-color);
+        --del-block-background-color: var(--dark-del-block-background-color);
+        --del-block-image: var(--dark-del-block-image);
+        --details-border-color: var(--dark-details-border-color);
+        --details-background-color: var(--dark-details-background-color);
+        --details-image: var(--dark-details-image);
+        --diff-block-border-color: var(--dark-diff-block-border-color);
+        --diff-block-background-color: var(--dark-diff-block-background-color);
+        --diff-block-image: var(--dark-diff-block-image);
+        --example-block-border-color: var(--dark-example-block-border-color);
+        --example-block-background-color: var(--dark-example-block-background-color);
+        --example-block-image: var(--dark-example-block-image);
+        --important-block-border-color: var(--dark-important-block-border-color);
+        --important-block-background-color: var(--dark-important-block-background-color);
+        --important-block-image: var(--dark-important-block-image);
+        --ins-block-border-color: var(--dark-ins-block-border-color);
+        --ins-block-background-color: var(--dark-ins-block-background-color);
+        --ins-block-image: var(--dark-ins-block-image);
+        --note-block-border-color: var(--dark-note-block-border-color);
+        --note-block-background-color: var(--dark-note-block-background-color);
+        --note-block-image: var(--dark-note-block-image);
+        --tip-block-border-color: var(--dark-tip-block-border-color);
+        --tip-block-background-color: var(--dark-tip-block-background-color);
+        --tip-block-image: var(--dark-tip-block-image);
+        --todo-block-border-color: var(--dark-todo-block-border-color);
+        --todo-block-background-color: var(--dark-todo-block-background-color);
+        --todo-block-image: var(--dark-todo-block-image);
+        --warning-block-border-color: var(--dark-warning-block-border-color);
+        --warning-block-background-color: var(--dark-warning-block-background-color);
+        --warning-block-image: var(--dark-warning-block-image);
+        --theme-icon: var(--dark-theme-icon);
     }
 }
-</style>
-<style>/* Boilerplate: style-colors */
-/* Any --*-text not paired with a --*-bg is assumed to have a transparent bg */
-:root {
-    color-scheme: light dark;
 
-    --text: black;
-    --bg: white;
-
-    --unofficial-watermark: url(https://www.w3.org/StyleSheets/TR/2016/logos/UD-watermark);
-
-    --logo-bg: #1a5e9a;
-    --logo-active-bg: #c00;
-    --logo-text: white;
-
-    --tocnav-normal-text: #707070;
-    --tocnav-normal-bg: var(--bg);
-    --tocnav-hover-text: var(--tocnav-normal-text);
-    --tocnav-hover-bg: #f8f8f8;
-    --tocnav-active-text: #c00;
-    --tocnav-active-bg: var(--tocnav-normal-bg);
-
-    --tocsidebar-text: var(--text);
-    --tocsidebar-bg: #f7f8f9;
-    --tocsidebar-shadow: rgba(0,0,0,.1);
-    --tocsidebar-heading-text: hsla(203,20%,40%,.7);
-
-    --toclink-text: var(--text);
-    --toclink-underline: #3980b5;
-    --toclink-visited-text: var(--toclink-text);
-    --toclink-visited-underline: #054572;
-
-    --heading-text: #005a9c;
-
-    --hr-text: var(--text);
-
-    --algo-border: #def;
-
-    --del-text: red;
-    --del-bg: transparent;
-    --ins-text: #080;
-    --ins-bg: transparent;
-
-    --a-normal-text: #034575;
-    --a-normal-underline: #bbb;
-    --a-visited-text: var(--a-normal-text);
-    --a-visited-underline: #707070;
-    --a-hover-bg: rgba(75%, 75%, 75%, .25);
-    --a-active-text: #c00;
-    --a-active-underline: #c00;
-
-    --blockquote-border: silver;
-    --blockquote-bg: transparent;
-    --blockquote-text: currentcolor;
-
-    --issue-border: #e05252;
-    --issue-bg: #fbe9e9;
-    --issue-text: var(--text);
-    --issueheading-text: #831616;
-
-    --example-border: #e0cb52;
-    --example-bg: #fcfaee;
-    --example-text: var(--text);
-    --exampleheading-text: #574b0f;
-
-    --note-border: #52e052;
-    --note-bg: #e9fbe9;
-    --note-text: var(--text);
-    --noteheading-text: hsl(120, 70%, 30%);
-    --notesummary-underline: silver;
-
-    --assertion-border: #aaa;
-    --assertion-bg: #eee;
-    --assertion-text: black;
-
-    --advisement-border: orange;
-    --advisement-bg: #fec;
-    --advisement-text: var(--text);
-    --advisementheading-text: #b35f00;
-
-    --warning-border: red;
-    --warning-bg: hsla(40,100%,50%,0.95);
-    --warning-text: var(--text);
-
-    --amendment-border: #330099;
-    --amendment-bg: #F5F0FF;
-    --amendment-text: var(--text);
-    --amendmentheading-text: #220066;
-
-    --def-border: #8ccbf2;
-    --def-bg: #def;
-    --def-text: var(--text);
-    --defrow-border: #bbd7e9;
-
-    --datacell-border: silver;
-
-    --indexinfo-text: #707070;
-
-    --indextable-hover-text: black;
-    --indextable-hover-bg: #f7f8f9;
-
-    --outdatedspec-bg: rgba(0, 0, 0, .5);
-    --outdatedspec-text: black;
-    --outdated-bg: maroon;
-    --outdated-text: white;
-    --outdated-shadow: red;
-
-    --editedrec-bg: darkorange;
+html.light {
+    --background-color: var(--light-background-color);
+    --deep-background-color: var(--light-deep-background-color);
+    --text-color: var(--light-text-color);
+    --border-color: var(--light-border-color);
+    --table-border-color: var(--light-table-border-color);
+    --del-color: var(--light-del-color);
+    --del-background-color: var(--light-del-background-color);
+    --ins-color: var(--light-ins-color);
+    --ins-background-color: var(--light-ins-background-color);
+    --para-color: var(--light-para-color);
+    --a-color: var(--light-a-color);
+    --a-visited-color: var(--light-a-visited-color);
+    --a-hover-color: var(--light-a-hover-color);
+    --mark-color: var(--light-mark-color);
+    --mark-background-color: var(--light-mark-background-color);
+    --abstract-border-color: var(--light-abstract-border-color);
+    --abstract-background-color: var(--light-abstract-background-color);
+    --abstract-image: var(--light-abstract-image);
+    --blockquote-border-color: var(--light-blockquote-border-color);
+    --blockquote-background-color: var(--light-blockquote-background-color);
+    --blockquote-image: var(--light-blockquote-image);
+    --bug-block-border-color: var(--light-bug-block-border-color);
+    --bug-block-background-color: var(--light-bug-block-background-color);
+    --bug-block-image: var(--light-bug-block-image);
+    --decision-block-border-color: var(--light-decision-block-border-color);
+    --decision-block-background-color: var(--light-decision-block-background-color);
+    --decision-block-image: var(--light-decision-block-image);
+    --del-block-border-color: var(--light-del-block-border-color);
+    --del-block-background-color: var(--light-del-block-background-color);
+    --del-block-image: var(--light-del-block-image);
+    --details-border-color: var(--light-details-border-color);
+    --details-background-color: var(--light-details-background-color);
+    --details-image: var(--light-details-image);
+    --diff-block-border-color: var(--light-diff-block-border-color);
+    --diff-block-background-color: var(--light-diff-block-background-color);
+    --diff-block-image: var(--light-diff-block-image);
+    --example-block-border-color: var(--light-example-block-border-color);
+    --example-block-background-color: var(--light-example-block-background-color);
+    --example-block-image: var(--light-example-block-image);
+    --important-block-border-color: var(--light-important-block-border-color);
+    --important-block-background-color: var(--light-important-block-background-color);
+    --important-block-image: var(--light-important-block-image);
+    --ins-block-border-color: var(--light-ins-block-border-color);
+    --ins-block-background-color: var(--light-ins-block-background-color);
+    --ins-block-image: var(--light-ins-block-image);
+    --note-block-border-color: var(--light-note-block-border-color);
+    --note-block-background-color: var(--light-note-block-background-color);
+    --note-block-image: var(--light-note-block-image);
+    --tip-block-border-color: var(--light-tip-block-border-color);
+    --tip-block-background-color: var(--light-tip-block-background-color);
+    --tip-block-image: var(--light-tip-block-image);
+    --todo-block-border-color: var(--light-todo-block-border-color);
+    --todo-block-background-color: var(--light-todo-block-background-color);
+    --todo-block-image: var(--light-todo-block-image);
+    --warning-block-border-color: var(--light-warning-block-border-color);
+    --warning-block-background-color: var(--light-warning-block-background-color);
+    --warning-block-image: var(--light-warning-block-image);
+    --theme-icon: var(--light-theme-icon);
 }
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --text: #ddd;
-        --bg: black;
-
-        --unofficial-watermark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cg fill='%23100808' transform='translate(200 200) rotate(-45) translate(-200 -200)' stroke='%23100808' stroke-width='3'%3E%3Ctext x='50%25' y='220' style='font: bold 70px sans-serif; text-anchor: middle; letter-spacing: 6px;'%3EUNOFFICIAL%3C/text%3E%3Ctext x='50%25' y='305' style='font: bold 70px sans-serif; text-anchor: middle; letter-spacing: 6px;'%3EDRAFT%3C/text%3E%3C/g%3E%3C/svg%3E");
-
-        --logo-bg: #1a5e9a;
-        --logo-active-bg: #c00;
-        --logo-text: white;
-
-        --tocnav-normal-text: #999;
-        --tocnav-normal-bg: var(--bg);
-        --tocnav-hover-text: var(--tocnav-normal-text);
-        --tocnav-hover-bg: #080808;
-        --tocnav-active-text: #f44;
-        --tocnav-active-bg: var(--tocnav-normal-bg);
-
-        --tocsidebar-text: var(--text);
-        --tocsidebar-bg: #080808;
-        --tocsidebar-shadow: rgba(255,255,255,.1);
-        --tocsidebar-heading-text: hsla(203,20%,40%,.7);
-
-        --toclink-text: var(--text);
-        --toclink-underline: #6af;
-        --toclink-visited-text: var(--toclink-text);
-        --toclink-visited-underline: #054572;
-
-        --heading-text: #8af;
-
-        --hr-text: var(--text);
-
-        --algo-border: #456;
-
-        --del-text: #f44;
-        --del-bg: transparent;
-        --ins-text: #4a4;
-        --ins-bg: transparent;
-
-        --a-normal-text: #6af;
-        --a-normal-underline: #555;
-        --a-visited-text: var(--a-normal-text);
-        --a-visited-underline: var(--a-normal-underline);
-        --a-hover-bg: rgba(25%, 25%, 25%, .2);
-        --a-active-text: #f44;
-        --a-active-underline: var(--a-active-text);
-
-        --borderedblock-bg: rgba(255, 255, 255, .05);
-
-        --blockquote-border: silver;
-        --blockquote-bg: var(--borderedblock-bg);
-        --blockquote-text: currentcolor;
-
-        --issue-border: #e05252;
-        --issue-bg: var(--borderedblock-bg);
-        --issue-text: var(--text);
-        --issueheading-text: hsl(0deg, 70%, 70%);
-
-        --example-border: hsl(50deg, 90%, 60%);
-        --example-bg: var(--borderedblock-bg);
-        --example-text: var(--text);
-        --exampleheading-text: hsl(50deg, 70%, 70%);
-
-        --note-border: hsl(120deg, 100%, 35%);
-        --note-bg: var(--borderedblock-bg);
-        --note-text: var(--text);
-        --noteheading-text: hsl(120, 70%, 70%);
-        --notesummary-underline: silver;
-
-        --assertion-border: #444;
-        --assertion-bg: var(--borderedblock-bg);
-        --assertion-text: var(--text);
-
-        --advisement-border: orange;
-        --advisement-bg: #222218;
-        --advisement-text: var(--text);
-        --advisementheading-text: #f84;
-
-        --warning-border: red;
-        --warning-bg: hsla(40,100%,20%,0.95);
-        --warning-text: var(--text);
-
-        --amendment-border: #330099;
-        --amendment-bg: #080010;
-        --amendment-text: var(--text);
-        --amendmentheading-text: #cc00ff;
-
-        --def-border: #8ccbf2;
-        --def-bg: #080818;
-        --def-text: var(--text);
-        --defrow-border: #136;
-
-        --datacell-border: silver;
-
-        --indexinfo-text: #aaa;
-
-        --indextable-hover-text: var(--text);
-        --indextable-hover-bg: #181818;
-
-        --outdatedspec-bg: rgba(255, 255, 255, .5);
-        --outdatedspec-text: black;
-        --outdated-bg: maroon;
-        --outdated-text: white;
-        --outdated-shadow: red;
-
-        --editedrec-bg: darkorange;
-    }
-    /* In case a transparent-bg image doesn't expect to be on a dark bg,
-       which is quite common in practice... */
-    img { background: white; }
+html.dark {
+    --background-color: var(--dark-background-color);
+    --deep-background-color: var(--dark-deep-background-color);
+    --text-color: var(--dark-text-color);
+    --border-color: var(--dark-border-color);
+    --table-border-color: var(--dark-table-border-color);
+    --del-color: var(--dark-del-color);
+    --del-background-color: var(--dark-del-background-color);
+    --ins-color: var(--dark-ins-color);
+    --ins-background-color: var(--dark-ins-background-color);
+    --para-color: var(--dark-para-color);
+    --a-color: var(--dark-a-color);
+    --a-visited-color: var(--dark-a-visited-color);
+    --a-hover-color: var(--dark-a-hover-color);
+    --mark-color: var(--dark-mark-color);
+    --mark-background-color: var(--dark-mark-background-color);
+    --abstract-border-color: var(--dark-abstract-border-color);
+    --abstract-background-color: var(--dark-abstract-background-color);
+    --abstract-image: var(--dark-abstract-image);
+    --blockquote-border-color: var(--dark-blockquote-border-color);
+    --blockquote-background-color: var(--dark-blockquote-background-color);
+    --blockquote-image: var(--dark-blockquote-image);
+    --bug-block-border-color: var(--dark-bug-block-border-color);
+    --bug-block-background-color: var(--dark-bug-block-background-color);
+    --bug-block-image: var(--dark-bug-block-image);
+    --decision-block-border-color: var(--dark-decision-block-border-color);
+    --decision-block-background-color: var(--dark-decision-block-background-color);
+    --decision-block-image: var(--dark-decision-block-image);
+    --del-block-border-color: var(--dark-del-block-border-color);
+    --del-block-background-color: var(--dark-del-block-background-color);
+    --del-block-image: var(--dark-del-block-image);
+    --details-border-color: var(--dark-details-border-color);
+    --details-background-color: var(--dark-details-background-color);
+    --details-image: var(--dark-details-image);
+    --diff-block-border-color: var(--dark-diff-block-border-color);
+    --diff-block-background-color: var(--dark-diff-block-background-color);
+    --diff-block-image: var(--dark-diff-block-image);
+    --example-block-border-color: var(--dark-example-block-border-color);
+    --example-block-background-color: var(--dark-example-block-background-color);
+    --example-block-image: var(--dark-example-block-image);
+    --important-block-border-color: var(--dark-important-block-border-color);
+    --important-block-background-color: var(--dark-important-block-background-color);
+    --important-block-image: var(--dark-important-block-image);
+    --ins-block-border-color: var(--dark-ins-block-border-color);
+    --ins-block-background-color: var(--dark-ins-block-background-color);
+    --ins-block-image: var(--dark-ins-block-image);
+    --note-block-border-color: var(--dark-note-block-border-color);
+    --note-block-background-color: var(--dark-note-block-background-color);
+    --note-block-image: var(--dark-note-block-image);
+    --tip-block-border-color: var(--dark-tip-block-border-color);
+    --tip-block-background-color: var(--dark-tip-block-background-color);
+    --tip-block-image: var(--dark-tip-block-image);
+    --todo-block-border-color: var(--dark-todo-block-border-color);
+    --todo-block-background-color: var(--dark-todo-block-background-color);
+    --todo-block-image: var(--dark-todo-block-image);
+    --warning-block-border-color: var(--dark-warning-block-border-color);
+    --warning-block-background-color: var(--dark-warning-block-background-color);
+    --warning-block-image: var(--dark-warning-block-image);
+    --theme-icon: var(--dark-theme-icon);
 }
-</style>
-<style>/* Boilerplate: style-counters */
+
+/* END LIGHT AND DARK THEME */
+
+html {
+    margin: 0;
+    width: 100%;
+    font-family: var(--serif-family);
+    font-size: 11pt;
+
+    border-left: var(--border-thickness) solid var(--border-color);
+    color: var(--text-color);
+    background-color: var(--background-color);
+}
+
 body {
-    counter-reset: example figure issue;
-}
-.issue {
-    counter-increment: issue;
-}
-.issue:not(.no-marker)::before {
-    content: "Issue " counter(issue);
+    --vertical-margin: 2rem;
+    --margin-left: 3rem;
+    --margin-right: 2rem;
+
+    margin: var(--vertical-margin) var(--margin-right) var(--vertical-margin) var(--margin-left);
+    width: calc(100% - var(--margin-left) - var(--margin-right));
+    box-sizing: border-box;
 }
 
-.example {
-    counter-increment: example;
-}
-.example:not(.no-marker)::before {
-    content: "Example " counter(example);
-}
-.invalid.example:not(.no-marker)::before,
-.illegal.example:not(.no-marker)::before {
-    content: "Invalid Example" counter(example);
+main {
+    max-width: 60rem;
+    margin-left: auto;
+    margin-right: auto;
 }
 
-figcaption {
-    counter-increment: figure;
+p {
+    text-align: justify;
 }
-figcaption:not(.no-marker)::before {
-    content: "Figure " counter(figure) " ";
+
+abstract-block,
+blockquote,
+bug-block,
+code-block,
+decision-block,
+del-block,
+details,
+dl,
+diff-block,
+example-block,
+hr,
+ol,
+important-block,
+ins-block,
+math[display=block],
+note-block,
+p,
+pre,
+tip-block,
+todo-block,
+ul,
+warning-block,
+.indent {
+    display: block;
+    margin-top: 1em;
+    margin-bottom: 1em;
 }
-</style>
-<style>/* Boilerplate: style-issues */
-a[href].issue-return {
-    float: right;
-    float: inline-end;
-    color: var(--issueheading-text);
+
+a {
+    color: var(--a-color);
+    text-decoration: unset;
+}
+
+a:visited {
+    color: var(--a-visited-color);
+}
+
+a:hover,
+a:focus {
+    color: var(--a-hover-color);
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+ol,
+ul {
+    padding-left: var(--indent);
+}
+
+li {
+    margin: 0.5em 0;
+}
+
+dt {
+    margin-top: 0.25em;
+    font-style: italic;
     font-weight: bold;
-    text-decoration: none;
 }
-</style>
-<style>/* Boilerplate: style-md-lists */
-/* This is a weird hack for me not yet following the commonmark spec
-   regarding paragraph and lists. */
-[data-md] > :first-child {
+
+dd {
+    margin-bottom: 0.25em;
+    margin-left: var(--indent);
+}
+
+abstract-block,
+blockquote,
+bug-block,
+del-block,
+details,
+decision-block,
+diff-block,
+example-block,
+important-block,
+ins-block,
+note-block,
+tip-block,
+todo-block,
+warning-block {
+    --border-thickness: 0.25em;
+    --padding: 0.5em;
+
+    position: relative;
+    width: calc(100% - var(--indent));
+    box-sizing: border-box;
+    padding: var(--padding);
+    margin-left: var(--indent);
+
+    border-top-right-radius: var(--border-radius);
+    border-bottom-right-radius: var(--border-radius);
+}
+
+abstract-block>:first-child,
+blockquote>:first-child,
+bug-block>:first-child,
+del-block>:first-child,
+details>:first-child,
+decision-block>:first-child,
+diff-block>:first-child,
+example-block>:first-child,
+important-block>:first-child,
+ins-block>:first-child,
+note-block>:first-child,
+tip-block>:first-child,
+todo-block>:first-child,
+warning-block>:first-child {
     margin-top: 0;
 }
-[data-md] > :last-child {
+
+abstract-block>:last-child,
+blockquote>:last-child,
+bug-block>:last-child,
+del-block>:last-child,
+details>:last-child,
+decision-block>:last-child,
+diff-block>:last-child,
+example-block>:last-child,
+important-block>:last-child,
+ins-block>:last-child,
+note-block>:last-child,
+todo-block>:last-child,
+tip-block>:last-child,
+warning-block>:last-child {
     margin-bottom: 0;
 }
-</style>
-<style>/* Boilerplate: style-selflinks */
-:root {
-    --selflink-text: white;
-    --selflink-bg: gray;
-    --selflink-hover-text: black;
-}
-.heading, .issue, .note, .example, li, dt {
-    position: relative;
-}
-a.self-link {
+
+abstract-block::before,
+blockquote::before,
+bug-block::before,
+del-block::before,
+details::before,
+decision-block::before,
+diff-block::before,
+example-block::before,
+important-block::before,
+ins-block::before,
+note-block::before,
+todo-block::before,
+tip-block::before,
+warning-block::before {
     position: absolute;
-    top: 0;
-    left: calc(-1 * (3.5rem - 26px));
-    width: calc(3.5rem - 26px);
+    left: -2.5em;
+    top: 0.25em;
+    width: 2em;
     height: 2em;
-    text-align: center;
-    border: none;
-    transition: opacity .2s;
-    opacity: .5;
+
+    content: "";
+    display: inline-block;
+    background-size: contain;
+    background-repeat: no-repeat;
+
 }
-a.self-link:hover {
-    opacity: 1;
-}
-.heading > a.self-link {
-    font-size: 83%;
-}
-.example > a.self-link,
-.note > a.self-link,
-.issue > a.self-link {
-    /* These blocks are overflow:auto, so positioning outside
-       doesn't work. */
-    left: auto;
-    right: 0;
-}
-li > a.self-link {
-    left: calc(-1 * (3.5rem - 26px) - 2em);
-}
-dfn > a.self-link {
-    top: auto;
-    left: auto;
-    opacity: 0;
-    width: 1.5em;
-    height: 1.5em;
-    background: var(--selflink-bg);
-    color: var(--selflink-text);
+
+code,
+code-block,
+pre,
+samp,
+tt,
+tt-,
+.mono {
+    font-family: var(--monospace-family);
     font-style: normal;
-    transition: opacity .2s, background-color .2s, color .2s;
+    font-variant-ligatures: none;
 }
-dfn:hover > a.self-link {
+
+code-block:not(.borderless),
+pre {
+    padding: 0.5em;
+    border-radius: var(--border-radius);
+    box-sizing: border-box;
+
+    background-color: var(--deep-background-color);
+    border: 1px solid var(--border-color);
+}
+
+code-block,
+pre {
+    font-size: 95%;
+    width: 100%;
+}
+
+code-block,
+pre {
+    white-space: pre;
+    overflow-x: auto;
+}
+
+/* INSERTIONS AND DELETIONS */
+
+ins,
+ins-lines {
+    text-decoration: underline;
+    font-weight: 600;
+    color: var(--ins-color);
+    background-color: var(--ins-background-color);
+}
+
+code-block ins,
+code-block ins-lines {
+    text-decoration: inherit;
+}
+
+del {
+    text-decoration: line-through;
+}
+
+del,
+del-lines {
+    color: var(--del-color);
+    background-color: var(--del-background-color);
+}
+
+ins-lines,
+del-lines {
+    display: inline-block;
+    width: 100%;
+}
+
+ins h-,
+ins-lines h-,
+del h-,
+del-lines h- {
+    color: inherit !important;
+    background-color: inherit !important;
+}
+
+kbd {
+    font-family: var(--sans-serif-family);
+
+    display: inline-block;
+    padding: 0 0.25em 0.15em 0.25em;
+    border-radius: 0.25em;
+    white-space: nowrap;
+
+    background-color: var(--deep-background-color);
+    border: 1px solid var(--border-color);
+    box-shadow: inset 0 -0.1em 0 var(--border-color);
+}
+
+mark {
+    color: var(--mark-color);
+    background-color: var(--mark-background-color);
+}
+
+math:not([display=block]) {
+    font-size: 120%;
+}
+
+math[display=block] {
+    width: fit-content;
+    margin-left: var(--indent);
+
+    font-size: 110%;
+}
+
+g-term,
+f-sans,
+f-serif,
+wg21-block {
+    display: inline;
+}
+
+f-sans,
+.sans {
+    font-family: var(--sans-serif-family);
+}
+
+f-serif,
+.serif {
+    font-family: var(--serif-family);
+}
+
+.grammar dd,
+g-term {
+    font-family: var(--sans-serif-family);
+    font-style: oblique;
+}
+
+.grammar {
+    margin-left: var(--indent);
+}
+
+.grammar dt {
+    font-weight: normal;
+    font-style: normal;
+}
+
+.oblique {
+    font-style: oblique;
+}
+
+.word {
+    white-space: nowrap;
+}
+
+.wg21-head {
+    margin-bottom: 4em;
+}
+
+.wg21-head dl {
+    font-family: var(--sans-serif-family);
+}
+
+.wg21-head dt {
+    font-style: normal;
+}
+
+/* HEADINGS */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    position: relative;
+    margin: 1rem 0;
+}
+
+h1 {
+    margin: 2rem 0 1.5rem 0;
+    font-size: 250%;
+}
+
+h2 {
+    margin: 2.5rem 0 1.5rem 0;
+    font-size: 166%;
+}
+
+h3 {
+    margin: 2rem 0 1rem 0;
+    font-size: 133%;
+}
+
+h4 {
+    margin: 1.5rem 0 0.5rem 0;
+    font-size: 100%;
+}
+
+h5 {
+    margin: 1rem 0 0.5rem 0;
+    font-size: 100%;
+    font-weight: normal;
+}
+
+h6 {
+    margin: 1rem 0 0.5rem 0;
+    font-size: 90%;
+    font-weight: normal;
+}
+
+table {
+    --border: 1px solid var(--table-border-color);
+
+    margin-top: 1em;
+    margin-bottom: 1em;
+    border-collapse: collapse;
+}
+
+table,
+tbody,
+thead,
+th {
+    border: var(--border);
+}
+
+td {
+    border-left: var(--border);
+    border-right: var(--border);
+}
+
+td,
+th {
+    padding: 0.1em 0.5em;
+}
+
+.para {
+    cursor: pointer;
+    font-weight: normal;
+    font-family: var(--monospace-family);
+    text-decoration: none;
+    opacity: 0.25;
+
+    position: absolute;
+    top: 0.05em;
+    left: calc(-1rem - 0.5ch);
+}
+
+.para,
+.para::before {
+    color: var(--para-color);
+}
+
+.para:hover,
+.para:focus,
+:target .para {
     opacity: 1;
 }
-dfn > a.self-link:hover {
-    color: var(--selflink-hover-text);
+
+.para::before {
+    content: "§";
 }
 
-a.self-link::before            { content: "¶"; }
-.heading > a.self-link::before { content: "§"; }
-dfn > a.self-link::before      { content: "#"; }
-</style>
-<style>/* Boilerplate: style-syntax-highlighting */
-code.highlight { padding: .1em; border-radius: .3em; }
-pre.highlight, pre > code.highlight { display: block; padding: 1em; margin: .5em 0; overflow: auto; border-radius: 0; }
+/* TABLE OF CONTENTS */
 
-.highlight:not(.idl) { background: rgba(0, 0, 0, .03); }
-c-[a] { color: #990055 } /* Keyword.Declaration */
-c-[b] { color: #990055 } /* Keyword.Type */
-c-[c] { color: #708090 } /* Comment */
-c-[d] { color: #708090 } /* Comment.Multiline */
-c-[e] { color: #0077aa } /* Name.Attribute */
-c-[f] { color: #669900 } /* Name.Tag */
-c-[g] { color: #222222 } /* Name.Variable */
-c-[k] { color: #990055 } /* Keyword */
-c-[l] { color: #000000 } /* Literal */
-c-[m] { color: #000000 } /* Literal.Number */
-c-[n] { color: #0077aa } /* Name */
-c-[o] { color: #999999 } /* Operator */
-c-[p] { color: #999999 } /* Punctuation */
-c-[s] { color: #a67f59 } /* Literal.String */
-c-[t] { color: #a67f59 } /* Literal.String.Single */
-c-[u] { color: #a67f59 } /* Literal.String.Double */
-c-[cp] { color: #708090 } /* Comment.Preproc */
-c-[c1] { color: #708090 } /* Comment.Single */
-c-[cs] { color: #708090 } /* Comment.Special */
-c-[kc] { color: #990055 } /* Keyword.Constant */
-c-[kn] { color: #990055 } /* Keyword.Namespace */
-c-[kp] { color: #990055 } /* Keyword.Pseudo */
-c-[kr] { color: #990055 } /* Keyword.Reserved */
-c-[ld] { color: #000000 } /* Literal.Date */
-c-[nc] { color: #0077aa } /* Name.Class */
-c-[no] { color: #0077aa } /* Name.Constant */
-c-[nd] { color: #0077aa } /* Name.Decorator */
-c-[ni] { color: #0077aa } /* Name.Entity */
-c-[ne] { color: #0077aa } /* Name.Exception */
-c-[nf] { color: #0077aa } /* Name.Function */
-c-[nl] { color: #0077aa } /* Name.Label */
-c-[nn] { color: #0077aa } /* Name.Namespace */
-c-[py] { color: #0077aa } /* Name.Property */
-c-[ow] { color: #999999 } /* Operator.Word */
-c-[mb] { color: #000000 } /* Literal.Number.Bin */
-c-[mf] { color: #000000 } /* Literal.Number.Float */
-c-[mh] { color: #000000 } /* Literal.Number.Hex */
-c-[mi] { color: #000000 } /* Literal.Number.Integer */
-c-[mo] { color: #000000 } /* Literal.Number.Oct */
-c-[sb] { color: #a67f59 } /* Literal.String.Backtick */
-c-[sc] { color: #a67f59 } /* Literal.String.Char */
-c-[sd] { color: #a67f59 } /* Literal.String.Doc */
-c-[se] { color: #a67f59 } /* Literal.String.Escape */
-c-[sh] { color: #a67f59 } /* Literal.String.Heredoc */
-c-[si] { color: #a67f59 } /* Literal.String.Interpol */
-c-[sx] { color: #a67f59 } /* Literal.String.Other */
-c-[sr] { color: #a67f59 } /* Literal.String.Regex */
-c-[ss] { color: #a67f59 } /* Literal.String.Symbol */
-c-[vc] { color: #0077aa } /* Name.Variable.Class */
-c-[vg] { color: #0077aa } /* Name.Variable.Global */
-c-[vi] { color: #0077aa } /* Name.Variable.Instance */
-c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
+.toc {
+    --h-indent: 0.75em;
 
+    display: grid;
+    grid-template-columns: min-content auto;
+}
+
+.toc-num {
+    display: inline-block;
+    align-self: end;
+    padding-right: 3em;
+
+    letter-spacing: 0em;
+}
+
+.toc h1,
+.toc h2,
+.toc h3,
+.toc h4,
+.toc h5,
+.toc h6 {
+    display: inline-block;
+
+    font-weight: 500;
+    font-size: 12pt;
+
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.toc a,
+.toc-num {
+    border-bottom: 1px solid rgba(0, 0, 0, 0);
+    color: var(--text-color);
+}
+
+.toc h1,
+.toc-num[data-level="1"] {
+    font-size: 125%;
+    font-weight: 900;
+}
+
+.toc h2,
+.toc-num[data-level="2"] {
+    font-weight: 700;
+}
+
+.toc h3,
+.toc-num[data-level="3"] {
+    font-weight: 500;
+}
+
+.toc h4,
+.toc-num[data-level="4"] {
+    font-size: 95%;
+    font-weight: 400;
+}
+
+.toc h5,
+.toc-num[data-level="5"] {
+    font-size: 90%;
+    font-weight: 300;
+}
+
+.toc h6,
+.toc-num[data-level="6"] {
+    font-size: 90%;
+    font-weight: 100;
+}
+
+.toc a:hover {
+    display: inline-block;
+    width: 100%;
+
+    color: var(--a-hover-color);
+    border-bottom: 1px dashed var(--a-hover-color);
+}
+
+.toc h1:not(:nth-child(2)>h1) {
+    margin-top: 1.5em;
+}
+
+.toc h2:not(:nth-child(2)>h2) {
+    margin-top: 0.75em;
+}
+
+/** BIBLIOGRAPHY */
+
+.bib {
+    display: block;
+    margin: 1em 0;
+}
+
+.bib-item {
+    display: inline-block;
+    width: 100%;
+    margin: 0.25em 0;
+}
+
+.bib-item>* {
+    padding: 0 0.125em;
+}
+
+.bib-author {
+    font-style: italic;
+}
+
+.bib-title {
+    font-weight: 500;
+}
+
+.bib-date {
+    font-family: var(--monospace-family);
+}
+
+.bib-date::before {
+    font-family: var(--serif-family);
+    content: "(";
+}
+
+.bib-date::after {
+    font-family: var(--serif-family);
+    content: ")";
+}
+
+.bib-link {
+    display: block;
+    margin-left: var(--indent);
+
+    font-family: var(--sans-serif-family);
+    font-style: normal;
+}
+
+/* SPECIAL BLOCKS */
+
+intro- {
+    display: inline-block;
+
+    font-weight: 600;
+    text-transform: uppercase;
+    font-family: var(--sans-serif-family);
+}
+
+abstract-block {
+    background-color: var(--abstract-background-color);
+    border-left: var(--border-thickness) solid var(--abstract-border-color);
+}
+
+abstract-block::before {
+    background-image: var(--abstract-image);
+}
+
+abstract-block intro-::before {
+    content: "Abstract:";
+    color: var(--abstract-border-color);
+}
+
+blockquote {
+    background-color: var(--blockquote-background-color);
+    border-left: var(--border-thickness) solid var(--blockquote-border-color);
+}
+
+blockquote::before {
+    background-image: var(--blockquote-image);
+    top: -0.25em;
+}
+
+blockquote intro-::before {
+    content: "Quote:";
+    color: var(--blockquote-border-color);
+}
+
+bug-block {
+    background-color: var(--bug-block-background-color);
+    border-left: var(--border-thickness) solid var(--bug-block-border-color);
+}
+
+bug-block::before {
+    background-image: var(--bug-block-image);
+}
+
+bug-block intro-::before {
+    content: "Bug:";
+    color: var(--bug-block-border-color);
+}
+
+del-block {
+    background-color: var(--del-block-background-color);
+    border-left: var(--border-thickness) solid var(--del-block-border-color);
+    color: var(--del-color);
+}
+
+del-block::before {
+    background-image: var(--del-block-image);
+}
+
+del-block intro-::before {
+    content: "Deleted:";
+    color: var(--del-block-border-color);
+}
+
+del-block code,
+del-block code-block {
+    color: var(--text-color);
+}
+
+details {
+    background-color: var(--details-background-color);
+    border-left: var(--border-thickness) solid var(--details-border-color);
+}
+
+details::before {
+    background-image: var(--details-image);
+}
+
+summary {
+    font-family: var(--sans-serif-family);
+    color: var(--details-border-color);
+    user-select: none;
+    cursor: pointer;
+}
+
+details[open]>summary {
+    margin-bottom: 0.5em;
+}
+
+decision-block {
+    background-color: var(--decision-block-background-color);
+    border-left: var(--border-thickness) solid var(--decision-block-border-color);
+}
+
+decision-block::before {
+    background-image: var(--decision-block-image);
+}
+
+decision-block intro-::before {
+    content: "Decision:";
+    color: var(--decision-block-border-color);
+}
+
+diff-block {
+    background-color: var(--diff-block-background-color);
+    border-left: var(--border-thickness) solid var(--diff-block-border-color);
+}
+
+diff-block::before {
+    background-image: var(--diff-block-image);
+}
+
+diff-block intro-::before {
+    content: "Difference:";
+    color: var(--diff-block-border-color);
+}
+
+example-block {
+    background-color: var(--example-block-background-color);
+    border-left: var(--border-thickness) solid var(--example-block-border-color);
+}
+
+example-block::before {
+    background-image: var(--example-block-image);
+}
+
+example-block intro-::before {
+    content: "Example:";
+    color: var(--example-block-border-color);
+}
+
+important-block {
+    background-color: var(--important-block-background-color);
+    border-left: var(--border-thickness) solid var(--important-block-border-color);
+}
+
+important-block::before {
+    background-image: var(--important-block-image);
+}
+
+important-block intro-::before {
+    content: "Important:";
+    color: var(--important-block-border-color);
+}
+
+ins-block {
+    background-color: var(--ins-block-background-color);
+    border-left: var(--border-thickness) solid var(--ins-block-border-color);
+    color: var(--ins-color);
+}
+
+ins-block code,
+ins-block code-block {
+    color: var(--text-color);
+}
+
+ins-block::before {
+    background-image: var(--ins-block-image);
+}
+
+ins-block intro-::before {
+    content: "Inserted:";
+    color: var(--ins-block-border-color);
+}
+
+note-block {
+    background-color: var(--note-block-background-color);
+    border-left: var(--border-thickness) solid var(--note-block-border-color);
+}
+
+note-block::before {
+    background-image: var(--note-block-image);
+}
+
+note-block intro-::before {
+    content: "Note:";
+    color: var(--note-block-border-color);
+}
+
+tip-block {
+    background-color: var(--tip-block-background-color);
+    border-left: var(--border-thickness) solid var(--tip-block-border-color);
+}
+
+tip-block::before {
+    background-image: var(--tip-block-image);
+}
+
+tip-block intro-::before {
+    content: "Tip:";
+    color: var(--tip-block-border-color);
+}
+
+todo-block {
+    background-color: var(--todo-block-background-color);
+    border-left: var(--border-thickness) solid var(--todo-block-border-color);
+}
+
+todo-block::before {
+    background-image: var(--todo-block-image);
+}
+
+todo-block intro-::before {
+    content: "Todo:";
+    color: var(--todo-block-border-color);
+}
+
+warning-block {
+    background-color: var(--warning-block-background-color);
+    border-left: var(--border-thickness) solid var(--warning-block-border-color);
+}
+
+warning-block::before {
+    background-image: var(--warning-block-image);
+}
+
+warning-block intro-::before {
+    content: "Warning:";
+    color: var(--warning-block-border-color);
+}
+
+.indent {
+    margin-left: var(--indent);
+}
+
+/* SETTINGS MENU */
+
+#settings:not(.js) {
+    display: none;
+}
+
+#settings {
+    z-index: 999;
+    position: fixed;
+    display: inline-block;
+    top: 1em;
+    right: 1em;
+}
+
+#theme-icon {
+    display: block;
+    width: 2.5em;
+    height: 2.5em;
+    cursor: pointer;
+    background-image: var(--theme-icon);
+    background-size: contain;
+    opacity: 0.25;
+}
+
+#theme-icon:hover,
+#theme-icon:focus {
+    opacity: 1;
+}
+  </style>
+  <style>
+@media (prefers-color-scheme: light) {
+h-[data-h^=err] { color:#ff0000; }
+h-[data-h^=cmt] { color:green; font-style:italic; }
+h-[data-h^=cmt_dlim] { font-style:normal; }
+h-[data-h^=val] { color:#9f6807; }
+h-[data-h^=num] { color:#9f6807; }
+h-[data-h^=str] { color:#9f6807; }
+h-[data-h^=esc] { color:#9f6807; }
+h-[data-h^=null] { color:#00607c; }
+h-[data-h^=bool] { color:#9f6807; }
+h-[data-h^=this] { color:#00607c; }
+h-[data-h^=mac] { color:#6f4e37; }
+h-[data-h^=id] { color:#000000; }
+h-[data-h^=id_labl] { color:#517a0b; }
+h-[data-h^=id_nt] { font-style:italic; }
+h-[data-h^=id_nt_dcl] { color:#00607c; font-style:italic; }
+h-[data-h^=kw] { color:#00607c; }
+h-[data-h^=sym] { color:#570057; }
+h-[data-h^=sym_punc] { color:#000000; }
+h-[data-h^=sym_par] { color:#af1915; }
+h-[data-h^=sym_sqr] { color:#af1915; }
+h-[data-h^=sym_brac] { color:#af1915; }
+h-[data-h^=diff_head] { color:#777777; }
+h-[data-h^=diff_head_hunk] { color:#5c477e; }
+h-[data-h^=diff_eq] { color:#000000; }
+h-[data-h^=diff_del] { color:#b31d28; background-color:#ffeef0; }
+h-[data-h^=diff_ins] { color:#22863a; background-color:#f0fff4; }
+h-[data-h^=diff_mod] { color:#7a680d; background-color:#fffdee; }
+h-[data-h^=mk_tag] { color:#00607c; }
+h-[data-h^=mk_attr] { color:#5c477e; }
+h-[data-h^=mk_del] { color:#ce9178; text-decoration:line-through; }
+h-[data-h^=mk_ins] { color:#b5cea8; text-decoration:underline; }
+h-[data-h^=mk_emph] { font-style:italic; }
+h-[data-h^=mk_stro] { font-weight:bold; }
+h-[data-h^=mk_emph_stro] { font-style:italic; font-weight:bold; }
+h-[data-h^=mk_ulin] { text-decoration:underline; }
+h-[data-h^=mk_emph_ulin] { font-style:italic; text-decoration:underline; }
+h-[data-h^=mk_stro_ulin] { font-weight:bold; text-decoration:underline; }
+h-[data-h^=mk_emph_stro_ulin] { font-weight:bold; font-style:italic; text-decoration:underline; }
+h-[data-h^=mk_strk] { text-decoration:line-through; }
+h-[data-h^=mk_emph_strk] { font-style:italic; text-decoration:line-through; }
+h-[data-h^=mk_stro_strk] { font-weight:bold; text-decoration:line-through; }
+h-[data-h^=mk_emph_stro_strk] { font-weight:bold; font-style:italic; text-decoration:line-through; }
+h-[data-h^=mk_ulin_strk] { text-decoration:underline line-through; }
+h-[data-h^=mk_emph_ulin_strk] { font-style:italic; text-decoration:underline line-through; }
+h-[data-h^=mk_stro_ulin_strk] { font-weight:bold; text-decoration:underline line-through; }
+h-[data-h^=mk_emph_stro_ulin_strk] { font-weight:bold; font-style:italic; text-decoration:underline line-through; }
+h-[data-h^=sh_cmd] { color:#00607c; }
+h-[data-h^=sh-opt] { color:#000000; }
+h-[data-h^=asm_ins] { color:#00607c; }
+h-[data-h^=asm_ins_psu] { color:#9f6807; }
+}
 @media (prefers-color-scheme: dark) {
-    .highlight:not(.idl) { background: rgba(255, 255, 255, .05); }
-
-    c-[a] { color: #d33682 } /* Keyword.Declaration */
-    c-[b] { color: #d33682 } /* Keyword.Type */
-    c-[c] { color: #2aa198 } /* Comment */
-    c-[d] { color: #2aa198 } /* Comment.Multiline */
-    c-[e] { color: #268bd2 } /* Name.Attribute */
-    c-[f] { color: #b58900 } /* Name.Tag */
-    c-[g] { color: #cb4b16 } /* Name.Variable */
-    c-[k] { color: #d33682 } /* Keyword */
-    c-[l] { color: #657b83 } /* Literal */
-    c-[m] { color: #657b83 } /* Literal.Number */
-    c-[n] { color: #268bd2 } /* Name */
-    c-[o] { color: #657b83 } /* Operator */
-    c-[p] { color: #657b83 } /* Punctuation */
-    c-[s] { color: #6c71c4 } /* Literal.String */
-    c-[t] { color: #6c71c4 } /* Literal.String.Single */
-    c-[u] { color: #6c71c4 } /* Literal.String.Double */
-    c-[ch] { color: #2aa198 } /* Comment.Hashbang */
-    c-[cp] { color: #2aa198 } /* Comment.Preproc */
-    c-[cpf] { color: #2aa198 } /* Comment.PreprocFile */
-    c-[c1] { color: #2aa198 } /* Comment.Single */
-    c-[cs] { color: #2aa198 } /* Comment.Special */
-    c-[kc] { color: #d33682 } /* Keyword.Constant */
-    c-[kn] { color: #d33682 } /* Keyword.Namespace */
-    c-[kp] { color: #d33682 } /* Keyword.Pseudo */
-    c-[kr] { color: #d33682 } /* Keyword.Reserved */
-    c-[ld] { color: #657b83 } /* Literal.Date */
-    c-[nc] { color: #268bd2 } /* Name.Class */
-    c-[no] { color: #268bd2 } /* Name.Constant */
-    c-[nd] { color: #268bd2 } /* Name.Decorator */
-    c-[ni] { color: #268bd2 } /* Name.Entity */
-    c-[ne] { color: #268bd2 } /* Name.Exception */
-    c-[nf] { color: #268bd2 } /* Name.Function */
-    c-[nl] { color: #268bd2 } /* Name.Label */
-    c-[nn] { color: #268bd2 } /* Name.Namespace */
-    c-[py] { color: #268bd2 } /* Name.Property */
-    c-[ow] { color: #657b83 } /* Operator.Word */
-    c-[mb] { color: #657b83 } /* Literal.Number.Bin */
-    c-[mf] { color: #657b83 } /* Literal.Number.Float */
-    c-[mh] { color: #657b83 } /* Literal.Number.Hex */
-    c-[mi] { color: #657b83 } /* Literal.Number.Integer */
-    c-[mo] { color: #657b83 } /* Literal.Number.Oct */
-    c-[sa] { color: #6c71c4 } /* Literal.String.Affix */
-    c-[sb] { color: #6c71c4 } /* Literal.String.Backtick */
-    c-[sc] { color: #6c71c4 } /* Literal.String.Char */
-    c-[dl] { color: #6c71c4 } /* Literal.String.Delimiter */
-    c-[sd] { color: #6c71c4 } /* Literal.String.Doc */
-    c-[se] { color: #6c71c4 } /* Literal.String.Escape */
-    c-[sh] { color: #6c71c4 } /* Literal.String.Heredoc */
-    c-[si] { color: #6c71c4 } /* Literal.String.Interpol */
-    c-[sx] { color: #6c71c4 } /* Literal.String.Other */
-    c-[sr] { color: #6c71c4 } /* Literal.String.Regex */
-    c-[ss] { color: #6c71c4 } /* Literal.String.Symbol */
-    c-[fm] { color: #268bd2 } /* Name.Function.Magic */
-    c-[vc] { color: #cb4b16 } /* Name.Variable.Class */
-    c-[vg] { color: #cb4b16 } /* Name.Variable.Global */
-    c-[vi] { color: #cb4b16 } /* Name.Variable.Instance */
-    c-[vm] { color: #cb4b16 } /* Name.Variable.Magic */
-    c-[il] { color: #657b83 } /* Literal.Number.Integer.Long */
+h-[data-h^=err] { color:#ff0000; }
+h-[data-h^=cmt] { color:#a2e08d; font-style:italic; }
+h-[data-h^=cmt_dlim] { font-style:normal; }
+h-[data-h^=val] { color:#f2d18d; }
+h-[data-h^=num] { color:#f2d18d; }
+h-[data-h^=num_dlim] { color:#e6b191; }
+h-[data-h^=num_deco] { color:#e6b191; }
+h-[data-h^=str] { color:#f2d18d; }
+h-[data-h^=str_dlim] { color:#e6b191; }
+h-[data-h^=str_deco] { color:#e6b191; }
+h-[data-h^=esc] { color:#e6aee6; }
+h-[data-h^=null] { color:#62ded6; }
+h-[data-h^=bool] { color:#f2d18d; }
+h-[data-h^=this] { color:#62ded6; }
+h-[data-h^=mac] { color:#cc946e; }
+h-[data-h^=id] { color:#f0f0f0; }
+h-[data-h^=id_labl] { color:#d8eda6; }
+h-[data-h^=id_nt] { font-style:italic; }
+h-[data-h^=id_nt_dcl] { color:#62ded6; font-style:italic; }
+h-[data-h^=kw] { color:#62ded6; }
+h-[data-h^=sym] { color:#baa6b9; }
+h-[data-h^=sym_punc] { color:#d0d0d0; }
+h-[data-h^=sym_par] { color:#fa7878; }
+h-[data-h^=sym_sqr] { color:#fa7878; }
+h-[data-h^=sym_brac] { color:#fa7878; }
+h-[data-h^=diff_head] { color:#777777; }
+h-[data-h^=diff_head_hunk] { color:#edc385; }
+h-[data-h^=diff_eq] { color:#e7e7e7; }
+h-[data-h^=diff_del] { color:#ffdcd7; background-color:#67060c; }
+h-[data-h^=diff_ins] { color:#aff5b4; background-color:#033a16; }
+h-[data-h^=diff_mod] { color:#fff4d7; background-color:#674d06; }
+h-[data-h^=mk_tag] { color:#62ded6; }
+h-[data-h^=mk_attr] { color:#a4c4de; }
+h-[data-h^=mk_del] { color:#ce9178; text-decoration:line-through; }
+h-[data-h^=mk_ins] { color:#b5cea8; text-decoration:underline; }
+h-[data-h^=mk_emph] { font-style:italic; }
+h-[data-h^=mk_stro] { font-weight:bold; }
+h-[data-h^=mk_emph_stro] { font-style:italic; font-weight:bold; }
+h-[data-h^=mk_ulin] { text-decoration:underline; }
+h-[data-h^=mk_emph_ulin] { font-style:italic; text-decoration:underline; }
+h-[data-h^=mk_stro_ulin] { font-weight:bold; text-decoration:underline; }
+h-[data-h^=mk_emph_stro_ulin] { font-weight:bold; font-style:italic; text-decoration:underline; }
+h-[data-h^=mk_strk] { text-decoration:line-through; }
+h-[data-h^=mk_emph_strk] { font-style:italic; text-decoration:line-through; }
+h-[data-h^=mk_stro_strk] { font-weight:bold; text-decoration:line-through; }
+h-[data-h^=mk_emph_stro_strk] { font-weight:bold; font-style:italic; text-decoration:line-through; }
+h-[data-h^=mk_ulin_strk] { text-decoration:underline line-through; }
+h-[data-h^=mk_emph_ulin_strk] { font-style:italic; text-decoration:underline line-through; }
+h-[data-h^=mk_stro_ulin_strk] { font-weight:bold; text-decoration:underline line-through; }
+h-[data-h^=mk_emph_stro_ulin_strk] { font-weight:bold; font-style:italic; text-decoration:underline line-through; }
+h-[data-h^=sh_cmd] { color:#62ded6; }
+h-[data-h^=sh-opt] { color:#f0f0f0; }
+h-[data-h^=asm_ins] { color:#62ded6; }
+h-[data-h^=asm_ins_psu] { color:#e6aee6; }
 }
+
+html.light h-[data-h^=err] { color:#ff0000; }
+html.light h-[data-h^=cmt] { color:green; font-style:italic; }
+html.light h-[data-h^=cmt_dlim] { font-style:normal; }
+html.light h-[data-h^=val] { color:#9f6807; }
+html.light h-[data-h^=num] { color:#9f6807; }
+html.light h-[data-h^=str] { color:#9f6807; }
+html.light h-[data-h^=esc] { color:#9f6807; }
+html.light h-[data-h^=null] { color:#00607c; }
+html.light h-[data-h^=bool] { color:#9f6807; }
+html.light h-[data-h^=this] { color:#00607c; }
+html.light h-[data-h^=mac] { color:#6f4e37; }
+html.light h-[data-h^=id] { color:#000000; }
+html.light h-[data-h^=id_labl] { color:#517a0b; }
+html.light h-[data-h^=id_nt] { font-style:italic; }
+html.light h-[data-h^=id_nt_dcl] { color:#00607c; font-style:italic; }
+html.light h-[data-h^=kw] { color:#00607c; }
+html.light h-[data-h^=sym] { color:#570057; }
+html.light h-[data-h^=sym_punc] { color:#000000; }
+html.light h-[data-h^=sym_par] { color:#af1915; }
+html.light h-[data-h^=sym_sqr] { color:#af1915; }
+html.light h-[data-h^=sym_brac] { color:#af1915; }
+html.light h-[data-h^=diff_head] { color:#777777; }
+html.light h-[data-h^=diff_head_hunk] { color:#5c477e; }
+html.light h-[data-h^=diff_eq] { color:#000000; }
+html.light h-[data-h^=diff_del] { color:#b31d28; background-color:#ffeef0; }
+html.light h-[data-h^=diff_ins] { color:#22863a; background-color:#f0fff4; }
+html.light h-[data-h^=diff_mod] { color:#7a680d; background-color:#fffdee; }
+html.light h-[data-h^=mk_tag] { color:#00607c; }
+html.light h-[data-h^=mk_attr] { color:#5c477e; }
+html.light h-[data-h^=mk_del] { color:#ce9178; text-decoration:line-through; }
+html.light h-[data-h^=mk_ins] { color:#b5cea8; text-decoration:underline; }
+html.light h-[data-h^=mk_emph] { font-style:italic; }
+html.light h-[data-h^=mk_stro] { font-weight:bold; }
+html.light h-[data-h^=mk_emph_stro] { font-style:italic; font-weight:bold; }
+html.light h-[data-h^=mk_ulin] { text-decoration:underline; }
+html.light h-[data-h^=mk_emph_ulin] { font-style:italic; text-decoration:underline; }
+html.light h-[data-h^=mk_stro_ulin] { font-weight:bold; text-decoration:underline; }
+html.light h-[data-h^=mk_emph_stro_ulin] { font-weight:bold; font-style:italic; text-decoration:underline; }
+html.light h-[data-h^=mk_strk] { text-decoration:line-through; }
+html.light h-[data-h^=mk_emph_strk] { font-style:italic; text-decoration:line-through; }
+html.light h-[data-h^=mk_stro_strk] { font-weight:bold; text-decoration:line-through; }
+html.light h-[data-h^=mk_emph_stro_strk] { font-weight:bold; font-style:italic; text-decoration:line-through; }
+html.light h-[data-h^=mk_ulin_strk] { text-decoration:underline line-through; }
+html.light h-[data-h^=mk_emph_ulin_strk] { font-style:italic; text-decoration:underline line-through; }
+html.light h-[data-h^=mk_stro_ulin_strk] { font-weight:bold; text-decoration:underline line-through; }
+html.light h-[data-h^=mk_emph_stro_ulin_strk] { font-weight:bold; font-style:italic; text-decoration:underline line-through; }
+html.light h-[data-h^=sh_cmd] { color:#00607c; }
+html.light h-[data-h^=sh-opt] { color:#000000; }
+html.light h-[data-h^=asm_ins] { color:#00607c; }
+html.light h-[data-h^=asm_ins_psu] { color:#9f6807; }
+
+html.dark h-[data-h^=err] { color:#ff0000; }
+html.dark h-[data-h^=cmt] { color:#a2e08d; font-style:italic; }
+html.dark h-[data-h^=cmt_dlim] { font-style:normal; }
+html.dark h-[data-h^=val] { color:#f2d18d; }
+html.dark h-[data-h^=num] { color:#f2d18d; }
+html.dark h-[data-h^=num_dlim] { color:#e6b191; }
+html.dark h-[data-h^=num_deco] { color:#e6b191; }
+html.dark h-[data-h^=str] { color:#f2d18d; }
+html.dark h-[data-h^=str_dlim] { color:#e6b191; }
+html.dark h-[data-h^=str_deco] { color:#e6b191; }
+html.dark h-[data-h^=esc] { color:#e6aee6; }
+html.dark h-[data-h^=null] { color:#62ded6; }
+html.dark h-[data-h^=bool] { color:#f2d18d; }
+html.dark h-[data-h^=this] { color:#62ded6; }
+html.dark h-[data-h^=mac] { color:#cc946e; }
+html.dark h-[data-h^=id] { color:#f0f0f0; }
+html.dark h-[data-h^=id_labl] { color:#d8eda6; }
+html.dark h-[data-h^=id_nt] { font-style:italic; }
+html.dark h-[data-h^=id_nt_dcl] { color:#62ded6; font-style:italic; }
+html.dark h-[data-h^=kw] { color:#62ded6; }
+html.dark h-[data-h^=sym] { color:#baa6b9; }
+html.dark h-[data-h^=sym_punc] { color:#d0d0d0; }
+html.dark h-[data-h^=sym_par] { color:#fa7878; }
+html.dark h-[data-h^=sym_sqr] { color:#fa7878; }
+html.dark h-[data-h^=sym_brac] { color:#fa7878; }
+html.dark h-[data-h^=diff_head] { color:#777777; }
+html.dark h-[data-h^=diff_head_hunk] { color:#edc385; }
+html.dark h-[data-h^=diff_eq] { color:#e7e7e7; }
+html.dark h-[data-h^=diff_del] { color:#ffdcd7; background-color:#67060c; }
+html.dark h-[data-h^=diff_ins] { color:#aff5b4; background-color:#033a16; }
+html.dark h-[data-h^=diff_mod] { color:#fff4d7; background-color:#674d06; }
+html.dark h-[data-h^=mk_tag] { color:#62ded6; }
+html.dark h-[data-h^=mk_attr] { color:#a4c4de; }
+html.dark h-[data-h^=mk_del] { color:#ce9178; text-decoration:line-through; }
+html.dark h-[data-h^=mk_ins] { color:#b5cea8; text-decoration:underline; }
+html.dark h-[data-h^=mk_emph] { font-style:italic; }
+html.dark h-[data-h^=mk_stro] { font-weight:bold; }
+html.dark h-[data-h^=mk_emph_stro] { font-style:italic; font-weight:bold; }
+html.dark h-[data-h^=mk_ulin] { text-decoration:underline; }
+html.dark h-[data-h^=mk_emph_ulin] { font-style:italic; text-decoration:underline; }
+html.dark h-[data-h^=mk_stro_ulin] { font-weight:bold; text-decoration:underline; }
+html.dark h-[data-h^=mk_emph_stro_ulin] { font-weight:bold; font-style:italic; text-decoration:underline; }
+html.dark h-[data-h^=mk_strk] { text-decoration:line-through; }
+html.dark h-[data-h^=mk_emph_strk] { font-style:italic; text-decoration:line-through; }
+html.dark h-[data-h^=mk_stro_strk] { font-weight:bold; text-decoration:line-through; }
+html.dark h-[data-h^=mk_emph_stro_strk] { font-weight:bold; font-style:italic; text-decoration:line-through; }
+html.dark h-[data-h^=mk_ulin_strk] { text-decoration:underline line-through; }
+html.dark h-[data-h^=mk_emph_ulin_strk] { font-style:italic; text-decoration:underline line-through; }
+html.dark h-[data-h^=mk_stro_ulin_strk] { font-weight:bold; text-decoration:underline line-through; }
+html.dark h-[data-h^=mk_emph_stro_ulin_strk] { font-weight:bold; font-style:italic; text-decoration:underline line-through; }
+html.dark h-[data-h^=sh_cmd] { color:#62ded6; }
+html.dark h-[data-h^=sh-opt] { color:#f0f0f0; }
+html.dark h-[data-h^=asm_ins] { color:#62ded6; }
+html.dark h-[data-h^=asm_ins_psu] { color:#e6aee6; }
+  </style>
+  <script>
+const theme = localStorage.getItem("cowel-theme");
+if (theme !== null) {
+    document.documentElement.className = theme;
+}
+  </script>
+<title>More bitset operations</title></head>
+<body>
+<div id=settings tabindex=0>
+    <div id=theme-icon></div>
+    <script>
+        const settings = document.getElementById("settings");
+        const htmlClasses = document.documentElement.classList;
+        const themeIcon = document.getElementById("theme-icon");
+
+        settings.classList.add("js");
+        themeIcon.onclick = () => {
+            const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+            const overrideClass = prefersDark.matches ? "light" : "dark";
+            if (htmlClasses.contains("light")) {
+                htmlClasses.remove("light");
+                localStorage.removeItem("cowel-theme");
+            } else if (htmlClasses.contains("dark")) {
+                htmlClasses.remove("dark");
+                localStorage.removeItem("cowel-theme");
+            } else {
+                htmlClasses.add(overrideClass);
+                // to avoid legal issues or controversy in general,
+                // we don't mess with local storage when the page is hosted in arbitrary places
+                if (window.location.protocol === "file:") {
+                    localStorage.setItem("cowel-theme", overrideClass);
+                }
+            }
+        };
+        settings.onkeydown = (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+                event.preventDefault();
+                themeIcon.onclick();
+            }
+        };
+    </script>
+</div>
+<main>
+<style>
+  html {
+    --light-edit-note-block-border-color: #6faba9;
+    --light-edit-note-block-background-color: #e6f4f3;
+    --light-edit-note-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%236faba9"><path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>');
+
+    --dark-edit-note-block-border-color: #6faba9;
+    --dark-edit-note-block-background-color: #232f30;
+    --dark-edit-note-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%236faba9"><path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>');
+  }
+
+  @media (prefers-color-scheme: light) {
+    html {
+      --edit-note-block-border-color: var(--light-edit-note-block-border-color);
+      --edit-note-block-background-color: var(--light-edit-note-block-background-color);
+      --edit-note-block-image: var(--light-edit-note-block-image);
+    }
+  }
+  @media (prefers-color-scheme: dark) {
+    html {
+      --edit-note-block-border-color: var(--dark-edit-note-block-border-color);
+      --edit-note-block-background-color: var(--dark-edit-note-block-background-color);
+      --edit-note-block-image: var(--dark-edit-note-block-image);
+    }
+  }
+  html.light {
+    --edit-note-block-border-color: var(--light-edit-note-block-border-color);
+    --edit-note-block-background-color: var(--light-edit-note-block-background-color);
+    --edit-note-block-image: var(--light-edit-note-block-image);
+  }
+  html.dark {
+    --edit-note-block-border-color: var(--dark-edit-note-block-border-color);
+    --edit-note-block-background-color: var(--dark-edit-note-block-background-color);
+    --edit-note-block-image: var(--dark-edit-note-block-image);
+  }
+
+  note-block.edit {
+    background-color: var(--edit-note-block-background-color);
+    border-left: var(--border-thickness) solid var(--edit-note-block-border-color);
+  }
+
+  note-block.edit::before {
+    background-image: var(--edit-note-block-image);
+  }
+
+  note-block.edit intro-::before {
+    content: "Editor's note:";
+    color: var(--edit-note-block-border-color);
+  }
+
+  ins-block .para::before {
+    display: none;
+  }
+
+  .grammar dd {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .opt {
+    font-family: var(--serif-family);
+  }
+
+  .stable-ref {
+    float: right;
+  }
+
+  .five-way-poll {
+    table-layout: fixed;
+  }
+  .five-way-poll td {
+    width: 20%;
+    text-align: center;
+  }
+
+  q::before {
+    content: "“";
+  }
+  q::after {
+    content: "”";
+  }
 </style>
- <body class="h-entry">
-  <div class="head">
-   <p data-fill-with="logo"></p>
-   <h1 class="p-name no-ref" id="title">P3103R2<br>More bitset operations</h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Published Proposal, <time class="dt-updated" datetime="2024-03-07">2024-03-07</time></span></h2>
-   <div data-fill-with="spec-metadata">
-    <dl>
-     <dt>This version:
-     <dd><a class="u-url" href="https://eisenwave.github.io/cpp-proposals/more-bitset-operations.html">https://eisenwave.github.io/cpp-proposals/more-bitset-operations.html</a>
-     <dt class="editor">Author:
-     <dd class="editor p-author h-card vcard"><a class="p-name fn u-email email" href="mailto:janschultke@gmail.com">Jan Schultke</a>
-     <dt>Audience:
-     <dd>SG18, LEWG
-     <dt>Project:
-     <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21
-     <dt>Source:
-     <dd><a href="https://github.com/Eisenwave/cpp-proposals/blob/master/src/more-bitset-operations.bs">eisenwave/cpp-proposals</a>
-    </dl>
-   </div>
-   <div data-fill-with="warning"></div>
-   <hr title="Separator for header">
-  </div>
-  <div class="p-summary" data-fill-with="abstract">
-   <h2 class="no-num no-toc no-ref heading settled" id="abstract"><span class="content">Abstract</span></h2>
-   <p>This paper proposes adding a counterpart <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>bitset</c-></code> member function for the utility
-functions in <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code>.</p>
-  </div>
-  <nav data-fill-with="table-of-contents" id="toc">
-   <h2 class="no-num no-toc no-ref" id="contents">Table of Contents</h2>
-   <ol class="toc" role="directory">
-    <li>
-     <a href="#revision-history"><span class="secno">1</span> <span class="content">Revision history</span></a>
-     <ol class="toc">
-      <li><a href="#changes-since-r1"><span class="secno">1.1</span> <span class="content">Changes since R1</span></a>
-      <li><a href="#changes-since-r0"><span class="secno">1.2</span> <span class="content">Changes since R0</span></a>
-     </ol>
-    <li><a href="#intro"><span class="secno">2</span> <span class="content">Introduction</span></a>
-    <li><a href="#proposed-changes"><span class="secno">3</span> <span class="content">Proposed changes</span></a>
-    <li>
-     <a href="#design"><span class="secno">4</span> <span class="content">Design considerations</span></a>
-     <ol class="toc">
-      <li>
-       <a href="#reverse"><span class="secno">4.1</span> <span class="content"><code class="highlight"><c- n>reverse</c-></code></span></a>
-       <ol class="toc">
-        <li><a href="#in-place-reversal"><span class="secno">4.1.1</span> <span class="content">In-place reversal vs. reverse-copy</span></a>
-        <li><a href="#reverse-free-function"><span class="secno">4.1.2</span> <span class="content"><code class="highlight"><c- n>reverse</c-><c- p>(</c-><c- n>bitset</c-><c- p>)</c-></code></span></a>
-       </ol>
-      <li><a href="#common-interface"><span class="secno">4.2</span> <span class="content">Common interface with <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code></span></a>
-      <li>
-       <a href="#counting-overloads"><span class="secno">4.3</span> <span class="content">Counting overloads</span></a>
-       <ol class="toc">
-        <li>
-         <a href="#alternative-iteration"><span class="secno">4.3.1</span> <span class="content">Alternative designs facilitating iteration</span></a>
-         <ol class="toc">
-          <li><a href="#infallible-countr-zero"><span class="secno">4.3.1.1</span> <span class="content">Infallible <code class="highlight"><c- n>countr_zero</c-></code></span></a>
-          <li><a href="#find-next-one"><span class="secno">4.3.1.2</span> <span class="content"><code class="highlight"><c- n>find_next_one</c-></code></span></a>
-          <li><a href="#no-novel-overload"><span class="secno">4.3.1.3</span> <span class="content">No novel overloads</span></a>
-         </ol>
-        <li><a href="#bit-counting-overloads"><span class="secno">4.3.2</span> <span class="content">New overloads for <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code>?</span></a>
-       </ol>
-     </ol>
-    <li><a href="#impact-on-existing-code"><span class="secno">5</span> <span class="content">Impact on existing code</span></a>
-    <li><a href="#implementation-experience"><span class="secno">6</span> <span class="content">Implementation experience</span></a>
-    <li><a href="#proposed-wording"><span class="secno">7</span> <span class="content">Proposed wording</span></a>
-    <li>
-     <a href="#references"><span class="secno"></span> <span class="content">References</span></a>
-     <ol class="toc">
-      <li><a href="#normative"><span class="secno"></span> <span class="content">Normative References</span></a>
-      <li><a href="#informative"><span class="secno"></span> <span class="content">Informative References</span></a>
-     </ol>
-   </ol>
-  </nav>
-  <main>
-   <h2 class="heading settled" data-level="1" id="revision-history"><span class="secno">1. </span><span class="content">Revision history</span><a class="self-link" href="#revision-history"></a></h2>
-   <h3 class="heading settled" data-level="1.1" id="changes-since-r1"><span class="secno">1.1. </span><span class="content">Changes since R1</span><a class="self-link" href="#changes-since-r1"></a></h3>
-   <ul>
-    <li data-md>
-     <p>Mentioned <a data-link-type="biblio" href="#biblio-p3104r2" title="Bit permutations">[P3104R2]</a>, now that it has been published.</p>
-    <li data-md>
-     <p>Greatly expanded <a href="#design">§ 4 Design considerations</a> based on feedback from LEWGI.</p>
-   </ul>
-   <h3 class="heading settled" data-level="1.2" id="changes-since-r0"><span class="secno">1.2. </span><span class="content">Changes since R0</span><a class="self-link" href="#changes-since-r0"></a></h3>
-   <ul>
-    <li data-md>
-     <p>Simplified proposed wording by defining <code class="highlight"><c- n>rotl</c-></code> as an equivalence in terms of <code class="highlight"><c- n>rotr</c-></code>.</p>
-    <li data-md>
-     <p>Fixed minor editorial mistakes.</p>
-   </ul>
-   <h2 class="heading settled" data-level="2" id="intro"><span class="secno">2. </span><span class="content">Introduction</span><a class="self-link" href="#intro"></a></h2>
-   <p><a data-link-type="biblio" href="#biblio-p0553r4" title="Bit operations">[P0553R4]</a> added the bit manipulation library to C++20, which introduced many useful utility
-functions.</p>
-   <p>Some of these already have a counterpart in <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>bitset</c-></code> (such as <code class="highlight"><c- n>popcount</c-></code> as <code class="highlight"><c- n>bitset</c-><c- o>::</c-><c- n>count</c-></code>),
+
+<div class=wg21-head><h1>More bitset operations</h1>
+
+<dl>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3103R3>P3103R3</a></dd>
+  <dt>Date:</dt>            <dd><tt->2025-10-06</tt-></dd>
+  <dt>Audience:</dt>        <dd>LEWG</dd>
+  <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
+  <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
+  <dt>GitHub Issue:</dt>    <dd><a href=https://wg21.link/P3103/github class=sans>wg21.link/P3103/github</a></dd>
+  <dt>Source:</dt>          <dd><a href=https://github.com/eisenwave/cpp-proposals/blob/master/src/more-bitset-operations.cow class=sans>github.com/eisenwave/cpp-proposals/blob/master/src/more-bitset-operations.cow</a></dd>
+</dl>
+<hr/>
+</div>
+
+<abstract-block><p><intro-></intro-> 
+More <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bitset</h-></code> member functions should be added,
+corresponding to the utility functions in <code><h- data-h=str>&lt;bit&gt;</h-></code>
+and to enable efficient iteration over the one-bits or zero-bits.
+</p></abstract-block>
+
+<h2 id=contents><a class=para href=#contents></a>Contents</h2>
+
+<div class=toc><div class=toc-num data-level=2>1</div>
+<a href=#revision-history><h2>Revision history</h2></a>
+<div class=toc-num data-level=3>1.1</div>
+<a href=#changes-since-r2><h3>Changes since R2</h3></a>
+<div class=toc-num data-level=3>1.2</div>
+<a href=#changes-since-r1><h3>Changes since R1</h3></a>
+<div class=toc-num data-level=3>1.3</div>
+<a href=#changes-since-r0><h3>Changes since R0</h3></a>
+<div class=toc-num data-level=2>2</div>
+<a href=#introduction><h2>Introduction</h2></a>
+<div class=toc-num data-level=2>3</div>
+<a href=#design><h2>Design</h2></a>
+<div class=toc-num data-level=2>4</div>
+<a href=#references><h2>References</h2></a>
+</div>
+
+<h2 id=revision-history><a class=para href=#revision-history></a>1. Revision history</h2>
+
+<h3 id=changes-since-r2><a class=para href=#changes-since-r2></a>1.1. Changes since R2</h3>
+
+<h3 id=changes-since-r1><a class=para href=#changes-since-r1></a>1.2. Changes since R1</h3>
+
+<ul>
+  <li>
+    mentioned <a href="https://wg21%2elink/p3104r2">[P3104R2]</a>,
+    now that it has been published
+  </li>
+  <li>
+    greatly expanded <a href=#design>§3. Design</a> based on feedback from LEWGI
+  </li>
+</ul>
+
+<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.3. Changes since R0</h3>
+
+<ul>
+  <li>
+    simplified proposed wording by defining <code><h- data-h=id>rotl</h-></code>
+    as an equivalence in terms of <code><h- data-h=id>rotr</h-></code>
+  </li>
+  <li>fixed minor editorial mistakes</li>
+</ul>
+
+<h2 id=introduction><a class=para href=#introduction></a>2. Introduction</h2>
+
+<p><a href="https://wg21%2elink/p0553r4">[P0553R4]</a> added the bit manipulation library to C++20, which introduced many useful utility
+functions.
+</p>
+<p>Some of these already have a counterpart in <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bitset</h-></code>
+(such as <code><h- data-h=id>popcount</h-></code> as <code><h- data-h=id>bitset</h-><h- data-h=sym_op>::</h-><h- data-h=id>count</h-></code>),
 but not nearly all of them.
-This leaves <code class="highlight"><c- n>bitset</c-></code> overall lacking in functionality,
-which is unfortunate because <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>bitset</c-></code> is an undeniably useful container.
-At the time of writing, it is used in 73K files on GitHub; see <a data-link-type="biblio" href="#biblio-github1" title="std::bitset language:c++">[GitHub1]</a>.</p>
-   <p><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>bitset</c-></code> does not (and should not) expose the underlying integer sequence of the implementation.
-Therefore, it is not possible for the user to implement these operations efficiently themselves.</p>
-   <h2 class="heading settled" data-level="3" id="proposed-changes"><span class="secno">3. </span><span class="content">Proposed changes</span><a class="self-link" href="#proposed-changes"></a></h2>
-   <p>For each of the functions from the bit manipulation library that are not yet available
-in <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>bitset</c-></code>, add a member function.
-Add a small amount of further useful member functions.</p>
-   <table>
-    <tbody>
-     <tr>
-      <th><code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code> function
-      <th>Proposed <code class="highlight"><c- n>bitset</c-></code> member
-     <tr>
-      <td><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>has_single_bit</c-><c- p>(</c-><c- n>T</c-><c- p>)</c-></code>
-      <td><code class="highlight"><c- n>one</c-><c- p>()</c-></code>
-     <tr>
-      <td><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>countl_zero</c-><c- p>(</c-><c- n>T</c-><c- p>)</c-></code>
-      <td><code class="highlight"><c- n>countl_zero</c-><c- p>()</c-></code>
-     <tr>
-      <td>
-      <td><code class="highlight"><c- n>countl_zero</c-><c- p>(</c-><c- b>size_t</c-><c- p>)</c-></code>
-     <tr>
-      <td><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>countl_one</c-><c- p>(</c-><c- n>T</c-><c- p>)</c-></code>
-      <td><code class="highlight"><c- n>countl_one</c-><c- p>()</c-></code>
-     <tr>
-      <td>
-      <td><code class="highlight"><c- n>countl_one</c-><c- p>(</c-><c- b>size_t</c-><c- p>)</c-></code>
-     <tr>
-      <td><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>countr_zero</c-><c- p>(</c-><c- n>T</c-><c- p>)</c-></code>
-      <td><code class="highlight"><c- n>countr_zero</c-><c- p>()</c-></code>
-     <tr>
-      <td>
-      <td><code class="highlight"><c- n>countr_zero</c-><c- p>(</c-><c- b>size_t</c-><c- p>)</c-></code>
-     <tr>
-      <td><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>countr_one</c-><c- p>(</c-><c- n>T</c-><c- p>)</c-></code>
-      <td><code class="highlight"><c- n>countr_one</c-><c- p>()</c-></code>
-     <tr>
-      <td>
-      <td><code class="highlight"><c- n>countr_one</c-><c- p>(</c-><c- b>size_t</c-><c- p>)</c-></code>
-     <tr>
-      <td><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>rotl</c-><c- p>(</c-><c- n>T</c-><c- p>,</c-> <c- b>int</c-><c- p>)</c-></code>
-      <td><code class="highlight"><c- n>rotl</c-><c- p>(</c-><c- b>size_t</c-><c- p>)</c-></code>
-     <tr>
-      <td><code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>rotr</c-><c- p>(</c-><c- n>T</c-><c- p>,</c-> <c- b>int</c-><c- p>)</c-></code>
-      <td><code class="highlight"><c- n>rotr</c-><c- p>(</c-><c- b>size_t</c-><c- p>)</c-></code>
-     <tr>
-      <td>
-      <td><code class="highlight"><c- n>reverse</c-><c- p>()</c-></code>
-   </table>
-   <p>The additional overloads for the counting functions allow counting from a starting position.
-This can be useful for iterating over all set bits:</p>
-<pre class="language-cpp highlight"><c- n>bitset</c-><c- o>&lt;</c-><c- mi>128</c-><c- o>></c-> <c- n>bits</c-><c- p>;</c->
-<c- k>for</c-> <c- p>(</c-><c- b>size_t</c-> <c- n>i</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c-> <c- n>i</c-> <c- o>!=</c-> <c- mi>128</c-><c- p>;</c-> <c- o>++</c-><c- n>i</c-><c- p>)</c-> <c- p>{</c->
-    <c- n>i</c-> <c- o>+=</c-> <c- n>bits</c-><c- p>.</c-><c- n>countr_zero</c-><c- p>(</c-><c- n>i</c-><c- p>);</c->
-    <c- k>if</c-> <c- p>(</c-><c- n>i</c-> <c- o>==</c-> <c- mi>128</c-><c- p>)</c-> <c- k>break</c-><c- p>;</c->
-    <c- c1>// ...</c->
-<c- p>}</c->
-</pre>
-   <p class="note" role="note"><span class="marker">Note:</span> <code class="highlight"><c- n>byteswap</c-></code> and <code class="highlight"><c- n>bit_cast</c-></code> counterparts are not proposed, only functions solely
-dedicated to the manipulation of bit sequences.</p>
-   <h2 class="heading settled" data-level="4" id="design"><span class="secno">4. </span><span class="content">Design considerations</span><a class="self-link" href="#design"></a></h2>
-   <p>The names and signatures of the proposed member functions is a mixture of <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code> function templates and the existing conventions of <code class="highlight"><c- n>bitset</c-></code>.
-Sadly, it is impossible to be consistent with both parts of the standard library.
-For example, <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code> functions typically prefer <code class="highlight"><c- b>int</c-></code> parameters for offsets,
-whereas <code class="highlight"><c- n>bitset</c-></code> uses <code class="highlight"><c- b>size_t</c-></code> virtually everywhere. <code class="highlight"><c- n>bitset</c-></code> also has a very brief convention of <code class="highlight"><c- n>none</c-><c- p>()</c-></code> or <code class="highlight"><c- n>all</c-><c- p>()</c-></code>,
-where <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code> has a <code class="highlight"><c- n>has_single_bit</c-></code> function.</p>
-   <p>This proposal generally prefers local consistency, i.e. it is more important to
-be consistent with <code class="highlight"><c- n>bitset</c-></code> than functions from a different part of the standard
-library, even if those distant functions are similar in purpose.</p>
-   <h3 class="heading settled" data-level="4.1" id="reverse"><span class="secno">4.1. </span><span class="content"><code class="highlight"><c- n>reverse</c-></code></span><a class="self-link" href="#reverse"></a></h3>
-   <p><code class="highlight"><c- n>reverse</c-></code> is a novel invention, not taken from <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code>.
-However, a <code class="highlight"><c- n>bit_reverse</c-></code> counterpart is proposed in <a data-link-type="biblio" href="#biblio-p3104r2" title="Bit permutations">[P3104R2]</a> "Bit permutations".</p>
-   <p>This function is added because the method for reversing integers may be tremendously faster than
-doing so bit by bit.
-ARM has a dedicated <code class="highlight"><c- n>RBIT</c-></code> instruction for reversing bits, which could be leveraged.</p>
-   <h4 class="heading settled" data-level="4.1.1" id="in-place-reversal"><span class="secno">4.1.1. </span><span class="content">In-place reversal vs. reverse-copy</span><a class="self-link" href="#in-place-reversal"></a></h4>
-   <p>I propose <code class="highlight"><c- n>reverse</c-></code> to modify a bitset in-place rather than creating a reversed copy.
-The interface of <code class="highlight"><c- n>bitset</c-><c- o>&lt;</c-><c- n>N</c-><c- o>></c-></code> can already accommodate large <code class="highlight"><c- n>N</c-></code>, and use cases with large <code class="highlight"><c- n>N</c-></code> exist.</p>
-   <p>Compilers also should not be expected to find the optimization from a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>ranges</c-><c- o>::</c-><c- n>reverse_copy</c-></code> with later assignment to an in-place <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>reverse</c-></code>.</p>
-   <div class="example" id="example-826b8b81">
-    <a class="self-link" href="#example-826b8b81"></a> In <a data-link-type="biblio" href="#biblio-compilerexplorer1" title="Example of in-place reversal vs. reverse-copy optimization">[CompilerExplorer1]</a>, Clang does not find the optimization from: 
-<pre class="language-cpp highlight"><c- b>void</c-> <c- nf>reverse_in_place</c-><c- p>(</c-><c- n>bitset</c-><c- o>&amp;</c-> <c- n>x</c-><c- p>)</c-> <c- p>{</c->
-    <c- n>x</c-> <c- o>=</c-> <c- n>x</c-><c- p>.</c-><c- n>reverse_copy</c-><c- p>();</c->
-<c- p>}</c->
-</pre>
-    <p>... to the in-place counterpart for a 4096-bit <code class="highlight"><c- n>bitset</c-></code>.
-Instead, it allocates 512 bytes of stack space,
-performs a reverse-copy, and <code class="highlight"><c- n>memcpy</c-></code>s the result back into <code class="highlight"><c- n>x</c-></code>.</p>
-   </div>
-   <p>I believe that all operations of a <code class="highlight"><c- n>bitset</c-><c- o>&lt;</c-><c- n>N</c-><c- o>></c-></code> with large <code class="highlight"><c- n>N</c-></code> should remain usable,
-and copying the whole set for an operation may be unacceptable due to danger of overflowing the stack
-and/or performance considerations.</p>
-   <p>A perfect optimization would be very difficult due to substantial differences between the <code class="highlight"><c- n>reverse</c-></code> and <code class="highlight"><c- n>reverse_copy</c-></code> algorithms.</p>
-   <h4 class="heading settled" data-level="4.1.2" id="reverse-free-function"><span class="secno">4.1.2. </span><span class="content"><code class="highlight"><c- n>reverse</c-><c- p>(</c-><c- n>bitset</c-><c- p>)</c-></code></span><a class="self-link" href="#reverse-free-function"></a></h4>
-   <p>Instead of a <code class="highlight"><c- n>reverse</c-></code> member function, it would also be possible to add an
-overload for the <code class="highlight"><c- n>reverse</c-></code> algorithm which accepts a <code class="highlight"><c- n>bitset</c-></code>.
-There exists precedent (e.g. <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>move</c-></code>),
-although this is not the first design which comes to mind.</p>
-   <p><strong>I do not oppose this idea; LEWG needs to vote on this.</strong></p>
-   <h3 class="heading settled" data-level="4.2" id="common-interface"><span class="secno">4.2. </span><span class="content">Common interface with <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code></span><a class="self-link" href="#common-interface"></a></h3>
-   <p>Another considered alternative is the creation of a common interface with the
-function templates of <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code>.
-This would mean adding overloads for say, <code class="highlight"><c- n>countl_zero</c-></code> and other functions
-which would accept <code class="highlight"><c- n>bitset</c-></code> in addition to unsigned integers.</p>
-   <p>This proposal does not pursue this design for multiple reasons:</p>
-   <ol>
-    <li data-md>
-     <p>The use case of this is unclear.
-I have personally never needed to write generic code which does bit manipulation
-on either integers or bitsets, and don’t know of any code base where this is done.</p>
-    <li data-md>
-     <p>There is too much friction in the design of <code class="highlight"><c- n>bitset</c-></code> and <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code>, such as the use of <code class="highlight"><c- b>size_t</c-></code> vs. <code class="highlight"><c- b>int</c-></code>, the use of exceptions vs. preconditions, different naming schemes, etc.</p>
-    <li data-md>
-     <p>The functions in <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code> are all pure, but for <code class="highlight"><c- n>bitset</c-><c- o>&lt;</c-><c- n>N</c-><c- o>></c-></code>,
-copying it for the purpose of function calls and returning modified copies
-becomes impractical for large <code class="highlight"><c- n>N</c-></code>.
-See also <a href="#in-place-reversal">§ 4.1.1 In-place reversal vs. reverse-copy</a>.</p>
-    <li data-md>
-     <p>A common interface does not eliminate the need for new member functions.
-It would be very surprising to users if some functionality 
-was only available through <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code> (e.g. <code class="highlight"><c- n>countr_zero</c-></code>)
-whereas other functionality was available both as a member function and as a <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code> function
-(e.g. <code class="highlight"><c- n>popcount</c-></code>/<code class="highlight"><c- p>.</c-><c- n>count</c-><c- p>()</c-></code>).
-Such a design would be inconsistent, and nonsensical when taken out of its historical context.</p>
-    <li data-md>
-     <p>A future proposal could still create a common interface for <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code> and <code class="highlight"><c- n>bitset</c-></code>.
-The addition of member functions adds no obstacles in this regard.</p>
-   </ol>
-   <p>Also note that most of these issues equally apply to sharing a common interface with <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>simd</c-></code>.</p>
-   <h3 class="heading settled" data-level="4.3" id="counting-overloads"><span class="secno">4.3. </span><span class="content">Counting overloads</span><a class="self-link" href="#counting-overloads"></a></h3>
-   <p><code class="highlight"><c- n>countl_zero</c-></code>, <code class="highlight"><c- n>countr_zero</c-></code>, <code class="highlight"><c- n>countl_one</c-></code>, and <code class="highlight"><c- n>countr_one</c-></code> are overloaded member functions which take a <code class="highlight"><c- b>size_t</c-></code> argument or nothing.</p>
-   <p>This is preferable to a single member function with a defaulted argument because the overloads
-have different <code class="highlight"><c- k>noexcept</c-></code> specifications.
-The overloads which take no arguments have a wide contract and can be marked <code class="highlight"><c- k>noexcept</c-></code>,
-whereas the overloads taking <code class="highlight"><c- b>size_t</c-></code> may throw <code class="highlight"><c- n>out_of_range</c-></code>.</p>
-   <h4 class="heading settled" data-level="4.3.1" id="alternative-iteration"><span class="secno">4.3.1. </span><span class="content">Alternative designs facilitating iteration</span><a class="self-link" href="#alternative-iteration"></a></h4>
-   <p>Besides the proposed design for <code class="highlight"><c- n>countl_zero</c-></code>,
-there are at least two alternatives, mainly motivated by simplifying iteration.
-As mentioned above, we can iterate over all one-bits of a <code class="highlight"><c- n>bitset</c-></code> as possible.</p>
-<pre class="language-cpp highlight"><c- n>bitset</c-><c- o>&lt;</c-><c- mi>128</c-><c- o>></c-> <c- n>bits</c-><c- p>;</c->
-<c- k>for</c-> <c- p>(</c-><c- b>size_t</c-> <c- n>i</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c-> <c- n>i</c-> <c- o>!=</c-> <c- mi>128</c-><c- p>;</c-> <c- o>++</c-><c- n>i</c-><c- p>)</c-> <c- p>{</c->
-    <c- n>i</c-> <c- o>+=</c-> <c- n>bits</c-><c- p>.</c-><c- n>countr_zero</c-><c- p>(</c-><c- n>i</c-><c- p>);</c->
-    <c- k>if</c-> <c- p>(</c-><c- n>i</c-> <c- o>==</c-> <c- mi>128</c-><c- p>)</c-> <c- k>break</c-><c- p>;</c->
-    <c- c1>// ...</c->
-<c- p>}</c->
-</pre>
-   <p><strong>LEWG should vote on whether to go ahead with the current design or prefer one of the alternatives below.</strong></p>
-   <h5 class="heading settled" data-level="4.3.1.1" id="infallible-countr-zero"><span class="secno">4.3.1.1. </span><span class="content">Infallible <code class="highlight"><c- n>countr_zero</c-></code></span><a class="self-link" href="#infallible-countr-zero"></a></h5>
-   <p>If <code class="highlight"><c- n>countr_zero</c-></code> could not throw but returned zero on an index out of bounds,
-this could be shortened to:</p>
-<pre class="language-cpp highlight"><c- n>bitset</c-><c- o>&lt;</c-><c- mi>128</c-><c- o>></c-> <c- n>bits</c-><c- p>;</c->
-<c- k>for</c-> <c- p>(</c-><c- b>size_t</c-> <c- n>i</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c-> <c- n>i</c-> <c- o>+=</c-> <c- n>bits</c-><c- p>.</c-><c- n>countr_zero</c-><c- p>(</c-><c- n>i</c-><c- p>)</c-> <c- o>!=</c-> <c- mi>128</c-><c- p>;</c-> <c- o>++</c-><c- n>i</c-><c- p>)</c-> <c- p>{</c->
-    <c- c1>// ...</c->
-<c- p>}</c->
-</pre>
-   <p>An infallible <code class="highlight"><c- n>countr_zero</c-></code> would also cater to users who do not want to use
-exceptions, whereas the current proposal perpetuates the existing exception-based design.</p>
-   <h5 class="heading settled" data-level="4.3.1.2" id="find-next-one"><span class="secno">4.3.1.2. </span><span class="content"><code class="highlight"><c- n>find_next_one</c-></code></span><a class="self-link" href="#find-next-one"></a></h5>
-   <p>It would be possible to add a member function which increments and advances
-to the next bit in a one operation.</p>
-<pre class="language-cpp highlight"><c- n>bitset</c-><c- o>&lt;</c-><c- mi>128</c-><c- o>></c-> <c- n>bits</c-><c- p>;</c->
-<c- k>for</c-> <c- p>(</c-><c- b>size_t</c-> <c- n>i</c-> <c- o>=</c-> <c- mi>0</c-><c- p>;</c-> <c- p>(</c-><c- n>i</c-> <c- o>=</c-> <c- n>bits</c-><c- p>.</c-><c- n>find_next_one</c-><c- p>(</c-><c- n>i</c-><c- p>))</c-> <c- o>!=</c-> <c- n>bitset</c-><c- o>&lt;</c-><c- n>N</c-><c- o>>::</c-><c- n>npos</c-><c- p>;</c-> <c- p>)</c-> <c- p>{</c->
-    <c- c1>// ...</c->
-<c- p>}</c->
-</pre>
-   <p>A possible issue is that this operation is extremely specialized towards iteration.</p>
-   <p>As with <code class="highlight"><c- n>countr_zero</c-></code>, it also needs be considered whether <code class="highlight"><c- n>find_next_one</c-></code> should handle a bad index by throwing an exception, if LEWG prefers this kind of function.</p>
-   <h5 class="heading settled" data-level="4.3.1.3" id="no-novel-overload"><span class="secno">4.3.1.3. </span><span class="content">No novel overloads</span><a class="self-link" href="#no-novel-overload"></a></h5>
-   <p>It is also possible to drop the overloads taking <code class="highlight"><c- b>size_t</c-></code> from this proposal.
-Perhaps a future proposal focused on iteration for <code class="highlight"><c- n>bitset</c-></code> could approach the
-issue of facilitating iteration.
-This was most recently attempted in <a data-link-type="biblio" href="#biblio-p0161r0" title="Bitset Iterators, Masks, and Container Operations">[P0161R0]</a>.</p>
-   <p>However, such functions are well within the scope of this proposal, especially if they share
-a name with other proposed members, and they do not pose a substantial design/wording hurdle.
-In short, we may as well do it.</p>
-   <h4 class="heading settled" data-level="4.3.2" id="bit-counting-overloads"><span class="secno">4.3.2. </span><span class="content">New overloads for <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code>?</span><a class="self-link" href="#bit-counting-overloads"></a></h4>
-   <p>The overloads taking <code class="highlight"><c- b>size_t</c-></code> don’t need a counterpart in <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code> because they are very easy to
-emulate:</p>
-<pre class="language-cpp highlight"><c- b>int</c-> <c- nf>countl_zero</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>unsigned_integral</c-> <c- k>auto</c-> <c- n>x</c-><c- p>,</c-> <c- b>int</c-> <c- n>off</c-><c- p>)</c-> <c- p>{</c->
-    <c- k>return</c-> <c- n>std</c-><c- o>::</c-><c- n>countl_zero</c-><c- p>(</c-><c- n>x</c-> <c- o>>></c-> <c- n>off</c-><c- p>);</c->
-<c- p>}</c->
-</pre>
-   <p>I consider these too trivial to justify adding such convenience functions to <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code>,
-even if it would create more symmetry between <code class="highlight"><c- n>bitset</c-></code> and <code class="highlight"><c- o>&lt;</c-><c- n>bit</c-><c- o>></c-></code>.</p>
-   <h2 class="heading settled" data-level="5" id="impact-on-existing-code"><span class="secno">5. </span><span class="content">Impact on existing code</span><a class="self-link" href="#impact-on-existing-code"></a></h2>
-   <p>The semantics of existing <code class="highlight"><c- n>bitset</c-></code> member functions remain unchanged, and no existing valid code
-is broken.</p>
-   <p>This proposal is purely an extension of the functionality of <code class="highlight"><c- n>bitset</c-></code>.</p>
-   <h2 class="heading settled" data-level="6" id="implementation-experience"><span class="secno">6. </span><span class="content">Implementation experience</span><a class="self-link" href="#implementation-experience"></a></h2>
-   <p><a data-link-type="biblio" href="#biblio-bontus1" title="bitset2: bitset improved">[Bontus1]</a> provides  a <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>bitset</c-></code> implementation which supports most proposed features.
-There are no obvious obstacles to implementing the new features in common standard library
-implementations.</p>
-   <h2 class="heading settled" data-level="7" id="proposed-wording"><span class="secno">7. </span><span class="content">Proposed wording</span><a class="self-link" href="#proposed-wording"></a></h2>
-   <p>The proposed changes are relative to the working draft of the standard as of <a data-link-type="biblio" href="#biblio-n4917" title="Working Draft, Standard for Programming Language C++">[N4917]</a>.</p>
-   <p>Modify the header synopsis in subclause 17.3.2 [version.syn] as follows:</p>
-   <blockquote>
-<pre class="highlight"><code><c- cp>#define __cpp_lib_bitset                            </c-><del><c- cp>202306L</c-></del><ins><c- cp>20XXXXL</c-></ins><c- cp> </c-><c- c1>// also in &lt;bitset></c->
-</code></pre>
-   </blockquote>
-   <p>Modify the header synopsis in subclause 22.9.2.1 [template.bitset.general] as follows:</p>
-   <blockquote>
-<pre class="highlight"><code><c- k>namespace</c-> <c- nn>std</c-> <c- p>{</c->
-  <c- k>template</c-><c- o>&lt;</c-><c- b>size_t</c-> <c- n>N</c-><c- o>></c-> <c- k>class</c-> <c- nc>bitset</c-> <c- p>{</c->
-  <c- k>public</c-><c- o>:</c->
-    <c- c1>// bit reference</c->
-    <c- p>[...]</c->
+This leaves <code><h- data-h=id>bitset</h-></code> overall lacking in functionality,
+which is unfortunate because <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bitset</h-></code> is an undeniably useful container.
+At the time of writing, it is used in 119K files on GitHub; see <a href="https://github%2ecom/search?type=code&auto_enroll=true&q=%22std::bitset%22+language:cpp">[GitHubCodeSearch]</a>.
+</p>
+<p><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bitset</h-></code> does not (and should not)
+expose the underlying integer sequence of the implementation.
+Therefore, it is not possible for the user to implement these operations efficiently themselves.
+</p>
+<h2 id=design><a class=para href=#design></a>3. Design</h2>
 
-    <c- c1>// [bitset.members], bitset operations</c->
-    <c- k>constexpr</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- k>operator</c-><c- o>&amp;=</c-><c- p>(</c-><c- k>const</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- n>rhs</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
-    <c- k>constexpr</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- k>operator</c-><c- o>|=</c-><c- p>(</c-><c- k>const</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- n>rhs</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
-    <c- k>constexpr</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- k>operator</c-><c- o>^=</c-><c- p>(</c-><c- k>const</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- n>rhs</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
-    <c- k>constexpr</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- k>operator</c-><c- o>&lt;&lt;=</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
-    <c- k>constexpr</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- k>operator</c-><c- o>>>=</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
-    <c- k>constexpr</c-> <c- n>bitset</c->  <c- k>operator</c-><c- o>&lt;&lt;</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>)</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
-    <c- k>constexpr</c-> <c- n>bitset</c->  <c- k>operator</c-><c- o>>></c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>)</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
-<ins><c- o>+</c->   <c- k>constexpr</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- n>rotl</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
-<c- o>+</c->   <c- k>constexpr</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- n>rotr</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c->
-<c- o>+</c->   <c- k>constexpr</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- n>reverse</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c-></ins>
-    <c- k>constexpr</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- nf>set</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
-    <c- k>constexpr</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- nf>set</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>,</c-> <c- b>bool</c-> <c- n>val</c-> <c- o>=</c-> true<c- p>);</c->
-    <c- k>constexpr</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- nf>reset</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
-    <c- k>constexpr</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- nf>reset</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>);</c->
-    <c- k>constexpr</c-> <c- n>bitset</c->  <c- k>operator</c-><c- o>~</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
-    <c- k>constexpr</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- nf>flip</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c->
-    <c- k>constexpr</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- nf>flip</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>);</c->
-
-    <c- c1>// element access</c->
-    <c- p>[...]</c->
-
-    <c- c1>// observers</c->
-    <c- k>constexpr</c-> <c- b>size_t</c-> <c- n>count</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
-<ins><c- o>+</c->   <c- k>constexpr</c-> <c- b>size_t</c-> <c- n>countl_zero</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
-<c- o>+</c->   <c- k>constexpr</c-> <c- b>size_t</c-> <c- n>countl_zero</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>)</c-> <c- k>const</c-><c- p>;</c->
-<c- o>+</c->   <c- k>constexpr</c-> <c- b>size_t</c-> <c- n>countl_one</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
-<c- o>+</c->   <c- k>constexpr</c-> <c- b>size_t</c-> <c- n>countl_one</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>)</c-> <c- k>const</c-><c- p>;</c->
-<c- o>+</c->   <c- k>constexpr</c-> <c- b>size_t</c-> <c- n>countr_zero</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
-<c- o>+</c->   <c- k>constexpr</c-> <c- b>size_t</c-> <c- n>countr_zero</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>)</c-> <c- k>const</c-><c- p>;</c->
-<c- o>+</c->   <c- k>constexpr</c-> <c- b>size_t</c-> <c- n>countr_one</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
-<c- o>+</c->   <c- k>constexpr</c-> <c- b>size_t</c-> <c- n>countr_one</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>)</c-> <c- k>const</c-><c- p>;</c-></ins>
-    <c- k>constexpr</c-> <c- b>size_t</c-> <c- nf>size</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
-    <c- k>constexpr</c-> <c- b>bool</c-> <c- k>operator</c-><c- o>==</c-><c- p>(</c-><c- k>const</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- n>rhs</c-><c- p>)</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
-    <c- k>constexpr</c-> <c- b>bool</c-> <c- nf>test</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>)</c-> <c- k>const</c-><c- p>;</c->
-    <c- k>constexpr</c-> <c- b>bool</c-> <c- nf>all</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
-    <c- k>constexpr</c-> <c- b>bool</c-> <c- nf>any</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
-    <c- k>constexpr</c-> <c- b>bool</c-> <c- nf>none</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c->
-<ins><c- o>+</c->   <c- k>constexpr</c-> <c- b>bool</c-> <c- n>one</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c-></ins>
-  <c- p>};</c->
-
-  <c- c1>// [bitset.hash], hash support</c->
-  <c- k>template</c-><c- o>&lt;</c-><c- k>class</c-> <c- nc>T</c-><c- o>></c-> <c- k>struct</c-> <c- nc>hash</c-><c- p>;</c->
-  <c- k>template</c-><c- o>&lt;</c-><c- b>size_t</c-> <c- n>N</c-><c- o>></c-> <c- k>struct</c-> <c- nc>hash</c-><c- o>&lt;</c-><c- n>bitset</c-><c- o>&lt;</c-><c- n>N</c-><c- o>>></c-><c- p>;</c->
-<c- p>}</c-></code></pre>
-   </blockquote>
-   <p>Modify subclause 22.9.2.3 [bitset.members] as follows:</p>
-   <blockquote>
-     <code class="highlight"><pre class="highlight"><c- k><c- k>constexpr</c-></c-> <c- n><c- n>bitset</c-></c-> <c- k><c- k>operator</c-></c-><c- o><c- o>>></c-></c-><c- p><c- p>(</c-></c-><c- b><c- b>size_t</c-></c-> <c- n><c- n>pos</c-></c-><c- p><c- p>)</c-></c-> <c- k><c- k>const</c-></c-> <c- k><c- k>noexcept</c-></c-><c- p><c- p>;</c-></c-></pre></code> 
-    <p> <em>Returns</em>: <code class="highlight"><c- n>bitset</c-><c- p>(</c-><c- o>*</c-><c- k>this</c-><c- p>)</c-> <c- o>>>=</c-> <c- n>pos</c-></code>. </p>
-    <p><code class="highlight"></code></p>
-<pre class="highlight"><code><ins><c- k>constexpr</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- nf>rotl</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c-></ins></code></pre>
-    <p></p>
-    <p>
-     <ins><em>Effects</em>: Equivalent to <code class="highlight"><c- n>rotr</c-><c- p>(</c-><c- n>N</c-> <c- o>-</c-> <c- n>pos</c-> <c- o>%</c-> <c- n>N</c-><c- p>)</c-></code>.</ins>
-    </p>
-    <p><code class="highlight"></code></p>
-<pre class="highlight"><code><ins><c- k>constexpr</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- nf>rotr</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>)</c-> <c- k>noexcept</c-><c- p>;</c-></ins></code></pre>
-    <p></p>
-    <p>
-     <ins><em>Effects</em>: Replaces each bit at position <code class="highlight"><c- n>I</c-></code> in <code class="highlight"><c- o>*</c-><c- k>this</c-></code> with
-    the bit at position <code class="highlight"><c- p>(</c-><c- k>static_cast</c-><c- o>&lt;</c-><c- n>U</c-><c- o>></c-><c- p>(</c-><c- n>pos</c-><c- p>)</c-> <c- o>+</c-> <c- k>static_cast</c-><c- o>&lt;</c-><c- n>U</c-><c- o>></c-><c- p>(</c-><c- n>I</c-><c- p>))</c-> <c- o>%</c-> <c- n>N</c-></code>,
-    where <code class="highlight"><c- n>U</c-></code> is a hypothetical unsigned integer type whose width is greater
-    than the width of <code class="highlight"><c- b>size_t</c-></code>.</ins>
-    </p>
-    <p>
-     <ins><em>Returns</em>: <code class="highlight"><c- o>*</c-><c- k>this</c-></code>.</ins>
-    </p>
-    <p><code class="highlight"></code></p>
-<pre class="highlight"><code><ins><c- k>constexpr</c-> <c- n>bitset</c-><c- o>&amp;</c-> <c- nf>reverse</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c-></ins></code></pre>
-    <p></p>
-    <p>
-     <ins><em>Effects</em>: Replaces each bit at position <code class="highlight"><c- n>I</c-></code> in <code class="highlight"><c- o>*</c-><c- k>this</c-></code> with
-    the bit at position <code class="highlight"><c- n>N</c-> <c- o>-</c-> <c- n>I</c-> <c- o>-</c-> <c- mi>1</c-></code>.</ins>
-    </p>
-    <p>
-     <ins><em>Returns</em>: <code class="highlight"><c- o>*</c-><c- k>this</c-></code>.</ins>
-    </p>
-    <p> [...] </p>
-    <p><code class="highlight"></code></p>
-<pre class="highlight"><code><c- k>constexpr</c-> <c- b>size_t</c-> <c- nf>count</c-><c- p>()</c-> <c- k>noexcept</c-><c- p>;</c-></code></pre>
-    <p></p>
-    <p> <em>Returns</em>: A count of the number of bits set in <code class="highlight"><c- o>*</c-><c- k>this</c-></code>. </p>
-    <p><code class="highlight"></code></p>
-<pre class="highlight"><code><ins><c- k>constexpr</c-> <c- b>size_t</c-> <c- nf>countl_zero</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>)</c-> <c- k>const</c-><c- p>;</c-></ins></code></pre>
-    <p></p>
-    <p>
-     <ins><em>Returns</em>: The number of consecutive zero-bits in <code class="highlight"><c- o>*</c-><c- k>this</c-></code>,
-    starting at position <code class="highlight"><c- n>pos</c-></code>,
-    and traversing <code class="highlight"><c- o>*</c-><c- k>this</c-></code> in decreasing position direction.</ins>
-    </p>
-    <p>
-     <ins><em>Throws</em>: <code class="highlight"><c- n>out_of_range</c-></code> if <code class="highlight"><c- n>pos</c-></code> does not correspond to a valid bit position.</ins>
-    </p>
-    <p><code class="highlight"></code></p>
-<pre class="highlight"><code><ins><c- k>constexpr</c-> <c- b>size_t</c-> <c- nf>countl_zero</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c-></ins></code></pre>
-    <p></p>
-    <p>
-     <ins><em>Returns</em>: <code class="highlight"><c- n>countl_zero</c-><c- p>(</c-><c- n>N</c-> <c- o>-</c-> <c- mi>1</c-><c- p>)</c-></code>.</ins>
-    </p>
-    <p><code class="highlight"></code></p>
-<pre class="highlight"><code><ins><c- k>constexpr</c-> <c- b>size_t</c-> <c- nf>countl_one</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>)</c-> <c- k>const</c-><c- p>;</c-></ins></code></pre>
-    <p></p>
-    <p>
-     <ins><em>Returns</em>: The number of consecutive one-bits in <code class="highlight"><c- o>*</c-><c- k>this</c-></code>,
-    starting at position <code class="highlight"><c- n>pos</c-></code>,
-    and traversing <code class="highlight"><c- o>*</c-><c- k>this</c-></code> in decreasing position direction.</ins>
-    </p>
-    <p>
-     <ins><em>Throws</em>: <code class="highlight"><c- n>out_of_range</c-></code> if <code class="highlight"><c- n>pos</c-></code> does not correspond to a valid bit position.</ins>
-    </p>
-    <p><code class="highlight"></code></p>
-<pre class="highlight"><code><ins><c- k>constexpr</c-> <c- b>size_t</c-> <c- nf>countl_one</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c-></ins></code></pre>
-    <p></p>
-    <p>
-     <ins><em>Returns</em>: <code class="highlight"><c- n>countl_one</c-><c- p>(</c-><c- n>N</c-> <c- o>-</c-> <c- mi>1</c-><c- p>)</c-></code>.</ins>
-    </p>
-    <p><code class="highlight"></code></p>
-<pre class="highlight"><code><ins><c- k>constexpr</c-> <c- b>size_t</c-> <c- nf>countr_zero</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>)</c-> <c- k>const</c-><c- p>;</c-></ins></code></pre>
-    <p></p>
-    <p>
-     <ins><em>Returns</em>: The number of consecutive zero-bits in <code class="highlight"><c- o>*</c-><c- k>this</c-></code>,
-    starting at position <code class="highlight"><c- n>pos</c-></code>,
-    and traversing <code class="highlight"><c- o>*</c-><c- k>this</c-></code> in increasing position direction.</ins>
-    </p>
-    <p>
-     <ins><em>Throws</em>: <code class="highlight"><c- n>out_of_range</c-></code> if <code class="highlight"><c- n>pos</c-></code> does not correspond to a valid bit position.</ins>
-    </p>
-    <p><code class="highlight"></code></p>
-<pre class="highlight"><code><ins><c- k>constexpr</c-> <c- b>size_t</c-> <c- nf>countr_zero</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c-></ins></code></pre>
-    <p></p>
-    <p>
-     <ins><em>Returns</em>: <code class="highlight"><c- n>countr_zero</c-><c- p>(</c-><c- mi>0</c-><c- p>)</c-></code>.</ins>
-    </p>
-    <p><code class="highlight"></code></p>
-<pre class="highlight"><code><ins><c- k>constexpr</c-> <c- b>size_t</c-> <c- nf>countr_one</c-><c- p>(</c-><c- b>size_t</c-> <c- n>pos</c-><c- p>)</c-> <c- k>const</c-><c- p>;</c-></ins></code></pre>
-    <p></p>
-    <p>
-     <ins><em>Returns</em>: The number of consecutive one-bits in <code class="highlight"><c- o>*</c-><c- k>this</c-></code>,
-    starting at position <code class="highlight"><c- n>pos</c-></code>,
-    and traversing <code class="highlight"><c- o>*</c-><c- k>this</c-></code> in increasing position direction.</ins>
-    </p>
-    <p>
-     <ins><em>Throws</em>: <code class="highlight"><c- n>out_of_range</c-></code> if <code class="highlight"><c- n>pos</c-></code> does not correspond to a valid bit position.</ins>
-    </p>
-    <p><code class="highlight"></code></p>
-<pre class="highlight"><code><ins><c- k>constexpr</c-> <c- b>size_t</c-> <c- nf>countr_one</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c-></ins></code></pre>
-    <p></p>
-    <p>
-     <ins><em>Returns</em>: <code class="highlight"><c- n>countr_one</c-><c- p>(</c-><c- mi>0</c-><c- p>)</c-></code>.</ins>
-    </p>
-    <p> [...] </p>
-    <p><code class="highlight"></code></p>
-<pre class="highlight"><code><c- k>constexpr</c-> <c- b>bool</c-> <c- nf>none</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c-></code></pre>
-    <p></p>
-    <p> <em>Returns</em>: <code class="highlight"><c- n>count</c-><c- p>()</c-> <c- o>==</c-> <c- mi>0</c-></code>. </p>
-    <p><code class="highlight"></code></p>
-<pre class="highlight"><code><ins><c- k>constexpr</c-> <c- b>bool</c-> <c- nf>one</c-><c- p>()</c-> <c- k>const</c-> <c- k>noexcept</c-><c- p>;</c-></ins></code></pre>
-    <p></p>
-    <p>
-     <ins><em>Returns</em>: <code class="highlight"><c- n>count</c-><c- p>()</c-> <c- o>==</c-> <c- mi>1</c-></code>.</ins>
-    </p>
-   </blockquote>
-   <p class="note" role="note"><span class="marker">Note:</span> The use of a hypothetical integer type in the specification of <code class="highlight"><c- n>rotl</c-></code> and <code class="highlight"><c- n>rotr</c-></code> is necessary
-      because <code class="highlight"><c- p>(</c-><c- n>I</c-> <c- o>+</c-> <c- n>pos</c-><c- p>)</c-> <c- o>%</c-> <c- n>N</c-></code> would be incorrect when <code class="highlight"><c- n>I</c-> <c- o>+</c-> <c- n>pos</c-></code> wraps.</p>
-  </main>
-<script>
-(function() {
-  "use strict";
-  var collapseSidebarText = '<span aria-hidden="true">←</span> '
-                          + '<span>Collapse Sidebar</span>';
-  var expandSidebarText   = '<span aria-hidden="true">→</span> '
-                          + '<span>Pop Out Sidebar</span>';
-  var tocJumpText         = '<span aria-hidden="true">↑</span> '
-                          + '<span>Jump to Table of Contents</span>';
-
-  var sidebarMedia = window.matchMedia('screen and (min-width: 78em)');
-  var autoToggle   = function(e){ toggleSidebar(e.matches) };
-  if(sidebarMedia.addListener) {
-    sidebarMedia.addListener(autoToggle);
-  }
-
-  function toggleSidebar(on) {
-    if (on == undefined) {
-      on = !document.body.classList.contains('toc-sidebar');
-    }
-
-    /* Don't scroll to compensate for the ToC if we're above it already. */
-    var headY = 0;
-    var head = document.querySelector('.head');
-    if (head) {
-      // terrible approx of "top of ToC"
-      headY += head.offsetTop + head.offsetHeight;
-    }
-    var skipScroll = window.scrollY < headY;
-
-    var toggle = document.getElementById('toc-toggle');
-    var tocNav = document.getElementById('toc');
-    if (on) {
-      var tocHeight = tocNav.offsetHeight;
-      document.body.classList.add('toc-sidebar');
-      document.body.classList.remove('toc-inline');
-      toggle.innerHTML = collapseSidebarText;
-      if (!skipScroll) {
-        window.scrollBy(0, 0 - tocHeight);
-      }
-      tocNav.focus();
-      sidebarMedia.addListener(autoToggle); // auto-collapse when out of room
-    }
-    else {
-      document.body.classList.add('toc-inline');
-      document.body.classList.remove('toc-sidebar');
-      toggle.innerHTML = expandSidebarText;
-      if (!skipScroll) {
-        window.scrollBy(0, tocNav.offsetHeight);
-      }
-      if (toggle.matches(':hover')) {
-        /* Unfocus button when not using keyboard navigation,
-           because I don't know where else to send the focus. */
-        toggle.blur();
-      }
-    }
-  }
-
-  function createSidebarToggle() {
-    /* Create the sidebar toggle in JS; it shouldn't exist when JS is off. */
-    var toggle = document.createElement('a');
-      /* This should probably be a button, but appearance isn't standards-track.*/
-    toggle.id = 'toc-toggle';
-    toggle.class = 'toc-toggle';
-    toggle.href = '#toc';
-    toggle.innerHTML = collapseSidebarText;
-
-    sidebarMedia.addListener(autoToggle);
-    var toggler = function(e) {
-      e.preventDefault();
-      sidebarMedia.removeListener(autoToggle); // persist explicit off states
-      toggleSidebar();
-      return false;
-    }
-    toggle.addEventListener('click', toggler, false);
+<h2 id=references><a class=para href=#references></a>4. References</h2>
 
 
-    /* Get <nav id=toc-nav>, or make it if we don't have one. */
-    var tocNav = document.getElementById('toc-nav');
-    if (!tocNav) {
-      tocNav = document.createElement('p');
-      tocNav.id = 'toc-nav';
-      /* Prepend for better keyboard navigation */
-      document.body.insertBefore(tocNav, document.body.firstChild);
-    }
-    /* While we're at it, make sure we have a Jump to Toc link. */
-    var tocJump = document.getElementById('toc-jump');
-    if (!tocJump) {
-      tocJump = document.createElement('a');
-      tocJump.id = 'toc-jump';
-      tocJump.href = '#toc';
-      tocJump.innerHTML = tocJumpText;
-      tocNav.appendChild(tocJump);
-    }
-
-    tocNav.appendChild(toggle);
-  }
-
-  var toc = document.getElementById('toc');
-  if (toc) {
-    createSidebarToggle();
-    toggleSidebar(sidebarMedia.matches);
-
-    /* If the sidebar has been manually opened and is currently overlaying the text
-       (window too small for the MQ to add the margin to body),
-       then auto-close the sidebar once you click on something in there. */
-    toc.addEventListener('click', function(e) {
-      if(e.target.tagName.toLowerCase() == "a" && document.body.classList.contains('toc-sidebar') && !sidebarMedia.matches) {
-        toggleSidebar(false);
-      }
-    }, false);
-  }
-  else {
-    console.warn("Can't find Table of Contents. Please use <nav id='toc'> around the ToC.");
-  }
-
-  /* Wrap tables in case they overflow */
-  var tables = document.querySelectorAll(':not(.overlarge) > table.data, :not(.overlarge) > table.index');
-  var numTables = tables.length;
-  for (var i = 0; i < numTables; i++) {
-    var table = tables[i];
-    var wrapper = document.createElement('div');
-    wrapper.className = 'overlarge';
-    table.parentNode.insertBefore(wrapper, table);
-    wrapper.appendChild(table);
-  }
-
-})();
-</script>
-  <h2 class="no-num no-ref heading settled" id="references"><span class="content">References</span><a class="self-link" href="#references"></a></h2>
-  <h3 class="no-num no-ref heading settled" id="normative"><span class="content">Normative References</span><a class="self-link" href="#normative"></a></h3>
-  <dl>
-   <dt id="biblio-n4917">[N4917]
-   <dd>Thomas Köppe. <a href="https://wg21.link/n4917"><cite>Working Draft, Standard for Programming Language C++</cite></a>. 5 September 2022. URL: <a href="https://wg21.link/n4917">https://wg21.link/n4917</a>
-  </dl>
-  <h3 class="no-num no-ref heading settled" id="informative"><span class="content">Informative References</span><a class="self-link" href="#informative"></a></h3>
-  <dl>
-   <dt id="biblio-bontus1">[Bontus1]
-   <dd>Claas Bontus; d-xo; zencatalyst. <a href="https://github.com/ClaasBontus/bitset2"><cite>bitset2: bitset improved</cite></a>. URL: <a href="https://github.com/ClaasBontus/bitset2">https://github.com/ClaasBontus/bitset2</a>
-   <dt id="biblio-compilerexplorer1">[CompilerExplorer1]
-   <dd>Jan Schultke. <a href="https://godbolt.org/z/KrPsrh9bM"><cite>Example of in-place reversal vs. reverse-copy optimization</cite></a>. URL: <a href="https://godbolt.org/z/KrPsrh9bM">https://godbolt.org/z/KrPsrh9bM</a>
-   <dt id="biblio-github1">[GitHub1]
-   <dd>GitHub Code Search. <a href="https://github.com/search?type=code&amp;auto_enroll=true&amp;q=%22std%3A%3Abitset%22+language%3Ac%2B%2B&amp;p=1"><cite>std::bitset language:c++</cite></a>. URL: <a href="https://github.com/search?type=code&amp;auto_enroll=true&amp;q=%22std%3A%3Abitset%22+language%3Ac%2B%2B&amp;p=1">https://github.com/search?type=code&amp;auto_enroll=true&amp;q=%22std%3A%3Abitset%22+language%3Ac%2B%2B&amp;p=1</a>
-   <dt id="biblio-p0161r0">[P0161R0]
-   <dd>Nathan Myers. <a href="https://wg21.link/p0161r0"><cite>Bitset Iterators, Masks, and Container Operations</cite></a>. 12 February 2016. URL: <a href="https://wg21.link/p0161r0">https://wg21.link/p0161r0</a>
-   <dt id="biblio-p0553r4">[P0553R4]
-   <dd>Jens Maurer. <a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0553r4.html"><cite>Bit operations</cite></a>. URL: <a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0553r4.html">https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0553r4.html</a>
-   <dt id="biblio-p3104r2">[P3104R2]
-   <dd>Jan Schultke. <a href="https://wg21.link/p3104r2"><cite>Bit permutations</cite></a>. 5 April 2024. URL: <a href="https://wg21.link/p3104r2">https://wg21.link/p3104r2</a>
-  </dl>
+<div class=bib><div id=bib-item-N5014 class=bib-item>
+<a href="https://wg21%2elink/n5014">[N5014]</a>
+<span class=bib-author>Thomas Köppe.</span>
+<span class=bib-title>Working Draft, Programming Languages — C++</span>
+<span class=bib-date>2025-08-05</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/n5014%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf</a></div><div id=bib-item-GitHubCodeSearch class=bib-item>
+<a href="https://github%2ecom/search?type=code&auto_enroll=true&q=%22std::bitset%22+language:cpp">[GitHubCodeSearch]</a>
+<span class=bib-title>GitHub code search for "std::bitset language:cpp"</span>
+<span class=bib-date>2025-10-06</span>
+<a href="https://github%2ecom/search?type=code&auto_enroll=true&q=%22std::bitset%22+language:cpp" class=bib-link>https://github.com/search?type=code&amp;auto_enroll=true&amp;q="std::bitset"+language:cpp</a></div><div id=bib-item-P0553R4 class=bib-item>
+<a href="https://wg21%2elink/p0553r4">[P0553R4]</a>
+<span class=bib-author>Jens Maurer.</span>
+<span class=bib-title>Bit operations</span>
+<span class=bib-date>2019-03-01</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2019/p0553r4%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0553r4.html</a></div><div id=bib-item-P3104R2 class=bib-item>
+<a href="https://wg21%2elink/p3104r2">[P3104R2]</a>
+<span class=bib-author>Jan Schultke.</span>
+<span class=bib-title>Bit permutations</span>
+<span class=bib-date>2024-04-04</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2024/p3104r2%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3104r2.html</a></div><div id=bib-item-P3104R4 class=bib-item>
+<a href="https://wg21%2elink/p3104r4">[P3104R4]</a>
+<span class=bib-author>Jan Schultke.</span>
+<span class=bib-title>Bit permutations</span>
+<span class=bib-date>2025-06-28</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/p3104r4%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3104r4.html</a></div></div>
+</main></body>
+</html>
