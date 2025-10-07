@@ -1,0 +1,354 @@
+\cowel_include{libwg21.cow}
+\cowel_include{libslides.cow}
+
+\cowel_macro(slidehfun){\
+\cowel_paragraph_leave\
+\trim{
+  \slideh{\N{MATHEMATICAL DOUBLE-STRUCK CAPITAL F} \N{EN DASH} \cowel_put}
+  \there(summary-bullets){\li{\N{MATHEMATICAL DOUBLE-STRUCK CAPITAL F} \N{EN DASH} \cowel_put}}
+}}
+\cowel_macro(slidehlib){
+\cowel_paragraph_leave\
+\trim{
+  \slideh{\N{MATHEMATICAL DOUBLE-STRUCK CAPITAL L} \N{EN DASH} \cowel_put}
+  \there(summary-bullets){\li{\N{MATHEMATICAL DOUBLE-STRUCK CAPITAL L} \N{EN DASH} \cowel_put}}
+}}
+
+\Vset(paper-number){P3666R1}
+\Vset(paper-title){Bit-precise integers}
+
+\cowel_macro(footsep){\N{EM SPACE}|\N{EM SPACE}}
+
+\cowel_macro(slidefoot){
+Jan Schultke
+\footsep
+Slides for \Vget(paper-number)
+\N{EM DASH}
+\Vget(paper-title)
+\footsep
+SG22 Telecon 2025-10-08
+\footsep
+Slide \Vget(slidenum)
+}
+
+\style{
+  section>h1 {
+    margin-top: calc(0.15 * var(--sw)) !important;
+    font-size: 300%;
+    text-align: center;
+  }
+  #docnum {
+    font-family: var(--sans-serif-family);
+    font-size: 80%;
+    font-weight: normal;
+  }
+  li>ul {
+    margin-top: 0;
+  }
+  #tony-table {
+    margin-left: auto;
+    margin-right: auto;
+    width: 90%;
+    table-layout: fixed;
+  }
+  #tony-table td {
+    background-color: var(--deep-background-color);
+    width: 50%;
+  }
+}
+
+\wg21_head(
+  title = Slides for \Vget(paper-number) \N{EM DASH} \Vget(paper-title)
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{P3869R0}}
+  \dt{Date:}            \dd{\tt{2025-10-06}}
+  \dt{Audience:}        \dd{SG22}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/bitint-slides.cow)}
+}
+\hr
+\slide_controls
+}
+
+\slide{
+\cowel_html_element(h1){\Vget(paper-title) \br \cowel_html_element(span, (id=docnum)){\Vget(paper-number)}}
+}
+
+\slide{
+\slideh{Introduction}
+C23 now has \tcode{_BitInt} type for N-bit integers (WG14 \ref(N2763), \ref(N2775)):
+\cppblock{
+// 8-bit unsigned integer initialized with value 255.
+// The literal suffix wb is unnecessary in this case.
+unsigned _BitInt(8) x = 0xFFwb;
+}
+\ul{
+  \li{would be very useful in C++ for > 64-bit computation}
+  \li{\em{needs} to be in C++ to call C functions portably!}
+  \li{efforts to standardize in C++ abandoned (mainly \ref(N1744), \ref(P1889R1) (TS))}
+  \li{implemented by GCC and Clang; max: \tcode{_BitInt(8'388'608)}}
+  \li{\b{Now}: figuring out the details}
+}
+}
+
+\slide{
+\slideh{P3666R1 Overview}
+
+\ul{
+  \li{
+    \b{Core design}: copy \tcode{_BitInt} from C23 & paste w/ minimal changes:
+    \ul{
+      \li{allow \tcode{_BitInt(1)} (\ref(N3699) "Integer Sets, v3")}
+      \li{change type of \tcode{0wb} from \tcode{_BitInt(2)} to \tcode{_BitInt(1)}}
+      \li{allow \tcode{enum E : _BitInt(N)} (\ref(N3705), "bit-precise enum")}
+      \li{add deduction of \tcode{N} from \tcode{_BitInt(N)}, other C++ stuff}
+    }
+  }
+  \li{
+    \b{Library design}: copy from C23 & paste unchanged:
+    \ul{
+      \li{\header{cmath}: treat \em{all} integers as \tcode{double}}
+      \li{\header{stdbit.h}: allow \tcode{_BitInt(N)} of same width as standard integer}
+      \li{\header{stdckdint.h}: allow \tcode{_BitInt(N)} only as target type}
+    }
+  }
+}
+}
+
+\style{
+  #contention>li::marker {
+    content: "\N{HIGH VOLTAGE SIGN}";
+  }
+  #contention {
+    font-size: 125%;
+  }
+}
+
+\slide{
+\slideh{P3666R1 Points of contention}
+
+\ul(id=contention){
+  \li{library class template vs fundamental type}
+  \li{undefined behavior on signed integer overflow}
+  \li{removing some implicit conversions}
+  \li{raising the \tcode{\hl(macro){BITINT_MAXWIDTH}}}
+  \li{\tcode{_BitInt} keyword and \tcode{std::bit_int} alias template}
+  \li{(CWG/LWG: use of \tcode{_BitInt} keyword in specification)}
+}
+}
+
+\style{
+  .poll-results {
+    font-size: 75%;
+  }
+}
+
+\slide{
+\slideh{Library class template vs fundamental type}
+
+This was discussed as \ref(P3639R0).
+
+\Bquote(class=poll-results){
+The WG14 delegation to SG22 believes
+that the C++ type family that deliberately corresponds to _BitInt
+(perhaps via compatibility macros) should be... (Fundamental/Library)
+
+\table(class=five-way-poll){
+  \tr{\th{SF}\th{F}\th{N}\th{L}\th{SL}}
+  \tr{\td{8}\td{1}\td{1}\td{0}\td{0}}
+}
+
+WG21
+\table(class=five-way-poll){
+  \tr{\th{SF}\th{F}\th{N}\th{L}\th{SL}}
+  \tr{\td{4}\td{5}\td{0}\td{0}\td{0}}
+}
+}
+
+EWG: consensus to have a fundamental type.
+}
+
+\slide{
+\slideh{UB on signed integer overflow}
+
+\ul{
+  \li{\b{Problem}: signed integer overflow results in UB}
+  \li{\b{Idea}: well-defined for \tcode{_BitInt}, e.g. wrapping & erroneous (Rust-style)}
+  \li{✔️ less UB = more good, could catch bugs}
+  \li{❌ inconsistent with C}
+  \li{❌ not a general solution (\tcode{int} stays unchanged)}
+  \li{❌ well-defined (wrapping) behavior not very useful}
+  \li{❌ UB is useful for optimization}
+  \li{\b{Author position}: problem should be approached more generally}
+}
+}
+
+\slide{
+\slideh{Limiting implicit conversions (1/2)}
+
+\ul{
+  \li{\b{Problem}: lots of bug-prone, questionable implicit conversions}
+  \li{\b{Idea}: limit conversions for \tcode{_BitInt} (e.g. narrowing)}
+  \li{❌ almost impossible to specify without "false positives"
+  \ul{
+    \li{many issues due to lack of "untyped literals" like in Rust}
+  }}
+}
+
+\cppblock{
+// Problems with C/C++ interoperable headers:
+unsigned _BitInt(8) bit = 0;
+unsigned _BitInt(3) max3u = -1;
+
+// Problems with "false rejections" for safe cases:
+bit &= 0xf; // int → unsigned _BitInt(8)
+}
+}
+
+\slide{
+\slideh{Limiting implicit conversions (2/2)}
+
+\cppblock{
+template<std::integral T>
+T div_ceil(T x, T y) { // performs integer division, rounding to +∞
+  // ⚠️ Could be mixed-sign comparison:
+  bool quotient_positive = (x ^ y) >= 0;
+  // ⚠️ Could be mixed-sign comparison
+  bool adjust = x % y != 0 && quotient_positive;
+  // ⚠️ Could be mixed-sign addition between int (0 or 1)
+  //    and unsigned _BitInt(N) "x / y":
+  // ⚠️ Could be lossy conversion: int → unsigned _BitInt
+  return x / y + int(adjust);
+}
+}
+
+\b{Author position}: at most, pick low-hanging fruits (e.g. \tcode{_BitInt} → \tcode{bool})
+}
+
+\slide{
+\slideh{Raising the \tcode{\hl(macro){BITINT_MAXWIDTH}}}
+
+\ul{
+  \li{\b{Problem}: C only guarantees \tcode{_BitInt(64)} / \tcode{_BitInt(\hl(macro){LLONG_WIDTH})}
+    \ul{
+      \li{\tcode{_BitInt(128)} and wider are not portable}
+    }
+  }
+  \li{\b{Idea}: mandate e.g. \tcode{\hl(macro){BITINT_MAXWIDTH} >= 65'535} (GCC max.)}
+  \li{❌ \tcode{\hl(macro){BITINT_MAXWIDTH}} depends on system ABI:
+    \ul{
+      \li{e.g. x86_64 psABI: Clang supports \tcode{_BitInt(8'388'608)}}
+      \li{e.g. Basic C ABI for WASM: Clang supports only \tcode{_BitInt(128)}}
+    }
+  }
+  \li{✔️ standardizing high \tcode{\hl(macro){BITINT_MAXWIDTH}} pressures ecosystem}
+  \li{\b{Author position}: inherit C restrictions, which are still useful}
+}
+}
+
+\slide{
+\slideh{\tcode{_BitInt} keyword and \tcode{std::bit_int} alias}
+
+\ul{
+  \li{\b{Problem A}: \tcode{_BitInt} useful for C-interoperable headers
+    \ul{
+      \li{\tcode{signed _BitInt} and \tcode{unsigned _BitInt}}
+      \li{deducing \tcode{N} from \tcode{_BitInt(N)}}
+      \li{\tcode{\hl(macro){_Atomic}}-like compat. macro for \tcode{\exposid{bit-int}(N)} is convoluted}
+    }
+  }
+  \li{\b{Problem B}: \tcode{std::bit_int<N>} is a better fit for C++ than \tcode{_BitInt(N)}}
+  \li{\b{Author position}:\ul{
+    \li{both spellings are useful}
+    \li{\tcode{_BitInt} should be a keyword}
+  }}
+}
+}
+
+\slide{
+\slideh{Questions}
+
+\ul{
+  \li{Agreement with author position?
+    \ul{
+      \li{fundamental type better than class template}
+      \li{allow \tcode{0wb = _BitInt(1)} and \tcode{enum E : _BitInt(N)}}
+      \li{keep UB on signed integer overflow}
+      \li{keep all implicit conversions (at least in this paper)}
+      \li{keep the \tcode{\hl(macro){BITINT_MAXWIDTH}} from C}
+      \li{
+        add \em{both} a \tcode{_BitInt} keyword and alias templates
+        (\tcode{std::bit_int} and \tcode{std::bit_uint})
+      }
+    }
+  }
+  \li{Forward to EWG?}
+}
+}
+
+\h2(listed=false){References}
+
+\make_bib
+
+\bib(
+  id = P3639R0,
+  title = The _BitInt Debate,
+  date = 2025-02-20,
+  author = Jan Schultke,
+  link = https://wg21.link/p3639r0,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3639r0.html,
+)\
+\bib(
+  id = N1744,
+  title = Big Integer Library Proposal for C++0x,
+  date = 2005-01-13,
+  author = Michiel Salters,
+  link = https://wg21.link/n1744,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1744.pdf,
+)\
+\bib(
+  id = P1889R1,
+  title = C++ Numerics Work In Progress,
+  date = 2019-12-27,
+  author = Alexander Zaitsev et al.,
+  link = https://wg21.link/p1889r1,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p1889r1%2epdf,
+)\
+\bib(
+  id = P3639R0,
+  title = The _BitInt Debate,
+  date = 2025-02-20,
+  author = Jan Schultke,
+  link = https://wg21.link/p3639r0,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3639r0.html,
+)\
+\bib(
+  id = N2763,
+  title = Adding a Fundamental Type for N-bit integers,
+  date = 2021-06-21,
+  author = Aaron Ballman et al.,
+  link = https://open-std.org/JTC1/SC22/WG14/www/docs/n2763.pdf,
+)\
+\bib(
+  id = N2775,
+  title = Literal suffixes for bit-precise integers,
+  date = 2021-07-13,
+  author = Aaron Ballman\, Melanie Blower,
+  link = https://open-std.org/JTC1/SC22/WG14/www/docs/n2775.pdf,
+)\
+\bib(
+  id = N3699,
+  title = Integer Sets\, v3,
+  date = 2025-09-02,
+  author = Robert C. Seacord,
+  link = https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3699.pdf,
+)\
+\bib(
+  id = N3705,
+  title = bit-precise enum,
+  date = 2025-09-05,
+  author = Phillip Klaus Krause,
+  link = https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3705.htm,
+)\
