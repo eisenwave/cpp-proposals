@@ -4,13 +4,13 @@
   title = Unicode character support for integer overloads \tt{<charconv>}
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3688R0}}
-  \dt{Date:}            \dd{\tt{2025-05-19}}
-  \dt{Audience:}        \dd{LEWG, SG16}
+  \dt{Document number:} \dd{\docnum{D3876R0}}
+  \dt{Date:}            \dd{\tt{2025-10-18}}
+  \dt{Audience:}        \dd{SG16}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3688/github)}
-  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/ascii.cow)}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3876/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/charconv-unicode.cow)}
 }
 \hr
 }
@@ -18,7 +18,6 @@
 \Babstract{
 We should add support for \tcode{char8_t}, \tcode{char16_t}, and \tcode{char32_t}
 in \tcode{std::to_chars} and \tcode{std::from_chars}.
-Unambitiously, I only propose to make this change to the integer overloads for now.
 }
 
 \h2(listed=false){Contents}
@@ -32,7 +31,8 @@ in \tcode{std::to_chars} and \tcode{std::from_chars} is clearly useful.
 File formats such as JSON require the use of Unicode character encodings,
 so an application that deals with JSON may want to use \tcode{char8_t} in its APIs
 and internally.
-This leads to problems like:
+However, when attempting to use \tcode{char8_t} for this purpose,
+one quickly runs into problems:
 
 \cppblock{
 void append_json_number(std::vector<char8_t>& out, int x) {
@@ -45,19 +45,143 @@ and then transcode to UTF-8 as \tcode{char8_t},
 but the standard library provides no transcoding facilities yet.
 Even if there was support, using \tcode{char} is an unnecessary middle man.
 
-What makes this problem especially frustrating is that existing implementations
-could already work with any character type, but are artificially restricted to \tcode{char}.
-That is, for the integer overloads at least.
+Furthermore, \tcode{std::to_chars} accepting \tcode{char8_t}
+is arguably a prerequisite for \tcode{std::format} to accept \tcode{char8_t} too
+because conversions of arithmetic types are specified in terms of \tcode{to_chars}.
+\tcode{std::print} would similarly need \tcode{std::to_chars} to function
+since it relies on format strings as well.
 
-The floating-point overloads can be implemented in terms of using the
-\tcode{char} overload internally,
-and transcoding to Unicode encodings for the interface.
-This does not require full Unicode transcoding support;
-no known implementation of \tcode{printf} exists that involves
-non-ASCII characters in \tcode{char8_t}, \tcode{char16_t}, or \tcode{char32_t}.
-At most, transcoding between e.g. EBCDIC and ASCII may be required.
+Providing support for Unicode character types would be relatively simple.
+All characters produced by \tcode{std::to_chars}
+and all characters accepted by \tcode{std::from_chars} fall into the Basic Latin (ASCII) block
+and are part of the basic character set (\tcode{0}, \tcode{-}, \tcode{E}, etc.).
+This means that any existing implementation for ASCII-encoded \tcode{char} could be made to work
+with Unicode characters trivially.
+
+\h2{Design}
+
+\h3{\tcode{to_chars}}
+
+The output format of \tcode{to_chars} should be identical
+to that for \tcode{char}.
+This is easily implementable because all characters produced by \tcode{to_chars}
+are Basic Latin characters in the basic character set.
+
+\h3{\tcode{from_chars}}
+
+The formats accepted by \tcode{from_chars} should be identical to those for \tcode{char},
+which are specified in terms of functions like \tcode{strtol} in the \tcode{"C"} locale.
+
+\tcode{from_chars} for Unicode characters should not accept any further constructs
+such as parsing \tcode{u8"Ⅳ"} as \tcode{4}
+because this goes against its stated design goal of being a low-level,
+high-performance utility for parsing numbers.
+
+\h4{Unicode error handling}
+
+It is possible that a user attempts to run \tcode{from_chars}
+on a malformed Unicode string.
+
+\h3{Function signature and result types}
+
+\tcode{to_chars} and \tcode{from_chars}
+are not function templates despite working with a wide variety of integer types
+(at least, there need to be 11 overloads
+for each signed and unsigned integer type and for \tcode{char}).
+If we also added a non-template overload for each character type,
+this would result in an absurd overload set of 55 functions
+(\tcode{{char, wchar_t, char8_t, char16_t, char32_t} x {char, signed char, ..., unsigned long long}}).
+While \tcode{wchar_t} overloads are not proposed here,
+they may be worth supporting in the future.
+Such a huge overload set is clearly undesirable,
+so function templates are necessary.
+
+Furthermore, the existing \tcode{std::to_chars_result} and \tcode{std::from_chars_result}
+classes cannot be turned into class templates without breaking both API and ABI.
+There is also no good name for a new class template,
+and if that was used for Unicode characters,
+the asymmetry with the \tcode{char} overloads would be even more apparent.
+However, we could create one result type per character,
+as well as alias templates \tcode{std::to_chars_result_t} and \tcode{std::from_chars_result_t}
+which select the appropriate result class.
+
+In code, the design can be summarized as follows:
+
+\cppblock{
+struct to_chars_result {
+  char* ptr;
+  errc ec;
+  friend bool operator==(const to_chars_result&, const to_chars_result&) = default;
+  constexpr explicit operator bool() const noexcept { return ec == errc{}; }
+};
+// analogous classes:
+struct wto_chars_result { /* ... */ };
+struct u8to_chars_result { /* ... */ };
+struct u16to_chars_result { /* ... */ };
+struct u32to_chars_result { /* ... */ };
+
+template<\exposid{character-type} T>
+  using to_chars_result_t = \exposid{one of the result types above};
+
+// pre-existing overload:
+constexpr to_chars_result
+  to_chars(char* first, char* last, \exposid{integer-type} value, int base = 10);
+// new function template:
+template<\exposid{character-type} T, \exposid{integer-type-concept} U>
+  constexpr to_chars_result_t<T> to_chars(T* first, T* last, U value, int base = 10);
+
+// same approach for floating-point types:
+to_chars_result to_chars(char* first, char* last,
+                         \exposid{floating-point-type} value);
+template<\exposid{character-type} T, \exposid{floating-point-type-concept} U>
+  to_chars_result_t<T> to_chars(T* first, T* last, U value);
+
+to_chars_result to_chars(char* first, char* last,
+                         \exposid{floating-point-type} value, chars_format fmt);
+template<\exposid{character-type} T, \exposid{floating-point-type-concept} U>
+  to_chars_result_t<T> to_chars(T* first, T* last, U value, chars_format fmt);
+
+to_chars_result to_chars(char* first, char* last,
+                         \exposid{floating-point-type} value, chars_format fmt, int precision);
+template<\exposid{character-type} T, \exposid{floating-point-type-concept} U>
+  to_chars_result_t<T> to_chars(T* first, T* last, U value, chars_format fmt, int precision);
+}
+
+\cppblock{
+struct from_chars_result {
+  const char* ptr;
+  errc ec;
+  friend bool operator==(const from_chars_result&, const from_chars_result&) = default;
+  constexpr explicit operator bool() const noexcept { return ec == errc{}; }
+};
+// analogous classes:
+struct wfrom_chars_result { /* ... */ };
+struct u8from_chars_result { /* ... */ };
+struct u16from_chars_result { /* ... */ };
+struct u32from_chars_result { /* ... */ };
+
+template<\exposid{character-type} T>
+  using from_chars_result_t = \exposid{one of the result types above};
+
+// pre-existing overload:
+constexpr from_chars_result
+  from_chars(const char* first, const char* last, \exposid{integer-type}& value, int base = 10);
+// new function template:
+template<\exposid{character-type} T, \exposid{integer-type-concept} U>
+  constexpr from_chars_result_t<T> from_chars(T* first, T* last, U& value, int base = 10);
+
+// same approach for floating-point types:
+from_chars_result from_chars(const char* first, const char* last,
+                             \exposid{floating-point-type}& value,
+                             chars_format fmt = chars_format::general);
+template<\exposid{character-type} T, \exposid{integer-type-concept} U>
+  constexpr from_chars_result_t<T> from_chars(T* first, T* last, U& value,
+                                              chars_format fmt = chars_format::general);
+}
 
 \h2{Wording}
+
+\comment{
 
 \h3(show-number=false){[charconv.syn]}
 
@@ -126,7 +250,7 @@ namespace std {
 
 \h3(show-number=false){[charconv.to.chars]}
 
-
+}
 
 \h2{References}
 
