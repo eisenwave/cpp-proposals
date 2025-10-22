@@ -1,0 +1,1057 @@
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+  title = Extending \tcode{<charconv>} support to more character types
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D3876R0}}
+  \dt{Date:}            \dd{\tt{2025-10-22}}
+  \dt{Audience:}        \dd{SG16}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3876/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/charconv-ext.cow)}
+}
+\hr
+}
+
+\Babstract{
+We should add support for character types other than \tcode{char}
+in \tcode{std::to_chars} and \tcode{std::from_chars}.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+Support for \tcode{char8_t} and other Unicode character types
+in \tcode{std::to_chars} and \tcode{std::from_chars} is clearly useful.
+File formats such as JSON require the use of Unicode character encodings,
+so an application that deals with JSON may want to use \tcode{char8_t} in its APIs
+and internally.
+However, when attempting to use \tcode{char8_t} for this purpose,
+one quickly runs into problems:
+
+\cppblock{
+void append_json_number(std::vector<char8_t>& out, int x) {
+    // what do I do?
+}
+}
+
+The user could use the \tcode{std::to_chars(char*, char*, int, int)} overload
+and then transcode to UTF-8 as \tcode{char8_t},
+but the standard library provides no transcoding facilities yet.
+Even if there was support, using \tcode{char} is an unnecessary middle man.
+
+Furthermore, \tcode{std::to_chars} accepting \tcode{char8_t}
+is arguably a prerequisite for \tcode{std::format} to accept \tcode{char8_t} too
+because conversions of arithmetic types are specified in terms of \tcode{to_chars}.
+\tcode{std::print} would similarly need \tcode{std::to_chars} to function
+since it relies on format strings as well.
+
+Providing support for Unicode character types would be relatively simple.
+All characters produced by \tcode{std::to_chars}
+and all characters accepted by \tcode{std::from_chars} fall into the Basic Latin (ASCII) block
+and are part of the basic character set (\tcode{0}, \tcode{-}, \tcode{E}, etc.).
+This means that any existing implementation for ASCII-encoded \tcode{char} could be made to work
+with Unicode characters trivially.
+
+\h2{Design}
+
+\h3{Which character types to support}
+
+All character types should be supported by \tcode{std::to_chars} and \tcode{std::from_chars}.
+
+\h4{\tcode{char8_t}}
+
+Due to how common UTF-8 is and due to \tcode{char8_t} now regularly being used
+to represent UTF-8 text in C++ software,
+the motivation in \ref(#introduction) mostly refers to \tcode{char8_t}.
+In fact, there is a dedicated \ref(SG16-Issue) for \tcode{char8_t}.
+
+\h4{\tcode{char16_t} and \tcode{char32_t}}
+
+However, other Unicode encodings such as UTF-16 and UTF-32 are regularly used as well,
+and if support for UTF-8 exists,
+it is trivial to support these other encodings (through \tcode{char16_t} and \tcode{char32_t})
+because the conversion functions only deal with characters in the Basic Latin block anyway,
+where these encodings are interchangeable.
+
+\h4{\tcode{wchar_t}}
+
+\tcode{wchar_t} support is slightly less motivated, and \tcode{wchar_t} isn't used much
+outside of Windows environments.
+However, it is not difficult to provide support for \tcode{wchar_t},
+and Windows C++ software may benefit from this support
+(e.g. when feeding the output of \tcode{std::to_chars} into Windows API functions
+accepting \tcode{LPCWSTR} (\tcode{const wchar_t*})).
+
+\h3{\tcode{to_chars}}
+
+The output format of \tcode{to_chars} should be identical
+to that for \tcode{char}.
+This is easily implementable because all characters produced by \tcode{to_chars}
+are Basic Latin characters in the basic character set.
+
+\h3{\tcode{from_chars}}
+
+The formats accepted by \tcode{from_chars} should be identical to those for \tcode{char},
+which are specified in terms of functions like \tcode{strtol} in the \tcode{"C"} locale.
+
+\tcode{from_chars} for Unicode characters should not accept any further constructs
+such as parsing \tcode{u8"Ⅳ"} as \tcode{4}
+because this goes against its stated design goal of being a low-level,
+high-performance utility for parsing numbers.
+
+\h4{Unicode error handling}
+
+It is possible that a user attempts to invoke \tcode{std::from_chars}
+on a malformed Unicode string.
+However, this does not mean that any special consideration to UTF-8 or other encodings
+needs to be paid.
+\tcode{std::from_chars} simply assumes that the given character range
+contains a pattern (for integers, a sequence of digits with optional \tcode{'-'} prefix)
+at the start of the range;
+this pattern is made entirely of characters in the Basic Latin block.
+
+All Unicode encodings are designed so that code \em{only} code points in the Basic Latin block
+can be encoded with code units in the range [\tcode{0}, \tcode{0x7f}).
+This means that simply treating greater code units as not part of the \tcode{std::from_chars}
+pattern (which any implementation for ASCII-based \tcode{char} does already)
+is a proper way of Unicode error handling.
+
+\h3{"Fixing" \tcode{std::format(std::wformat_string)}}
+
+Since this proposal argues for \tcode{wchar_t} support in \tcode{std::to_chars},
+it makes sense to re-specify \tcode{std::format} to call \tcode{std::to_chars} "directly".
+The current \ref(N5014) word in \eelis{format.string.std#20} works as follows:
+
+\Bquote{
+The meaning of some non-string presentation types
+is defined in terms of a call to \tcode{to_chars}.
+In such cases, let [\tcode{first}, \tcode{last}) be a range
+large enough to hold the \tcode{to_chars} output
+and \tcode{value} be the formatting argument value.
+Formatting is done as if by calling \tcode{to_chars} as specified
+and copying the output through the output iterator of the format context.
+}
+
+For \tcode{std::wformat_string},
+this means that the \tcode{std::to_chars} overload for \tcode{char*} is called,
+and the resulting \tcode{char} values are copied into the \tcode{wchar_t} output.
+This could hypothetically result in nonsensical and malformed output
+if the ordinary literal encoding and wide literal encoding are completely different,
+such as if \tcode{char} is EBCDIC and \tcode{wchar_t} is UTF-16.
+This is \em{technically} allowed by \eelis{lex.charset},
+although no known implementation exists that makes such an exotic design choice.
+
+If we specified \tcode{std::format} to instead call the \tcode{std::to_chars}
+overload for the same character type as the format string (as proposed),
+this would be an observable change,
+but would only impact hypothetical implementations where \tcode{std::format}
+is utterly broken anyway.
+
+\h3{Function signature and result types}
+
+\tcode{to_chars} and \tcode{from_chars}
+are not function templates despite working with a wide variety of integer types
+(at least, there need to be 11 overloads
+for each signed and unsigned integer type and for \tcode{char}).
+If we also added a non-template overload for each character type,
+this would result in an absurd overload set of 55 functions
+(\tcode{{char, wchar_t, char8_t, char16_t, char32_t} x {char, signed char, ..., unsigned long long}}).
+Such a huge overload set is clearly undesirable,
+so function templates are necessary.
+
+Furthermore, the existing \tcode{std::to_chars_result} and \tcode{std::from_chars_result}
+classes cannot be turned into class templates without breaking both API and ABI.
+There is also no good name for a new class template,
+and if that was used for Unicode characters,
+the asymmetry with the \tcode{char} overloads would be even more apparent.
+However, we could create one result type per character,
+as well as alias templates \tcode{std::to_chars_result_t} and \tcode{std::from_chars_result_t}
+which select the appropriate result class.
+
+In code, the design can be summarized as follows:
+
+\cppblock{
+template<class T>
+  concept \exposid{character-type} = \exposid{any character type};
+
+struct to_chars_result {
+  char* ptr;
+  errc ec;
+  friend bool operator==(const to_chars_result&, const to_chars_result&) = default;
+  constexpr explicit operator bool() const noexcept { return ec == errc{}; }
+};
+// analogous classes:
+struct wto_chars_result { /* ... */ };
+struct u8to_chars_result { /* ... */ };
+struct u16to_chars_result { /* ... */ };
+struct u32to_chars_result { /* ... */ };
+
+template<\exposid{character-type} T>
+  using to_chars_result_t = \exposid{one of the result types above};
+
+// pre-existing overload:
+constexpr to_chars_result
+  to_chars(char* first, char* last, \exposid{integer-type} value, int base = 10);
+// new function template:
+template<\exposid{character-type} T, \exposid{integer-type-concept} U>
+  constexpr to_chars_result_t<T> to_chars(T* first, T* last, U value, int base = 10);
+
+// same approach for floating-point types:
+to_chars_result to_chars(char* first, char* last,
+                         \exposid{floating-point-type} value);
+template<\exposid{character-type} T, \exposid{floating-point-type-concept} U>
+  to_chars_result_t<T> to_chars(T* first, T* last, U value);
+
+to_chars_result to_chars(char* first, char* last,
+                         \exposid{floating-point-type} value, chars_format fmt);
+template<\exposid{character-type} T, \exposid{floating-point-type-concept} U>
+  to_chars_result_t<T> to_chars(T* first, T* last, U value, chars_format fmt);
+
+to_chars_result to_chars(char* first, char* last,
+                         \exposid{floating-point-type} value, chars_format fmt, int precision);
+template<\exposid{character-type} T, \exposid{floating-point-type-concept} U>
+  to_chars_result_t<T> to_chars(T* first, T* last, U value, chars_format fmt, int precision);
+}
+
+\cppblock{
+struct from_chars_result {
+  const char* ptr;
+  errc ec;
+  friend bool operator==(const from_chars_result&, const from_chars_result&) = default;
+  constexpr explicit operator bool() const noexcept { return ec == errc{}; }
+};
+// analogous classes:
+struct wfrom_chars_result { /* ... */ };
+struct u8from_chars_result { /* ... */ };
+struct u16from_chars_result { /* ... */ };
+struct u32from_chars_result { /* ... */ };
+
+template<\exposid{character-type} T>
+  using from_chars_result_t = \exposid{one of the result types above};
+
+// pre-existing overload:
+constexpr from_chars_result
+  from_chars(const char* first, const char* last, \exposid{integer-type}& value, int base = 10);
+// new function template:
+template<\exposid{character-type} T, \exposid{integer-type-concept} U>
+  constexpr from_chars_result_t<T> from_chars(T* first, T* last, U& value, int base = 10);
+
+// same approach for floating-point types:
+from_chars_result from_chars(const char* first, const char* last,
+                             \exposid{floating-point-type}& value,
+                             chars_format fmt = chars_format::general);
+template<\exposid{character-type} T, \exposid{integer-type-concept} U>
+  from_chars_result_t<T> from_chars(T* first, T* last, U& value,
+                                    chars_format fmt = chars_format::general);
+}
+
+\h3{\tcode{constexpr} floating-point overloads}
+
+If \ref(P3652R1) "Constexpr floating-point <charconv> functions" is accepted,
+all new templated overloads should be made \tcode{constexpr}.
+There is no good reason why only the \tcode{char} overload should be \tcode{constexpr}.
+
+\Bnote{
+A possible implementation is to call the \tcode{constexpr to_chars(char*, /* .../*)}
+overload and to transcode from the ordinary literal encoding to the desired encoding.
+}
+
+\h3{More composable interface taking \tcode{std::span} or \tcode{std::string_view}}
+
+It is worth noting that there is a stale proposal
+\ref(P2584R0) "A More Composable from_chars"
+which proposes additional overloads taking \tcode{std::span},
+superseding the even more stale
+\ref(P2007R0) "std::from_chars should work with std::string_view".
+
+Such changes are orthogonal to what is proposed here.
+However it needs to be considered what impact such new overloads would have
+on the functions added here.
+In particular, \ref(P2584R0) proposes an interface such as:
+
+\cppblock{
+template<class T>
+  constexpr from_chars_result_range<T> from_chars(span<const char> rng, int base = 10);
+}
+
+If this was added, a non-breaking change would require adding four more overloads
+taking \tcode{span<char8_t>}, \tcode{span<char16_t>}, \tcode{span<char32_t>},
+and \tcode{span<wchar_t>}.
+With the benefit of foresight, perhaps we should aim at a smaller overload set
+and take a \tcode{R&&} range parameter instead.
+In any case, those changes are not within the scope of this proposal.
+
+\h2{Implementation}
+
+Any existing implementation of \tcode{std::to_chars} and \tcode{std::from_chars}
+for a platform with ASCII-based \tcode{char} (Windows, POSIX, etc.)
+is \em{numerically} implementing what is proposed here.
+That is, the implementation may not use \tcode{char8_t},
+but it produces or consumes \tcode{char} values with the same numeric values.
+
+\h3{Implementation survey}
+
+Find below a summary of existing implementations of \tcode{to_chars}
+in the three major standard libraries.
+This is necessary to understand what difficulties implementations would face
+when supporting additional character types.
+
+\table{
+  \tr{
+    \th{Functions}
+    \th{libstdc++}
+    \th{libc++}
+    \th{MSVC STL}
+  }
+  \tr{
+    \td{\tcode{to_chars} (integer)}
+    \td{\ref(https://github.com/gcc-mirror/gcc/blob/788fa7c613177b35e6c1e5098b8931480b4f0853/libstdc++-v3/include/std/charconv){std/charconv}}
+    \td{\ref(https://github.com/llvm/llvm-project/blob/eeffaf110e991791a8ff7e9b7bb40b5317c70bad/libcxx/include/__charconv/to_chars_integral.h){to_chars_integral.h}}
+    \td{\ref(https://github.com/microsoft/STL/blob/7f60cfbf379dd64ca0d5f17f3c21f5f3ee146f9d/stl/inc/charconv){inc/charconv}}
+  }
+  \tr{
+    \td{\tcode{to_chars} (floating-point)}
+    \td{\ref(https://github.com/gcc-mirror/gcc/blob/788fa7c613177b35e6c1e5098b8931480b4f0853/libstdc++-v3/src/c++17/floating_to_chars.cc){floating_to_chars.cc}}
+    \td{\ref(https://github.com/llvm/llvm-project/blob/eeffaf110e991791a8ff7e9b7bb40b5317c70bad/libcxx/src/include/to_chars_floating_point.h){to_chars_floating_point.h}}
+    \td{\ref(https://github.com/microsoft/STL/blob/7f60cfbf379dd64ca0d5f17f3c21f5f3ee146f9d/stl/inc/charconv){inc/charconv}}
+  }
+  \tr{
+    \td{\tcode{from_chars} (integer)}
+    \td{\ref(https://github.com/gcc-mirror/gcc/blob/788fa7c613177b35e6c1e5098b8931480b4f0853/libstdc++-v3/include/std/charconv){std/charconv}}
+    \td{\ref(https://github.com/llvm/llvm-project/blob/eeffaf110e991791a8ff7e9b7bb40b5317c70bad/libcxx/include/__charconv/from_chars_integral.h){to_chars_integral.h}}
+    \td{\ref(https://github.com/microsoft/STL/blob/7f60cfbf379dd64ca0d5f17f3c21f5f3ee146f9d/stl/inc/charconv){inc/charconv}}
+  }
+  \tr{
+    \td{\tcode{from_chars} (floating-point)}
+    \td{\ref(https://github.com/gcc-mirror/gcc/blob/788fa7c613177b35e6c1e5098b8931480b4f0853/libstdc++-v3/src/c++17/floating_from_chars.cc){floating_from_chars.cc}}
+    \td{\ref(https://github.com/llvm/llvm-project/blob/eeffaf110e991791a8ff7e9b7bb40b5317c70bad/libcxx/src/include/from_chars_floating_point.h){from_chars_floating_point.h}}
+    \td{\ref(https://github.com/microsoft/STL/blob/7f60cfbf379dd64ca0d5f17f3c21f5f3ee146f9d/stl/inc/charconv){inc/charconv}}
+  }
+}
+
+All implementations are quite similar:
+the underlying function performing the conversion is a function template
+with type parameter \tcode{T},
+to handle integer types or floating-point types in bulk.
+These could easily be turned into templates which also have a \tcode{charT} type parameter.
+The only difficulty would be converting the existing uses of ordinary
+character and string literals into correctly typed literals for \tcode{charT}.
+
+\Bex{
+libc++ contains the following line of code for inserting a plus sign
+into the exponent in \tcode{to_chars}:
+\cppblock{
+*_First++ = '+';
+}
+This may have to be converted into \tcode{static_cast<charT>('+')}
+to avoid implicit conversion warnings.
+A \tcode{static_cast} is correct in this case because libc++ only supports ASCII-encoded
+\tcode{char} and \tcode{wchar_t},
+so that all character types are numerically interchangeable for code points
+in the Basic Latin block.
+}
+
+The only standard library implementation that supports non-ASCII \tcode{char}
+is the IBM XL C++ for z/OS,
+but according to
+\ref(https://www.ibm.com/docs/en/zos/3.1.0?topic=files-xl-c-header){IBM's documentation},
+no \header{charconv} implementation exists yet.
+Even if \tcode{char} is non-ASCII,
+the "fix" is usually as simple as a \tcode{static_cast}:
+
+\Bex{
+The libc++ snippet could have also been fixed in an EBCDIC-compatible way:
+\cppblock{
+// Implement this once, and use it anywhere necessary:
+template<class _T>
+constexpr _T _Encode(char32_t code_point) {
+  if constexpr (^^_T == ^^char8_t || ^^_T == ^^char16_t || ^^_T == ^^char32_t) {
+    return _T(code_point);
+  } else {
+    return _Encode_ebcdic(code_point);
+  }
+}
+
+// Now, assuming we are in a function template with _CharT type parameter:
+*_First++ = _Encode<_CharT>(U'+');
+}
+}
+
+\h3{New alias templates}
+
+The proposed alias templates can be implemented as follows:
+
+\cppblock{
+template<class T>
+concept __character_type =
+  ^^T == ^^char || ^^T == ^^char8_t || ^^T == ^^char16_t || ^^T == ^^char32_t || ^^T == ^^wchar_t;
+
+template<__character_type T>
+using to_chars_result_t = [:
+    ^^T == ^^char     ? ^^to_chars_result
+  : ^^T == ^^char8_t  ? ^^u8to_chars_result
+  : ^^T == ^^char16_t ? ^^u16to_chars_result
+  : ^^T == ^^char32_t ? ^^u32to_chars_result
+                      : ^^wto_chars_result
+:];
+}
+
+The implementation of \tcode{from_chars_result_t} is analogous.
+
+\Bnote{
+The implementation doesn't actually require C++26 reflection.
+More traditional alternatives like \tcode{std::conditional_t} also work.
+}
+
+\h2{Wording}
+
+The following changes are relative to \ref(N5014).
+
+\h3(show-number=false){[version.syn]}
+
+In \eelis{version.syn},
+bump the feature-test macro:
+
+\Bdiff{
+\itemdecl{
+#define __cpp_lib_to_chars \del{202306L} \ins{20XXXXL} // \serif{also in <charconv>}
+}
+}
+
+\editnote{
+The \tcode{__cpp_lib_constexpr_charconv} and \tcode{__cpp_lib_freestanding_charconv}
+macros are not bumped.
+}
+
+\h3(show-number=false){[charconv.syn]}
+
+In \eelis{charconv.syn},
+modify the synopsis as follows:
+
+\Bdiff{
+\itemdecl{
+namespace std {
+  \ins{// \serif{exposition-only concepts}
+  template<class T>
+    concept \exposid{character-type} = \seebelow;                                  // \serif{exposition only}}
+
+  // \serif{floating-point format for primitive numerical conversion}
+  enum class chars_format {
+    scientific = unspecified,
+    fixed = unspecified,
+    hex = unspecified,
+    general = fixed | scientific
+  };
+
+  // \serif{[charconv.to.chars], primitive numerical output conversion}
+  struct to_chars_result {                                              // \serif{freestanding}
+    char* ptr;
+    errc ec;
+    friend bool operator==(const to_chars_result&, const to_chars_result&) = default;
+    constexpr explicit operator bool() const noexcept { return ec == errc{}; }
+  };
+\ins{  struct u8to_chars_result {                                            // \serif{freestanding}
+    char8_t* ptr;
+    errc ec;
+    friend bool operator==(const u8to_chars_result&, const u8to_chars_result&) = default;
+    constexpr explicit operator bool() const noexcept { return ec == errc{}; }
+  };
+  struct u16to_chars_result {                                            // \serif{freestanding}
+    char16_t* ptr;
+    errc ec;
+    friend bool operator==(const u16to_chars_result&, const u16to_chars_result&) = default;
+    constexpr explicit operator bool() const noexcept { return ec == errc{}; }
+  };
+  struct u32to_chars_result {                                            // \serif{freestanding}
+    char32_t* ptr;
+    errc ec;
+    friend bool operator==(const u32to_chars_result&, const u32to_chars_result&) = default;
+    constexpr explicit operator bool() const noexcept { return ec == errc{}; }
+  };
+  struct wto_chars_result {                                             // \serif{freestanding}
+    wchar_t* ptr;
+    errc ec;
+    friend bool operator==(const wto_chars_result&, const wto_chars_result&) = default;
+    constexpr explicit operator bool() const noexcept { return ec == errc{}; }
+  };
+  
+  template<class T>                                                     // \serif{freestanding}
+    using to_chars_result_t = \seebelow;}
+
+  constexpr to_chars_result to_chars(char* first, char* last,           // \serif{freestanding}
+                                     \exposid{integer-type} value, int base = 10);
+\ins{  template<class charT, class V>                                        // \serif{freestanding}
+    constexpr to_chars_result_t<charT> to_chars(charT* first, charT* last,
+                                                V value, int base = 10);}
+  to_chars_result to_chars(char* first, char* last,                     // \serif{freestanding}
+                           bool value, int base = 10) = delete;
+
+  to_chars_result to_chars(char* first, char* last,                     // \serif{freestanding-deleted}
+                           \exposid{floating-point-type} value);
+\ins{  template<class charT, class V>                                        // \serif{freestanding-deleted}
+    to_chars_result_t<charT> to_chars(charT* first, charT* last, V value);}
+  to_chars_result to_chars(char* first, char* last,                     // \serif{freestanding-deleted}
+                           \exposid{floating-point-type} value, chars_format fmt);
+\ins{  template<class charT, class V>                                        // \serif{freestanding-deleted}
+    to_chars_result_t<charT> to_chars(charT* first, charT* last, V value,
+                                      chars_format fmt);}
+  to_chars_result to_chars(char* first, char* last,                     // \serif{freestanding-deleted}
+                           \exposid{floating-point-type} value, chars_format fmt, int precision);
+\ins{  template<class charT, class V>                                        // \serif{freestanding-deleted}
+    to_chars_result_t<charT> to_chars(charT* first, charT* last, V value,
+                                      chars_format fmt, int precision);}
+
+  // \serif{[charconv.from.chars], primitive numerical input conversion}
+  struct from_chars_result {                                            // \serif{freestanding}
+    const char* ptr;
+    errc ec;
+    friend bool operator==(const from_chars_result&, const from_chars_result&) = default;
+    constexpr explicit operator bool() const noexcept { return ec == errc{}; }
+  };
+\ins{  struct u8from_chars_result {                                          // \serif{freestanding}
+    const char8_t* ptr;
+    errc ec;
+    friend bool operator==(const u8from_chars_result&, const u8from_chars_result&) = default;
+    constexpr explicit operator bool() const noexcept { return ec == errc{}; }
+  };
+  struct u16from_chars_result {                                         // \serif{freestanding}
+    const char16_t* ptr;
+    errc ec;
+    friend bool operator==(const u16from_chars_result&, const u16from_chars_result&) = default;
+    constexpr explicit operator bool() const noexcept { return ec == errc{}; }
+  };
+  struct u32from_chars_result {                                         // \serif{freestanding}
+    const char32_t* ptr;
+    errc ec;
+    friend bool operator==(const u32from_chars_result&, const u32from_chars_result&) = default;
+    constexpr explicit operator bool() const noexcept { return ec == errc{}; }
+  };
+  struct wfrom_chars_result {                                           // \serif{freestanding}
+    const wchar_t* ptr;
+    errc ec;
+    friend bool operator==(const wfrom_chars_result&, const wfrom_chars_result&) = default;
+    constexpr explicit operator bool() const noexcept { return ec == errc{}; }
+  };
+
+  template<class T>                                                     // \serif{freestanding}
+    using from_chars_result_t = \seebelow;}
+
+  constexpr from_chars_result from_chars(const char* first, const char* last,   // \serif{freestanding}
+                                         \exposid{integer-type}& value, int base = 10);
+\ins{  template<class charT, class V>                                          // \serif{freestanding}
+    constexpr from_chars_result_t<charT> from_chars(const charT* first, const charT* last,
+                                                    V& value, int base = 10);}
+
+  from_chars_result from_chars(const char* first, const char* last,     // \serif{freestanding-deleted}
+                               \exposid{floating-point-type}& value,
+                               chars_format fmt = chars_format::general);
+\ins{  template<class charT, class V>                                        // \serif{freestanding-deleted}
+    from_chars_result_t<charT> from_chars(const charT* first, const charT* last,
+                                          V& value,
+                                          chars_format fmt = chars_format::general);}
+}
+}
+}
+
+Immediately preceding \eelis{charconv.syn#2},
+insert a paragraph as follows:
+
+\Bins{
+The exposition-only concept \tcode{\exposid{character-type}}
+is modeled by any character type\iref{basic.fundamental}.
+}
+
+\h3(show-number=false){[charconv.to.chars]}
+
+Immediately following \eelis{charconv.to.chars#1},
+insert the following paragraph:
+
+\Bins{
+The output style of all functions named \tcode{to_chars} is specified in terms of
+characters in the basic character set (and thus in terms of their Unicode code points)
+or directly in terms of code points.
+The output code points  are inserted into the range [\tcode{first}, \tcode{last})
+by encoding them in the respective literal encoding for character literals
+of the type of \tcode{*first}.
+}
+
+Immediately following \eelis{charconv.to.chars#3},
+insert the following item:
+
+\Bins{
+\itemdecl{
+template<\exposid{character-type} T>
+  using to_chars_result_t = \seebelow;
+}
+
+\itemdescr{
+\remarks
+Denotes
+\ul{
+  \li{\tcode{to_chars_result} if \tcode{T} is \tcode{char},}
+  \li{\tcode{u8to_chars_result} if \tcode{T} is \tcode{char8_t},}
+  \li{\tcode{u16to_chars_result} if \tcode{T} is \tcode{char16_t},}
+  \li{\tcode{u32to_chars_result} if \tcode{T} is \tcode{char32_t}, and}
+  \li{\tcode{wto_chars_result} if \tcode{T} is \tcode{wchar_t}.}
+}
+}
+}
+
+\editnote{
+This form of specification is nonsensical because \eelis{structure.specifications}
+does not 
+}
+
+Modify the overload for \tcode{\exposid{integer-type}} as follows:
+
+\Bdiff{
+\itemdecl{
+constexpr to_chars_result to_chars(char* first, char* last, \exposid{integer-type} value, int base = 10);
+\ins{template<class charT, class V>
+  constexpr to_chars_result_t<charT> to_chars(charT* first, charT* last,
+                                              V value, int base = 10);}
+}
+
+\itemdescr{
+\ins{\constraints
+\tcode{charT} is a character type\iref{basic.fundamental}.
+\tcode{V} is a signed or unsigned integer type or \tcode{char}.}
+
+\expects
+\tcode{base} has a value between 2 and 36 (inclusive).
+
+\effects
+The value of \tcode{value} is converted to a string of digits in the given base
+(with no redundant leading zeroes).
+Digits
+\ins{in the range 0..9
+are represented as U+0030..U+0039 DIGIT ZERO..NINE, and digits}
+in the range 10..35 \del{(inclusive)} are represented as \del{lowercase characters a..z}
+\ins{U+0061..U+007A LATIN SMALL LETTER A..Z}.
+If \tcode{value} is less than zero,
+the representation starts with \del{\tcode{'-'}}
+\ins{U+002D HYPHEN-MINUS}.
+
+\throws
+Nothing.
+}
+}
+
+\editnote{
+This change has a merge conflict with \ref(LWG4421).
+
+The "(inclusive)" is removed because the range notation "A..B"
+is universally inclusive,
+with no disambiguation required.
+Such range notation is already used in \eelis{lex.charset}
+without any attempt at disambiguation.
+For an uninformed reader,
+the "(inclusive)" in the \i{Preconditions} element provides a tutorial.
+}
+
+Modify the overloads for \tcode{\exposid{floating-point-type}} as follows:
+
+\Bdiff{
+\itemdecl{
+to_chars_result to_chars(char* first, char* last, \exposid{floating-point-type} value);
+\ins{template<class charT, class V>
+  to_chars_result_t<charT> to_chars(charT* first, charT* last, V value);}
+}
+
+\itemdescr{
+\ins{\constraints
+\tcode{charT} is a character type\iref{basic.fundamental}.
+\tcode{V} is a cv-unqualified floating-point type.}
+
+\effects
+\tcode{value} is converted to a string
+in the style of \tcode{printf} in the \tcode{"C"} locale.
+The conversion specifier is \tcode{f} or \tcode{e},
+chosen according to the requirement for a shortest representation (see above);
+a tie is resolved in favor of \tcode{f}.
+
+\throws
+Nothing.
+}
+
+\itemdecl{
+to_chars_result to_chars(char* first, char* last, \exposid{floating-point-type} value, chars_format fmt);
+\ins{template<class charT, class V>
+  to_chars_result_t<charT> to_chars(charT* first, charT* last, V value, chars_format fmt);}
+}
+
+\itemdescr{
+\ins{\constraints
+\tcode{charT} is a character type\iref{basic.fundamental}.
+\tcode{V} is a cv-unqualified floating-point type.}
+
+\expects
+\tcode{fmt} has the value of one of the enumerators of \tcode{chars_format}.
+
+\effects
+\tcode{value} is converted to a string
+in the style of \tcode{printf} in the \tcode{"C"} locale.
+
+\throws
+Nothing.
+}
+
+\itemdecl{
+to_chars_result to_chars(char* first, char* last, \exposid{floating-point-type} value,
+                         chars_format fmt, int precision);
+\ins{template<class charT, class V>
+  to_chars_result_t<charT> to_chars(charT* first, charT* last, V value,
+                                    chars_format fmt, int precision);}
+}
+
+\itemdescr{
+\ins{\constraints
+\tcode{charT} is a character type\iref{basic.fundamental}.
+\tcode{V} is a cv-unqualified floating-point type.}
+
+\expects
+\tcode{fmt} has the value of one of the enumerators of \tcode{chars_format}.
+
+\effects
+\tcode{value} is converted to a string
+in the style of \tcode{printf} in the \tcode{"C"} locale
+with the given precision.
+
+\throws
+Nothing.
+}
+}
+
+\editnote{
+See \ref(N3047-fprintf) for C23 wording.
+To give an example,
+the output format for \tcode{printf} is worded as follows:
+
+\Bquote{
+\tcode{f},\tcode{F} \N{EM DASH} A \tcode{double} argument representing a floating-point number
+is converted to decimal notation in the style \i{[-]ddd.ddd},
+where the number of digits after the decimal-point character
+is equal to the precision specification.
+}
+
+This abstract description of the output style
+(where presumably, "-" and "." are intended to represented characters
+in the basic character set)
+can be applied to the new overloads working with \tcode{char8_t} and other types,
+just like it could have been applied to \tcode{char}.
+
+It may be beneficial to reword the whole subclause in terms of code points
+and decoupled from C wording,
+but this would take considerable effort and isn't necessary for this proposal.
+}
+
+If \ref(P3652R1) has been accepted
+or a later paper marked the existing \tcode{\exposid{floating-point}}
+overloads \tcode{constexpr},
+modify all the added overloads as follows:
+
+\Bdiff{
+\itemdecl{
+template<class charT, class V>
+  \ins{constexpr} to_chars_result_t<charT> \etc
+
+template<class charT, class V>
+  \ins{constexpr} to_chars_result_t<charT> \etc
+
+template<class charT, class V>
+  \ins{constexpr} to_chars_result_t<charT> \etc
+}
+}
+
+\h3(show-number=false){[charconv.from.chars]}
+
+Modify \eelis{charconv.from.chars#1} as follows:
+
+\Bdiff{
+All functions named \tcode{from_chars}
+analyze the string [\tcode{first}, \tcode{last}) for a pattern,
+where [\tcode{first}, \tcode{last}) is required to be a valid range.
+If no \del{characters} \ins{code units} match the pattern, \tcode{value} is unmodified,
+the member \tcode{ptr} of the return value is \tcode{first}
+and the member \tcode{ec} is equal to \tcode{err::invalid_argument}.
+
+\note{
+If the pattern allows for an optional sign,
+but the string has no digit \del{characters} \ins{code units} following the sign,
+no \del{characters} \ins{code units} match the pattern.
+}
+
+Otherwise, the \del{characters} \ins{code units} matching the pattern are interpreted
+as a representation of a value of the type of \tcode{value}.
+The member \tcode{ptr} of the return value points to the first \del{character} \ins{code unit}
+not matching the pattern, or has the value \tcode{last}
+if all \del{characters} \ins{code units} match.
+If the parsed value is not in the range representable by the type of \tcode{value},
+\tcode{value} is unmodified and the member \tcode{ec} of the return value
+is equal to \tcode{err::result_out_of_range}.
+Otherwise, \tcode{value} is set to the parsed value,
+after rounding according to \tcode{round_to_nearest}\iref{round.style},
+and the member \tcode{ec} is value-initialized.
+}
+
+Immediately following \eelis{charconv.from.chars#1},
+insert a new paragraph:
+
+\Bins{
+The output style of all functions named \tcode{from_chars} is specified in terms of
+characters in the basic character set (and thus in terms of their Unicode code points)
+or directly in terms of code points.
+The analyzed pattern consists of those code points,
+encoded as code units in the respective literal encoding for character literals
+of the cv-unqualified type of \tcode{*first}.
+
+\note{In any case, the pattern consists of code units encoding characters
+in the basic character set\iref{lex.charset},
+meaning that each code unit encodes exactly one such character.
+Illegal code units or code units representing characters outside the basic character set
+are not handled specially;
+those code units are simply not part of the pattern.}
+}
+
+Immediately following the inserted paragraph,
+insert the following item:
+
+\Bins{
+\itemdecl{
+template<\exposid{character-type} T>
+  using from_chars_result_t = \seebelow;
+}
+
+\itemdescr{
+\remarks
+Denotes
+\ul{
+  \li{\tcode{from_chars_result} if \tcode{T} is \tcode{char},}
+  \li{\tcode{u8from_chars_result} if \tcode{T} is \tcode{char8_t},}
+  \li{\tcode{u16from_chars_result} if \tcode{T} is \tcode{char16_t},}
+  \li{\tcode{u32from_chars_result} if \tcode{T} is \tcode{char32_t}, and}
+  \li{\tcode{wfrom_chars_result} if \tcode{T} is \tcode{wchar_t}.}
+}
+}
+}
+
+Modify the overload for \tcode{\exposid{integer-type}} as follows:
+
+\Bdiff{
+\itemdecl{
+constexpr from_chars_result from_chars(const char* first, const char* last,
+                                       \exposid{integer-type}& value, int base = 10);
+\ins{template<class charT, class V>
+  constexpr from_chars_result_t<charT> from_chars(const charT* first, const charT* last,
+                                                  V& value, int base = 10);}
+}
+
+\itemdescr{
+\ins{\constraints
+\tcode{charT} is a character type\iref{basic.fundamental}.
+\tcode{V} is a signed or unsigned integer type or \tcode{char}.}
+
+\expects
+\tcode{base} has a value between 2 and 36 (inclusive).
+
+\effects
+\del{The pattern is the expected form of the subject sequence in the \tcode{"C"} locale
+for the given nonzero base,
+as described for \tcode{strtol},
+except that no \tcode{"0x"} or \tcode{"0X"} prefix shall appear if the value of base is 16,
+and except that \tcode{'-'} is the only sign that may appear,
+and only if value has a signed type.}
+\ins{The pattern is a sequence of digits in the given base,
+where leading zeroes are ignored.
+The code points U+0030..U+0039 DIGIT ZERO..NINE represent digits in the range 0..9;
+Both U+0041..U+005A LATIN CAPITAL LETTER A..Z and
+U+0061..U+007A LATIN SMALL LETTER A..Z represent digits in the range 10..35.
+If \tcode{value} is of signed type,
+the pattern starts with an optional U+002D HYPHEN-MINUS
+which causes the resulting \tcode{value} to be negative.}
+
+\throws
+Nothing.
+}
+}
+
+\editnote{
+There is a merge conflict with an LWG issue
+relating to parsing of \tcode{"0b"} base prefixes
+(no number allocated yet).
+}
+
+\editnote{
+It would be possible to base the wording on \tcode{strtol},
+but this is quite problematic.
+Changes would be required anyway to not accept \tt{0b} and \tt{0o} prefixes
+(\tt{0x} is already not part of the pattern).
+
+There are so many deviations from the \tcode{strtol} pattern that it arguably provides
+not specification value to specify \tcode{to_chars} in terms of it.
+}
+
+Modify the overload for \tcode{\exposid{floating-point-type}} as follows:
+
+\Bdiff{
+\itemdecl{
+from_chars_result from_chars(const char* first, const char* last, \exposid{floating-point-type}& value,
+                             chars_format fmt = chars_format::general);
+\ins{template<class charT, class V>
+  from_chars_result_t<charT> from_chars(const charT* first, const charT* last, V& value,
+                                        chars_format fmt = chars_format::general);}
+}
+
+\itemdescr{
+\ins{\constraints
+\tcode{charT} is a character type\iref{basic.fundamental}.
+\tcode{V} is a cv-unqualified floating-point type.}
+
+\expects
+\tcode{fmt} has the value of one of the enumerators of \tcode{chars_format}.
+
+\effects
+The pattern is the expected form of the subject sequence in the \tcode{"C"} locale,
+as described for \tcode{strtod}, except that
+\ul{
+  \li{\del{the sign \tcode{'+'}} \ins{U+002B PLUS SIGN} may only appear in the exponent part;}
+  \li{
+    if \tcode{fmt} has \tcode{chars_format​::​scientific} set but not \tcode{chars_format​::​fixed},
+    the otherwise optional exponent part shall appear;
+  }
+  \li{
+    if fmt has \tcode{chars_format​::​fixed} set but not \tcode{chars_format​::​scientific},
+    the optional exponent part shall not appear; and
+  }
+  \li{
+    if fmt is \tcode{chars_format​::​hex},
+    \del{the prefix \tcode{"0x"} or \tcode{"0X"}} \ins{\tt{0x}} is assumed
+    \ins{to precede the string,
+    but is not part of the pattern}.
+  }
+}
+In any case, the resulting \tcode{value} is one of at most two floating-point values
+closest to the value of the string matching the pattern.
+
+\throws
+Nothing.
+}
+}
+
+\editnote{
+This change includes a drive-by fix which supersedes \ref(EDIT6848).
+}
+
+\h3(show-number=false){[format.string.std]}
+
+Modify \eelis{format.string.std#20} as follows:
+
+\Bdiff{
+The meaning of some non-string presentation types is defined
+in terms of a call to \tcode{to_chars}.
+In such cases, let
+[\tcode{first}, \tcode{last}) be a range
+\ins{of elements of type \tcode{charT},}
+large enough to hold the \tcode{to_chars} output\ins{,}
+and \ins{let} \tcode{value} be the formatting argument value.
+Formatting is done as if by calling \tcode{to_chars} as specified
+and copying the output through the output iterator of the format context.
+
+\note{
+Additional padding and adjustments are performed
+prior to copying the output through the output iterator
+as specified by the format specifiers.
+}
+}
+
+\h3(show-number=false){[diff.cpp26.format]}
+
+Add a new subclause in \eelis{diff.cpp26} as follows:
+
+\Bins{
+\cowel_html_element(h3){\eelis{format} formatting \stable_ref{diff.cpp26.format}}
+
+\b{Affected subclause}: \eelis{format.string.std}\br
+\b{Change}: Output of \tcode{format} and \tcode{format_to} given a \tcode{wformat_string}.\br
+\b{Rationale}: Enabling consistent behavior for all character types.\br
+\b{Effect on original feature}:
+The \tcode{char} values produced by \tcode{to_chars} when formatting integral
+and floating-point types were previously converted to \tcode{wchar_t}
+without additional transcoding steps that convert from the ordinary to the wide literal encoding.
+Now, a call to \tcode{to_chars} with a range of appropriately typed character is made directly,
+which may produce different code units given \tcode{format_string} and \tcode{wformat_string}.
+
+\example{
+\itemdecl{
+string c = format("{}", 0);
+wstring w = format(L"{}", 0);
+assert(c.front() == w.front()); // \serif{previously always passed, now fails if the ordinary literal encoding is EBCDIC}
+                                // \serif{and the wide literal encoding is UTF-16}
+}
+}
+}
+
+\h2{References}
+
+\bib(
+  id = N5014,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-08-05,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+)\
+\bib(
+  id = P2007R0,
+  title = std::from_chars should work with std::string_view,
+  date = 2020-01-10,
+  author = Mateusz Pusz,
+  link = https://wg21.link/p2007r0,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2007r0.html,
+)\
+\bib(
+  id = P2584R0,
+  title = A More Composable from_chars,
+  date = 2022-05-12,
+  author = Corentin Jabot,
+  link = https://wg21.link/p2584r0,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2584r0.pdf,
+)\
+\bib(
+  id = P3652R1,
+  title = Constexpr floating-point <charconv> functions,
+  date  = 2025-04-16,
+  author = Lénárd Szolnoki,
+  link = https://wg21.link/p3652r1,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3652r1.html,
+)\
+\bib(
+  id = LWG4421,
+  title = Clarify the output encoding of to_chars for integers,
+  author = Jan Schultke,
+  link = https://cplusplus.github.io/LWG/issue4421,
+)\
+\bib(
+  id = SG16-Issue,
+  title = std::to_chars/std::from_chars overloads for char8_t (#38),
+  link = https://github.com/sg16-unicode/sg16/issues/38,
+)\
+\bib(
+  id = EDIT6848,
+  author = Jan Schultke,
+  title = [charconv.from.chars] Clarify the role of a 0x prefix in from_chars,
+  link = https://github.com/cplusplus/draft/pull/6848,
+)\
+\bib(
+  id = N3047-fprintf,
+  title = N3047 7.23.6.1 [The fprintf function],
+  link = https://www.iso-9899.info/n3047.html#7.23.6.1,
+)\
+
+\make_bib
