@@ -76,8 +76,12 @@ In fact, there is a dedicated \ref(SG16-Issue) for \tcode{char8_t}.
 However, other Unicode encodings such as UTF-16 and UTF-32 are regularly used as well,
 and if support for UTF-8 exists,
 it is trivial to support these other encodings (through \tcode{char16_t} and \tcode{char32_t})
-because the conversion functions only deal with characters in the Basic Latin block anyway,
-where these encodings are interchangeable.
+because the conversion functions only deal with code points in the Basic Latin block anyway,
+where code units are interchangeable.
+
+Overall, the goal should be for a \tcode{std::to_chars} implementation
+to emit the same code units/points for any Unicode character type,
+and for \tcode{std::from_chars} to consume the same code units/points.
 
 \h4{\tcode{wchar_t}}
 
@@ -115,6 +119,22 @@ needs to be paid.
 contains a pattern (for integers, a sequence of digits with optional \tcode{'-'} prefix)
 at the start of the range;
 this pattern is made entirely of characters in the Basic Latin block.
+
+\Bex{
+The following code demonstrates the intended behavior:
+\cppblock{
+string_view cstr = "123z"; // \serif{OK, not malformed}
+int i1;
+const auto [p1, e1] = from_string(cstr.data(), cstr.data() + cstr.size(), i1); // \serif{OK}
+
+u8string_view u8str = u8"123\\xFF"; // \serif{malformed UTF-8}
+int i2;
+const auto [p2, e2] = from_string(u8str.data(), u8str.data() + u8str.size(), i2); // \serif{OK}
+
+assert(i1 == i2);                              // \serif{holds, both \tcode{i1} and \tcode{i2} equal \tcode{123}}
+assert(p1 - cstr.data() == p2 - u8str.data()); // \serif{holds, both patterns are three code units long}
+}
+}
 
 All Unicode encodings are designed so that code \em{only} code points in the Basic Latin block
 can be encoded with code units in the range [\tcode{0}, \tcode{0x7f}).
@@ -161,18 +181,44 @@ are not function templates despite working with a wide variety of integer types
 for each signed and unsigned integer type and for \tcode{char}).
 If we also added a non-template overload for each character type,
 this would result in an absurd overload set of 55 functions
-(\tcode{{char, wchar_t, char8_t, char16_t, char32_t} x {char, signed char, ..., unsigned long long}}).
+(\tcode{{char, wchar_t, char8_t, char16_t, char32_t} × {char, signed char, ..., unsigned long long}}).
 Such a huge overload set is clearly undesirable,
 so function templates are necessary.
 
-Furthermore, the existing \tcode{std::to_chars_result} and \tcode{std::from_chars_result}
+\h4{Result type}
+
+The existing \tcode{std::to_chars_result} and \tcode{std::from_chars_result}
 classes cannot be turned into class templates without breaking both API and ABI.
+That is because any existing aliases or uses of these types in
+function parameters, return types, etc. would break if they were turned into templates.
+Name mangling would also change.
+
 There is also no good name for a new class template,
 and if that was used for Unicode characters,
 the asymmetry with the \tcode{char} overloads would be even more apparent.
 However, we could create one result type per character,
 as well as alias templates \tcode{std::to_chars_result_t} and \tcode{std::from_chars_result_t}
 which select the appropriate result class.
+
+Another possible option is to create a base class as follows:
+
+\cppblock{
+template<class T>
+struct basic_to_chars_result { /* ... */ };
+
+struct to_chars_result : basic_to_chars_result<char> { };
+using u8to_chars_result = basic_to_chars_result<char8_t> { }; // maybe?
+// ...
+}
+
+This would also allow deduction of \tcode{T} from \tcode{basic_to_chars_result},
+unlike adding a new set of independent types.
+However, this also technically breaks API because moving members into a base class
+changes aggregate initialization.
+
+Overall, the safest option is to make no changes to the existing result types.
+
+\h4{Summary}
 
 In code, the design can be summarized as follows:
 
@@ -265,10 +311,10 @@ overload and to transcode from the ordinary literal encoding to the desired enco
 \h3{More composable interface taking \tcode{std::span} or \tcode{std::string_view}}
 
 It is worth noting that there is a stale proposal
-\ref(P2584R0) "A More Composable from_chars"
+\ref(P2584R0) "A More Composable \tcode{from_chars}"
 which proposes additional overloads taking \tcode{std::span},
 superseding the even more stale
-\ref(P2007R0) "std::from_chars should work with std::string_view".
+\ref(P2007R0) "\tcode{std::from_chars} should work with \tcode{std::string_view}".
 
 Such changes are orthogonal to what is proposed here.
 However it needs to be considered what impact such new overloads would have
@@ -283,6 +329,11 @@ template<class T>
 If this was added, a non-breaking change would require adding four more overloads
 taking \tcode{span<char8_t>}, \tcode{span<char16_t>}, \tcode{span<char32_t>},
 and \tcode{span<wchar_t>}.
+A similar change to \tcode{to_chars} would actually expand the overload set by
+20 function templates (5 character types × (1 integer overload + 3 floating-point overloads)),
+resulting in 11 + 4 + 20 = 35 candidates in the \tcode{to_chars} overload set
+(including the ones proposed here).
+
 With the benefit of foresight, perhaps we should aim at a smaller overload set
 and take a \tcode{R&&} range parameter instead.
 In any case, those changes are not within the scope of this proposal.
