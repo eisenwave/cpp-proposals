@@ -1,0 +1,341 @@
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+  title = Improve readability of the C++ grammar by adding a syntax for groups and repetitions
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D3891R0}}
+  \dt{Date:}            \dd{\tt{2025-10-24}}
+  \dt{Audience:}        \dd{CWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3891/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/concise-grammar.cow)}
+}
+\hr
+}
+
+\Babstract{
+Purely editorial changes should be made to the C++ grammar to improve readability,
+such as adding a syntax for groups and repetitions.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+The current C++ syntax notation as specified in \eelis{syntax}
+and summarized in \eelis{gram}
+has only a handful of features:
+\ul{
+  \li{concatenation, such as \gterm{pp-number} \gterm{identifier-continue},}
+  \li{alternatives or unions, sometimes specified using "one of", and}
+  \li{optional expansions, such as \opt{\gterm{long-suffix}}.}
+}
+
+Two notably absent features are grouping and repetition.
+This leads to many cases of low expressiveness and grammatical bloat,
+like our many \gterm{X-seq} and \gterm{X-list} rules:
+
+\dl(class=grammar){
+  \dt{\grammarterm{declaration-seq}:}
+  \dd{declaration \opt{declaration-seq}}
+
+  \dt{\grammarterm{template-parameter-list}:}
+  \dd{template-parameter}
+  \dd{template-parameter-list \tcode{,} template-parameter}
+}
+
+In plain English, we say:
+
+\Bquote{
+A \grammarterm{declaration-seq} is a \grammarterm{declaration}
+followed by an optional \grammarterm{declaration-seq}.
+
+A \grammarterm{template-parameter-list} is either a single \grammarterm{template-parameter}
+or a \grammarterm{template-parameter-list},
+followed by a comma token, followed by a \grammarterm{template-parameter}.
+}
+
+No reasonable person should teach the language syntax in those words,
+but that is what the grammar says.
+This means that any reader (or author of grammar changes) has to mentally deobfuscate
+the grammar into something intuitive, like:
+
+\Bquote{
+A \grammarterm{declaration-seq} is one or more \grammarterm{declaration}s.
+
+A \grammarterm{template-parameter-list} is one or more \grammarterm{template-parameter}s,
+separated by a comma token.
+}
+
+This proposal adds grouping and repetition,
+which obsoletes all \grammarterm{X-seq} nonterminals
+and simplifies the specification in many places.
+
+\h2{Design}
+
+\h3{Design constraints}
+
+\ul{
+  \li{
+    The new grammar syntax needs to be easily writable both in proposals that contain
+    grammatical changes
+    as well as the standard itself.
+    Note that authors frequently use strikethrough or underline text to indicate
+    insertions and deletions, in addition to color.
+    Those styles should be avoided.
+  }
+  \li{
+    The C++ grammar already contains all sorts of tokens without any delimiters like quotes,
+    which we probably want to keep that way due to familiarity.
+    This means that any brackets and punctuation may visually conflict with C++ tokens.
+  }
+  \li{
+    Some users may rely on assistive technology such as screen readers.
+    This means that if font choice is the only distinction between e.g. C++ tokens
+    and the new grammar features,
+    the standard would be inaccessible to those users.
+  }
+}
+
+\h3{New syntax}
+
+\style{
+  .new-syntax {
+    font-weight: normal;
+    font-style: normal;
+    font-size: 125%;
+  }
+}
+
+\dl{
+  \dt(class=new-syntax){\seq{\grammarterm{X}}}
+  \dd{
+    One or more repetitions of \grammarterm{X}.
+    This replaces \grammarterm{X-seq}.
+    The new syntax is similar to \opt, so it is obviously feasible in the standard draft.
+    Proposal authors can use subscript text.
+    Screen readers would pronounce "seq" uninterrupted (ignoring subscript),
+    which is fine as long as "seq" is \em{only} used in this operator form.
+  }
+  \dt(class=new-syntax){\seqopt{\grammarterm{X}}}
+  \dd{
+    Zero or more repetitions of \grammarterm{X}.
+    This replaces \opt{\grammarterm{X-seq}}.
+  }
+  \dt(class=new-syntax){\gramgroup{\grammarterm{X} \grammarterm{yyy}}}
+  \dd{
+    Groups \grammarterm{X} and \grammarterm{yyy},
+    which allows applying \opt, \seq, and \seqopt to multiple elements.
+    The characters used here are
+    U+27EA MATHEMATICAL LEFT DOUBLE ANGLE BRACKET and
+    U+27EB MATHEMATICAL RIGHT DOUBLE ANGLE BRACKET.
+    These get pronounced distinct from other brackets by screen readers,
+    are handled well by many fonts,
+    and are sufficiently visually distinct from \tt{(}, \tt{[}, \tt{\N{LEFT CURLY BRACKET}},
+    and \tt{<}.
+    LaTeX packages like \tt{MnSymbol} provide these characters.
+    Paper authors can copy and paste these Unicode characters,
+    use HTML character references such as \code(html){&#x27EA;},
+    or use text editor extensions like
+    \ref(https://marketplace.visualstudio.com/items?itemName=brunnerh.insert-unicode){Insert Unicode}
+    for typing these.
+  }
+}
+
+
+
+\h3{Motivating example}
+
+\Bex{
+With these new features, more concise grammar is possible:
+\dl(class=grammar){
+  \dt{\grammarterm{compound-statement}:}
+  \dd{
+    \tt{\N{LEFT CURLY BRACKET}}
+    \del{\opt{statement-seq} \opt{label-seq}}
+    \ins{\seqopt{statement} \seqopt{label}}
+    \tt{\N{RIGHT CURLY BRACKET}}
+  }
+  \dt{\del{\grammarterm{statement-seq}:}}
+  \dd{\del{statement \opt{statement-seq}}}
+  \dt{\del{\grammarterm{label-seq}:}}
+  \dd{\del{label \opt{label-seq}}}
+
+  \dt{\grammarterm{selection-statement}:}
+  \dd{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \ins{\opt{\gramgroup{\tcode{else} statement}}}}
+  \dd{\del{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \tcode{else} statement}}
+  \dd{\tcode{if} \opt{\tt{!}} \tcode{consteval} statement \ins{\opt{\gramgroup{\tcode{else} statement}}}}
+  \dd{\del{\tcode{if} \opt{\tt{!}} \tcode{consteval} statement \tcode{else} statement}}
+  \dd{\tcode{switch} \tt{(} \opt{init-statement} condition \tt{)} statement}
+
+  \dt{\grammarterm{initializer-list}:}
+  \dd{initializer-clause \ins{\seqopt{\gramgroup{\tt{,} initializer-clause}}} \opt{\tt{...}}}
+  \dd{\del{initializer-clause \tt{,} initializer-clause \opt{\tt{...}}}}
+}
+}
+
+\h2{Wording}
+
+The changes are relative to \ref(N5014).
+
+\h3(show-number=false){[syntax]}
+
+Change \eelis{syntax} as follows:
+
+\Bdiff{
+1 In the syntax notation used in this document,
+\del{syntactic categories} \ins{non-terminal symbols}
+are indicated by \grammarterm{italic}, \grammarterm{sans-serif} type, and
+\del{literal words and characters} \ins{terminal symbols}
+in \tt{constant width} type.
+\ins{A \dfn{syntactic element} is a terminal symbol,
+non-terminal symbol,
+or a group of syntactic elements.
+A group of syntactic elements is delimited by \q{⟪} and \q{⟫}.
+Consecutive syntactic elements are listed from left to right.}
+Alternatives are listed on separate lines
+except in a few cases where a long set of alternatives is marked by the phrase \q{one of}.
+If the text of an alternative is too long to fit on a line,
+the text is continued on subsequent lines indented from the first one.
+
+\ins{2} An optional \del{terminal or non-terminal symbol}
+\ins{syntactic element} is indicated
+by the \ins{postfix} subscript \q{\opt}\del{, so} \ins{.}
+
+\dl(class=grammar){
+  \dd{\del{\tt{\N{LEFT CURLY BRACKET}} \opt{expression} \tt{\N{RIGHT CURLY BRACKET}}}}
+}
+
+\del{indicates an optional expression enclosed in braces.}
+
+\ins{One or more repetitions of a syntactic element
+are indicated by the postfix subscript \q{\seq}.}
+
+\ins{[\i{Example}:}
+\dl(class=grammar){
+  \dt{\ins{\grammarterm{initializer-list}:}}
+  \dd{\ins{initializer-clause \seqopt{\gramgroup{\tt{,} initializer-clause}} \opt{\tt{...}}}}
+}
+\ins{This notation means that the non-terminal symbol \grammarterm{initializer-list}
+is matched by an \grammarterm{initializer-clause},
+followed by zero or more repetitions of \q{\tcode{,} \grammarterm{initializer-clause}},
+optionally followed by \q{\tcode{...}}.
+\N{EM DASH} \i{end example}]}
+
+\del{2} \ins{3 \ins{[\i{Note}:}}
+Names for syntactic categories have generally been chosen according to the following rules:
+\ul{
+  \li{
+    \grammarterm{X-name} is a use of an identifier in a context
+    that determines its meaning
+    (e.g., \grammarterm{class-name}, \grammarterm{typedef-name}).
+  }
+  \li{
+    \grammarterm{X-id} is an identifier with no context-dependent meaning
+    (e.g., \grammarterm{qualified-id}).
+  }
+  \li{
+    \del{\grammarterm{X-seq} is one or more \grammarterm{X}s without intervening delimiters
+    (e.g., \grammarterm{declaration-seq} is a sequence of declarations).}
+  }
+  \li{
+    \grammarterm{X-list} is one or more \grammarterm{X}s separated by intervening commas
+    (e.g., \grammarterm{identifier-list} is a sequence of identifiers separated by commas).
+  }
+}
+\ins{\N{EM DASH} \i{end note}]}
+}
+
+\h3(show-number=false){Bulk operations}
+
+Replace all occurrences of \grammarterm{X-seq} in the document with \seq{\grammarterm{X}} :
+
+\cowel_macro(seq_replace){\
+\del{\grammarterm{\cowel_put{}-seq}}
+\ins{\seq{\grammarterm{\cowel_put}}}}
+
+\Bdiff{
+\seq_replace{declaration}\br
+\seq_replace{attribute-specifier}\br
+\seq_replace{function-contract-specifier}\br
+\seq_replace{lambda-specifier}\br
+\seq_replace{requirement-seq}\br
+\seq_replace{statement}\br
+\seq_replace{label}\br
+\seq_replace{cv-qualifier}\br
+\seq_replace{virt-specifier}\br
+\seq_replace{balanced-token}\br
+\seq_replace{class-property-specifier}\br
+\seq_replace{handler}\br
+\seq_replace{embed-parameter}\br
+\seq_replace{pp-balanced-token}\br
+}
+
+Remove all definitions of the replaced non-terminals:
+
+\Bdel{
+\dl(class=grammar){
+  \dt{\grammarterm{X} :}
+  \dd{X \opt{X-seq}}
+}
+}
+
+\h3(show-number=false){[dcl.spec.general]}
+
+Change \eelis{dcl.spec.general#nt:decl-specifier-seq} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\del{\grammarterm{decl-specifier-seq}} \ins{\grammarterm{decl-specifier-with-attributes}}:}
+  \dd{decl-specifier \opt{attribute-specifier-seq}}
+  \dd{\del{decl-specifier decl-specifier-seq}}
+}
+}
+
+Replace all occurrences of \del{\grammarterm{decl-specifier-seq}}
+with \ins{\seq{\grammarterm{decl-specifier-with-attributes}}}.
+
+\h3(show-number=false){[dcl.type.general]}
+
+Change \eelis{dcl.type.general#nt:type-specifier-seq} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\del{\grammarterm{type-specifier-seq}} \ins{\grammarterm{type-specifier-with-attributes}}:}
+  \dd{type-specifier \opt{attribute-specifier-seq}}
+  \dd{\del{type-specifier type-specifier-seq}}
+}
+}
+
+Replace all occurrences of \del{\grammarterm{type-specifier-seq}}
+with \ins{\seq{\grammarterm{type-specifier-with-attributes}}}.
+
+Change \eelis{dcl.type.general#nt:defining-type-specifier-seq} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\del{\grammarterm{defining-type-specifier-seq}} \ins{\grammarterm{defining-type-specifier-with-attributes}}:}
+  \dd{defining-type-specifier \opt{attribute-specifier-seq}}
+  \dd{\del{defining-type-specifier type-specifier-seq}}
+}
+}
+
+Replace all occurrences of \del{\grammarterm{defining-type-specifier-seq}}
+with \ins{\seq{\grammarterm{defining-type-specifier-with-attributes}}}.
+
+\h2{References}
+
+\bib(
+  id = N5014,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-08-05,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+)\
+
+\make_bib
