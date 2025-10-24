@@ -173,7 +173,7 @@ With these new features, more concise grammar is possible:
   \dd{\tcode{switch} \tt{(} \opt{init-statement} condition \tt{)} statement}
 
   \dt{\grammarterm{initializer-list}:}
-  \dd{initializer-clause \ins{\seqopt{\gramgroup{\tt{,} initializer-clause}}} \opt{\tt{...}}}
+  \dd{initializer-clause \opt{\tt{...}} \ins{\seqopt{\gramgroup{\tt{,} initializer-clause \opt{\tt{...}}}}}}
   \dd{\del{initializer-list \tt{,} initializer-clause \opt{\tt{...}}}}
 }
 }
@@ -198,7 +198,7 @@ or a group of syntactic elements.
 A group of syntactic elements is delimited by \q{⟪} and \q{⟫}.
 Consecutive syntactic elements are listed from left to right.}
 Alternatives are listed on separate lines
-except in a few cases where a long set of alternatives is marked by the phrase \q{one of}.
+except in a few cases where a \del{long} set of alternatives is marked by the phrase \q{one of}.
 If the text of an alternative is too long to fit on a line,
 the text is continued on subsequent lines indented from the first one.
 
@@ -218,12 +218,13 @@ are indicated by the postfix subscript \q{\seq}.}
 \ins{[\i{Example}:}
 \dl(class=grammar){
   \dt{\ins{\grammarterm{initializer-list}:}}
-  \dd{\ins{initializer-clause \seqopt{\gramgroup{\tt{,} initializer-clause}} \opt{\tt{...}}}}
+  \dd{\ins{initializer-clause \opt{\tt{...}} \seqopt{\gramgroup{\tt{,} initializer-clause \opt{\tt{...}}}}}}
 }
 \ins{This notation means that the non-terminal symbol \grammarterm{initializer-list}
 is matched by an \grammarterm{initializer-clause},
-followed by zero or more repetitions of \q{\tcode{,} \grammarterm{initializer-clause}},
-optionally followed by \q{\tcode{...}}.
+optionally followed by \q{\tt{...}},
+followed by zero or more repetitions of \q{\tcode{,}},
+\grammarterm{initializer-clause}, and \q{\tt{...}}.
 \N{EM DASH} \i{end example}]}
 
 \del{2} \ins{3 \ins{[\i{Note}:}}
@@ -252,35 +253,153 @@ Names for syntactic categories have generally been chosen according to the follo
 
 \h3(show-number=false){Bulk operations}
 
-Replace all occurrences of \grammarterm{X-seq} in the document with \seq{\grammarterm{X}} :
+Replace the following non-terminals
+in the document with \seq{\grammarterm{X}} :
 
-\cowel_macro(seq_replace){\
-\del{\grammarterm{\cowel_put{}-seq}}
-\ins{\seq{\grammarterm{\cowel_put}}}}
-
-\Bdiff{
-\seq_replace{declaration}\br
-\seq_replace{attribute-specifier}\br
-\seq_replace{function-contract-specifier}\br
-\seq_replace{lambda-specifier}\br
-\seq_replace{requirement-seq}\br
-\seq_replace{statement}\br
-\seq_replace{label}\br
-\seq_replace{cv-qualifier}\br
-\seq_replace{virt-specifier}\br
-\seq_replace{balanced-token}\br
-\seq_replace{class-property-specifier}\br
-\seq_replace{handler}\br
-\seq_replace{embed-parameter}\br
-\seq_replace{pp-balanced-token}\br
+\cowel_macro(replace){\
+\del{\grammarterm{\cowel_put{0}-\cowel_put{1}}}
+\ins{\seq{\grammarterm{\cowel_put{0}}}}\
 }
 
-Remove all definitions of the replaced non-terminals:
+\Bdiff{
+\replace(n-char, sequence)\br
+\del{\grammarterm{simple-hexadecimal-digit-sequence}}
+\ins{\seq{\grammarterm{hexadecimal-digit}}}\br
+\replace(h-char, sequence)\br
+\replace(q-char, sequence)\br
+\replace(c-char, sequence)\br
+\del{\grammarterm{simple-octal-digit-sequence}}
+\ins{\seq{\grammarterm{octal-digit}}}\br
+\replace(s-char, sequence)\br
+\replace(r-char, sequence)\br
+\replace(d-char, sequence)\br
+\replace(declaration, seq)\br
+\replace(attribute-specifier, seq)\br
+\replace(function-contract-specifier, seq)\br
+\replace(lambda-specifier, seq)\br
+\replace(requirement-seq, seq)\br
+\replace(statement, seq)\br
+\replace(label, seq)\br
+\replace(cv-qualifier, seq)\br
+\replace(virt-specifier, seq)\br
+\replace(balanced-token, seq)\br
+\replace(class-property-specifier, seq)\br
+\replace(handler, seq)\br
+\replace(embed-parameter, seq)\br
+\replace(pp-balanced-token, seq)\br
+}
+
+Remove all definitions of the replaced non-terminals.
+These are all of the form:
 
 \Bdel{
 \dl(class=grammar){
   \dt{\grammarterm{X-seq} :}
   \dd{X \opt{X-seq}}
+}
+}
+
+\h3(show-number=false){[lex.name]}
+
+Change \eelis{lex.name#nt:identifier} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{identifier}:}
+  \dd{identifier-start \ins{\seqopt{identifier-continue}}}
+  \dd{\del{identifier identifier-continue}}
+}
+}
+
+\h3(show-number=false){[lex.icon]}
+
+\cowel_macro(ins_gramgroup){\ins{\normal{⟪}} \cowel_put \ins{\normal{⟫}}}
+
+Change \eelis{lex.icon#nt:binary-literal} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{binary-literal}:}
+  \dd{\ins{\normal{⟪ one of}} \tt{0b} \ins{\tt{0B} \normal{⟫}} binary-digit \ins{\seqopt{\gramgroup{\opt{\tcode{'}} binary-digit}}}}
+  \dd{\del{\tt{0B} binary-digit}}
+  \dd{\del{binary-literal \opt{\tcode{'}} binary-digit}}
+}
+}
+
+Change \eelis{lex.icon#nt:octal-literal} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{octal-literal}:}
+  \dd{\tt{0} \ins{\seqopt{\gramgroup{\opt{\tcode{'}} octal-digit}}}}
+  \dd{\del{octal-literal \opt{\tcode{'}} octal-digit}}
+}
+}
+
+Change \eelis{lex.icon#nt:decimal-literal} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{decimal-literal}:}
+  \dd{nonzero-digit \ins{\seqopt{\gramgroup{\opt{\tcode{'}} digit}}}}
+  \dd{\del{decimal-literal \opt{\tcode{'}} digit}}
+}
+}
+
+Do \u{not} change \eelis{lex.icon#nt:hexadecimal-literal}:
+
+\Bquote{
+\dl(class=grammar){
+  \dt{\grammarterm{hexadecimal-literal}:}
+  \dd{hexadecimal-prefix hexadecimal-digit-sequence}
+}
+}
+
+Do \u{not} change \eelis{lex.icon#nt:hexadecimal-digit-sequence}:
+
+\Bdel{
+\dl(class=grammar){
+  \dt{\grammarterm{hexadecimal-digit-sequence}:}
+  \dd{hexadecimal-digit}
+  \dd{hexadecimal-digit-sequence \opt{\tt{'}} hexadecimal-digit}
+}
+}
+
+\editnote{
+\grammarterm{hexadecimal-digit-sequence}
+is used in so many places that it would be inconvenient to expand it.
+See also \eelis{lex.fcon}.
+}
+
+\h3(show-number=false){[lex.fcon]}
+
+Change \eelis{lex.fcon#nt:exponent-part} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{exponent-part}:}
+  \dd{\ins{\normal{⟪ one of}} \tt{e} \ins{\tt{E} \normal{⟫}} \opt{sign} digit-sequence}
+  \dd{\del{\tt{E} \opt{sign} digit-sequence}}
+}
+}
+
+Change \eelis{lex.fcon#nt:binary-exponent-part} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{binary-exponent-part}:}
+  \dd{\ins{\normal{⟪ one of}} \tt{p} \ins{\tt{P} \normal{⟫}} \opt{sign} digit-sequence}
+  \dd{\del{\tt{P} \opt{sign} digit-sequence}}
+}
+}
+
+Change \eelis{lex.fcon#nt:digit-sequence} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{digit-sequence}:}
+  \dd{digit \ins{\seqopt{\gramgroup{\opt{\tt{'}} digit}}}}
+  \dd{\del{digit-sequence \opt{\tt{'}} digit}}
 }
 }
 
@@ -326,6 +445,183 @@ Change \eelis{dcl.type.general#nt:defining-type-specifier-seq} as follows:
 
 Replace all occurrences of \del{\grammarterm{defining-type-specifier-seq}}
 with \ins{\grammarterm{defining-type-specifiers-and-attributes}}.
+
+\h3(show-number=false){[dcl.decl.general]}
+
+Change \eelis{dcl.decl.general#nt:ptr-declarator} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{ptr-declarator}:}
+  \dd{\ins{\seqopt{ptr-operator}} noptr-declarator}
+  \dd{\del{ptr-operator ptr-declarator}}
+}
+}
+
+\h3(show-number=false){[dcl.fct]}
+
+Change \eelis{dcl.fct#nt:parameter-declaration-list} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{parameter-declaration-list}:}
+  \dd{parameter-declaration \ins{\seqopt{\gramgroup{\tt{,} parameter-declaration}}}}
+  \dd{\del{parameter-declaration-list \tt{,} parameter-declaration}}
+}
+}
+
+\comment{
+\h3(show-number=false){[dcl.fct.def.general]}
+
+Change \eelis{dcl.fct.def.general#nt:deleted-function-body} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{deleted-function-body}}
+  \dd{\del{\tt{=} \tcode{delete} \tt{;}}}
+  \dd{\tt{=} \tcode{delete} \ins{\normal{⟪}} \tt{(} unevaluated-string \tt{)} \ins{\normal{⟫}\opt}}
+}
+}
+}
+
+\h3(show-number=false){[dcl.init.general]}
+
+Change \eelis{dcl.fct#nt:initializer-list} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{initializer-list}:}
+  \dd{initializer-clause \opt{\tt{...}} \ins{\seqopt{\gramgroup{\tt{,} initializer-clause \opt{\tt{...}}}}}}
+  \dd{\del{initializer-list \tt{,} initializer-clause} \opt{\tt{...}}}
+}
+}
+
+Change \eelis{dcl.fct#nt:designated-initializer-list} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{designated-initializer-list}:}
+  \dd{designated-initializer-clause \ins{\seqopt{\gramgroup{\tt{,} designated-initializer-clause}}}}
+  \dd{\del{designated-initializer-list \tt{,} designated-initializer-clause}}
+}
+}
+
+\h3(show-number=false){[dcl.enum]}
+
+\comment{Change \eelis{dcl.enum#nt:enum-specifier} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{enum-specifier}:}
+  \dd{\del{enum-head \tt{\N{LEFT CURLY BRACKET}} \opt{enumerator-list} \tt{\N{RIGHT CURLY BRACKET}}}}
+  \dd{enum-head \tt{\N{LEFT CURLY BRACKET}} \ins{\normal{⟪}} \opt{enumerator-list} \tt{,}\ins{\opt \normal{⟫}\opt} \tt{\N{RIGHT CURLY BRACKET}}}
+}
+}
+}
+
+Change \eelis{dcl.enum#nt:enumerator-list} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{enumerator-list}:}
+  \dd{enumerator-definition \ins{\seqopt{\gramgroup{\tt{,} enumerator-definition}}}}
+  \dd{\del{enumerator-list \tt{,} enumerator-definition}}
+}
+}
+
+Change \eelis{dcl.enum#nt:enumerator-definition} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{enumerator-definition}:}
+  \dd{\del{enumerator}}
+  \dd{enumerator \ins{\opt{\normal{⟪}}} \tt{=} constant-expression \ins{\normal{⟫}}}
+}
+}
+
+\h3(show-number=false){[namespace.udecl]}
+
+Change \eelis{namespace.udecl#nt:using-declarator-list} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{using-declarator-list}:}
+  \dd{using-declarator \opt{\tt{...}} \ins{\seqopt{\gramgroup{\tt{,} using-declarator \opt{\tt{...}}}}}}
+  \dd{\del{using-declarator-list \tt{,} using-declarator \opt{\tt{...}}}}
+}
+}
+
+\h3(show-number=false){[dcl.attr.grammar]}
+
+Do \u{not} change \eelis{dcl.attr.grammar#nt:attribute-list}:
+
+\Bquote{
+\dl(class=grammar){
+  \dt{\grammarterm{attribute-list}:}
+  \dd{\opt{attribute}}
+  \dd{attribute-list \tt{,} \opt{attribute}}
+  \dd{attribute \tt{...}}
+  \dd{attribute-list \tt{,} attribute \tt{...}}
+}
+}
+
+\editnote{
+What makes \grammarterm{attribute-list} particularly difficult to change
+is that each-comma separated element can either be empty,
+an \grammarterm{attribute}, or \gramgroup{\grammarterm{attribute} \tt{...}},
+but not just \tt{...}.
+
+I did not want to factor out a new \grammarterm{attribute-clause} non-terminal,
+which seems necessary to make \grammarterm{attribute-list} non-recursive in a simple way.
+We can always make that change later.
+}
+
+Change \eelis{dcl.fct#nt:annotation-list} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{annotation-list}:}
+  \dd{annotation \opt{\tt{...}} \ins{\seqopt{\gramgroup{\tt{,} annotation \opt{\tt{...}}}}}}
+  \dd{\del{annotation-list \tt{,} annotation \opt{\tt{...}}}}
+}
+}
+
+\h3(show-number=false){[stmt.select.general]}
+
+Change \eelis{stmt.select.general#selection-statement} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{selection-statement}:}
+  \dd{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \ins{\opt{\gramgroup{\tcode{else} statement}}}}
+  \dd{\del{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \tcode{else} statement}}
+  \dd{\tcode{if} \opt{\tt{!}} \tcode{consteval} statement \ins{\opt{\gramgroup{\tcode{else} statement}}}}
+  \dd{\del{\tcode{if} \opt{\tt{!}} \tcode{consteval} statement \tcode{else} statement}}
+  \dd{\tcode{switch} \tt{(} \opt{init-statement} condition \tt{)} statement}
+}
+}
+
+\h3(show-number=false){[dcl.pre]}
+
+Change \eelis{dcl.pre#nt:sb-identifier-list} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{sb-identifier-list}:}
+  \dd{sb-identifier \ins{\seqopt{\gramgroup{\tt{,} sb-identifier}}}}
+  \dd{\del{sb-identifier-list \tt{,} sb-identifier}}
+}
+}
+
+Change \eelis{dcl.pre#nt:static_assert-declaration} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{static_assert-declaration}:}
+  \dd{\tcode{static_assert} \tt{(} constant-expression \ins{\opt{\gramgroup{\tt{,} static_assert-message}}} \tt{)}}
+  \dd{\del{\tcode{static_assert} \tt{(} constant-expression \tt{,} static_assert-message \tt{)}}}
+}
+}
 
 \h2{References}
 
