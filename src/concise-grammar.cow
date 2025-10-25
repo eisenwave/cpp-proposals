@@ -77,33 +77,107 @@ and simplifies the specification in many places.
 
 \h2{Motivating example}
 
-\Bex{
-With these new features, more concise grammar is possible:
-\dl(class=grammar){
-  \dt{\grammarterm{compound-statement}:}
-  \dd{
-    \tt{\N{LEFT CURLY BRACKET}}
-    \del{\opt{statement-seq} \opt{label-seq}}
-    \ins{\seqopt{statement} \seqopt{label}}
-    \tt{\N{RIGHT CURLY BRACKET}}
+\style{
+  #tony-table {
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+    table-layout: fixed;
+    font-size: 95%;
   }
-  \dt{\del{\grammarterm{statement-seq}:}}
-  \dd{\del{statement \opt{statement-seq}}}
-  \dt{\del{\grammarterm{label-seq}:}}
-  \dd{\del{label \opt{label-seq}}}
-
-  \dt{\grammarterm{selection-statement}:}
-  \dd{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \ins{\opt{\gramgroup{\tcode{else} statement}}}}
-  \dd{\del{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \tcode{else} statement}}
-  \dd{\tcode{if} \opt{\tt{!}} \tcode{consteval} compound-statement \ins{\opt{\gramgroup{\tcode{else} statement}}}}
-  \dd{\del{\tcode{if} \opt{\tt{!}} \tcode{consteval} compound-statement \tcode{else} statement}}
-  \dd{\tcode{switch} \tt{(} \opt{init-statement} condition \tt{)} statement}
-
-  \dt{\grammarterm{initializer-list}:}
-  \dd{initializer-clause \opt{\tt{...}} \ins{\seqopt{\gramgroup{\tt{,} initializer-clause \opt{\tt{...}}}}}}
-  \dd{\del{initializer-list \tt{,} initializer-clause \opt{\tt{...}}}}
+  #tony-table td {
+    width: 50%;
+    border-bottom: 1px solid var(--border-color);
+  }
+  #tony-table dl {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
 }
+
+With these new features, more concise grammar is possible:
+
+\table(id=tony-table){
+  \tr{
+    \th{Before}
+    \th{After}
+  }
+  \tr{
+    \td{
+      \dl(class=grammar){
+        \dt{\grammarterm{compound-statement}:}
+        \dd{\tt{\N{LEFT CURLY BRACKET}} \opt{statement-seq} \opt{label-seq} \tt{\N{RIGHT CURLY BRACKET}}}
+        \dt{\grammarterm{statement-seq}:}
+        \dd{statement \opt{statement-seq}}
+        \dt{\grammarterm{label-seq}:}
+        \dd{label \opt{label-seq}}
+      }
+    }
+    \td{
+      \dl(class=grammar){
+        \dt{\grammarterm{compound-statement}:}
+        \dd{\tt{\N{LEFT CURLY BRACKET}} \seqopt{statement} \seqopt{label} \tt{\N{RIGHT CURLY BRACKET}}}
+      }
+    }
+  }
+  \comment{\tr{
+    \td{
+      \dl(class=grammar){
+        \dt{\grammarterm{selection-statement}:}
+        \dd{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement}
+        \dd{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \tcode{else} statement\br\br}
+        \dd{\tcode{if} \opt{\tt{!}} \tcode{consteval} compound-statement}
+        \dd{\tcode{if} \opt{\tt{!}} \tcode{consteval} compound-statement \tcode{else} statement\br\br}
+        \dd{\tcode{switch} \tt{(} \opt{init-statement} condition \tt{)} statement}
+      }
+    }
+    \td{
+      \dl(class=grammar){
+        \dt{\grammarterm{selection-statement}:}
+        \dd{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \opt{\gramgroup{\tcode{else} statement}}\br\br}
+        \dd{\tcode{if} \opt{\tt{!}} \tcode{consteval} compound-statement \opt{\gramgroup{\tcode{else} statement}}\br\br}
+        \dd{\tcode{switch} \tt{(} \opt{init-statement} condition \tt{)} statement}
+      }
+    }
+  }}
+  \tr{
+    \td{
+      \dl(class=grammar){
+        \dt{\grammarterm{initializer-list}:}
+        \dd{initializer-clause \opt{\tt{...}}}
+        \dd{initializer-list \tt{,} initializer-clause \opt{\tt{...}}}
+      }
+    }
+    \td{
+      \dl(class=grammar){
+        \dt{\grammarterm{initializer-list}:}
+        \dd{initializer-clause \opt{\tt{...}} \seqopt{\gramgroup{\tt{,} initializer-clause \opt{\tt{...}}}}}
+      }
+    }
+  }
+  \tr{
+    \td{
+      \dl(class=grammar){
+        \dt{\grammarterm{identifier}:}
+        \dd{identifier-start}
+        \dd{identifier identifier-continue}
+      }
+    }
+    \td{
+      \dl(class=grammar){
+        \dt{\grammarterm{identifier}:}
+        \dd{identifier-start \seqopt{identifier-continue}}
+      }
+    }
+  }
 }
+
+\Bnote{
+See \ref(#core-wording) and \ref(#library-wording) for many more concrete examples.
+}
+
+Notably, the boilerplate \grammarterm{X-seq} rules are eliminated.
+The amount of recursion necessary is also greatly reduced.
 
 \h2{Design}
 
