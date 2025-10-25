@@ -5,8 +5,8 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{D3891R0}}
-  \dt{Date:}            \dd{\tt{2025-10-24}}
-  \dt{Audience:}        \dd{CWG}
+  \dt{Date:}            \dd{\tt{2025-10-25}}
+  \dt{Audience:}        \dd{CWG, LWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3891/github)}
@@ -95,8 +95,8 @@ With these new features, more concise grammar is possible:
   \dt{\grammarterm{selection-statement}:}
   \dd{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \ins{\opt{\gramgroup{\tcode{else} statement}}}}
   \dd{\del{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \tcode{else} statement}}
-  \dd{\tcode{if} \opt{\tt{!}} \tcode{consteval} statement \ins{\opt{\gramgroup{\tcode{else} statement}}}}
-  \dd{\del{\tcode{if} \opt{\tt{!}} \tcode{consteval} statement \tcode{else} statement}}
+  \dd{\tcode{if} \opt{\tt{!}} \tcode{consteval} compound-statement \ins{\opt{\gramgroup{\tcode{else} statement}}}}
+  \dd{\del{\tcode{if} \opt{\tt{!}} \tcode{consteval} compound-statement \tcode{else} statement}}
   \dd{\tcode{switch} \tt{(} \opt{init-statement} condition \tt{)} statement}
 
   \dt{\grammarterm{initializer-list}:}
@@ -324,6 +324,11 @@ Names for syntactic categories have generally been chosen according to the follo
 
 \h3(show-number=false){Bulk operations}
 
+\Bimp{
+Please read the editorial notes below.
+This diff looks small, but it's a \em{massive} change with huge implications for the document.
+}
+
 Replace the following non-terminals
 in the document with \seq{\grammarterm{X}} :
 
@@ -368,6 +373,49 @@ These are all of the form:
   \dt{\grammarterm{X-seq} :}
   \dd{X \opt{X-seq}}
 }
+}
+
+\editnote{
+This bulk edit results in many places where these syntactic elements are referenced in prose,
+such as in \eelis{lex.universal.char#3}:
+
+\Bquote{
+A \grammarterm{universal-character-name} that is a \grammarterm{named-universal-character}
+designates the corresponding character in the Unicode Standard (chapter 4.8 Name)
+if the \del{\grammarterm{n-char-sequence}} \ins{\seq{\grammarterm{n-char}}}
+is equal to its character name \etc
+}
+
+In my opinion, this is acceptable.
+Referring to \seq{\grammarterm{X}} as a single construct isn't necessarily wrong,
+even though we've historically tried to reference non-terminal symbols as much as possible.
+However, that practice isn't sustainable anyway when the grammar is much more powerful.
+
+From an English perspective, both \grammarterm{X-seq} and \seq{\grammarterm{X}}
+are pronounced "X sequence" or "X seq.",
+so no problem is caused.
+}
+
+\editnote{
+Due to this wording choice, we talk about an \seq{\grammarterm{X}}
+as if it still was a \grammarterm{X-seq} non-terminal.
+For example, we say
+
+\Bquote{
+\etc from any \grammarterm{declaration} in the \seq{\grammarterm{declaration}}
+of the \grammarterm{translation-unit}.
+}
+
+in \eelis{module.global.frag#4},
+rather than considering the \grammarterm{declaration} to belong directly to a
+\grammarterm{translation-unit}.
+In my opinion, both interpretations seem valid;
+pointing out the indirection through \seq would be an optional and redundant wording choice,
+but it wouldn't be incorrect.
+
+Perhaps, CWG could decide on a consistent policy so that we
+\em{always} call out the \seq indirection,
+or \em{never} do so.
 }
 
 \h3(show-number=false){[lex.name]}
@@ -473,6 +521,52 @@ Change \eelis{lex.fcon#nt:digit-sequence} as follows:
   \dd{digit \ins{\seqopt{\gramgroup{\opt{\tt{'}} digit}}}}
   \dd{\del{digit-sequence \opt{\tt{'}} digit}}
 }
+}
+
+\h3(show-number=false){[lex.string]}
+
+Change the grammar in \eelis{lex.string} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\etc}
+  \dt{\grammarterm{raw-string}:}
+  \dd{\tt{"} d-char\del{-sequence} \ins{\seq} \opt \tt{(} r-char\del{-sequence} \ins{\seq} \opt d-char\del{-sequence} \ins{\seq} \opt \tt{)} \tt{"}}
+
+  \dt{\del{\grammarterm{r-char-sequence}:}}
+  \dd{\del{r-char \opt{r-char-sequence}}}
+
+  \dt{\grammarterm{r-char}:}
+  \dd{\normal{
+    any member of the translation character set,
+    except a U+0029 RIGHT PARENTHESIS
+    followed by the initial
+    \del{\grammarterm{d-char-sequence} (which may be empty)}
+    \ins{\seqopt{\grammarterm{d-char}}}
+    followed by U+0022 QUOTATION MARK
+  }}
+
+  \dt{\etc}
+}
+}
+
+\editnote{
+The are further changes in this area resulting from the \ref(#bulk-operations).
+The important change in this area is the redefinition of \grammarterm{r-char}.
+
+The current "(which may be empty)" seems incorrect anyway;
+a \grammarterm{d-char-sequence} cannot be empty,
+but it is optional.
+The usual wording is (found in \em{many} places)
+\Bquote{
+The optional \grammarterm{attribute-specifier-seq} \etc
+}
+For consistency, we could say
+\Bquote{
+\etc by the initial optional \seq{\grammarterm{d-seq}}
+followed by U+0022 QUOTATION MARK
+}
+However, "initial optional" feels a bit clunky.
 }
 
 \h3(show-number=false){[dcl.spec.general]}
@@ -667,10 +761,42 @@ Change \eelis{stmt.select.general#selection-statement} as follows:
   \dt{\grammarterm{selection-statement}:}
   \dd{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \ins{\opt{\gramgroup{\tcode{else} statement}}}}
   \dd{\del{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \tcode{else} statement}}
-  \dd{\tcode{if} \opt{\tt{!}} \tcode{consteval} statement \ins{\opt{\gramgroup{\tcode{else} statement}}}}
-  \dd{\del{\tcode{if} \opt{\tt{!}} \tcode{consteval} statement \tcode{else} statement}}
+  \dd{\tcode{if} \opt{\tt{!}} \tcode{consteval} compound-statement \ins{\opt{\gramgroup{\tcode{else} statement}}}}
+  \dd{\del{\tcode{if} \opt{\tt{!}} \tcode{consteval} compound-statement \tcode{else} statement}}
   \dd{\tcode{switch} \tt{(} \opt{init-statement} condition \tt{)} statement}
 }
+}
+
+\h3(show-number=false){[stmt.if]}
+
+Change \eelis{stmt.if#1} as follows:
+
+\Bdiff{
+If the condition\iref{stmt.pre} yields \tcode{true},
+the first substatement is executed.
+If the \tcode{else} \del{part} \ins{\grammarterm{statement}} of the
+\del{selection statement} \ins{\grammarterm{selection-statement}}
+is present
+and the condition yields \tcode{false},
+the second substatement is executed.
+If the first substatement is reached via a label,
+the condition is not evaluated and the second substatement is not executed.
+\del{In the second form of \tcode{if} statement
+(the one including \tcode{else}),}
+\ins{In an \tcode{if} statement where the \tcode{else} \grammarterm{statement}
+of the \grammarterm{selection-statement} is present,}
+if the first substatement is also an \tcode{if} statement \ins{,}
+then that inner \tcode{if} statement
+shall contain an \tcode{else} \del{part} \ins{\grammarterm{statement}}.
+}
+
+\editnote{
+\tcode{if consteval} is not relevant to this change
+because it can only contain a \grammarterm{compound-statement}
+as its first substatement.
+
+"Part" is removed because we never define what an "\tcode{else} part" is,
+so this wording smells a bit fishy.
 }
 
 \h3(show-number=false){[dcl.pre]}
