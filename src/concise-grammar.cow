@@ -75,6 +75,36 @@ This proposal adds grouping and repetition,
 which obsoletes all \grammarterm{X-seq} nonterminals
 and simplifies the specification in many places.
 
+\h2{Motivating example}
+
+\Bex{
+With these new features, more concise grammar is possible:
+\dl(class=grammar){
+  \dt{\grammarterm{compound-statement}:}
+  \dd{
+    \tt{\N{LEFT CURLY BRACKET}}
+    \del{\opt{statement-seq} \opt{label-seq}}
+    \ins{\seqopt{statement} \seqopt{label}}
+    \tt{\N{RIGHT CURLY BRACKET}}
+  }
+  \dt{\del{\grammarterm{statement-seq}:}}
+  \dd{\del{statement \opt{statement-seq}}}
+  \dt{\del{\grammarterm{label-seq}:}}
+  \dd{\del{label \opt{label-seq}}}
+
+  \dt{\grammarterm{selection-statement}:}
+  \dd{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \ins{\opt{\gramgroup{\tcode{else} statement}}}}
+  \dd{\del{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \tcode{else} statement}}
+  \dd{\tcode{if} \opt{\tt{!}} \tcode{consteval} statement \ins{\opt{\gramgroup{\tcode{else} statement}}}}
+  \dd{\del{\tcode{if} \opt{\tt{!}} \tcode{consteval} statement \tcode{else} statement}}
+  \dd{\tcode{switch} \tt{(} \opt{init-statement} condition \tt{)} statement}
+
+  \dt{\grammarterm{initializer-list}:}
+  \dd{initializer-clause \opt{\tt{...}} \ins{\seqopt{\gramgroup{\tt{,} initializer-clause \opt{\tt{...}}}}}}
+  \dd{\del{initializer-list \tt{,} initializer-clause \opt{\tt{...}}}}
+}
+}
+
 \h2{Design}
 
 \h3{Design constraints}
@@ -146,39 +176,80 @@ and simplifies the specification in many places.
   }
 }
 
+\h3{Alternatives considered}
 
+\h4{Alternative to \q{\seq} and \q{\seqopt}}
 
-\h3{Motivating example}
+An alternatively syntax to \seq and \seqopt briefly considered
+was superscript \q{\N{FULLWIDTH PLUS SIGN}} and superscript \q{\N{MEDIUM FIVE SPOKED ASTERISK}}
+for one-or-more and zero-or-more repetitions, respectively.
+These characters are widely used in regular expression with this meaning,
+and superscript asterisks denote the
+\ref(https://en.wikipedia.org/wiki/Kleene_star){Kleene Star} in computer science papers.
+However, these characters can be hard to distinguish based on font weight and font family.
+Replacing \grammarterm{X-seq} with \seq{\grammarterm{X}} also feels like a more natural
+transition for C++,
+and means that existing teaching resource referencing the C++ grammar
+would be easy to relate to the new format.
 
-\Bex{
-With these new features, more concise grammar is possible:
-\dl(class=grammar){
-  \dt{\grammarterm{compound-statement}:}
-  \dd{
-    \tt{\N{LEFT CURLY BRACKET}}
-    \del{\opt{statement-seq} \opt{label-seq}}
-    \ins{\seqopt{statement} \seqopt{label}}
-    \tt{\N{RIGHT CURLY BRACKET}}
+\h4{\q{\seq \opt} vs. \q{\opt \seq}}
+
+Both notations are equivalent in the sense that the same inputs would be matched.
+\q{\opt \seq} could be argued to be "more natural"
+because it translates to "optional sequence".
+
+However, if we consider \q{\seq} and \q{\opt} to be postfix unary operators,
+then \q{\opt{\grammarterm{X}} \seq} would be a sequence where every \grammarterm{X}
+is individually optional.
+This is more complex, and the parallel to our existing \opt{\grammarterm{X-seq}}
+uses in the grammar is less obvious.
+It also results in an infinitely ambiguous concrete syntax tree:
+is the \q{\opt{\grammarterm{declaration}} \seq}
+\tcode{int x;} a \grammarterm{declaration} followed by an infinite sequence of
+absent \grammarterm{declaration}s,
+or is it one absent \grammarterm{declaration},
+followed by one \grammarterm{declaration},
+followed by an infinite sequence of absent \grammarterm{declaration}s?
+The answer is:
+it doesn't matter because implementations will figure out how to match
+\q{\opt{\grammarterm{declaration}} \seq}
+either way,
+but we should prefer the syntax that doesn't raise such questions in the first place.
+
+\h4{Alternative brackets for groups}
+
+There are many possible
+\ref(https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=[[%3ABidi_Paired_Bracket_Type%3DOpen%3A]|[%3ABidi_Paired_Bracket_Type%3DClose%3A]]){Unicode bracket characters}
+\:]])
+that could have been used instead.
+However,
+\ul{
+  \li{
+    some are too exotic, like ⟅ S-SHAPED BAG DELIMITERS ⟆,
   }
-  \dt{\del{\grammarterm{statement-seq}:}}
-  \dd{\del{statement \opt{statement-seq}}}
-  \dt{\del{\grammarterm{label-seq}:}}
-  \dd{\del{label \opt{label-seq}}}
-
-  \dt{\grammarterm{selection-statement}:}
-  \dd{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \ins{\opt{\gramgroup{\tcode{else} statement}}}}
-  \dd{\del{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \tcode{else} statement}}
-  \dd{\tcode{if} \opt{\tt{!}} \tcode{consteval} statement \ins{\opt{\gramgroup{\tcode{else} statement}}}}
-  \dd{\del{\tcode{if} \opt{\tt{!}} \tcode{consteval} statement \tcode{else} statement}}
-  \dd{\tcode{switch} \tt{(} \opt{init-statement} condition \tt{)} statement}
-
-  \dt{\grammarterm{initializer-list}:}
-  \dd{initializer-clause \opt{\tt{...}} \ins{\seqopt{\gramgroup{\tt{,} initializer-clause \opt{\tt{...}}}}}}
-  \dd{\del{initializer-list \tt{,} initializer-clause \opt{\tt{...}}}}
-}
+  \li{
+    some are just font variations of existing brackets, like FULLWIDTH or WHITE
+    (which means that users with visual impairment could mistake these too easily,
+    especially with bad choice of font),
+  }
+  \li{
+    some are used too commonly for mathematical operations, like ⌈ CEILING ⌉,
+  }
+  \li{
+    some rely too much on "good fonts" and become too visually similar to parentheses
+    for bold font weight,
+    like ⟬ MATHEMATICAL WHITE TORTOISE SHELL BRACKETS ⟭,
+  }
+  \li{etc.}
 }
 
-\h2{Wording}
+The chosen \gramgroup{MATHEMATICAL DOUBLE ANGLE BRACKETS}
+do not suffer from any of these issues,
+although they are visually similar to
+《 DOUBLE ANGLE BRACKETS 》
+used in \ref(https://en.wikipedia.org/wiki/Chinese_punctuation_for_proper_nouns){Chinese punctuation for proper nouns}.
+
+\h2{Core wording}
 
 The changes are relative to \ref(N5014).
 
@@ -621,6 +692,275 @@ Change \eelis{dcl.pre#nt:static_assert-declaration} as follows:
   \dt{\grammarterm{static_assert-declaration}:}
   \dd{\tcode{static_assert} \tt{(} constant-expression \ins{\opt{\gramgroup{\tt{,} static_assert-message}}} \tt{)}}
   \dd{\del{\tcode{static_assert} \tt{(} constant-expression \tt{,} static_assert-message \tt{)}}}
+}
+}
+
+\h2{Library wording}
+
+The changes are relative to \ref(N5014).
+
+\h3(show-number=false){[locale.numpunct.general]}
+
+Change \eelis{locale.numpunct.general#2} as follows:
+
+\Bdiff{
+\etc
+Integer values have the format:
+\dl(class=grammar){
+  \dt{\grammarterm{units}:}
+  \dd{\del{digits}}
+  \dd{\del{digits thousands-sep units}}
+  \dd{\ins{\seq{digit} \seqopt{\gramgroup{thousands-sep \seq{digit}}}}}
+
+  \dt{\del{\grammarterm{digits}:}}
+  \dd{\del{digit \opt{digits}}}
+}
+and floating-point values have:
+\dl(class=grammar){
+  \dt{\grammarterm{floatval}:}
+  \dd{\opt{sign} units \opt{fractional} \opt{exponent}}
+  \dd{\opt{sign} decimal-point \del{digits} \ins{\seq{digit}} \opt{exponent}}
+
+  \dt{\grammarterm{fractional}:}
+  \dd{decimal-point \del{digits} \ins{\seq{digit}} \opt}
+
+  \dt{\grammarterm{exponent}:}
+  \dd{\del{e} \ins{\gramgroup{\normal{one of} \tt{e} \tt{E}}} \opt{sign} \del{digits} \ins{\seq{digit}}}
+
+  \dt{\del{\grammarterm{e}:}}
+  \dd{\del{\tt{e}}}
+  \dd{\del{\tt{E}}}
+}
+
+where the number of digits between \grammarterm{thousands-sep}s
+is as specified by \tt{do_grouping()}.
+For parsing,
+if the \del{\grammarterm{digits}} \ins{\seq{\grammarterm{digit}}} portion
+contains no thousands-separators,
+no grouping constraint is applied.
+}
+
+\h3(show-number=false){[locale.moneypunct.general]}
+
+Change \eelis{locale.moneypunct.general#3} as follows:
+
+\Bdiff{
+The format of the numeric monetary value is a decimal number:
+\dl(class=grammar){
+  \dt{\grammarterm{value}:}
+  \dd{units \opt{fractional}}
+  \dd{decimal-point \del{digits} \ins{\seq{adigit}}}
+
+  \dt{\grammarterm{fractional}:}
+  \dd{decimal-point \del{digits} \ins{\seq{adigit}} \opt}
+}
+if \tt{frac_digits()} returns a positive value, or
+\dl(class=grammar){
+  \dt{\grammarterm{value:}}
+  \dd{units}
+}
+otherwise.
+The symbol \grammarterm{decimal-point} indicates the character returned by \tt{decimal_point()}.
+The other symbols are defined as follows:
+\dl(class=grammar){
+  \dt{\grammarterm{units}:}
+  \dd{\del{digits}}
+  \dd{\del{digits thousands-sep units}}
+  \dd{\ins{\seq{adigit} \seqopt{\gramgroup{thousands-sep \seq{adigit}}}}}
+}
+
+In the syntax specification,
+the symbol \grammarterm{adigit} is any of the values \tt{ct.widen(c)}
+for \tt{c} in the range \tcode{'0'} through \tcode{'9'} (inclusive)
+and \tcode{ct} is a reference of type \tcode{const ctype<charT>&} \etc
+}
+
+\h3(show-number=false){[format.string.general]}
+
+Change the grammar in \eelis{format.string.general} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\grammarterm{positive-integer}:}
+  \dd{nonzero-digit \ins{\seqopt{digit}}}
+  \dd{\del{positive-integer digit}}
+
+  \dt{\grammarterm{nonnegative-integer}:}
+  \dd{digit\ins{\seq}}
+  \dd{\del{nonnegative-integer digit}}
+}
+}
+
+\h3(show-number=false){[time.format]}
+
+Do \u{not} change \eelis{time.format#nt:chrono-specs}:
+
+\Bquote{
+\dl(class=grammar){
+  \dt{\grammarterm{chrono-specs}:}
+  \dd{conversion-spec}
+  \dd{chrono-specs conversion-spec}
+  \dd{chrono-specs literal-char}
+}
+}
+
+\editnote{
+Even with the new features,
+this is about as compact as it can be.
+A \grammarterm{chrono-specs} is matched by a \grammarterm{conversion-spec},
+followed by zero or more \grammarterm{conversion-spec}s or \grammarterm{literal-char}.
+There is no good way to express that on one line.
+}
+
+\h3(show-number=false){[fs.path.generic]}
+
+Change the grammar in \eelis{fs.path.generic} as follows:
+
+\Bdiff{
+\dl(class=grammar){
+  \dt{\etc}
+  \dt{\grammarterm{relative-path}:}
+  \dd{\del{filename}}
+  \dd{\del{filename directory-separator relative-path}}
+  \dd{\del{an empty path}}
+  \dd{\ins{\ins{\seqopt{\gramgroup{filename directory-separator}} \opt{filename}}}}
+  
+  \dt{\grammarterm{filename}:}
+  \dd{
+    \normal{non-empty sequence of characters other than
+    \grammarterm{directory-separator} characters
+    }
+  }
+
+  \dt{\grammarterm{directory-separator}:}
+  \dd{preferred-separator \opt{directory-separator}}
+  \dd{fallback-separator \opt{directory-separator}}
+
+  \dt{\etc}
+}
+}
+
+\editnote{
+A more ambitious change would be to replace \grammarterm{directory-separator}
+with a new \seq{\grammarterm{directory-separator-char}}.
+However, \grammarterm{directory-separator} is used \em{a lot} in subsequent wording,
+so this would have massive blast radius.
+}
+
+\comment{
+\Bdiff{
+\dl(class=grammar){
+  \dt{\etc}
+  \dt{\grammarterm{relative-path}:}
+  \dd{\del{filename}}
+  \dd{\del{filename directory-separator relative-path}}
+  \dd{\del{an empty path}}
+  \dd{\ins{\ins{\seqopt{\gramgroup{filename \seq{directory-separator-char}}} \opt{filename}}}}
+  
+  \dt{\grammarterm{filename}:}
+  \dd{
+    \normal{non-empty sequence of characters other than
+    \del{\grammarterm{directory-separator} characters} \ins{\grammarterm{directory-separator-char}}
+    }
+  }
+
+  \dt{\del{\grammarterm{directory-separator}:}}
+  \dd{\del{preferred-separator \opt{directory-separator}}}
+  \dd{\del{fallback-separator \opt{directory-separator}}}
+
+  \dt{\ins{\grammarterm{directory-separator-char}:}}
+  \dd{\ins{preferred-separator}}
+  \dd{\ins{fallback-separator}}
+}
+}
+
+Change \eelis{fs.path.generic#2} as follows:
+
+\Bdiff{
+Except in a \grammarterm{root-name},
+\del{multiple successive \grammarterm{directory-separator} characters}
+\ins{a \seq{\grammarterm{directory-separator-char}}}
+\del{are} \ins{is}
+considered to be the same as one
+\del{\grammarterm{directory-separator} character}
+\ins{\grammarterm{directory-separator-char}}.
+}
+
+Change \eelis{fs.path.generic#note-2} as follows:
+
+\Bdiff{
+\note{
+Many operating systems define a name beginning with two
+\del{\grammarterm{directory-separator characters}}
+\ins{\grammarterm{directory-separator-char}s}
+as a \grammarterm{root-name} that identifies network or other resource locations.
+Some operating systems define a single letter
+followed by a colon as a drive specifier —
+a \grammarterm{root-name} identifying a specific device such as a disk drive.
+}
+}
+
+Change \eelis{fs.path.generic#6} as follows:
+
+\Bdiff{
+\dfn{Normalization} of a generic format pathname means:
+
+\ol{
+  \li{If the path is empty, stop.}
+  \li{
+    Replace each slash character in the \grammarterm{root-name}
+    with a \grammarterm{preferred-separator}.
+  }
+  \li{
+    Replace each \del{\grammarterm{directory-separator}}
+    \ins{\seq{\grammarterm{directory-separator-char}}}
+    with a \grammarterm{preferred-separator}.
+    \br\del{\note{
+      The generic pathname defines \grammarterm{directory-separator} as one or more slashes
+      and \grammarterm{preferred-separator}s.
+    }}
+    \editnote{
+      ... Yes? That's what the wording says.
+      Do we assume our readers are incapable of understanding the grammar above,
+      or why does this note exist?
+      Attempting to update this note would mean restating the definition of
+      \grammarterm{directory-separator-char} verbatim,
+      which is pointless.
+    }
+  }
+  \li{
+    Remove each dot filename and any immediately following
+    \del{\grammarterm{directory-separator}} \ins{\seq{\grammarterm{directory-separator-char}}}.
+  }
+  \li{
+    As long as any appear,
+    remove a non-dot-dot filename immediately followed by a
+    \del{\grammarterm{directory-separator}} \ins{\seq{\grammarterm{directory-separator-char}}}
+    and a dot-dot filename,
+    along with any immediately following
+    \del{\grammarterm{directory-separator}} \ins{\seq{\grammarterm{directory-separator-char}}}.
+  }
+  \li{
+    If there is a \grammarterm{root-directory},
+    remove all dot-dot filenames and any
+    \del{\grammarterm{directory-separator}s} \ins{\seq{\grammarterm{directory-separator-char}}s}
+    immediately following them.
+    \br\note{
+      These dot-dot filenames attempt to refer to nonexistent parent directories.
+    }
+  }
+  \li{
+    If the last filename is dot-dot,
+    remove any trailing
+    \del{\grammarterm{directory-separator}}
+    \ins{\seq{\grammarterm{directory-separator-char}}}.
+  }
+  \li{
+    If the path is empty, add a dot.
+  }
+}
+The result of normalization is a path in \dfn{normal form},
+which is said to be \dfn{normalized}.
 }
 }
 
