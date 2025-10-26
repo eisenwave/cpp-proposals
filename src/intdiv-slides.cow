@@ -1,0 +1,269 @@
+\cowel_include{libwg21.cow}
+\cowel_include{libslides.cow}
+
+\Vset(paper-number){P3724R1}
+\Vset(paper-title){Integer division}
+
+\cowel_macro(neg_inf){\math{\mrow{\mo{\N{MINUS SIGN}}\mi{\N{INFINITY}}}}}
+\cowel_macro(pos_inf){\math{\mrow{\mo{+}\mi{\N{INFINITY}}}}}
+\cowel_macro(footsep){\N{EM SPACE}|\N{EM SPACE}}
+
+\cowel_macro(slidefoot){
+Jan Schultke
+\footsep
+Slides for \Vget(paper-number)
+\N{EM DASH}
+\Vget(paper-title)
+\footsep
+Kona 2025
+\footsep
+Slide \Vget(slidenum)
+}
+
+\style{
+  section>h1 {
+    margin-top: calc(0.15 * var(--sw)) !important;
+    font-size: 300%;
+    text-align: center;
+  }
+  #docnum {
+    font-family: var(--sans-serif-family);
+    font-size: 80%;
+    font-weight: normal;
+  }
+  li>ul {
+    margin-top: 0;
+  }
+  #tony-table {
+    margin-left: auto;
+    margin-right: auto;
+    width: 90%;
+    table-layout: fixed;
+  }
+  #tony-table td {
+    background-color: var(--deep-background-color);
+    width: 50%;
+  }
+}
+
+\wg21_head(
+  title = Slides for \Vget(paper-number) \N{EM DASH} \Vget(paper-title)
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{P3895R0}}
+  \dt{Date:}            \dd{\tt{2025-10-26}}
+  \dt{Audience:}        \dd{SG6}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/intdiv-slides.cow)}
+}
+\hr
+\slide_controls
+}
+
+\slide{
+\cowel_html_element(h1){\Vget(paper-title) \br \cowel_html_element(span, (id=docnum)){\Vget(paper-number)}}
+}
+
+\slide{
+\slideh{Introduction}
+
+\ul{
+  \li{C++ supports integer division with rounding towards zero}
+  \li{many other rounding modes are useful:}
+}
+\cppblock{
+int bucket_size = 1000, elements = 100;
+
+int buckets_req = elements / bucket_size;            // WRONG, zero
+int buckets_req = div_to_inf(elements, bucket_size); // OK, one
+}
+\ul{
+  \li{
+    hardware division \em{always} rounds towards zero
+    \ul{
+      \li{only mode where \tcode{r = x - y * q} doesn't overflow}
+    }
+  }
+  \li{software division in other langs. sometimes supports other modes}
+}
+}
+
+\slide{
+\slideh{Why does this need to be in the standard?}
+
+\ul{
+  \li{users need it all the time, and try to implement it}
+  \li{they fail miserably: almost all attempts on StackOverflow/blogs wrong}
+}
+\Bug{
+\ref(StackOverflowCeil) answer (67 upvotes) fails at rounding to \pos_inf:
+\cppblock{
+q = (x % y) ? x / y + 1 : x / y;
+}
+Mistake: incrementing negative quotients: \tcode{x=-1, y=2, q=1}
+}
+\ul{
+  \li{pulling in third-party library for one division function is silly}
+}
+}
+
+\slide{
+\slideh{Computing remainders is hard}
+
+\Bug{
+The following function has unintended UB:
+\cppblock{
+std::div_t div_rem_ceil(int x, int y) {
+  int quotient = div_ceil(x, y);    // round to \pos_inf
+  int remainder = x - y * quotient; // overflow
+  return { quotient, remainder };
+}
+}
+\tcode{div_rem_ceil(2'147'483'647, 2)} overflows.\br
+\tcode{quotient == 1'073'741'824, y * quotient == 2'147'483'648}
+}
+
+\ul{
+  \b{Conclusion}: provide functions for computing quotient and remainder
+}
+}
+
+\style{
+  .center {
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+\slide{
+\slideh{Which rounding modes to support}
+
+\cowel_macro(classic_name){\sub{(\tcode{\cowel_put})}}
+
+\table(class=center){
+  \tr{
+    \td{\tcode{div_to_zero}\classic_name{trunc}}
+    \td{\tcode{div_ties_to_zero}}
+  }
+  \tr{
+    \td{\tcode{\mark{div_away_zero}}}
+    \td{\tcode{\mark{div_ties_away_zero}}\classic_name{round}}
+  }
+  \tr{
+    \td{\tcode{\mark{div_to_inf}}\classic_name{ceil}}
+    \td{\tcode{div_ties_to_inf}}
+  }
+  \tr{
+    \td{\tcode{\mark{div_to_neg_inf}}\classic_name{floor}}
+    \td{\tcode{div_ties_to_neg_inf}}
+  }
+  \tr{
+    \td{\tcode{div_to_even}\sub{⚖️}}
+    \td{\tcode{\mark{div_ties_to_even}}\sub{⚖️}}
+  }
+  \tr{
+    \td{\tcode{div_to_odd}\sub{⚖️}}
+    \td{\tcode{div_ties_to_odd}\sub{⚖️}}
+  }
+}
+
+\ul{
+  \li{\mark{marked} functions are must-have, others fill the gaps}
+  \li{⚖️ functions are unbiased}
+  \li{each \tcode{div_\exposid{mode}} function has \tcode{div_rem_\exposid{mode}} counterpart (24 total)}
+}
+}
+
+\slide{
+\slideh{Library interface}
+
+\cppblock{
+template<class T> struct div_result
+{ T quotient; T remainder;
+  friend auto operator<=>(/* ... */) = default; };
+template<class T> constexpr div_result<T> div_rem_\exposid{mode}(T x, T y);
+template<class T> constexpr T             div_to_\exposid{mode}(T x, T y);
+template<class T> constexpr T             mod(T x, T y);
+}
+\ul{
+  \li{no \tcode{noexcept} because narrow contract (\expects)}
+  \li{no \tcode{rounding_mode} constant template- or run-time parameter}
+  \li{\tcode{mod} is \tcode{div_rem_to_neg_inf(x, y).remainder}\ul{
+    \li{as in \math{\mrow{
+      \mo{\N{MINUS SIGN}}
+      \mn{2}
+      \mo{mod}
+      \mn{5}
+      \mo{=}
+      \mn{3}
+    }}\N{ZERO-WIDTH NO-BREAK SPACE}, and as in \tcode{mod} in Haskell, Ada, CSS, etc.}
+  }}
+}
+}
+
+\slide{
+\slideh{Other design considerations}
+
+\ul{
+  \li{no SIMD overloads, but could be added in the future}
+  \li{no functions that compute only remainder (except \tcode{mod})}
+  \li{these are not usually needed}
+  \li{all functions are in \header{numeric}}
+}
+}
+
+\slide{
+\slideh{Implementation experience}
+
+\ul{
+  \li{Appendix A has simplified implementation for educational purposes}
+  \li{\tt{eisenwave/integer-division} \ref(GitHub) repo has full implementation}
+  \li{all functions can be made branchless and are suitable for SIMD port}
+}
+
+\Bex{
+Implementation is always in terms of \tcode{/} and \tcode{\N{PERCENT SIGN}}.
+\cppblock{
+div_result<int> div_rem_to_neg_inf(int x, int y) {
+  bool quotient_negative = (x ^ y) < 0;
+  int adjust = int((x \N{PERCENT SIGN} y != 0) & quotient_negative);
+  return { x / y - adjust, x \N{PERCENT SIGN} y + adjust * y };
+}
+}
+}
+}
+
+\slide{
+\slideh{Questions}
+
+\ul{
+  \li{Agreement with overall design?}
+  \li{SIMD overloads in another proposal?}
+  \li{Forward to LEWG?}
+}
+}
+
+\h2(listed=false){References}
+
+\make_bib
+
+\bib(
+  id = P3724R1,
+  title = Integer division,
+  date = 2025-09-29,
+  author = Jan Schultke,
+  link = https://wg21.link/p3724r1,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3724r1.html,
+)\
+\bib(
+  id = GitHub,
+  author = Jan Schultke,
+  title = integer-division GitHub repository,
+  link = https://github.com/Eisenwave/integer-division
+)\
+\bib(
+  id = StackOverflowCeil,
+  title = Fast ceiling of an integer division in C / C++,
+  link = https://stackoverflow.com/q/2745074/5740428,
+)\
