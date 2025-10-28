@@ -5,7 +5,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{D3876R0}}
-  \dt{Date:}            \dd{\tt{2025-10-22}}
+  \dt{Date:}            \dd{\tt{2025-10-28}}
   \dt{Audience:}        \dd{SG16}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -45,24 +45,59 @@ and then transcode to UTF-8 as \tcode{char8_t},
 but the standard library provides no transcoding facilities yet.
 Even if there was support, using \tcode{char} is an unnecessary middle man.
 
-Furthermore, \tcode{std::to_chars} accepting \tcode{char8_t}
-is arguably a prerequisite for \tcode{std::format} to accept \tcode{char8_t} too
-because conversions of arithmetic types are specified in terms of \tcode{to_chars}.
-\tcode{std::print} would similarly need \tcode{std::to_chars} to function
-since it relies on format strings as well.
+In general, \tcode{std::to_chars} and \tcode{std::from_chars} are important
+cornerstones upon which other facilities are built,
+or could be built in the future.
+The lack of support for \tcode{char8_t} (and other character types)
+severely limits what can be done elsewhere:
+\ul{
+  \li{
+    \tcode{std::to_chars} accepting \tcode{char8_t}
+    is arguably a prerequisite for \tcode{std::format} with \tcode{char8_t} format strings
+    because conversions of arithmetic types are specified in terms of \tcode{std::to_chars}.
+  }
+  \li{
+    \tcode{std::print(u8"")} would similarly need
+    \tcode{std::to_chars} to function with \tcode{char8_t}.
+  }
+  \li{
+    A hypothetical \tcode{std::u8to_string} could not easily be created
+    because \tcode{std::to_string} is specified to return \tcode{std::format("{}", val),
+    i.e. in terms of \tcode{std::to_chars}.}
+  }
+  \li{
+    A hypothetical string parsing counterpart to \tcode{std::format}
+    would presumably be specified in terms of \tcode{std::from_chars},
+    but this would be problematic if parsing \tcode{char8_t} strings is to be supported.
+  }
+}
 
 Providing support for Unicode character types would be relatively simple.
 All characters produced by \tcode{std::to_chars}
 and all characters accepted by \tcode{std::from_chars} fall into the Basic Latin (ASCII) block
-and are part of the basic character set (\tcode{0}, \tcode{-}, \tcode{E}, etc.).
+and are part of the basic character set\iref{lex.charset}.
 This means that any existing implementation for ASCII-encoded \tcode{char} could be made to work
 with Unicode characters trivially.
 
 \h2{Design}
 
+The design strategy is to prioritize simplicity and performance.
+\tcode{std::from_chars} and \tcode{std::to_chars} are meant to be low-level,
+high-performance conversion functions.
+Decoding non-ASCII representations of digits,
+handling UTF-8 encoding errors in detail, etc. are out of the question.
+
+Most of the design choices are obvious,
+but unfortunately,
+\header{charconv} functions have been designed as non-templates,
+which we cannot reasonably perpetuate.
+Most of the difficult design choices revolve around how to add the new overloads
+without breaking changes to code which uses \tcode{std::to_chars}.
+
 \h3{Which character types to support}
 
 All character types should be supported by \tcode{std::to_chars} and \tcode{std::from_chars}.
+Find rationale for each type below.
 
 \h4{\tcode{char8_t}}
 
@@ -142,7 +177,7 @@ This means that simply treating greater code units as not part of the \tcode{std
 pattern (which any implementation for ASCII-based \tcode{char} does already)
 is a proper way of Unicode error handling.
 
-\h3{"Fixing" \tcode{std::format(std::wformat_string)}}
+\h3(id=fixing-format-for-wide-strings){"Fixing" \tcode{std::format(std::wformat_string)}}
 
 Since this proposal argues for \tcode{wchar_t} support in \tcode{std::to_chars},
 it makes sense to re-specify \tcode{std::format} to call \tcode{std::to_chars} "directly".
@@ -338,7 +373,20 @@ With the benefit of foresight, perhaps we should aim at a smaller overload set
 and take a \tcode{R&&} range parameter instead.
 In any case, those changes are not within the scope of this proposal.
 
-\h2{Implementation}
+\h2{Impact on existing code}
+
+The proposal is a pure extension
+of the \tcode{std::to_chars} and \tcode{std::from_chars} overload sets.
+The existing non-template overloads for \tcode{char}
+and various arithmetic types are preserved.
+
+\Bnote{
+There is a purely theoretical change to the semantics of \tcode{std::format}
+with no known impact on existing code.
+See \ref(#fixing-format-for-wide-strings) and \ref(#diff.cpp26.format).
+}
+
+\h2{Implementation experience}
 
 Any existing implementation of \tcode{std::to_chars} and \tcode{std::from_chars}
 for a platform with ASCII-based \tcode{char} (Windows, POSIX, etc.)
@@ -860,12 +908,27 @@ The analyzed pattern consists of those code points,
 encoded as code units in the respective literal encoding for character literals
 of the cv-unqualified type of \tcode{*first}.
 
-\note{In any case, the pattern consists of code units encoding characters
+\note{
+In either form of specification,
+the pattern consists of code units encoding characters
 in the basic character set\iref{lex.charset},
 meaning that each code unit encodes exactly one such character.
 Illegal code units or code units representing characters outside the basic character set
 are not handled specially;
-those code units are simply not part of the pattern.}
+those code units are simply not part of the pattern.
+
+\example{
+\itemdecl{
+u8string_view s = u8"123\\xFF";      // \serif{well-formed \grammarterm{string-literal} containing malformed UTF-8}
+int value;
+u8from_chars_result r = from_chars(s.data(), s.data() + s.length(), value);
+
+assert(value == 123);               // \serif{holds}
+assert(r.ptr == s.data() + 3);      // \serif{holds}
+assert(r.ec == errc{});             // \serif{holds}
+}
+}
+}
 }
 
 Immediately following the inserted paragraph,
@@ -931,19 +994,21 @@ Nothing.
 }
 
 \editnote{
-There is a merge conflict with an LWG issue
-relating to parsing of \tcode{"0b"} base prefixes
-(no number allocated yet).
-}
+By the time this wording is reviewed,
+\ref(LWG4430) will most likely have been merged,
+which additionally ignores \tcode{"0b"} and \tcode{"0B"} base prefixes.
+This has no impact on the proposed change
+because the \effects are rewritten from scratch.
 
-\editnote{
-It would be possible to base the wording on \tcode{strtol},
+It would be possible to keep basing the wording on \tcode{strtol},
 but this is quite problematic.
-Changes would be required anyway to not accept \tt{0b} and \tt{0o} prefixes
-(\tt{0x} is already not part of the pattern).
+\ref(LWG4430) already fixed the accidental parsing of \tcode{"0b"}
+prefixes in \tcode{from_chars},
+and additional changes will be required for \tcode{"0o"},
+which is added to C2y for octal prefixes.
 
 There are so many deviations from the \tcode{strtol} pattern that it arguably provides
-not specification value to specify \tcode{to_chars} in terms of it.
+negative value to specify \tcode{to_chars} in terms of it.
 }
 
 Modify the overload for \tcode{\exposid{floating-point-type}} as follows:
@@ -980,7 +1045,7 @@ as described for \tcode{strtod}, except that
   }
   \li{
     if fmt is \tcode{chars_format​::​hex},
-    \del{the prefix \tcode{"0x"} or \tcode{"0X"}} \ins{\tt{0x}} is assumed
+    the prefix \del{\tcode{"0x"} or \tcode{"0X"}} \ins{\tt{0x}} is assumed
     \ins{to precede the string,
     but is not part of the pattern}.
   }
@@ -1086,6 +1151,12 @@ assert(c.front() == w.front()); // \serif{previously always passed, now fails if
   title = Clarify the output encoding of to_chars for integers,
   author = Jan Schultke,
   link = https://cplusplus.github.io/LWG/issue4421,
+)\
+\bib(
+  id = LWG4430,
+  title = from_chars should not parse "0b" base prefixes,
+  author = Jan Schultke,
+  link = https://cplusplus.github.io/LWG/issue4430,
 )\
 \bib(
   id = SG16-Issue,
