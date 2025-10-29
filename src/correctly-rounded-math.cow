@@ -1,0 +1,312 @@
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+  title = Correctly rounded floating-point maths functions
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D3864R1}}
+  \dt{Date:}            \dd{\tt{2025-10-29}}
+  \dt{Audience:}        \dd{SG6}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Guy Davidson <\mail{gd@6it.dev}>}
+                        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3864/github)}
+}
+\hr
+}
+
+\Babstract{
+This paper proposes adding five overload sets to the standard library
+for addition, subtraction, multiplication, division, and square root calculation,
+correctly rounded as specified in ISO/IEC 60559:2020.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+Floating-point maths functions are rounded after calculation.
+The rounding mode used is part of the floating-point state which is maintained per-thread.
+This introduces two problems:
+\ol{
+  \li{
+    Changing rounding modes,
+    for example for calculations that require correct rounding
+    in a set of optimized expression evaluations,
+    is unergonomic.
+  }
+  \li{
+    There is a burden on library writers to restore the floating-point state
+    to the condition it was in when a library function was called.
+  }
+}
+
+This is not a new problem,
+and the C standard in Annex F reserves the prefix \tcode{cr_}
+for functions fully matching the \ref(60559:2020) mathematical operations;
+see 7.33.8 [Mathematics \tt{<math.h>}]:
+
+\Bquote{
+Function names that begin with \tt{cr_} are potentially reserved identifiers
+and may be added to the \tt{<math.h>} header.
+The \tt{cr_} prefix is intended to indicate a correctly rounded version of the function.
+}
+
+This paper proposes adding five overload sets to the standard library
+for addition, subtraction, multiplication, division and square root calculation.
+
+These functions guarantee that the operation will be carried out as if with infinite precision,
+and rounded using the \q{roundTiesToEven} rounding mode,
+as specified in \ref(60559:2020).
+The parameter type must satisfy the type trait \tcode{std::numeric_\N{SOFT HYPHEN}limits<T>::\N{SOFT HYPHEN}is_iec559}.
+
+This solves problem 1 directly by providing a more ergonomic way of expressing intention:
+the client can explicitly state that they require correctly rounded calculation
+without having to ensure that the floating-point state is set appropriately.
+
+This does not solve problem 2 directly,
+since this does not necessarily affect the floating-point state at all.
+However, it reduces the sources of error when correct rounding is important.
+
+\h3{Related papers}
+
+Proposal \ref(P3375R3) seeks to introduce reliable reproducibility
+to floating-point operations regardless of platform.
+This proposal partially addresses this problem
+by reducing the places where implementations can diverge.
+However, it does not necessarily solve the divergence
+introduced by inlining or optimization choices,
+which are declared per translation unit.
+
+This can be mitigated,
+at the cost of performance,
+by creating a \tcode{struct} which contains a value of the appropriate type as a single member,
+and implementing the arithmetic operators in a separate library, linked at runtime,
+in terms of the correctly rounded functions.
+In this way, a client can mix correctly rounded and optimized operations
+in a single translation unit.
+
+This author currently believes that more performant reproducibility
+can only be achieved by introducing a new type
+which is defined to be immune to the floating-point optimizations
+specified in \ref(60559:2020).
+
+\h2{Design considerations}
+
+\h3{Error handling}
+
+The error handling for the proposed functions should match that
+of the existing mathematical functions.
+That is:
+
+\ul{
+  \li{NaN is propagated.}
+  \li{A range errors occur on overflow.}
+  \li{Infinity may be propagated without error.}
+  \li{A pole error occurs when dividing by zero.}
+  \li{Underflow or denormalization is ignored.}
+  \li{A domain error occurs when the result is not mathematically defined.}
+}
+
+\h3{\tcode{cr_sqrt} for -0 arguments}
+
+If the argument to \tcode{cr_sqrt} is negative zero,
+the result should also be negative zero.
+This matches the behavior of \tcode{sqrt} in typical implementations
+(although this behavior is not mandated by the C standard),
+and it matches the behavior specified for \b{squareRoot}(-0) in \ref(60559:2020).
+
+\h2{Wording}
+
+The proposed changes are based on \ref(N5014).
+
+\h3(show-number=false){[version.syn]}
+
+In \eelis{version.syn},
+insert a feature-test macro as follows:
+
+\Bins{
+\itemdecl{
+#define __cpp_lib_math_cr_functions 20XXXXL // \serif{also in \tt{<cmath>}}
+}
+}
+
+\editnote{
+The name is based on \tcode{__cpp_lib_math_special_functions}.
+}
+
+\h3(show-number=false){[cmath.syn]}
+
+In \eelis{cmath.syn},
+prior to the declaration of the mathematical special functions,
+insert the following:
+
+\Bins{
+\itemdecl{
+// \serif{[c.math.crfunc], correctly rounded functions}
+constexpr \exposid{iec-559-type} cr_add(\exposid{iec-559-type} x, \exposid{iec-559-type} y) noexcept;
+constexpr \exposid{iec-559-type} cr_sub(\exposid{iec-559-type} x, \exposid{iec-559-type} y) noexcept;
+constexpr \exposid{iec-559-type} cr_mul(\exposid{iec-559-type} x, \exposid{iec-559-type} y) noexcept;
+constexpr \exposid{iec-559-type} cr_div(\exposid{iec-559-type} x, \exposid{iec-559-type} y) noexcept;
+constexpr \exposid{iec-559-type} cr_sqrt(\exposid{iec-559-type} x) noexcept;
+}
+}
+
+Amend \eelis{cmath.syn#1} to read:
+
+\Bdiff{
+The contents and meaning of the header \tt{<cmath>}
+are a subset of the C standard library header \tt{<math.h>}
+and only the declarations shown in the synopsis above are present,
+with the addition of
+\ul{
+  \li{a three-dimensional hypotenuse function\iref{c.math.hypot3},}
+  \li{a linear interpolation function\iref{c.math.lerp}, \del{and}}
+  \li{\ins{the correctly rounded functions\iref{c.math.crfunc}, and}}
+  \li{the mathematical special functions described in \eelis{sf.cmath}.}
+}
+}
+
+\editnote{The use of bullets is added here.}
+
+Amend \eelis{cmath.syn#2} to read:
+
+\Bdiff{
+For each function with at least one parameter of type \tcode{\exposid{floating-point-type}},
+the implementation provides an overload
+for each cv-unqualified floating-point type\iref{basic.fundamental}\ins{;
+for each function with at least one parameter of type \tcode{\exposid{iec-559-type}},
+the implementation provides an overload
+for each cv-unqualified floating-point type \tcode{T}
+for which \tcode{numeric_limits<T>::is_iec559} is \tcode{true}.}
+\del{where all} \ins{All} uses of \tcode{\exposid{floating-point-type}}
+\ins{or \tcode{\exposid{iec-559-type}}}
+in the function signature are replaced with \del{that} \ins{the provided} floating-point type.
+}
+
+\h3(show-number=false){[c.math.crfunc]}
+
+Immediately preceding \eelis{cf.cmath},
+introduce a new subclause:
+
+\Bins{
+\h3(listed=false){Correctly rounded functions \stable_ref{c.math.crfunc}}
+
+¶
+The correctly rounded functions \dfn{correctly round} the result of an operation,
+meaning that the result is calculated as if using infinite precision,
+then rounded using \q{roundTiesToEven},
+as specified in 60559:2020.
+
+¶
+If any argument value to any of the functions below is a NaN (Not a Number),
+the function shall return a NaN but it shall not report a domain error.
+A range error occurs if all arguments are finite
+and the result is too large in magnitude to be represented
+in the destination type.
+
+¶
+Unless otherwise specified,
+each function is defined for all finite values,
+for negative infinity,
+and for positive infinity.
+
+\itemdecl{
+constexpr \exposid{iec-559-type} cr_add(\exposid{iec-559-type} x, \exposid{iec-559-type} y) noexcept;
+}
+
+\itemdescr{
+¶
+\returns
+\math{\mrow{\mi{x}\mo{+}\mi{y}}}
+correctly rounded.
+}
+
+\itemdecl{
+constexpr \exposid{iec-559-type} cr_sub(\exposid{iec-559-type} x, \exposid{iec-559-type} y) noexcept;
+}
+
+\itemdescr{
+¶
+\returns
+\math{\mrow{\mi{x}\mo{−}\mi{y}}}
+correctly rounded.
+}
+
+\itemdecl{
+constexpr \exposid{iec-559-type} cr_mul(\exposid{iec-559-type} x, \exposid{iec-559-type} y) noexcept;
+}
+
+\itemdescr{
+¶
+\returns
+\math{\mrow{\mi{x}\mo{×}\mi{y}}}
+correctly rounded.
+}
+
+\itemdecl{
+constexpr \exposid{iec-559-type} cr_div(\exposid{iec-559-type} x, \exposid{iec-559-type} y) noexcept;
+}
+
+\itemdescr{
+¶
+\returns
+\math{\mfrac{\mi{x}\mi{y}}}
+correctly rounded.
+
+¶
+\remarks
+A pole error occurs if \tcode{y} equals zero.
+}
+
+\itemdecl{
+constexpr \exposid{iec-559-type} cr_sqrt(\exposid{iec-559-type} x) noexcept;
+}
+
+\itemdescr{
+¶
+\returns
+\math{\msqrt{\mi{x}}}
+correctly rounded.
+If \tcode{x} is \math{\mrow{\mo{−}\mn{0}}},
+the result is also \math{\mrow{\mo{−}\mn{0}}}.
+
+¶
+\remarks
+A domain error occurs if \tcode{x} < \math{\mn{0}}.
+}
+}
+
+\editnote{
+The introductory wording is loosely inspired by \eelis{sf.cmath.general}.
+}
+
+\h2{References and bibliography}
+
+\bib(
+  id = N5014,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-08-05,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+)\
+\bib(
+  id = 60559:2020,
+  title = ISO/IEC 60559:2020 — Information technology — Microprocessor Systems — Floating-Point arithmetic,
+  date = 2025-05,
+  author = ISO,
+  link = https://www.iso.org/standard/80985.html,
+)\
+\bib(
+  id = P3375R3,
+  title = Reproducible floating-point results,
+  date = 2025-05-12,
+  author = Guy Davidson,
+  link = https://wg21.link/p3375r3,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3375r3.html,
+)\
+
+\make_bib
