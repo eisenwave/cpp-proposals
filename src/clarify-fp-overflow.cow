@@ -1,0 +1,619 @@
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+  title = Clarify the behavior of floating-point overflow
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D3899R0}}
+  \dt{Date:}            \dd{\tt{2025-10-30}}
+  \dt{Audience:}        \dd{SG6, EWG, CWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3688/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/clarify-fp-overflow.cow)}
+}
+\hr
+}
+
+\Babstract{
+The current specification of floating-point overflow is unclear.
+This paper fixes it.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+The current specification of floating-point overflow is unclear.
+Floating-point overflow occurs when finite operands are used as operands,
+and the result cannot be represented as a finite value.
+For \ref(ISO/IEC 60559:2020) floating-point numbers,
+this results in infinity.
+
+\h3{Wording disputes}
+
+Extensive discussion in CWG has shown that we cannot find consensus
+on what the current behavior is:
+
+\ul{
+  \li{Is overflow undefined behavior, such as in \tcode{FLT_MAX + 1}?}
+  \li{Is infinity arithmetic undefined behavior, such as in \tcode{infinity() + 1}?}
+  \li{
+    Is merely yielding infinity undefined behavior,
+    such as in \tcode{numeric_limits<T>::infinity()}?
+  }
+}
+
+See below a summary of each wording dispute.
+
+\h4{Undefined behavior on floating-point overflow}
+
+The source of undefined behavior is located in \eelis{expr.pre#4}:
+
+\Bquote{
+If during the evaluation of an expression,
+the result is not mathematically defined or not in the range of representable values for its type,
+the behavior is undefined.
+
+\note{
+Treatment of division by zero,
+forming a remainder using a zero divisor,
+and all floating-point exceptions varies among machines,
+and is sometimes adjustable by a library function.
+}
+}
+
+An operation between two finite numbers is obviously mathematically defined.
+However, it may not lie in the "range of representable values",
+and so it could be undefined behavior.
+A description of the range has been added recently by \ref(CWG2723)
+to \eelis{basic.fundamental#13}:
+
+\Bquote{
+The minimum range of representable values for a floating-point type is
+the most negative finite floating-point number representable in that type through
+the most positive finite floating-point number representable in that type.
+In addition, if negative infinity is representable in a type,
+the range of that type is extended to all negative real numbers;
+likewise, if positive infinity is representable in a type,
+the range of that type is extended to all positive real numbers.
+
+\note{
+Since negative and positive infinity are representable in ISO/IEC/IEEE 60559 formats,
+all real numbers lie within the range of representable values
+of a floating-point type adhering to ISO/IEC/IEEE 60559. 
+}
+}
+
+This wording has been interpreted in two different ways:
+\ul{
+  \li{
+    The range of representable values is a mathematical construct defined in this paragraph.
+    We do not say that infinities and NaN are within this range,
+    only real numbers.
+    This means that "a value being representable" and "range of representable values"
+    are distinct constructs,
+    and infinity is not in the range of representable values \em{despite} being representable.
+  }
+  \li{
+    The use of the word "minimum" at the start means that the whole paragraph is not a definition,
+    but rather extends the range with additional values.
+    If infinity is representable in a type,
+    the range of representable values includes infinity without having to explicitly say so.
+  }
+}
+
+I will not judge which of these interpretations is correct in my opinion.
+With these definitions out of the way,
+there are three competing opinions on the status quo:
+
+\ul{
+  \li{
+    Infinity is in the range of representable values,
+    so floating-point overflow that produces infinity is well-defined.
+  }
+  \li{
+    When \eelis{expr.pre#4} talks about the result being in the range of representable values,
+    it refers to the mathematical result,
+    before rounding takes place and a result becomes infinity.
+    Since all real numbers are in the range of representable values,
+    floating-point overflow is well-defined.
+  }
+  \li{
+    \eelis{expr.pre#4} refers to any kind of result during the evaluation of an expression,
+    including the resulting infinity.
+    Real numbers may be in the range of representable values,
+    but infinity is not,
+    so the behavior of floating-point overflow is undefined even if infinity exists.
+    This reading may seem contrived at first,
+    but the note underneath paragraph 4 explains that the treatment of floating-point
+    exceptions varies among machines;
+    this looks to be design rationale
+    for floating-point overflow being treated as undefined behavior.
+  }
+}
+
+It is also worth noting that on \ref(CWG2168), SG6 gave some guidance:
+
+\Bquote{
+ Notes from the November, 2016 meeting:
+
+SG6 said that arithmetic operations (not conversions)
+that produce infinity are not allowed in a constant expression.
+However, using \tcode{std::numeric_limits<T>::infinity()} is okay,
+but it can't be used as a subexpression.
+Conversions that produce infinity from non-infinity values
+are considered to be narrowing conversions.
+}
+
+If floating-point overflow is considered to have undefined behavior,
+this guidance is followed because UB is not a constant expression.
+\ref(CWG2723) added a definition of "range of representable values"
+without discussing \ref(CWG2168) or consulting SG6,
+and the resolution of \ref(CWG2723) directly contradicts the SG6 guidance
+because a fully well-defined floating-point overflow is a constant expression.
+It also seemingly contradicts the design rationale in the note attached to
+\eelis{expr.pre#4}.
+
+\h4{Undefined behavior on infinity propagation}
+
+In the case of \tcode{infinity() + 1},
+the result is not mathematically a real number,
+but infinity.
+\eelis{expr.pre#4} lays out two different ways in which this expression
+has undefined behavior:
+
+\ul{
+  \li{
+    Infinity arithmetic is not "mathematically defined".
+    When we say "mathematically defined",
+    we refer to real number arithmetic,
+    whereas "\math{\mrow{\mi{∞}\mo{+}\mn{1}\mo{=}\mo{∞}}}"
+    is an \ref(ISO/IEC 60559:2020) invention.
+    However, there exists no definition of "mathematically defined" in the standard,
+    so this is debatable.
+  }
+  \li{
+    Infinity does not lie in the range of representable values,
+    only the real numbers,
+    so propagation of infinity has undefined behavior.
+    However, since the meaning of "range of representable values"
+    in \eelis{basic.fundamental#13} is disputed,
+    there is no consensus.
+  }
+}
+
+\h4{Undefined behavior on yielding infinity}
+
+As stated above, \tcode{infinity() + 1}
+may have undefined behavior because the result of the expression is infinity,
+and infinity is arguably not in the range of representable values.
+However, \tcode{infinity()} is also an expression: a function call expression.
+This means that merely returning infinity from a function,
+or copying it by referencing a variable also has undefined behavior.
+
+\Bnote{
+As a matter of fact, \tcode{nullptr} and \tcode{"awoo"}
+may also have undefined behavior because neither null pointer constants nor string literals
+are "mathematically defined",
+nor do we define a range of representable values for these types,
+so perhaps the range could be considered empty by default,
+and \tcode{nullptr} and \tcode{"awoo"} fall outside the range.
+Virtually every C++ expression has undefined behavior according to this logic.
+}
+
+\h4{Conclusion}
+
+Some definitions such as "mathematically defined" or "overflow" for floating-point numbers
+do not exist,
+and the meaning of any wording which does exist is disputed.
+The design intent in the note attached to \eelis{expr.pre#4} as well as SG6 guidance
+do not align with the direction taken in \ref(CWG2723).
+
+Perhaps making small patches to this wording is not the right approach.
+Rather, we should ask what the design should be and then overhaul the wording
+with clear design guidance.
+
+\h3{Constant expressions in C}
+
+Unfortunately, C provides little guidance because it has the same crucial wording
+defects as C++:
+
+\Bquote{
+Each constant expression shall evaluate to a constant
+that is in the range of representable values for its type.
+}
+
+The definition of "range of representable values" is the same in C and in C++.
+What makes C even less suitable as guidance is that the implementation may accept
+so-called "extended constant expression",
+meaning that basically any expression could constant.
+
+\h3{Implementation divergence}
+
+\style{
+  #compiler-comparison {
+    table-layout: fixed;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  #compiler-comparison th,
+  #compiler-comparison td {
+    min-width: 7em;
+    text-align: center;
+  }
+  #compiler-comparison td {
+    border-top: 1px dashed var(--border-color);
+  }
+}
+
+\: https://godbolt.org/z/x8r54zbTq
+
+Expressions with undefined behavior
+are not constant expressions.
+By comparing which constant expressions result in a compiler error,
+we can quickly identify which expressions implementations believe to be constant.
+The results can be seen in the table below.
+
+\table(id=compiler-comparison){
+  \tr{
+    \th{Operation}
+    \th{GCC 15}
+    \th{Clang 21}
+    \th{MSVC v19.43}
+    \th{EDG 6.7}
+    \th{EDG 6.7 GNU}
+  }
+  \tr{
+    \td{\tcode{infinity()}}
+    \td{✔️}
+    \td{✔️}
+    \td{✔️}
+    \td{❌}
+    \td{✔️}
+  }
+  \tr{
+    \td{\tcode{max() * 2}}
+    \td{❌}
+    \td{✔️}
+    \td{✔️}
+    \td{❌}
+    \td{✔️}
+  }
+  \tr{
+    \td{\tcode{infinity() * 2}}
+    \td{✔️}
+    \td{✔️}
+    \td{✔️}
+    \td{❌}
+    \td{✔️}
+  }
+  \tr{
+    \td{\tcode{NAN}}
+    \td{✔️}
+    \td{✔️}
+    \td{✔️}
+    \td{✔️}
+    \td{✔️}
+  }
+  \tr{
+    \td{\tcode{NAN * 2}}
+    \td{✔️}
+    \td{❌}
+    \td{✔️}
+    \td{✔️}
+    \td{✔️}
+  }
+  \tr{
+    \td{\tcode{infinity() * 0}}
+    \td{❌}
+    \td{❌}
+    \td{✔️}
+    \td{❌}
+    \td{✔️}
+  }
+  \tr{
+    \td{\tcode{1.f / 0}}
+    \td{❌}
+    \td{❌}
+    \td{❌}
+    \td{✔️}
+    \td{✔️}
+  }
+  \tr{
+    \td{\tcode{0 / 0}}
+    \td{❌}
+    \td{❌}
+    \td{❌}
+    \td{❌}
+    \td{❌}
+  }
+}
+
+\Bnote{
+"EDG 6.7 GNU" refers to EDG in GNU mode,
+targeting GCC 14.
+
+All tests were made using \tcode{float} with an x86_64 target,
+so infinity is available.
+}
+
+\h2{Design}
+
+The goal of this paper is to make minimal changes
+that may find consensus,
+while staying consistent with SG6 guidance and creating symmetry with both C
+and with the \header{cmath} functions, which are now \tcode{constexpr}.
+
+In short, the GCC 15 behavior is proposed.
+
+\Btip{
+A rule of thumb for the proposed behavior is that
+\ul{
+  \li{
+    producing infinity or NaN from finite operands
+    is well-defined but not a constant expression,
+  }
+  \li{
+    propagating infinity or NaN is well-defined and a constant expression, and
+  }
+  \li{
+    overflow remains undefined behavior if infinity or NaN are not available
+    to represent the result.
+  }
+}
+}
+
+\h3{Floating-point overflow without infinity}
+
+The current wording may be unclear when infinity is representable,
+but when it isn't,
+floating-point overflow has undefined behavior,
+just like signed integer overflow.
+Changing that is not within the scope of the paper.
+
+Furthermore,
+this behavior is well-motivated by features such as GCC's \tt{-ffinite-math-only},
+which enable additional optimizations on the assumption that all floating-point values are finite.
+
+\Bex{
+The expression \tcode{x * 2.0 / 2.0} may be simplified to \tcode{x} only if math is finite;
+otherwise, \tcode{x * 2} may overflow to infinity, and dividing infinity by \tcode{2.0}
+does not yield \tcode{x}.
+}
+
+\h3{Floating-point overflow with infinity}
+
+Floating-point overflow should be well-defined and produce infinity when possible.
+However, as requested by SG6 in \ref(CWG2168) in 2016,
+it should not be a constant expression.
+This approach is consistent with the design of mathematical functions;
+for example, \tcode{exp(1'000'000, 1'000'000)} results in a range error,
+meaning that infinity is returned and the expression is not constant.
+
+There is little motivation to have the core language and the library diverge
+in this area.
+At best, a user's compile-time floating-point computations would overflow
+and turn into infinity,
+but is that a useful outcome for constant evaluation?
+Likely not.
+
+\h3{Infinity propagation}
+
+Infinity propagation should be well-defined and should be a constant expression.
+This means that \tcode{infinity() + 1} is a constant expression.
+Once again,
+this design is consistent with the \header{cmath} functions,
+which operate on infinity without reporting a range error;
+for example, \tcode{exp(infinity(), 1)} is a constant expression.
+
+\h3{Division by zero}
+
+Division by zero has always been undefined behavior,
+and this should remain so.
+The wording in \eelis{expr.mul#4} is unambiguous:
+
+\Bquote{
+If the second operand of \tcode{/} or \tcode{\N{PERCENT SIGN}} is zero,
+the behavior is undefined.
+}
+
+While \ref(ISO/IEC 60559:2020) defines behavior for division by zero
+where positive or negative infinity is produced,
+the handling is infinity signedness (also considering negative zero)
+may be inconsistent in hardware.
+Furthermore,
+division by zero is reported as a "pole error"
+in functions such as \tcode{std::remainder},
+and is not a constant expression.
+
+Implementations retain the freedom to define division by zero to produce infinity,
+but this should not be mandated by the C++ standard.
+
+\h3{NaN}
+
+The current wording in \eelis{expr.pre#4}
+is clear that any expression that produces NaN has undefined behavior.
+NaN is neither mathematically defined
+nor is it defined to be in the range of representable values
+(even intuitively, it would have to be outside any range).
+
+However, the the standard library doesn't seem to care about this,
+considering that \tcode{numeric_limits<T>::quiet_NaN}
+and \tcode{numeric_limits<T>::signaling_NaN} have been marked \tcode{constexpr}.
+\header{cmath} functions propagate NaN,
+i.e. they return a NaN for NaN inputs, but do not raise domain errors,
+so function calls with NaN arguments are constant expressions.
+Furthermore,
+most compilers allow the propagation of NaN in constant expressions.
+
+Consequently, we should align the core language's handling of NaN values
+with the behavior of the standard library,
+which is rigorously specified,
+just like for infinity.
+
+\h2{Impact on existing code}
+
+The only concrete design change is that floating-point overflow produces infinity
+if infinity is representable,
+but is not a constant expression.
+Existing code that relied on \tcode{max() * 2}
+being a constant expression will fail to compile.
+
+No code is affected which is compiled in "finite math mode",
+i.e. for a platform without infinity or NaN.
+The run-time behavior of implementations with infinity/NaN support is consistent
+with the proposed behavior.
+
+\h2{Implementation experience}
+
+GCC 15 implements the proposed behavior exactly.
+Clang and MSVC compilers deviate only slightly.
+
+\h2{Wording}
+
+The changes are relative to \ref(N5014).
+
+\h3(show-number=false){[basic.fundamental]}
+
+Change \eelis{basic.fundamental#13} as follows:
+
+\Bdiff{
+The minimum range of representable values for a floating-point type is
+the most negative finite floating-point number representable in that type through
+the most positive finite floating-point number representable in that type.
+In addition, if negative infinity is representable in a type,
+the range of that type is extended to all negative real numbers
+\ins{(but not to negative infinity)};
+likewise, if positive infinity is representable in a type,
+the range of that type is extended to all positive real numbers
+\ins{(but not to positive infinity)}.
+
+\note{
+Since negative and positive infinity are representable in ISO/IEC 60559 formats,
+all real numbers lie within the range of representable values
+of a floating-point type adhering to ISO/IEC 60559.
+}
+}
+
+\h3(show-number=false){[expr.pre]}
+
+Delete \eelis{expr.pre#4}:
+
+\Bdel{
+If during the evaluation of an expression,
+the result is not mathematically defined or not in the range of representable values for its type,
+the behavior is undefined.
+}
+
+Replace \eelis{expr.pre#4} with new wording:
+
+\Bins{
+An \dfn{arithmetic expression} is
+\ul{
+  \li{a unary plus or minus\iref{expr.unary.op},}
+  \li{an addition\iref{expr.add},}
+  \li{a subtraction\iref{expr.sub}, or}
+  \li{a multiplication, division, or remainder\iref{expr.mul}}
+}
+expression where every operand is of arithmetic type.
+The behavior is undefined if the result
+of evaluating an arithmetic expression
+\ul{
+  \li{
+    is either not mathematically defined
+    or not in the range of representable values for its type, and
+  }
+  \li{
+    cannot be represented as negative infinity, positive infinity, or NaN.
+  }
+}
+
+\example{
+\itemdecl{
+constexpr std::float32_t min = std::numeric_limits<std::float32_t>::min();          // \serif{OK}
+constexpr std::float32_t max = std::numeric_limits<std::float32_t>::max();          // \serif{OK}
+constexpr std::float32_t inf = std::numeric_limits<std::float32_t>::infinity();     // \serif{OK}
+constexpr std::float32_t nan = std::numeric_limits<std::float32_t>::quiet_NaN();    // \serif{OK}
+
+constexpr std::float32_t inf2 = inf * 2;    // \serif{OK, also positive infinity}
+constexpr std::float32_t zero = min / max;  // \serif{OK, result cannot be represented, and is rounded to zero}
+constexpr std::float32_t oflo = max * 2;    // \serif{error: defined, but not a constant expression\iref{expr.const}}
+constexpr std::float32_t nan2 = nan * 2;    // \serif{OK: propagating a NaN}
+constexpr std::float32_t udef = inf * 0;    // \serif{error: result is not mathematically defined}
+constexpr std::float32_t div0 = max / 0;    // \serif{error: division by zero is undefined\iref{expr.mul}}
+}
+}
+}
+
+Do \u{not} make any changes to the not attached to \eelis{expr.pre#4}:
+
+\Bquote{
+\note{
+Treatment of division by zero, forming a remainder using a zero divisor,
+and all floating-point exceptions varies among machines,
+and is sometimes adjustable by a library function.
+}
+}
+
+\h3(show-number=false){[expr.const]}
+
+Change \eelis{expr.const#10} as follows:
+
+\Bdiff{
+An expression \math{\mi{E}} is a \dfn{core constant expression}
+unless the evaluation of \math{\mi{E}},
+following the rules of the abstract machine\iref{intro.execution},
+would evaluate one of the following:
+\ul{
+  \li{\etc}
+  \li{
+    an operation that would have undefined or erroneous behavior
+    in \eelis{intro} through \eelis{cpp};
+  }
+  \li{
+    \ins{an arithmetic expression where}
+    \ul{
+      \li{\ins{all operands are finite and the result is not finite,}}
+      \li{\ins{no operand is NaN and the result is NaN;}}
+    }
+  }
+  \li{\etc}
+}
+}
+
+\h2{References}
+
+\bib(
+  id = N5014,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-08-05,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+)\
+\bib(
+  id = ISO/IEC 60559:2020,
+  title = ISO/IEC 60559:2020 — Information technology — Microprocessor Systems — Floating-Point arithmetic,
+  date = 2025-05,
+  author = ISO,
+  link = https://www.iso.org/standard/80985.html,
+)\
+\bib(
+  id = CWG2168,
+  title = Narrowing conversions and +/- infinity ,
+  date = 2015-08-19,
+  author = Hubert Tong,
+  link = https://cplusplus.github.io/CWG/issues/2168.html,
+)\
+\bib(
+  id = CWG2723,
+  title = Range of representable values for floating-point types,
+  date = 2023-04-21,
+  author = Jiang An,
+  link = https://cplusplus.github.io/CWG/issues/2723.html,
+)\
+
+\make_bib
