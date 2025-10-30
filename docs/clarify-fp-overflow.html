@@ -1652,7 +1652,7 @@ this results in infinity.
 on what the current behavior is:
 </p>
 <ul>
-  <li>Is overflow undefined behavior, such as in <code><h- data-h=id>FLT_MAX</h-> <h- data-h=sym_op>+</h-> <h- data-h=num>1</h-></code>?</li>
+  <li>Is overflow undefined behavior, such as in <code><h- data-h=id>FLT_MAX</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>2</h-></code>?</li>
   <li>Is infinity arithmetic undefined behavior, such as in <code><h- data-h=id>infinity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>+</h-> <h- data-h=num>1</h-></code>?</li>
   <li>
     Is merely yielding infinity undefined behavior,
@@ -1679,9 +1679,11 @@ and is sometimes adjustable by a library function.
  — <i>end note</i>]
 </p></blockquote>
 
-<p>An operation between two finite numbers is obviously mathematically defined.
-However, it may not lie in the "range of representable values",
-and so it could be undefined behavior.
+<p>An operation between two finite numbers is mathematically defined,
+except for division by zero
+(which is explicitly and unambiguously undefined according to <a href=https://eel.is/c++draft/expr.mul>[expr.mul]</a>).
+However, the operation's result may not lie in the "range of representable values",
+and so it could have undefined behavior.
 A description of the range has been added recently by <a href="https://cplusplus%2egithub%2eio/CWG/issues/2723%2ehtml">[CWG2723]</a>
 to <a href=https://eel.is/c++draft/basic.fundamental#13>[basic.fundamental] paragraph 13</a>:
 </p>
@@ -1843,7 +1845,7 @@ that is in the range of representable values for its type.
 <p>The definition of "range of representable values" is the same in C and in C++.
 What makes C even less suitable as guidance is that the implementation may accept
 so-called "extended constant expression",
-meaning that basically any expression could constant.
+meaning that basically any expression could be constant.
 </p>
 <h3 id=implementation-divergence><a class=para href=#implementation-divergence></a>1.3. Implementation divergence</h3>
 
@@ -2011,7 +2013,7 @@ does not yield <code><h- data-h=id>x</h-></code>.
 However, as requested by SG6 in <a href="https://cplusplus%2egithub%2eio/CWG/issues/2168%2ehtml">[CWG2168]</a> in 2016,
 it should not be a constant expression.
 This approach is consistent with the design of mathematical functions;
-for example, <code><h- data-h=id>exp</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=sym_par>)</h-></code> results in a range error,
+for example, <code><h- data-h=id>exp</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=sym_par>)</h-></code> results in a range error,
 meaning that infinity is returned and the expression is not constant.
 </p>
 <p>There is little motivation to have the core language and the library diverge
@@ -2028,7 +2030,7 @@ This means that <code><h- data-h=id>infinity</h-><h- data-h=sym_par>(</h-><h- da
 Once again,
 this design is consistent with the <code><h- data-h=str>&lt;cmath&gt;</h-></code> functions,
 which operate on infinity without reporting a range error;
-for example, <code><h- data-h=id>exp</h-><h- data-h=sym_par>(</h-><h- data-h=id>infinity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code> is a constant expression.
+for example, <code><h- data-h=id>pow</h-><h- data-h=sym_par>(</h-><h- data-h=id>infinity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code> is a constant expression.
 </p>
 <h3 id=division-by-zero><a class=para href=#division-by-zero></a>2.4. Division by zero</h3>
 
@@ -2041,13 +2043,13 @@ The wording in <a href=https://eel.is/c++draft/expr.mul#4>[expr.mul] paragraph 4
 the behavior is undefined.
 </p></blockquote>
 
-<p>While <a href="https://www%2eiso%2eorg/standard/80985%2ehtml">[ISO/IEC 60559:2020]</a> defines behavior for division by zero
-where positive or negative infinity is produced,
-the handling is infinity signedness (also considering negative zero)
-may be inconsistent in hardware.
+<p>While <a href="https://www%2eiso%2eorg/standard/80985%2ehtml">[ISO/IEC 60559:2020]</a> defines behavior for division by zero,
+where positive infinity, negative infinity, or NaN is produced,
+the handling of infinity sign (also considering negative zero)
+and NaN payloads may be inconsistent in hardware.
 Furthermore,
 division by zero is reported as a "pole error"
-in functions such as <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>remainder</h-></code>,
+in, e.g. <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>remainder</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-></code>,
 and is not a constant expression.
 </p>
 <p>Implementations retain the freedom to define division by zero to produce infinity,
@@ -2061,7 +2063,7 @@ NaN is neither mathematically defined
 nor is it defined to be in the range of representable values
 (even intuitively, it would have to be outside any range).
 </p>
-<p>However, the the standard library doesn't seem to care about this,
+<p>However, the standard library doesn't seem to care about this,
 considering that <code><h- data-h=id>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=id>quiet_NaN</h-></code>
 and <code><h- data-h=id>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=id>signaling_NaN</h-></code> have been marked <code><h- data-h=kw>constexpr</h-></code>.
 <code><h- data-h=str>&lt;cmath&gt;</h-></code> functions propagate NaN,
@@ -2139,7 +2141,7 @@ the behavior is undefined.
   <li>a subtraction (<a href=https://eel.is/c++draft/expr.sub>[expr.sub]</a>), or</li>
   <li>a multiplication, division, or remainder (<a href=https://eel.is/c++draft/expr.mul>[expr.mul]</a>)</li>
 </ul>
-<p>expression where every operand is of arithmetic type.
+<p>expression<sup>🞰</sup> where every operand is of arithmetic type.
 The behavior is undefined if the result
 of evaluating an arithmetic expression
 </p><ul>
@@ -2164,10 +2166,17 @@ of evaluating an arithmetic expression
 <h- data-h=kw>constexpr</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>float32_t</h-> <h- data-h=id>nan2</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>nan</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>2</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>OK: propagating a NaN</h-></f-serif>
 <h- data-h=kw>constexpr</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>float32_t</h-> <h- data-h=id>udef</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>inf</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>error: result is not mathematically defined</h-></f-serif>
 <h- data-h=kw>constexpr</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>float32_t</h-> <h- data-h=id>div0</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>max</h-> <h- data-h=sym_op>/</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>error: division by zero is undefined</h-><h- data-h=cmt> (</h-><a href=https://eel.is/c++draft/expr.mul>[expr.mul]</a><h- data-h=cmt>)</h-></f-serif></code-block>
-<p> — <i>end example</i>]
-</p></ins-block>
+<p> — <i>end example</i>]</p>
 
-<p>Do <u>not</u> make any changes to the not attached to <a href=https://eel.is/c++draft/expr.pre#4>[expr.pre] paragraph 4</a>:
+<hr/>
+
+<p>🞰) 
+There exist non-arithmetic expressions such as compound assignment (<a href=https://eel.is/c++draft/expr.assign>[expr.assign]</a>)
+which are defined in terms of arithmetic expressions.
+</p>
+</ins-block>
+
+<p>Do <u>not</u> make any changes to the note attached to <a href=https://eel.is/c++draft/expr.pre#4>[expr.pre] paragraph 4</a>:
 </p>
 <blockquote>
 <p>[<i>Note</i>: 
@@ -2176,6 +2185,14 @@ and all floating-point exceptions varies among machines,
 and is sometimes adjustable by a library function.
  — <i>end note</i>]
 </p></blockquote>
+
+<note-block class=edit><p><intro-></intro-> 
+<code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>float32_t</h-></code> is used in the example
+because this is a convenient way of writing an example in terms of a type that
+definitely adheres to ISO/IEC 60599:2020,
+without having to make the example conditional or making the explanatory comments
+more complicated than need be.
+</p></note-block>
 
 <h3 id=expr.const><a class=para href=#expr%2econst></a>[expr.const]</h3>
 

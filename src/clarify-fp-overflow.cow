@@ -38,7 +38,7 @@ Extensive discussion in CWG has shown that we cannot find consensus
 on what the current behavior is:
 
 \ul{
-  \li{Is overflow undefined behavior, such as in \tcode{FLT_MAX + 1}?}
+  \li{Is overflow undefined behavior, such as in \tcode{FLT_MAX * 2}?}
   \li{Is infinity arithmetic undefined behavior, such as in \tcode{infinity() + 1}?}
   \li{
     Is merely yielding infinity undefined behavior,
@@ -65,9 +65,11 @@ and is sometimes adjustable by a library function.
 }
 }
 
-An operation between two finite numbers is obviously mathematically defined.
-However, it may not lie in the "range of representable values",
-and so it could be undefined behavior.
+An operation between two finite numbers is mathematically defined,
+except for division by zero
+(which is explicitly and unambiguously undefined according to \eelis{expr.mul}).
+However, the operation's result may not lie in the "range of representable values",
+and so it could have undefined behavior.
 A description of the range has been added recently by \ref(CWG2723)
 to \eelis{basic.fundamental#13}:
 
@@ -428,13 +430,13 @@ If the second operand of \tcode{/} or \tcode{\N{PERCENT SIGN}} is zero,
 the behavior is undefined.
 }
 
-While \ref(ISO/IEC 60559:2020) defines behavior for division by zero
-where positive or negative infinity is produced,
-the handling is infinity signedness (also considering negative zero)
-may be inconsistent in hardware.
+While \ref(ISO/IEC 60559:2020) defines behavior for division by zero,
+where positive infinity, negative infinity, or NaN is produced,
+the handling of infinity sign (also considering negative zero)
+and NaN payloads may be inconsistent in hardware.
 Furthermore,
 division by zero is reported as a "pole error"
-in functions such as \tcode{std::remainder},
+in, e.g. \tcode{std::remainder(1, 0)},
 and is not a constant expression.
 
 Implementations retain the freedom to define division by zero to produce infinity,
@@ -526,7 +528,7 @@ An \dfn{arithmetic expression} is
   \li{a subtraction\iref{expr.sub}, or}
   \li{a multiplication, division, or remainder\iref{expr.mul}}
 }
-expression where every operand is of arithmetic type.
+expression\sup{🞰} where every operand is of arithmetic type.
 The behavior is undefined if the result
 of evaluating an arithmetic expression
 \ul{
@@ -554,6 +556,13 @@ constexpr std::float32_t udef = inf * 0;    // \serif{error: result is not mathe
 constexpr std::float32_t div0 = max / 0;    // \serif{error: division by zero is undefined\iref{expr.mul}}
 }
 }
+
+\hr
+
+\footnote{
+There exist non-arithmetic expressions such as compound assignment\iref{expr.assign}
+which are defined in terms of arithmetic expressions.
+}
 }
 
 Do \u{not} make any changes to the note attached to \eelis{expr.pre#4}:
@@ -564,6 +573,14 @@ Treatment of division by zero, forming a remainder using a zero divisor,
 and all floating-point exceptions varies among machines,
 and is sometimes adjustable by a library function.
 }
+}
+
+\editnote{
+\tcode{std::float32_t} is used in the example
+because this is a convenient way of writing an example in terms of a type that
+definitely adheres to ISO/IEC 60599:2020,
+without having to make the example conditional or making the explanatory comments
+more complicated than need be.
 }
 
 \h3(show-number=false){[expr.const]}
