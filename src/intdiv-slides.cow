@@ -51,7 +51,7 @@ Slide \Vget(slidenum)
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{P3895R0}}
-  \dt{Date:}            \dd{\tt{2025-10-26}}
+  \dt{Date:}            \dd{\tt{2025-10-31}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -114,14 +114,14 @@ Mistake: incrementing negative quotients: \tcode{x=-1, y=2, q=1}
 \Bug{
 The following function has unintended UB:
 \cppblock{
-std::div_t div_rem_ceil(int x, int y) {
-  int quotient = div_ceil(x, y);    // round to \pos_inf
-  int remainder = x - y * quotient; // overflow
-  return { quotient, remainder };
+auto div_rem_ceil(_BitInt(4) x, _BitInt(4) y) {
+  _BitInt(4) q = div_ceil(x, y);    // round to \pos_inf
+  _BitInt(4) r = x - y * q;         // overflow
+  return div_result<_BitInt(4)> { q, r };
 }
 }
-\tcode{div_rem_ceil(2'147'483'647, 2)} overflows.\br
-\tcode{quotient == 1'073'741'824, y * quotient == 2'147'483'648}
+\tcode{div_rem_ceil(7, 2)} overflows:
+\tcode{q == 4, y * q == 8}
 }
 
 \ul{
@@ -206,10 +206,15 @@ template<class T> constexpr T             mod(T x, T y);
 \slideh{Other design considerations}
 
 \ul{
-  \li{no SIMD overloads, but could be added in the future}
-  \li{no functions that compute only remainder (except \tcode{mod})}
-  \li{these are not usually needed}
+  \li{no SIMD overloads, but could be added in the future\ul{
+    \li{branchless implementation possible}
+  }}
+  \li{no functions that compute only remainder (except \tcode{mod})\ul{
+    \li{these are not usually needed}
+    \li{undesirable remainder sign for most rounding modes}
+  }}
   \li{all functions are in \header{numeric}}
+  \li{feature-test macro: \tcode{__cpp_lib_integer_division}}
 }
 }
 
