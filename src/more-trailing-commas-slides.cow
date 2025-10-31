@@ -1,0 +1,516 @@
+\cowel_include{libwg21.cow}
+\cowel_include{libslides.cow}
+
+\Vset(paper-number){P3776R1}
+\Vset(paper-title){More trailing commas}
+
+\cowel_macro(footsep){\N{EM SPACE}|\N{EM SPACE}}
+
+\cowel_macro(slidefoot){
+Jan Schultke
+\footsep
+Slides for \Vget(paper-number)
+\N{EM DASH}
+\Vget(paper-title)
+\footsep
+Kona 2025
+\footsep
+Slide \Vget(slidenum)
+}
+
+\style{
+  section>h1 {
+    margin-top: calc(0.15 * var(--sw)) !important;
+    font-size: 300%;
+    text-align: center;
+  }
+  #docnum {
+    font-family: var(--sans-serif-family);
+    font-size: 80%;
+    font-weight: normal;
+  }
+  li>ul {
+    margin-top: 0;
+  }
+  #tony-table {
+    margin-left: auto;
+    margin-right: auto;
+    width: 90%;
+    table-layout: fixed;
+  }
+  #tony-table td {
+    background-color: var(--deep-background-color);
+    width: 50%;
+  }
+}
+
+\wg21_head(
+  title = Slides for \Vget(paper-number) \N{EM DASH} \Vget(paper-title)
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{P3897R0}}
+  \dt{Date:}            \dd{\tt{2025-10-31}}
+  \dt{Audience:}        \dd{EWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/more-trailing-commas-slides.cow)}
+}
+\hr
+\slide_controls
+}
+
+\slide{
+\cowel_html_element(h1){\Vget(paper-title) \br \cowel_html_element(span, (id=docnum)){\Vget(paper-number)}}
+}
+
+\slide{
+\slideh{Introduction}
+
+\cppblock{
+void f(
+  int x,
+  int y, // ← trailing comma should be allowed here
+);
+
+int x[] { 1, 2, }; // already supported in braced lists
+}
+
+\ul{
+  \li{trailing commas would be useful}
+  \li{\ref(P0562R2) Trailing Commas in Base-clauses and Ctor-initializers}
+}
+}
+
+\slide{
+\slideh{P0562R2}
+
+\Bquote{
+Poll: D0562R1 — forward \etc to CWG for inclusion in C++26.
+\five_way_poll(12, 11, 4, 3, 0)
+}
+
+Forwarded to CWG, but currently on ice because of parsing ambiguity:
+
+\cppblock{
+struct X {};
+struct Y : X\mark{,}     // ← OK, new trailing comma
+{ Y() : A<b<c>()\mark{,} // ← parsing ambiguity due to trailing comma
+  { /* ... */ }
+  /* A, b, and c declared down here somewhere */ };
+}
+}
+
+\slide{
+\slideh{Trailing commas in other languages}
+
+\style{
+  #lang-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    row-gap: 0.75em;
+    width: 80%;
+    margin: 1.5em auto 1.5em auto;
+  }
+  #lang-grid svg {
+    width: 2.75em;
+    height: 2.75em;
+  }
+  #lang-grid>div {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+  }
+  .lang-name {
+    font-weight: bold;
+  }
+  .year {
+    font-family: var(--sans-serif-family);
+    font-size: 90%;
+  }
+  #lang-box-julia svg,
+  #lang-box-rust svg {
+    background: white;
+    border-radius: 0.125em;
+  }
+}
+
+\cowel_macro(trailing_comma_lang){\div(id=lang-box-\cowel_put{1}){
+  \cowel_text_as_html{\cowel_include_text{icon/\cowel_put{1}.svg}}
+  \span{\span(class=lang-name){\cowel_put{0}}\br{}\span(class=year){\cowel_put{2}}}
+}}
+
+Many languages now support trailing commas in parenthesized lists:
+
+\div(id=lang-grid){
+  \trailing_comma_lang(Swift, swift, 2025)
+  \trailing_comma_lang(Kotlin, kotlin, 2020)
+  \trailing_comma_lang(JavaScript, javascript, 2017)
+  \trailing_comma_lang(TypeScript, typescript, 2017)
+  \trailing_comma_lang(Rust, rust, always)
+  \trailing_comma_lang(Go, go, always)
+  \trailing_comma_lang(Python, python, always)
+  \trailing_comma_lang(Julia, julia, always)
+}
+
+Many more (including C++) support trailing commas in braced lists.
+}
+
+\slide{
+\slideh{Improved text editing}
+
+\style{
+  .tony-table {
+    margin-left: auto;
+    margin-right: auto;
+    width: 90%;
+    table-layout: fixed;
+  }
+  .tony-table td {
+    background-color: var(--deep-background-color);
+    width: 50%;
+    font-size: 90%;
+  }
+}
+
+Without trailing commas,
+we cannot always swap or cut/paste lines:
+
+\table(class=tony-table){
+  \tr{
+    \th{No trailing comma}
+    \th{With trailing comma}
+  }
+  \tr{
+    \td{
+      \itemdecl{
+// before
+void f(
+  int x,
+  int y
+);
+// after
+void f(
+  \mark{int y}  // syntax error
+\mark{  int} x,
+);}
+    }
+    \td{
+      \itemdecl{
+// before
+void f(
+  int x,
+  int y,
+);
+// after
+void f(
+  int y, // OK
+  int x,
+);}
+    }
+  }
+}
+}
+
+\slide{
+\slideh{Improved version control}
+
+\table(class=tony-table){
+  \tr{
+    \th{No trailing comma}
+    \th{With trailing comma}
+  }
+  \tr{
+    \td{
+      \codeblock(diff, borders=false){
+ void f(
+     int x,
+-    int y
++    int y,
++    int z
+ );}
+    }
+    \td{
+      \codeblock(diff, borders=false){
+ void f(
+     int x,
+     int y,
++    int z,
+ );}
+    }
+  }
+}
+
+\ul{
+  \li{trailing comma is much better for version control:
+  \ul{
+    \li{smaller changes when viewing line differences}
+    \li{no pollution of per-line history (\tt{git blame})}
+  }}
+}
+}
+
+\slide{
+\slideh{Code generation convenience for \ref(P3294R2)}
+
+\style{
+  #codegen-compare td {
+    font-size: 75%;
+  }
+}
+
+\table(id=codegen-compare, class=tony-table){
+  \tr{
+    \th{No trailing comma}
+    \th{With trailing comma}
+  }
+  \tr{
+    \td{
+      \codeblock(cpp, borders=false){
+consteval meta::info gen_params(
+  span<const Parameter> ps
+) {
+  meta::info result = ^^{};
+  bool first = true;
+  for (const Parameter& p : ps) {
+    result = ^^{
+      \hl(keyword){\\tokens}(result)
+      \hl(keyword){\\tokens}(first ? ^^{} : ^^{,})
+      \hl(keyword){\\tokens}(gen_param(p))
+    };
+    first = false;
+  }
+  return result;
+}}
+    }
+    \td{
+      \codeblock(cpp, borders=false){
+consteval meta::info gen_params(
+  span<const Parameter> ps,
+) {
+  meta::info result = ^^{};
+  for (const Parameter& p : ps) {
+    result = ^^{
+      \hl(keyword){\\tokens}(result)
+      \hl(keyword){\\tokens}(gen_param(p)) ,
+    };
+  }
+  return result;
+}}
+    }
+  }
+}
+}
+
+\slide{
+\slideh{Improved auto-formatter control}
+
+\ul{
+  \li{ClangFormat disables bin-packing when trailing comma is present}
+  \li{this allows fine-tuned stylistic control via comma}
+}
+
+\cppblock{
+vector<int> numbers { LIST_ITEM_A, LIST_ITEM_B,  //
+                      LIST_ITEM_C };             // ← column limit
+                                                 // 
+vector<int> numbers {
+    LIST_ITEM_A,
+    LIST_ITEM_B,
+    LIST_ITEM_C, // ← trailing comma here
+};
+}
+}
+
+\slide{
+\slideh{Eliminating some uses of \tt{__VA_OPT__}}
+
+\table(class=tony-table){
+  \tr{
+    \th{No trailing comma}
+    \th{With trailing comma}
+  }
+  \tr{
+    \td{
+      \codeblock(cpp, borders=false){
+#define F(...) \cowel_highlight(cpp){      \\
+  f(0 __VA_OPT__(,)  \\
+    __VA_ARGS__)}
+
+#define L(...) \cowel_highlight(cpp){      \\
+  [& __VA_OPT__(,)   \\
+    __VA_ARGS__] {}}
+}
+    }
+    \td{
+      \codeblock(cpp, borders=false){
+#define F(...) \cowel_highlight(cpp){      \\
+  f(0 , __VA_ARGS__)}
+
+#define L(...) \cowel_highlight(cpp){      \\
+  [& , __VA_ARGS__] {}}
+}
+    }
+  }
+}
+
+\ul{
+  \li{\tcode{__VA_OPT__} is necessary to avoid error on trailing comma}
+  \li{no longer necessary if trailing comma is OK}
+}
+}
+
+\slide{
+\slideh{Preventing string joining bugs}
+
+\table(class=tony-table){
+  \tr{
+    \th{No trailing comma}
+    \th{With trailing comma}
+  }
+  \tr{
+    \td{
+      \codeblock(diff, borders=false){
+ emplace_strings(
+   "fee",
+   "fie",
+   "foe"
++  "fum"
+ );}
+    }
+    \td{
+      \codeblock(diff, borders=false){
+ emplace_strings(
+   "fee",
+   "fie",
+   "foe",
++  "fum"
+ );}
+    }
+  }
+}
+
+\ul{
+  \li{no trailing comma: \tcode{"foe"} and \tcode{"fum"} are concatenated}
+  \li{missing commas happen (forgetfulness, key slip, etc.)}
+}
+}
+
+\slide{
+\slideh{Where to add trailing commas}
+
+\ul{
+  \li{in summary: after all lists, except:\ul{
+    \li{\ref(P0562R2)'s \grammarterm{mem-initializer-list} and \grammarterm{base-specifier-list}}
+    \li{semicolon-terminated lists like \tcode{using a, b,;}}
+    \li{non-lists like \tcode{static_assert(true,"",)}, \tcode{delete("",)}}
+    \li{after ellipsis parameter like \tcode{void f(int, ...,)}}
+    \li{in macros like \tcode{#define M(x,y,)}}
+  }}
+  \li{see proposal for examples and more details}
+}
+\Btodo{
+Discuss with clang-format maintainers.
+}
+}
+
+\slide{
+\slideh{Addressing criticisms (1/2)}
+
+\ul{
+  \li{aesthetic objections\ul{
+    \li{valid, although trailing commas are 100\N{PERCENT SIGN} optional}
+  }}
+  \li{asymmetry with C\ul{
+    \li{just don't use the trailing comma if you need C compatibility}
+    \li{WG14 proposal will be published to synchronize languages}
+  }}
+  \li{making \tcode{f(0,)} valid may invite "forgotten argument" bugs\ul{
+    \li{experience from other langs, \tcode{{0,}} in C++ tells us it's okay}
+    \li{type system, compiler warnings, auto-formatting catches this}
+  }}
+}
+}
+
+\slide{
+\slideh{Addressing criticisms (2/2)}
+
+\ul{
+  \li{inconsistency with macros: \tcode{M(1,2,)} may be ill-formed\ul{
+    \li{does not apply to variadic, i.e. \tcode{__VA_ARGS__} macros}
+    \li{macros are already inconsistent, e.g. \tcode{M({1,2})}}
+  }}
+  \li{multiple ways to do the same thing\ul{
+    \li{that's okay, same for indentation and other editorial choices}
+    \li{similar to \tcode{//...} vs. \tcode{/*...*/}}
+  }}
+  \li{syntax space is claimed\ul{
+    \li{no plausible alternative meaning for \tcode{f(1,)} exists anyway}
+  }}
+}
+}
+
+\slide{
+\slideh{Last but not least,}
+
+\ul{
+  \li{\b{Implementation experience}: Clang fork,\ul{
+    \li{approximately 40 LOC,}
+    \li{naive implementation that ignores trailing comma,}
+    \li{proper implementation may need changes to AST,}
+  }}
+  \li{\b{Impact on existing code}: None,}
+  \li{\b{Wording}: Exists, briefly seen by CWG chair,}
+}
+}
+
+\slide{
+  \style{
+    #comma {
+      position: relative;
+      top: -14vw;
+      text-align: center;
+      font-size: 1500%;
+    }
+  }
+
+  \div(id=comma){,}
+}
+
+\slide{
+\slideh{Questions}
+
+\ul{
+  \li{Agreement with overall design?}
+  \li{SIMD overloads in another proposal?}
+  \li{Forward to LEWG?}
+}
+}
+
+\h2(listed=false){References}
+
+\make_bib
+
+\bib(
+  id = P3776R1,
+  title = More trailing commas,
+  date = 2025-09-09,
+  author = Jan Schultke,
+  link = https://wg21.link/p3776r1,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3776r1.html,
+)\
+\bib(
+  id = P0562R2,
+  title = Trailing Commas in Base-clauses and Ctor-initializers,
+  date = 2024-04-15,
+  author = Alan Talbot,
+  link = https://wg21.link/p0562r2,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p0562r2.pdf,
+)\
+\bib(
+  id = P3294R2,
+  title = Code Injection with Token Sequences,
+  date = 2024-10-15,
+  author = Andrei Alexandrescu\, Barry Revzin\, Daveed Vandevoorde,
+  link = https://wg21.link/p3294r2,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3294r2.html,
+)\
