@@ -1941,6 +1941,15 @@ The results can be seen in the table below.
     <td class=pass>OK</td>
   </tr>
   <tr>
+    <td><code><h- data-h=id>infinity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>0</h-></code></td>
+    <td class=except><tt->FE_INVALID</tt-></td>
+    <td class=fail>error</td>
+    <td class=fail>error</td>
+    <td class=pass>OK</td>
+    <td class=fail>error</td>
+    <td class=pass>OK</td>
+  </tr>
+  <tr>
     <td><code><h- data-h=id>quiet_NaN</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code></td>
     <td class=none>none</td>
     <td class=pass>OK</td>
@@ -1959,12 +1968,21 @@ The results can be seen in the table below.
     <td class=pass>OK</td>
   </tr>
   <tr>
-    <td><code><h- data-h=id>infinity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>0</h-></code></td>
+    <td><code><h- data-h=id>signaling_NaN</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code></td>
+    <td class=none>none</td>
+    <td class=pass>OK</td>
+    <td class=pass>OK</td>
+    <td class=pass>OK</td>
+    <td>N/A</td>
+    <td class=pass>OK</td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>signaling_NaN</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>2</h-></code></td>
     <td class=except><tt->FE_INVALID</tt-></td>
-    <td class=fail>error</td>
-    <td class=fail>error</td>
     <td class=pass>OK</td>
     <td class=fail>error</td>
+    <td class=pass>OK</td>
+    <td>N/A</td>
     <td class=pass>OK</td>
   </tr>
   <tr>
@@ -1999,10 +2017,18 @@ The results can be seen in the table below.
 <note-block><p><intro-></intro-> 
 "EDG 6.7 GNU" refers to EDG in GNU mode,
 targeting GCC 14.
-</p>
-<p>All tests were made using <code><h- data-h=kw_type>float</h-></code> with an x86_64 target,
+All tests were made using <code><h- data-h=kw_type>float</h-></code> with an x86_64 target,
 so infinity is available.
 </p></note-block>
+
+<p>[<i>Note</i>: 
+Signaling NaN has largely implementation-defined semantics,
+although C23 recommends that core/library operations with signaling NaN input
+raise <code><h- data-h=id>FE_INVALID</h-></code>.
+</p>
+<p>Signaling NaN information for EDG could not be obtained
+due to Compiler Explorer limitations.
+ — <i>end note</i>]</p>
 
 <h2 id=design><a class=para href=#design></a>2. Design</h2>
 
@@ -2034,7 +2060,8 @@ if <code><h- data-h=id>errno</h-></code> is set when <code><h- data-h=id>math_er
  — <i>end note</i>]
 </p></blockquote>
 
-<p>In short, the GCC 15 behavior is proposed.
+<p>In short, the GCC 15 behavior is proposed,
+except that signaling NaN inputs should not result in a constant expression.
 As can be seen in <a href=#implementation-divergence>§1.3. Implementation divergence</a>,
 GCC 15 considers an expression to be constant if and only if no floating-point exception is raised
 (ignoring <code><h- data-h=id>FE_INEXACT</h-></code>),
@@ -2137,6 +2164,8 @@ and <code><h- data-h=id>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h
 <code><h- data-h=str>&lt;cmath&gt;</h-></code> functions propagate NaN,
 i.e. they return a NaN for NaN inputs, but do not raise domain errors,
 so function calls with NaN arguments are constant expressions.
+That is, unless a signaling NaN input results in <code><h- data-h=id>FE_INVALID</h-></code> being raised,
+which is recommended by C23, but not required.
 Furthermore,
 most compilers allow the propagation of NaN in constant expressions.
 </p>
@@ -2290,6 +2319,7 @@ would evaluate one of the following:
     <ins>an arithmetic expression where</ins>
     <ul>
       <li><ins>all operands are finite and the result is not finite,</ins></li>
+      <li><ins>any operand is a signaling NaN, or</ins></li>
       <li><ins>no operand is NaN and the result is NaN;</ins></li>
     </ul>
   </li>
