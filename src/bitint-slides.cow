@@ -1,19 +1,6 @@
 \cowel_include{libwg21.cow}
 \cowel_include{libslides.cow}
 
-\cowel_macro(slidehfun){\
-\cowel_paragraph_leave\
-\trim{
-  \slideh{\N{MATHEMATICAL DOUBLE-STRUCK CAPITAL F} \N{EN DASH} \cowel_put}
-  \there(summary-bullets){\li{\N{MATHEMATICAL DOUBLE-STRUCK CAPITAL F} \N{EN DASH} \cowel_put}}
-}}
-\cowel_macro(slidehlib){
-\cowel_paragraph_leave\
-\trim{
-  \slideh{\N{MATHEMATICAL DOUBLE-STRUCK CAPITAL L} \N{EN DASH} \cowel_put}
-  \there(summary-bullets){\li{\N{MATHEMATICAL DOUBLE-STRUCK CAPITAL L} \N{EN DASH} \cowel_put}}
-}}
-
 \Vset(paper-number){P3666R1}
 \Vset(paper-title){Bit-precise integers}
 
@@ -26,7 +13,7 @@ Slides for \Vget(paper-number)
 \N{EM DASH}
 \Vget(paper-title)
 \footsep
-SG22 Telecon 2025-10-08
+Kona 2025
 \footsep
 Slide \Vget(slidenum)
 }
@@ -61,9 +48,9 @@ Slide \Vget(slidenum)
   title = Slides for \Vget(paper-number) \N{EM DASH} \Vget(paper-title)
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3869R0}}
-  \dt{Date:}            \dd{\tt{2025-10-26}}
-  \dt{Audience:}        \dd{SG22}
+  \dt{Document number:} \dd{\docnum{P3869R1}}
+  \dt{Date:}            \dd{\tt{2025-02-11}}
+  \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/bitint-slides.cow)}
@@ -109,16 +96,15 @@ unsigned _BitInt(8) x = 0xFFwb;
   \li{
     \b{Library design}: copy from C23 & paste unchanged:
     \ul{
-      \li{\header{cmath}: treat \em{all} integers as \tcode{double}}
-      \li{\header{stdbit.h}: allow \tcode{_BitInt(N)} of same width as standard integer}
-      \li{\header{stdckdint.h}: allow \tcode{_BitInt(N)} only as target type}
+      \li{\header{cmath}, \header{stdbit.h}, \header{stdckdint.h}: copy C semantics}
+      \li{lots of extensions to C++ standard library}
     }
   }
 }
 }
 
 \style{
-  #contention>li::marker {
+  .contentious::marker {
     content: "\N{HIGH VOLTAGE SIGN}";
   }
   #contention {
@@ -130,12 +116,12 @@ unsigned _BitInt(8) x = 0xFFwb;
 \slideh{P3666R1 Points of contention}
 
 \ul(id=contention){
-  \li{library class template vs fundamental type}
-  \li{undefined behavior on signed integer overflow}
-  \li{removing some implicit conversions}
-  \li{raising the \tcode{\hl(macro){BITINT_MAXWIDTH}}}
-  \li{\tcode{_BitInt} keyword and \tcode{std::bit_int} alias template}
-  \li{(CWG/LWG: use of \tcode{_BitInt} keyword in specification)}
+  \li(class=contentious){fundamental type instead of library class template}
+  \li(class=contentious){undefined behavior on signed integer overflow}
+  \li(class=contentious){implicit conversions inherited from C}
+  \li(class=contentious){\tcode{\hl(macro){BITINT_MAXWIDTH}} stays the same}
+  \li(class=contentious){\tcode{_BitInt} keyword should exist}
+  \li{(SG22: unanimous consent to author position on \em{all})}
 }
 }
 
@@ -167,7 +153,10 @@ WG21
 }
 }
 
-EWG: consensus to have a fundamental type.
+\ul{
+  \li{SG6: no opinion}
+  \li{EWG: consensus to have a fundamental type}
+}
 }
 
 \slide{
@@ -249,21 +238,33 @@ T div_ceil(T x, T y) { // performs integer division, rounding to +∞
 }
 
 \slide{
-\slideh{\tcode{_BitInt} keyword and \tcode{std::bit_int} alias}
+\slideh{C++ standard library changes (1/2)}
 
 \ul{
-  \li{\b{Problem A}: \tcode{_BitInt} useful for C-interoperable headers
-    \ul{
-      \li{\tcode{signed _BitInt} and \tcode{unsigned _BitInt}}
-      \li{deducing \tcode{N} from \tcode{_BitInt(N)}}
-      \li{\tcode{\hl(macro){_Atomic}}-like compat. macro for \tcode{\exposid{bit-int}(N)} is convoluted}
-    }
-  }
-  \li{\b{Problem B}: \tcode{std::bit_int<N>} is a better fit for C++ than \tcode{_BitInt(N)}}
-  \li{\b{Author position}:\ul{
-    \li{both spellings are useful}
-    \li{\tcode{_BitInt} should be a keyword}
+  \li{§ 5.1. Naming of alias template: \tcode{bit_int} and \tcode{bit_uint} proposed}
+  \li{§ 5.2. \tcode{format}, \tcode{to_chars} (function template), \tcode{to_string} support}
+  \li{§ 5.3. Preventing \tcode{ranges::iota_view} ABI break}
+  \li{§ 5.4. \tcode{size_t} and \tcode{ptrdiff_t} allowed to be bit-precise}
+  \li{§ 5.5. New \tcode{abs} overload (function template)}
+  \li{§ 5.6. bit-precise ints also treated as \tcode{double} in \header{cmath}}
+  \li{§ 5.7. no \header{random} support (too much design/wording effort)}
+  \li{§ 5.8. \tcode{simd} support added \em{only} for widths of standard integers}
+}
+}
+
+\slide{
+\slideh{C++ standard library changes (2/2)}
+
+\ul{
+  \li{§ 5.9. \tcode{valarray} support added}
+  \li{§ 5.10. \tcode{is_integral} includes bit-precise integers}
+  \li{§ 5.11. \tcode{make_signed} and \tcode{make_unsigned} changes}
+  \li{§ 5.12. misc. support is either blanket support, or inherited from C\ul{
+    \li{\header{bit}, \header{numeric}, etc.}
+    \li{more design/wording effort in the long run if support is delayed}
   }}
+  \li{§ 5.13. one feature-test macro for entire library (and one for core)}
+  \li{§ 5.14. bit-precise integers passed by value, despite potential large size}
 }
 }
 
@@ -273,18 +274,14 @@ T div_ceil(T x, T y) { // performs integer division, rounding to +∞
 \ul{
   \li{Agreement with author position?
     \ul{
-      \li{fundamental type better than class template}
       \li{allow \tcode{0wb = _BitInt(1)} and \tcode{enum E : _BitInt(N)}}
       \li{keep UB on signed integer overflow}
       \li{keep all implicit conversions (at least in this paper)}
       \li{keep the \tcode{\hl(macro){BITINT_MAXWIDTH}} from C}
-      \li{
-        add \em{both} a \tcode{_BitInt} keyword and alias templates
-        (\tcode{std::bit_int} and \tcode{std::bit_uint})
-      }
+      \li{library changes}
     }
   }
-  \li{Forward to EWG?}
+  \li{Forward to EWG/LEWG?}
 }
 }
 
@@ -299,6 +296,14 @@ T div_ceil(T x, T y) { // performs integer division, rounding to +∞
   author = Jan Schultke,
   link = https://wg21.link/p3639r0,
   long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3639r0.html,
+)\
+\bib(
+  id = P3666R1,
+  title = Bit-precise integers,
+  date = 2025-10-01,
+  author = Jan Schultke,
+  link = https://wg21.link/p3666r1,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3666r1.html,
 )\
 \bib(
   id = N1744,
