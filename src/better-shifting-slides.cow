@@ -1,0 +1,198 @@
+\cowel_include{libwg21.cow}
+\cowel_include{libslides.cow}
+
+\Vset(paper-number){P3793R0}
+\Vset(paper-title){Better shifting}
+
+\cowel_macro(footsep){\N{EM SPACE}|\N{EM SPACE}}
+
+\cowel_macro(slidefoot){
+Brian Bi, Jan Schultke
+\footsep
+Slides for \Vget(paper-number)
+\N{EM DASH}
+\Vget(paper-title)
+\footsep
+Kona 2025
+\footsep
+Slide \Vget(slidenum)
+}
+
+\style{
+  section>h1 {
+    margin-top: calc(0.15 * var(--sw)) !important;
+    font-size: 300%;
+    text-align: center;
+  }
+  #docnum {
+    font-family: var(--sans-serif-family);
+    font-size: 80%;
+    font-weight: normal;
+  }
+  li>ul {
+    margin-top: 0;
+  }
+  #tony-table {
+    margin-left: auto;
+    margin-right: auto;
+    width: 90%;
+    table-layout: fixed;
+  }
+  #tony-table td {
+    background-color: var(--deep-background-color);
+    width: 50%;
+  }
+}
+
+\wg21_head(
+  title = Slides for \Vget(paper-number) \N{EM DASH} \Vget(paper-title)
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{P3898R0}}
+  \dt{Date:}            \dd{\tt{2025-11-02}}
+  \dt{Audience:}        \dd{SG6}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/better-shifting-slides.cow)}
+}
+\hr
+\slide_controls
+}
+
+\slide{
+\cowel_html_element(h1){\Vget(paper-title) \br \cowel_html_element(span, (id=docnum)){\Vget(paper-number)}}
+}
+
+\slide{
+\slideh{Introduction}
+
+\ul{
+  \li{bit-shifting (\tcode{<<} and \tcode{>>}) is not ideal:\ul{
+    \li{hard-to-remember precedence rules}
+    \li{undefined behavior on "overlong" shifts}
+    \li{other languages, hardware use modular shift amount (C#, Java, JS)}
+  }}
+  \li{"fixing" bit-shifts in core language difficult\ul{
+    \li{at best, unspecified result + erroneous behavior}
+  }}
+  \li{proposed: "mathematically correct" \tcode{std::shl} and \tcode{std::shr}}
+}
+}
+
+\slide{
+\slideh{Motivation}
+
+\style{
+  .tony-table {
+    margin-left: auto;
+    margin-right: auto;
+    width: 90%;
+    table-layout: fixed;
+  }
+  .tony-table td {
+    background-color: var(--deep-background-color);
+    width: 50%;
+    font-size: 75%;
+  }
+}
+
+"Mathematically correct" functions eliminate special cases and UB pitfalls:
+
+\table(class=tony-table){
+  \tr{
+    \th{Before}
+    \th{After}
+  }
+  \tr{
+    \td{
+      \codeblock(cpp,borders=false){
+uint32_t make_mask(int n_bits) {
+  if (n_bits >= 32)
+    return uint32_t(-1);
+  return (uint32_t(1) << n_bits) - 1;
+}}
+    }
+    \td{
+      \codeblock(cpp,borders=false){
+uint32_t make_mask(int n_bits) {
+  return shl(uint32_t(1), n_bits) - 1;
+}}
+    }
+  }
+  \tr{
+    \td{
+      \codeblock(cpp,borders=false){
+uint32_t bitset = /* ... */;
+bool bitset_contains(size_t i) {
+  if (i >= 32) return false;
+  return (bitset >> i) & 1;
+}}
+    }
+    \td{
+      \codeblock(cpp,borders=false){
+uint32_t bitset = /* ... */;
+bool bitset_contains(size_t i) {
+  return shr(bitset, i) & 1;
+}}
+    }
+  }
+}
+}
+
+\slide{
+\slideh{Design choices}
+
+\ul{
+  \li{\tcode{std::shl} or \tcode{std::shr} N-bit shift acts like N single-bit shifts}
+  \li{no wrapping behavior because it's not useful}
+  \li{no separate logical/arithmetic right-shift (change signedness to choose)}
+  \li{negative shifts have erroneous behavior with impl-defined result\ul{
+    \li{no added runtime cost on release builds, no UB 🎉}
+  }}
+  \li{function names inspired by \tcode{std::rotl} and \tcode{std::rotr}}
+  \li{shift amount passed as \tcode{int} (like \tcode{std::rotl} and \tcode{std::rotr})}
+  \li{SIMD support added, similar to \tcode{std::simd::rotl}}
+}
+}
+
+\slide{
+\slideh{Possible implementation}
+
+\cppblock{
+template<\exposid{signed-or-unsigned} T>
+T shl(T x, int s) noexcept {
+  return unsigned(s) >= \exposid{width-v}<T> ? T(0)
+                                   : x << unsigned(s);
+}
+
+template<\exposid{signed-or-unsigned} T>
+T shr(T x, int s) noexcept {
+  return unsigned(s) >= \exposid{width-v}<T> ? T(x < 0 ? -1 : 0)
+                                   : x >> unsigned(s);
+}
+}
+}
+
+\h2(listed=false){References}
+
+\make_bib
+
+\bib(
+  id = P3724R1,
+  title = Integer division,
+  date = 2025-09-29,
+  author = Jan Schultke,
+  link = https://wg21.link/p3724r1,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3724r1.html,
+)\
+\bib(
+  id = GitHub,
+  author = Jan Schultke,
+  title = integer-division GitHub repository,
+  link = https://github.com/Eisenwave/integer-division
+)\
+\bib(
+  id = StackOverflowCeil,
+  title = Fast ceiling of an integer division in C / C++,
+  link = https://stackoverflow.com/q/2745074/5740428,
+)\
