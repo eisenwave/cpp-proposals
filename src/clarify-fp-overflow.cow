@@ -8,7 +8,10 @@
   \dt{Date:}            \dd{\tt{2025-10-30}}
   \dt{Audience:}        \dd{SG6, EWG, CWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
-  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{Reply-to:}        \dd{
+    Jan Schultke <\mail{janschultke@gmail.com}>\br
+    Matthias Kretz <\mail{m.kretz@gsi.de}>
+  }
   \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3688/github)}
   \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/clarify-fp-overflow.cow)}
 }
@@ -243,25 +246,54 @@ meaning that basically any expression could be constant.
   }
   #compiler-comparison th,
   #compiler-comparison td {
-    min-width: 7em;
+    min-width: 6em;
     text-align: center;
   }
   #compiler-comparison td {
     border-top: 1px dashed var(--border-color);
   }
+  td.pass, td.fail {
+    font-family: var(--sans-serif-family);
+    font-weight: bold;
+  }
+  td.pass {
+    color: var(--ins-block-border-color);
+    background: var(--ins-block-background-color);
+  }
+  td.fail {
+    color: var(--del-block-border-color);
+    background: var(--del-block-background-color);
+  }
+  td.none {
+    color: var(--ins-block-border-color);
+    background: var(--ins-block-background-color);
+    font-family: var(--sans-serif-family);
+    font-weight: bold;
+  }
+  td.except {
+    color: var(--del-block-border-color);
+    background: var(--del-block-background-color);
+    font-weight: bold;
+  }
 }
+
+\cowel_macro(td_pass){\td(class=pass){OK}}
+\cowel_macro(td_fail){\td(class=fail){error}}
 
 \: https://godbolt.org/z/x8r54zbTq
 
 Expressions with undefined behavior
 are not constant expressions.
-By comparing which constant expressions result in a compiler error,
-we can quickly identify which expressions implementations believe to be constant.
+By comparing which initializations of the form
+\tcode{constexpr float f = \exposid{expression};}
+result in a compiler error,
+we can identify which expressions implementations believe to be constant.
 The results can be seen in the table below.
 
 \table(id=compiler-comparison){
   \tr{
-    \th{Operation}
+    \th{\tcode{\exposid{expression}}}
+    \th{FP Exception}
     \th{GCC 15}
     \th{Clang 21}
     \th{MSVC v19.43}
@@ -270,75 +302,84 @@ The results can be seen in the table below.
   }
   \tr{
     \td{\tcode{infinity()}}
-    \td{✔️}
-    \td{✔️}
-    \td{✔️}
-    \td{❌}
-    \td{✔️}
+    \td(class=none){none}
+    \td_pass
+    \td_pass
+    \td_pass
+    \td_fail
+    \td_pass
   }
   \tr{
     \td{\tcode{max() * 2}}
-    \td{❌}
-    \td{✔️}
-    \td{✔️}
-    \td{❌}
-    \td{✔️}
+    \td(class=except){\tt{FE_OVERFLOW}}
+    \td_fail
+    \td_pass
+    \td_pass
+    \td_fail
+    \td_pass
   }
   \tr{
     \td{\tcode{infinity() * 2}}
-    \td{✔️}
-    \td{✔️}
-    \td{✔️}
-    \td{❌}
-    \td{✔️}
+    \td(class=none){none}
+    \td_pass
+    \td_pass
+    \td_pass
+    \td_fail
+    \td_pass
   }
   \tr{
-    \td{\tcode{NAN}}
-    \td{✔️}
-    \td{✔️}
-    \td{✔️}
-    \td{✔️}
-    \td{✔️}
+    \td{\tcode{quiet_NaN()}}
+    \td(class=none){none}
+    \td_pass
+    \td_pass
+    \td_pass
+    \td_pass
+    \td_pass
   }
   \tr{
-    \td{\tcode{NAN * 2}}
-    \td{✔️}
-    \td{❌}
-    \td{✔️}
-    \td{✔️}
-    \td{✔️}
+    \td{\tcode{quiet_NaN() * 2}}
+    \td(class=none){none}
+    \td_pass
+    \td_fail
+    \td_pass
+    \td_pass
+    \td_pass
   }
   \tr{
     \td{\tcode{infinity() * 0}}
-    \td{❌}
-    \td{❌}
-    \td{✔️}
-    \td{❌}
-    \td{✔️}
+    \td(class=except){\tt{FE_INVALID}}
+    \td_fail
+    \td_fail
+    \td_pass
+    \td_fail
+    \td_pass
   }
   \tr{
     \td{\tcode{1.f / 0}}
-    \td{❌}
-    \td{❌}
-    \td{❌}
-    \td{✔️}
-    \td{✔️}
+    \td(class=except){\tt{FE_DIVBYZERO}}
+    \td_fail
+    \td_fail
+    \td_fail
+    \td_pass
+    \td_pass
   }
   \tr{
     \td{\tcode{0.f / 0}}
-    \td{❌}
-    \td{❌}
-    \td{❌}
-    \td{✔️}
-    \td{✔️}
+    \td(class=except){\tt{FE_DIVBYZERO}}
+    \td_fail
+    \td_fail
+    \td_fail
+    \td_pass
+    \td_pass
   }
   \tr{
     \td{\tcode{0 / 0}}
-    \td{❌}
-    \td{❌}
-    \td{❌}
-    \td{❌}
-    \td{❌}
+    \td{N/A}
+    \td_fail
+    \td_fail
+    \td_fail
+    \td_fail
+    \td_fail
   }
 }
 
@@ -356,8 +397,35 @@ The goal of this paper is to make minimal changes
 that may find consensus,
 while staying consistent with SG6 guidance and creating symmetry with both C
 and with the \header{cmath} functions, which are now \tcode{constexpr}.
+The conditions for \header{cmath} functions to be \tcode{constexpr}
+are stated in \eelis{library.c#3}:
+
+\Bquote{
+A call to a C standard library function is a non-constant library call\iref{defns.nonconst.libcall}
+if it raises a floating-point exception other than \tcode{FE_INEXACT}.
+The semantics of a call to a C standard library function
+evaluated as a core constant expression
+are those specified in ISO/IEC 9899:2024, Annex F131
+to the extent applicable to the floating-point types\iref{basic.fundamental}
+that are parameter types of the called function.
+
+\note{
+ISO/IEC 9899:2024, Annex F specifies the conditions
+under which floating-point exceptions are raised
+and the behavior when NaNs and/or infinities are passed as arguments.
+}
+
+\note{
+Equivalently, a call to a C standard library function is a non-constant library call
+if \tcode{errno} is set when \tcode{math_errhandling & MATH_ERRNO} is \tcode{true}.
+}
+}
 
 In short, the GCC 15 behavior is proposed.
+As can be seen in \ref(#implementation-divergence),
+GCC 15 considers an expression to be constant if and only if no floating-point exception is raised
+(ignoring \tcode{FE_INEXACT}),
+making GCC 15 consistent with \header{cmath} already.
 
 \Btip{
 A rule of thumb for the proposed behavior is that
