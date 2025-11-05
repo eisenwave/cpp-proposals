@@ -1,11 +1,11 @@
 \cowel_include{libwg21.cow}
 
 \wg21_head(
-  title = Make \tcode{optional<T&>} trivially copyable\br{}(US NB comment 134)
+  title = Make \tcode{optional<T&>} trivially copyable\br{}(NB comment US 134-215)
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3836R1}}
-  \dt{Date:}            \dd{\tt{2025-09-28}}
+  \dt{Document number:} \dd{\docnum{D3836R2}}
+  \dt{Date:}            \dd{\tt{2025-11-05}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -30,6 +30,16 @@ this issue is not simply handled as an LWG issue.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R1}
+
+\ul{
+  \li{used more conventional "NB comment US 134-215" in title}
+  \li{
+    applied LEWG direction (\em{only} specify \tcode{optional<T&>} to be trivially copyable)
+    after Kona 2025 poll
+  }
+}
 
 \h3{Changes since R0}
 
@@ -132,7 +142,24 @@ There are two plausible options to fix the issue of \tcode{optional<T&>}:
   }
 }
 
-We propose the second option
+Both directions were considered during Kona 2025,
+but the room only had appetite for the first option,
+so only the first option was polled:
+
+\Bquote{
+\b{POLL:} Apply the resolution described in NB comment
+“US 134-215 22.5.4.1 [optional.optional.ref.general] optional<T&> is a trivially copyable type”
+with option 1 (specify \tcode{optional<T&>} to be trivially copyable)
+from P3836R1 and send resolution to LWG.
+
+\five_way_poll(12, 2, 1, 1, 0)
+
+\b{Outcome}: Consensus in favor
+}
+
+\h3{Option 2 (no longer proposed)}
+
+R0 and R1 of this paper argued that option 2 would have provided more value to the user
 because trivial copyability is much more useful when the layout of a type is somewhat constrained.
 This makes it possible to \tcode{bit_cast<T*>(optional_ref)}
 or to encode \tcode{optional<T&>} using \tcode{memcpy}
@@ -162,6 +189,21 @@ where the layout of "wrapper \tcode{struct}s" and the types they wrap is differe
 but that concern is largely hypothetical.
 }
 
+However, LEWG found option 2 to be unconvincing because:
+\ul{
+  \li{
+    That de-facto leaks the private \tcode{T*} data member in an \tcode{optional<T&>};
+    why not just make it public?
+  }
+  \li{
+    Specifying the layout of \tcode{optional<T&>} was arguably not within the scope
+    of NB comment US 134-215.
+  }
+  \li{
+    The change lacked motivation and lacked symmetry with the rest of the standard library.
+  }
+}
+
 \h2{Wording}
 
 The wording changes are relative to \ref(N5014).
@@ -170,10 +212,7 @@ Immediately following \eelis{optional.optional.ref.general#1},
 append a paragraph as follows:
 
 \Bins{
-A class type \tcode{optional<T&>}
-is a trivially copyable class and standard-layout class\iref{class.prop},
-and has the same object representation, size, and alignment
-as a class \tcode{C} defined like \tcode{class C { T* \exposid{val}; };}.
+Each type \tcode{optional<T&>} is a trivially copyable class\iref{class.prop}.
 }
 
 \h2{Acknowledgements}
