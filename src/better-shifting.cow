@@ -5,7 +5,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{D3793R1}}
-  \dt{Date:}            \dd{\tt{2025-11-02}}
+  \dt{Date:}            \dd{\tt{2025-11-11}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Brian Bi <\mail{bbi5291@gmail.com}>}
@@ -272,76 +272,267 @@ in some popular programming languages is listed below:
 \li{Unspecified or implementation-defined result: OCaml, Rust}
 }
 
-Unlike overlong shifts, there is no obvious "mathematically correct result"
-for a shift by a negative number of bits,
-nor is there an obvious choice based on existing practice in other programming languages.
-Hardware instructions interpret the shift amount as an unsigned number.
+The mathematically correct behavior is to "shit in the other direction".
+That is if we consider left-shifting to be a multiplication with a power of two;
+a negative shift is a negative exponent, i.e. a division by a power of two,
+i.e. a right-shift.
+\b{We proposes this "mathematically correct" behavior.}
 
-There are several options for how the proposed \tcode{std::shl} and
-\tcode{std::shr} functions could handle negative shift widths:
-\ol{
-  \li{Shift in other direction.}
-  \li{Implementation-defined result.}
-  \li{Erroneous behavior with implementation-defined result (proposed).}
-  \li{Unspecified result.}
-  \li{Erroneous behavior with unspecified result.}
-  \li{Undefined behavior.}
+R0 of this paper proposed an implementation-defined result and erroneous behavior.
+Possible alternatives were discussed in SG6,
+and neither the proposed direction nor the alternatives sparked confidence.
+However, we now believe we've identified the right direction for the following reasons:
+
+\ul{
+  \li{
+    The implementation-defined result in the R0 \tcode{std::shl}
+    was perceived as a "half-measure".
+  }
+  \li{
+    Shifting in the opposite direction provides
+    a clear distinction in behavior from \tcode{<<}.
+    It is as safe as costly as possible,
+    whereas \tcode{<<} is as unsafe and cheap as possible.
+  }
+  \li{
+    All other behaviors can be obtained by modifying the call site (\ref(#shl-behavior-emulation)).
+  }
+  \li{
+    The performance cost of shifting in the opposite direction was measured to be acceptable
+    (\ref(#shl-benchmarks)).
+  }
 }
 
-\h4{Why no shift in the other direction?}
+\h4(id=shl-behavior-emulation){Emulating possible behaviors using \tcode{std::shl}}
 
-The first option imposes performance overhead compared with only handling
-overlong shifts, which makes the second and third options more attractive.
-Use cases where we want to shift in the other direction are extremely uncommon,
-and in those uncommon use cases,
-these operations can be easily expressed by conditionally shifting to the left or right.
-
-\h4{Why no unspecified result?}
-
-Hardware architectures don't always guarantee a specific result for
-bit-shifting instructions.
-For example, older Intel x86-64 processors do not guarantee that shifting wraps,
-but yield an unspecified result.
-Therefore, it might seem at first that requiring a predictable,
-implementation-defined result imposes additional overhead compared with leaving
-the result unspecified.
-However, all hardware that we are aware of treats the shift amount as an
-unsigned integer: that is, any attempt to shift by a negative amount would be
-interpreted as an attempt to shift by a large positive amount congruent to the
-original negative amount. Since we already propose to require shifting by large
-positive amounts to produce a defined result, an implementation could simply
-define negative shifts to produce the same result as overlong shifts without
-incurring an additional performance penalty:
-
+\Bex{
+See below various different ways to use \tcode{std::shl},
+from most safe (top) to least safe (bottom):
 \cppblock{
-unsigned shr(unsigned x, int s) {
-  // \serif{Handles negative, not just over-large shifts, at no extra cost.}
-  return unsigned(s) >= \exposid{width-v}<T> ? 0u : x >> s;
-}
-}
+int32_t x = /* ... */;
+int32_t s = /* ... */;
 
-\h4{Why no undefined behavior?}
+// If s is negative, shift in the opposite direction.
+int32_t r = std::shl(x, s);
 
-Unlike division by zero,
-there is little motivation to make this operation undefined;
-the underlying hardware instruction does not raise an exception,
-but produces a surprising (possibly unspecified) result.
+// If s is negative, r is meaningless but well-defined.
+// This is faster because no check for negatives is necessary.
+int32_t r = std::shl(x, uint32_t(s));
 
-If the programmer wants shifting by a negative amount \tcode{s} to have undefined behavior,
-they can opt into that using:
-\cppblock{
-if (s < 0) std::unreachable();
-// \serif{or}
+// If s is negative, r is meaningless, and a contract violation occurs.
+// This is R0 of this paper, except we used EB, not contracts.
+contract_assert(s >= 0);
+int32_t r = std::shl(x, uint32_t(s));
+
+// If s is negative, the behavior is undefined.
 [[assume(s >= 0)]];
+int32_t r = std::shl(x, s);
+
+// Equivalent to x << s.
+[[assume(s >= 0 && s < 32)]];
+int32_t r = std::shl(x, s);
+}
 }
 
-\h4{Conclusion}
+\h4(id=shl-benchmarks){Benchmarks of \tcode{std::shl} variants}
 
-Attempting to shift by a negative amount is often a bug,
-with the programmer's intent being unclear.
-However, there is no necessity for undefined behavior.
+To make an educated choice about which behavior would be appropriate for negative
+shifts in \tcode{std::shl},
+find a comparison of the following functions below:
 
-Therefore, we propose the third option (erroneous behavior with implementation-defined result).
+\style{
+  .tony-table {
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .tony-table td:nth-child(1),
+  .tony-table td:nth-child(2) {
+    background-color: var(--deep-background-color);
+    width: 50%;
+  }
+  .tony-table td {
+    border-top: 1px solid var(--border-color);
+  }
+  .tony-table code-block {
+    margin: 0.25em;
+  }
+}
+
+\table(class=tony-table){
+\tr{
+  \th{Function}
+  \th{Assembly\br{}(\tt{clang++-21 -O2 -march=x86-64-v4})}
+  \th{Time}
+}
+
+\tr{
+\td{\codeblock(cpp, borders=false){
+unsigned shl_unsafe(unsigned x, int s)  {
+    return x << s;
+}
+}}
+\td{\codeblock(nasm, borders=false){
+shl_unsafe:
+        shlx    eax, edi, esi
+        ret
+}}
+\td{\math{\mrow{\mi{1.0}\mo{×}}}}
+}
+
+\tr{
+\td{\codeblock(cpp, borders=false){
+unsigned shl_branchless(unsigned x, int s)  {
+    return (s < 32) * (x << s);
+}
+}}
+\td{\codeblock(nasm, borders=false){
+shl_branchless:
+        xor     ecx, ecx
+        cmp     esi, 32
+        shlx    eax, edi, esi
+        cmovge  eax, ecx
+        ret
+}}
+\td{\math{\mrow{\mi{1.2}\mo{×}}}}
+}
+
+\tr{
+\td{\codeblock(cpp, borders=false){
+unsigned shl_branching(unsigned x, int s)  {
+    if (s < 32) return x << s;
+    else return 0;
+}
+}}
+\td{\codeblock(nasm, borders=false){
+shl_branching:
+        xor     ecx, ecx
+        cmp     esi, 32
+        shlx    eax, edi, esi
+        cmovge  eax, ecx
+        ret
+}}
+\td{\math{\mrow{\mi{1.2}\mo{×}}}}
+}
+
+\tr{
+\td{\codeblock(cpp, borders=false){
+unsigned shl_bi_branching(
+  unsigned x, int s
+) {
+    if (s >= 0) {
+        if (s < 32) return x << s;
+        else return 0;
+    } else {
+        if (s > -32) return x >> -s;
+        else return 0;
+    }
+}
+}}
+\td{\codeblock(nasm, borders=false){
+shl_bi_branching:
+        test    esi, esi
+        js      .LBB4_2
+        xor     ecx, ecx
+        cmp     esi, 32
+        shlx    eax, edi, esi
+        cmovae  eax, ecx
+        ret
+.LBB4_2:
+        xor     eax, eax
+        cmp     esi, -31
+        jb      .LBB4_4
+        neg     sil
+        shrx    eax, edi, esi
+.LBB4_4:
+        ret
+}}
+\td{\math{\mrow{\mi{1.6}\mo{×}}}}
+}
+
+\tr{
+\td{\codeblock(cpp, borders=false){
+unsigned shl_bi_semi_branchless(
+  unsigned x, int s
+) {
+    if (s >= 0) {
+        return (s < 32) * (x << s);
+    } else {
+        return (s > -32) * (x >> -s);
+    }
+}
+}}
+\td{\codeblock(nasm, borders=false){
+shl_bi_semi_branchless:
+        test    esi, esi
+        js      .LBB5_2
+        xor     ecx, ecx
+        cmp     esi, 32
+        shlx    eax, edi, esi
+        cmovae  eax, ecx
+        ret
+.LBB5_2:
+        mov     eax, esi
+        neg     al
+        xor     ecx, ecx
+        cmp     esi, -31
+        shrx    eax, edi, eax
+        cmovb   eax, ecx
+        ret
+}}
+\td{\math{\mrow{\mi{1.6}\mo{×}}}}
+}
+
+\tr{
+\td{\codeblock(cpp, borders=false){
+unsigned shl_bi_branchless(
+  unsigned x, int s
+) {
+    unsigned pos = (x < 32) * (x << s);
+    unsigned neg = (x > -32) * (x >> -s);
+    int mask = s >> 31;
+    return (mask & neg) | (~mask & pos);
+}
+}}
+\td{\codeblock(nasm, borders=false){
+shl_bi_branchless:
+        xor     ecx, ecx
+        cmp     edi, 32
+        shlx    eax, edi, esi
+        cmovae  eax, ecx
+        mov     edx, esi
+        neg     dl
+        shrx    edx, edi, edx
+        mov     r8d, esi
+        sar     r8d, 31
+        and     r8d, edx
+        cmp     edi, -31
+        cmovb   r8d, ecx
+        test    esi, esi
+        cmovs   eax, ecx
+        or      eax, r8d
+        ret
+}}
+\td{\math{\mrow{\mi{2.9}\mo{×}}}}
+}
+}
+
+The key takeaways are:
+
+\ul{
+  \li{
+    Handling of negative shift amounts incurs roughly a 1.25x performance cost.
+  }
+  \li{
+    Attempts at manual branchless optimization provide little to no value,
+    or perform significantly worse.
+  }
+}
+
+\Bnote{
+While the performance penalty of negative shift checks may be alarming,
+the user can eliminate it entirely by modifying the call site as shown previously.
+When \tcode{s} is unsigned, \tcode{shl_bi_branching} and \tcode{shl_branching} are equivalent.
+}
 
 \h3{Naming}
 
@@ -371,11 +562,11 @@ respectively.
 We propose the following signatures:
 
 \cppblock{
-template<class T>
-  constexpr T shl(T x, int s) noexcept;
+template<class T, class S>
+  constexpr T shl(T x, S s) noexcept;
 
-template<class T>
-  constexpr T shr(T x, int s) noexcept;
+template<class T, class S>
+  constexpr T shr(T x, S s) noexcept;
 }
 
 The rationale for these signature is as follows:
@@ -397,24 +588,17 @@ The rationale for these signature is as follows:
     and it would be surprising if \tcode{shl} did not also accept signed types.
   }
   \li{
-    We follow the design of \tcode{std::rotl} and \tcode{std::rotr}
-    in specifying a type of \tcode{int} for the second parameter.
-    \tcode{int} is large enough to hold any realistic shift width,
-    and the choice of a signed type rather than an unsigned type allows the
-    implementation to catch bugs in which the expression for the second argument
-    produced a negative result.
+    Unlike \tcode{rotl} and \tcode{rotr},
+    the shift amount is not passed via \tcode{int}.
+    That is because shifting by \math{\msup{\mn{2}\mn{32}}} is not equivalent
+    to shifting by \math{\mn{0}},
+    but such a large value stored in a \tcode{long long} may be turned into zero
+    due to upper bits being discarded in the conversion.
+    For rotations, this is not a problem because for power-of-two wide integers,
+    discarding upper bits has no effect on the result.
   }
   \li{
-    Although the Lakos rule states that Standard Library functions with narrow
-    contracts should not be declared noexcept,
-    we don't have precedent for functions that never produce undefined behavior
-    but produce erroneous behavior for some subset of arguments.
-    However, we think that we can sidestep that debate because
-    of the precedent that functions that are closely analogous to built-in
-    operators that are not potentially-throwing should be declared \tcode{noexcept} even if
-    they have narrow contracts.
-    If that is the case, it should be even more the
-    case for functions that sometimes exhibit erroneous behavior.
+    The functions are \tcode{noexcept} because they have a wide contract.
   }
 }
 
@@ -449,7 +633,7 @@ Bump feature-test macros in \eelis{version.syn} as follows:
 \Bdiff{
 \itemdecl{
 #define __cpp_lib_bitops \del{201907L} \ins{20XXXXL} // \serif{freestanding, also in \tt{<bit>}}
-#define __cpp_lib_simd \del{202502L} \ins{20XXXXL}   // \serif{also in \tt{<simd>}}
+#define __cpp_lib_simd   \del{202502L} \ins{20XXXXL}   // \serif{also in \tt{<simd>}}
 }
 }
 
@@ -463,16 +647,16 @@ namespace std {
   \etc
 
 \ins{  // \serif{[bit.shift], shifting}
-  template<class T>
-    constexpr T shl(T x, int s) noexcept;
-  template<class T>
-    constexpr T shr(T x, int s) noexcept;}
+  template<class T, class S>
+    constexpr T shl(T x, S s) noexcept;
+  template<class T, class S>
+    constexpr T shr(T x, S s) noexcept;}
 
   // \serif{[bit.rotate], rotating}
-  template<class T>
-    constexpr T rotl(T x, int s) noexcept;
-  template<class T>
-    constexpr T rotr(T x, int s) noexcept;
+  template<class T, class S>
+    constexpr T rotl(T x, S s) noexcept;
+  template<class T, class S>
+    constexpr T rotr(T x, S s) noexcept;
 
   \etc
 }
@@ -481,42 +665,57 @@ namespace std {
 
 In \eelis{bit}, add a new subclause immediately preceding \eelis{bit.rotate}:
 
+\Vset(pnum){0}
+
 \Bins{
 \cowel_html_element(h3){Shifting \stable_ref{bit.shift}}
 
-\itemdecl{
-template<class T>
-  constexpr T shl(T x, int s) noexcept;
-}
+\pnum
+In the following descriptions,
+the result \math{\mi{r}} of an arithmetic operation is
+first represented in a hypothetical integer type with sufficient range,
+then converted to \tcode{T} as if by \tcode{static_cast<T>(\math{\mi{r}})}.
 
-\itemdescr{
-\constraints
-\tcode{T} is a signed or unsigned integer type\iref{basic.fundamental}.
-
-\effects
-If \tcode{s} is negative, the behavior is erroneous and an
-implementation-defined value is returned. Otherwise, returns the value of
-\tcode{x} multiplied by 2\sup{\tcode{s}}.
-\br\note{If \tcode{s} is greater than or equal to the bit width of \tcode{T},
-the result is zero.}
+\pnum
+\note{
+The value of \tcode{s} in the following descriptions may be negative,
+which has the effect of \q{shifting in the opposite direction}.
+In any case, invoking the functions below with \tcode{s}
+has the same result as \tcode{s} consecutive shifts by \tcode{1}.
 }
 
 \itemdecl{
-template<class T>
-  constexpr T shr(T x, int s) noexcept;
+template<class T, class S>
+  constexpr T shl(T x, S s) noexcept;
 }
 
 \itemdescr{
+\pnum
 \constraints
-\tcode{T} is a signed or unsigned integer type\iref{basic.fundamental}.
+Each of \tcode{T} and \tcode{S}
+is a signed or unsigned integer type\iref{basic.fundamental}.
 
-\effects
-If \tcode{s} is negative, the behavior is erroneous and an
-implementation-defined value is returned. Otherwise, returns the value of
-\tcode{x} divided by 2\sup{\tcode{s}}, rounded toward negative infinity.
-\br\note{If \tcode{s} is greater than or equal to the bit width of \tcode{T},
-the result is -1 if \tcode{x} is negative and 0 otherwise; the computation of
-2\sup{\tcode{s}} does not overflow.}
+\pnum
+\returns
+\math{\mrow{\mi{x}\mo{×}\msup{\mn{2}\mi{s}}}}
+rounded towards negative infinity.
+}
+
+\itemdecl{
+template<class T, class S>
+  constexpr T shr(T x, S s) noexcept;
+}
+
+\itemdescr{
+\pnum
+\constraints
+Each of \tcode{T} and \tcode{S}
+is a signed or unsigned integer type\iref{basic.fundamental}.
+
+\pnum
+\returns
+\math{\mrow{\mi{x}\mo{×}\msup{\mn{2}\mrow{\mo{−}\mi{s}}}}}
+rounded towards negative infinity.
 }
 }
 
@@ -577,6 +776,9 @@ using simd::popcount;
 In \eelis{simd.bit}, immediately preceding the first declaration of
 \tcode{rotl}, insert the following:
 
+
+\Vset(pnum){10}
+
 \Bins{
 \itemdecl{
 template<\exposid{simd-type} V0, \exposid{simd-type} V1>
@@ -586,6 +788,7 @@ template<\exposid{simd-type} V0, \exposid{simd-type} V1>
 }
 
 \itemdescr{
+\pnum
 \constraints
 \ul{
   \li{The type \tcode{V0::value_type} is a signed or unsigned integer
@@ -596,6 +799,7 @@ template<\exposid{simd-type} V0, \exposid{simd-type} V1>
       is \tcode{true}.}
 }
 
+\pnum
 \returns
 A \tcode{basic_simd} object where the \math{\msup{\mi{i}\mtext{th}}} element
 is initialized to the result of \tcode{\exposid{bit-func}(v0[\math{\mi{i}}],
@@ -613,10 +817,12 @@ template<\exposid{simd-type} V>
 }
 
 \itemdescr{
+\pnum
 \constraints
 The type \tcode{V::value_type} is a signed or unsigned integer
 type\iref{basic.fundamental}.
 
+\pnum
 \returns
 A \tcode{basic_simd} object where the \math{\msup{\mi{i}\mtext{th}}} element is
 initialized to the result of \tcode{\exposid{bit-func}(v[\math{\mi{i}}], s)} for
