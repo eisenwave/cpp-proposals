@@ -31,11 +31,13 @@ this proposal introduces a new set of fundamental types to C++.
 \h3{Changes since R1}
 
 \ul{
+  \li{added SG22 and SG6 poll results to \ref(#core-design)}
   \li{
     changed the suggested alternative \tcode{BITINT_MAXWIDTH}
     in \ref(#raising-the-bitint_maxwidth)
     from \tcode{65'535} to \tcode{32'767}
   }
+  \li{expanded \ref(#naming-of-the-alias-template) after SG22 feedback}
   \li{added \ref(#preserving-integer-class-types) and corresponding wording changes}
   \li{fixed missing return types in \ref(#bitint-abs) and throughout the paper}
   \li{expanded \ref(#passing-bitint) with an observation about return types}
@@ -371,6 +373,59 @@ The overall design strategy is as follows:
     This gives us plenty of time to add standard library support wherever desirable over time,
     as well as other convenience features surrounding \tcode{_BitInt}.
   }
+}
+
+The first of these points was discussed in great detail in SG22 and SG6,
+and has \em{unanimous} support from both groups;
+feedback from SG22 was given 2025-10-09 during a telecon:
+
+\Bquote{
+/Poll/: Do you agree with the author's position on fundamental types being better than class template for _BitInt>?\br
+Any objections to unanimous consent? /None/
+
+/Poll/: Do you agree with allowing 0wb = _BitInt(1) and enum E : _BitInt(N),
+assuming C adopts N3699 and N3705?\br
+Any objections to unanimous consent? /None/
+
+/Poll/: Do you agree with keeping UB on signed integer overflow for _BitInt?\br
+Any objections to unanimous consent? /None/
+
+/Poll/: Do you agree that WG21 keep all implicit conversions for _BitInt?\br
+Any objections to unanimous consent? /None/
+
+/Poll/: Do you agree that WG21 keep the lower limit on the value of BITINT_MAXWIDTH from C?\br
+Any objections to unanimous consent? /None/
+
+/Poll/: Do you agree that WG21 should add a _BitInt keyword?\br
+Any objections to unanimous consent? /None/
+
+\etc
+
+Group agrees that we want to pursue compatibility between C and C++ with regards to _BitInt
+}
+
+SG6 had concerns regarding the standard library impact of bit-precise integers,
+but agreed with the core design strategy during the Kona 2025 meeting:
+
+\Bquote{
+\b{POLL}: Let \tt{_BitInt} have the exact same semantics as in C.
+
+\five_way_poll(7, 2, 0, 0, 0)
+\ul{
+  \li{\b{Author Position}: SF}
+  \li{\b{Outcome}: Strong consensus in favor}
+}
+}
+
+\Bnote{
+The use of "C" in the above SG6 poll is somewhat ambiguous.
+The issues of \tcode{_BitInt(1)} and bit-precise underlying enumeration types
+were presented to SG6,
+and SG6 seemed to agree with the author's choices
+once it was clear that C2y is heading in this direction anyway.
+
+Overall, both SG22 and SG6 agree that \tcode{_BitInt} in C++ should match the C design,
+and keeping it in sync with C2y's changes since C23 is necessary for that.
 }
 
 \h3{Why not a class template?}
@@ -1455,6 +1510,12 @@ for a complete list of changes,
 including such silently added support.
 }
 
+SG22 and SG6 gave feedback on the library design in this paper.
+While no clear direction was given,
+there was scepticism regarding the amount of changes made to the library.
+In particular, SG22 was not convinced that a \tcode{bit_int} alias template
+would increase consensus.
+
 \h3{Naming of the alias template}
 
 The approach is to expose bit-precise integers via two alias templates:
@@ -1472,11 +1533,54 @@ so it is the obvious candidate.
 \tt{int} and \tt{uint} match the naming scheme of existing aliases,
 such as \tcode{intN_t}, \tcode{uint_fastN_t}, etc.
 
-The alias names as a whole also act as abbreviations of the core language term
+The alias also act as abbreviations of the core language term
 (which is copied from C):
 \ul{
   \li{\tcode{bit_int<N>} is a bit-precise signed integer of width \tcode{N}}
   \li{\tcode{bit_uint<N>} is a bit-precise unsigned integer of width \tcode{N}}
+}
+
+\h4{Do we need an alias template in the first place?}
+
+While it could be argued that the "compatibility spelling" \tcode{_BitInt}
+is sufficient,
+there are several reasons to also provide an alias template in the standard library:
+
+\ul{
+  \li{
+    It is fairly surprising that the constant within \tcode{_BitInt(N)}
+    is a constant expression width.
+    "Pointy brackets" communicate this more clearly.
+  }
+  \li{
+    C23 doesn't provide anything like a \header{stdbitint.h} header with a "nicer spelling"
+    in the style of \header{stdbool.h},
+    so any name is still available.
+    \tcode{bit_int} is relatively short and in active use already,
+    so it doesn't seem plausible that WG14 would attempt to standardize these names as macros
+    or keywords.
+    No proposal to do so in C2y has been published yet.
+  }
+  \li{
+    Some people object to \tcode{_BitInt} aesthetically,
+    and an alternative may increase consensus.
+  }
+  \li{
+    If WG21 didn't standardize such a spelling for C++,
+    users would likely create their own type aliases.
+    The worst possible scenario is a "tower of babel" situation
+    where every code base has a slightly different spelling of the same C++ construct.
+    With the proposed alias templates, at worst,
+    there are two widely known options: \tcode{_BitInt} and \tcode{std::bit_int}.
+  }
+}
+
+\Bnote{
+SG22 suggested to pull the proposed alias templates out of this paper
+and into a separate proposal.
+However, I believe that there is little value in that.
+If the alias templates are not wanted by LEWG, they can simply be dropped from the paper
+as an action item.
 }
 
 \h4{Why no \tcode{_t} suffix?}

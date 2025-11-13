@@ -1675,6 +1675,8 @@ this proposal introduces a new set of fundamental types to C++.
 <div class=toc-num data-level=3>5.1</div>
 <a href=#naming-of-the-alias-template><h3>Naming of the alias template</h3></a>
 <div class=toc-num data-level=4>5.1.1</div>
+<a href=#do-we-need-an-alias-template-in-the-first-place><h4>Do we need an alias template in the first place?</h4></a>
+<div class=toc-num data-level=4>5.1.2</div>
 <a href=#why-no-_t-suffix><h4>Why no <code><h- data-h=id_type>_t</h-></code> suffix?</h4></a>
 <div class=toc-num data-level=3>5.2</div>
 <a href=#printing-support><h3><tt->format</tt->, <tt->to_chars</tt->, and <tt->to_string</tt-> support for bit-precise integers</h3></a>
@@ -1805,11 +1807,13 @@ this proposal introduces a new set of fundamental types to C++.
 <h3 id=changes-since-r1><a class=para href=#changes-since-r1></a>1.1. Changes since R1</h3>
 
 <ul>
+  <li>added SG22 and SG6 poll results to <a href=#core-design>§4. Core design</a></li>
   <li>
     changed the suggested alternative <code><h- data-h=id>BITINT_MAXWIDTH</h-></code>
     in <a href=#raising-the-bitint_maxwidth>§4.8. Raising the <tt->BITINT_MAXWIDTH</tt-></a>
     from <code><h- data-h=num>65</h-><h- data-h=num_dlim>'</h-><h- data-h=num>535</h-></code> to <code><h- data-h=num>32</h-><h- data-h=num_dlim>'</h-><h- data-h=num>767</h-></code>
   </li>
+  <li>expanded <a href=#naming-of-the-alias-template>§5.1. Naming of the alias template</a> after SG22 feedback</li>
   <li>added <a href=#preserving-integer-class-types>§5.4. Preserving integer-class types</a> and corresponding wording changes</li>
   <li>fixed missing return types in <a href=#bitint-abs>§5.6. New <tt->abs</tt-> overload</a> and throughout the paper</li>
   <li>expanded <a href=#passing-bitint>§5.15. Passing <tt->bit_int</tt-> into standard library function templates</a> with an observation about return types</li>
@@ -2142,6 +2146,62 @@ and bit-precise integers fill that gap in the language.
     as well as other convenience features surrounding <code><h- data-h=kw_type>_BitInt</h-></code>.
   </li>
 </ul>
+
+<p>The first of these points was discussed in great detail in SG22 and SG6,
+and has <em>unanimous</em> support from both groups;
+feedback from SG22 was given 2025-10-09 during a telecon:
+</p>
+<blockquote>
+<p>/Poll/: Do you agree with the author's position on fundamental types being better than class template for _BitInt&gt;?<br/>
+Any objections to unanimous consent? /None/
+</p>
+<p>/Poll/: Do you agree with allowing 0wb = _BitInt(1) and enum E : _BitInt(N),
+assuming C adopts N3699 and N3705?<br/>
+Any objections to unanimous consent? /None/
+</p>
+<p>/Poll/: Do you agree with keeping UB on signed integer overflow for _BitInt?<br/>
+Any objections to unanimous consent? /None/
+</p>
+<p>/Poll/: Do you agree that WG21 keep all implicit conversions for _BitInt?<br/>
+Any objections to unanimous consent? /None/
+</p>
+<p>/Poll/: Do you agree that WG21 keep the lower limit on the value of BITINT_MAXWIDTH from C?<br/>
+Any objections to unanimous consent? /None/
+</p>
+<p>/Poll/: Do you agree that WG21 should add a _BitInt keyword?<br/>
+Any objections to unanimous consent? /None/
+</p>
+<p>[…]</p>
+
+<p>Group agrees that we want to pursue compatibility between C and C++ with regards to _BitInt
+</p></blockquote>
+
+<p>SG6 had concerns regarding the standard library impact of bit-precise integers,
+but agreed with the core design strategy during the Kona 2025 meeting:
+</p>
+<blockquote>
+<p><b>POLL</b>: Let <tt->_BitInt</tt-> have the exact same semantics as in C.
+</p>
+<table class=five-way-poll>
+<tr><th>SF</th><th>F</th><th>N</th><th>A</th><th>SA</th></tr>
+<tr><td>7</td><td>2</td><td>0</td><td>0</td><td>0</td></tr>
+</table>
+<ul>
+  <li><b>Author Position</b>: SF</li>
+  <li><b>Outcome</b>: Strong consensus in favor</li>
+</ul>
+</blockquote>
+
+<note-block><p><intro-></intro-> 
+The use of "C" in the above SG6 poll is somewhat ambiguous.
+The issues of <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code> and bit-precise underlying enumeration types
+were presented to SG6,
+and SG6 seemed to agree with the author's choices
+once it was clear that C2y is heading in this direction anyway.
+</p>
+<p>Overall, both SG22 and SG6 agree that <code><h- data-h=kw_type>_BitInt</h-></code> in C++ should match the C design,
+and keeping it in sync with C2y's changes since C23 is necessary for that.
+</p></note-block>
 
 <h3 id=why-not-a-class-template><a class=para href=#why-not-a-class-template></a>4.1. Why not a class template?</h3>
 
@@ -3165,6 +3225,12 @@ for a complete list of changes,
 including such silently added support.
 </p></note-block>
 
+<p>SG22 and SG6 gave feedback on the library design in this paper.
+While no clear direction was given,
+there was scepticism regarding the amount of changes made to the library.
+In particular, SG22 was not convinced that a <code><h- data-h=id>bit_int</h-></code> alias template
+would increase consensus.
+</p>
 <h3 id=naming-of-the-alias-template><a class=para href=#naming-of-the-alias-template></a>5.1. Naming of the alias template</h3>
 
 <p>The approach is to expose bit-precise integers via two alias templates:
@@ -3180,14 +3246,57 @@ so it is the obvious candidate.
 <tt->int</tt-> and <tt->uint</tt-> match the naming scheme of existing aliases,
 such as <code><h- data-h=id_type>intN_t</h-></code>, <code><h- data-h=id_type>uint_fastN_t</h-></code>, etc.
 </p>
-<p>The alias names as a whole also act as abbreviations of the core language term
+<p>The alias also act as abbreviations of the core language term
 (which is copied from C):
 </p><ul>
   <li><code><h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-></code> is a bit-precise signed integer of width <code><h- data-h=id>N</h-></code></li>
   <li><code><h- data-h=id>bit_uint</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-></code> is a bit-precise unsigned integer of width <code><h- data-h=id>N</h-></code></li>
 </ul>
 
-<h4 id=why-no-_t-suffix><a class=para href=#why-no-_t-suffix></a>5.1.1. Why no <code><h- data-h=id_type>_t</h-></code> suffix?</h4>
+<h4 id=do-we-need-an-alias-template-in-the-first-place><a class=para href=#do-we-need-an-alias-template-in-the-first-place></a>5.1.1. Do we need an alias template in the first place?</h4>
+
+<p>While it could be argued that the "compatibility spelling" <code><h- data-h=kw_type>_BitInt</h-></code>
+is sufficient,
+there are several reasons to also provide an alias template in the standard library:
+</p>
+<ul>
+  <li>
+    It is fairly surprising that the constant within <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=id>N</h-><h- data-h=sym_par>)</h-></code>
+    is a constant expression width.
+    "Pointy brackets" communicate this more clearly.
+  </li>
+  <li>
+    C23 doesn't provide anything like a <code><h- data-h=str>&lt;stdbitint.h&gt;</h-></code> header with a "nicer spelling"
+    in the style of <code><h- data-h=str>&lt;stdbool.h&gt;</h-></code>,
+    so any name is still available.
+    <code><h- data-h=id>bit_int</h-></code> is relatively short and in active use already,
+    so it doesn't seem plausible that WG14 would attempt to standardize these names as macros
+    or keywords.
+    No proposal to do so in C2y has been published yet.
+  </li>
+  <li>
+    Some people object to <code><h- data-h=kw_type>_BitInt</h-></code> aesthetically,
+    and an alternative may increase consensus.
+  </li>
+  <li>
+    If WG21 didn't standardize such a spelling for C++,
+    users would likely create their own type aliases.
+    The worst possible scenario is a "tower of babel" situation
+    where every code base has a slightly different spelling of the same C++ construct.
+    With the proposed alias templates, at worst,
+    there are two widely known options: <code><h- data-h=kw_type>_BitInt</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_int</h-></code>.
+  </li>
+</ul>
+
+<note-block><p><intro-></intro-> 
+SG22 suggested to pull the proposed alias templates out of this paper
+and into a separate proposal.
+However, I believe that there is little value in that.
+If the alias templates are not wanted by LEWG, they can simply be dropped from the paper
+as an action item.
+</p></note-block>
+
+<h4 id=why-no-_t-suffix><a class=para href=#why-no-_t-suffix></a>5.1.2. Why no <code><h- data-h=id_type>_t</h-></code> suffix?</h4>
 
 <p>While the <code><h- data-h=id_type>_t</h-></code> suffix would be conventional for simple type aliases
 such as <code><h- data-h=id_type>uint32_t</h-></code>,
