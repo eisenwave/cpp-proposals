@@ -1805,6 +1805,11 @@ this proposal introduces a new set of fundamental types to C++.
 <h3 id=changes-since-r1><a class=para href=#changes-since-r1></a>1.1. Changes since R1</h3>
 
 <ul>
+  <li>
+    changed the suggested alternative <code><h- data-h=id>BITINT_MAXWIDTH</h-></code>
+    in <a href=#raising-the-bitint_maxwidth>§4.8. Raising the <tt->BITINT_MAXWIDTH</tt-></a>
+    from <code><h- data-h=num>65</h-><h- data-h=num_dlim>'</h-><h- data-h=num>535</h-></code> to <code><h- data-h=num>32</h-><h- data-h=num_dlim>'</h-><h- data-h=num>767</h-></code>
+  </li>
   <li>added <a href=#preserving-integer-class-types>§5.4. Preserving integer-class types</a> and corresponding wording changes</li>
   <li>fixed missing return types in <a href=#bitint-abs>§5.6. New <tt->abs</tt-> overload</a> and throughout the paper</li>
   <li>expanded <a href=#passing-bitint>§5.15. Passing <tt->bit_int</tt-> into standard library function templates</a> with an observation about return types</li>
@@ -3022,7 +3027,7 @@ such as compiling a C library with GCC and using it from Clang-compiled C++ code
 </p>
 <p>An increase to the <code><h- data-h=id>BITINT_MAXWIDTH</h-></code> is political posturing.
 That does not mean that it's entirely pointless.
-If C++ defined the minimum to be, say, <code><h- data-h=num>65</h-><h- data-h=num_dlim>'</h-><h- data-h=num>535</h-></code>,
+If C++ defined the minimum to be, say, <code><h- data-h=num>32</h-><h- data-h=num_dlim>'</h-><h- data-h=num>767</h-></code>,
 this would motivate platforms to define an ABI for large bit-precise integers.
 </p>
 <h4 id=possible-increased-bitint_maxwidth-values><a class=para href=#possible-increased-bitint_maxwidth-values></a>4.8.1. Possible increased <tt->BITINT_MAXWIDTH</tt-> values</h4>
@@ -3044,14 +3049,18 @@ That being said, there two plausible increased minimums:
     pass via pair of 64-bit integers.
   </li>
   <li>
-    <code><h- data-h=num>65</h-><h- data-h=num_dlim>'</h-><h- data-h=num>535</h-></code>.
+    <code><h- data-h=num>32</h-><h- data-h=num_dlim>'</h-><h- data-h=num>767</h-></code>.
     Both GCC and Clang already support this width.
     Some cryptographic use cases like future-proof RSA computations
     need 8192 bits of key size,
     and at least double that for modular arithmetic.
     It is unlikely that a cryptographic library needs 4096 bits but does not need 8192 bits
     at any point,
-    but likely that 65,535 is sufficiently large, even in the next few years.
+    but likely that 32767 is sufficiently large, even in the next few years.
+    Any more than 32767 becomes problematic for the standard library because
+    <code><h- data-h=kw_type>int</h-></code> is no longer capable of representing the width on 16-bit platforms;
+    this breaks functions such as <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>popcount</h-></code> (which returns <code><h- data-h=kw_type>int</h-></code>).
+    Major design adjustments would be needed to address this problem.
   </li>
 </ul>
 

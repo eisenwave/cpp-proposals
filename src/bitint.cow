@@ -31,6 +31,11 @@ this proposal introduces a new set of fundamental types to C++.
 \h3{Changes since R1}
 
 \ul{
+  \li{
+    changed the suggested alternative \tcode{BITINT_MAXWIDTH}
+    in \ref(#raising-the-bitint_maxwidth)
+    from \tcode{65'535} to \tcode{32'767}
+  }
   \li{added \ref(#preserving-integer-class-types) and corresponding wording changes}
   \li{fixed missing return types in \ref(#bitint-abs) and throughout the paper}
   \li{expanded \ref(#passing-bitint) with an observation about return types}
@@ -1303,7 +1308,7 @@ such as compiling a C library with GCC and using it from Clang-compiled C++ code
 
 An increase to the \tcode{BITINT_MAXWIDTH} is political posturing.
 That does not mean that it's entirely pointless.
-If C++ defined the minimum to be, say, \tcode{65'535},
+If C++ defined the minimum to be, say, \tcode{32'767},
 this would motivate platforms to define an ABI for large bit-precise integers.
 
 \h4{Possible increased \tt{BITINT_MAXWIDTH} values}
@@ -1325,14 +1330,18 @@ That being said, there two plausible increased minimums:
     pass via pair of 64-bit integers.
   }
   \li{
-    \tcode{65'535}.
+    \tcode{32'767}.
     Both GCC and Clang already support this width.
     Some cryptographic use cases like future-proof RSA computations
     need 8192 bits of key size,
     and at least double that for modular arithmetic.
     It is unlikely that a cryptographic library needs 4096 bits but does not need 8192 bits
     at any point,
-    but likely that 65,535 is sufficiently large, even in the next few years.
+    but likely that 32767 is sufficiently large, even in the next few years.
+    Any more than 32767 becomes problematic for the standard library because
+    \tcode{int} is no longer capable of representing the width on 16-bit platforms;
+    this breaks functions such as \tcode{std::popcount} (which returns \tcode{int}).
+    Major design adjustments would be needed to address this problem.
   }
 }
 
