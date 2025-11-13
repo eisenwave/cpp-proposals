@@ -33,6 +33,23 @@ following advantages over the built-in shift operators:
 
 \make_contents
 
+\h2{Revision history}
+
+\h3{Changes since R0}
+
+\ul{
+  \li{
+    changed the function signatures to take any signed or unsigned \tcode{S}
+    instead of \tcode{int}
+  }
+  \li{changed behavior for negative shift amounts to "shift in the opposite direction"}
+  \li{added \ref(#shl-behavior-emulation)}
+  \li{added \ref(#shl-benchmarks)}
+  \li{added \ref(#possible-implementation)}
+  \li{rebased \ref(#wording) on \ref(N5014)}
+  \li{fixed various minor wording issues}
+}
+
 \h2{Introduction}
 
 C++ has built-in shift operators, \tcode{<<} and \tcode{>>},
@@ -338,7 +355,18 @@ int32_t r = std::shl(x, s);
 
 To make an educated choice about which behavior would be appropriate for negative
 shifts in \tcode{std::shl},
-find a comparison of the following functions below:
+find a comparison of the following functions below
+(\ref(QuickBench), \ref(CompilerExplorer)):
+
+\Bnote{
+The latter functions described as "bidirectional"
+shift in the opposite direction for negative shift amounts.
+The \tcode{shl_branchless} and \tcode{shl_branching} functions
+display behavior that was originally proposed (meaningless result for negative shifts).
+
+Some of the implementations rely on behavior that is \em{technically} undefined,
+but "works in practice".
+}
 
 \style{
   .tony-table {
@@ -367,7 +395,7 @@ find a comparison of the following functions below:
 
 \tr{
 \td{\codeblock(cpp, borders=false){
-unsigned shl_unsafe(unsigned x, int s)  {
+unsigned shl_unsafe(unsigned x, int s) {
     return x << s;
 }
 }}
@@ -381,7 +409,9 @@ shl_unsafe:
 
 \tr{
 \td{\codeblock(cpp, borders=false){
-unsigned shl_branchless(unsigned x, int s)  {
+unsigned shl_branchless(
+  unsigned x, int s
+) {
     return (s < 32) * (x << s);
 }
 }}
@@ -398,7 +428,9 @@ shl_branchless:
 
 \tr{
 \td{\codeblock(cpp, borders=false){
-unsigned shl_branching(unsigned x, int s)  {
+unsigned shl_branching(
+  unsigned x, int s
+) {
     if (s < 32) return x << s;
     else return 0;
 }
@@ -416,6 +448,7 @@ shl_branching:
 
 \tr{
 \td{\codeblock(cpp, borders=false){
+// Bidirectional (proposed behavior).
 unsigned shl_bi_branching(
   unsigned x, int s
 ) {
@@ -451,6 +484,7 @@ shl_bi_branching:
 
 \tr{
 \td{\codeblock(cpp, borders=false){
+// Bidirectional (proposed behavior).
 unsigned shl_bi_semi_branchless(
   unsigned x, int s
 ) {
@@ -484,6 +518,7 @@ shl_bi_semi_branchless:
 
 \tr{
 \td{\codeblock(cpp, borders=false){
+// Bidirectional (proposed behavior).
 unsigned shl_bi_branchless(
   unsigned x, int s
 ) {
@@ -614,9 +649,58 @@ That is, overloads that can either shift a \tcode{simd::vec} by a \tcode{simd::v
 of shift amounts,
 or by a scalar shift amount which applies to all elements in the \tcode{simd::vec}.
 
+\h2{Possible implementation}
+
+The scalar \tcode{std::shl} and \tcode{std::shr} may be implemented as follows:
+
+\cppblock{
+template<class T>
+concept __signed_or_unsigned
+  =  is_integral_v<T>
+  && !is_const_v<T>
+  && !is_volatile_v<T>
+  && !is_same_v<T, bool>;
+
+template<__signed_or_unsigned T, __signed_or_unsigned S>
+constexpr T shl(T x, S s) noexcept {
+  constexpr auto width = S(numeric_limits<make_unsigned_t<T>>::digits);
+  if constexpr (is_signed_v<S>) {
+    if (s < 0) {
+      constexpr auto fill = T(is_signed_v<T> ? -1 : 0);
+      return s <= -width ? fill : x >> -s;
+    }
+  }
+  return s >= width ? T(0) : x << s;
+}
+
+template<__signed_or_unsigned T, __signed_or_unsigned S>
+constexpr T shr(T x, S s) noexcept {
+  constexpr auto width = S(numeric_limits<make_unsigned_t<T>>::digits);
+  if constexpr (is_signed_v<S>) {
+    if (s >= 0) {
+      constexpr auto fill = T(is_signed_v<T> ? -1 : 0);
+      return s >= width ? fill : x >> s;
+    }
+  }
+  return s <= -width ? T(0) : x << -s;
+}
+}
+
+\tcode{simd::shl} and \tcode{simd::shr} may be implemented (naively)
+by performing the operation for each element.
+A less naive implementation would be based on the \tcode{branchless} variants
+shown in \ref(#shl-benchmarks).
+
+\Bnote{
+Conveniently, the underlying instructions for comparing integers yield bit masks
+where every bit is set when the comparison succeeds.
+This makes it easy to implement \tcode{(s < 32) * (x << s)} in terms of e.g.
+\tt{VPCMPGTD}, \tt{VPAND}, and \tt{VPSLLD} on x86.
+}
+
 \h2{Wording}
 
-The following changes are relative to \ref(N5008).
+The following changes are relative to \ref(N5014).
 
 \Bnote{
 The \tcode{shl} and \tcode{shr} functions should immediately precede the
@@ -716,6 +800,13 @@ is a signed or unsigned integer type\iref{basic.fundamental}.
 \returns
 \math{\mrow{\mi{x}\mo{×}\msup{\mn{2}\mrow{\mo{−}\mi{s}}}}}
 rounded towards negative infinity.
+
+\note{
+\tcode{shl(x, s)} is equivalent to \tcode{shr(x, -s)}
+if \tcode{s} is of signed type,
+except that \tcode{-s} is undefined if \tcode{s} equals \tcode{numeric_limits<S>::min()};
+neither \tcode{shl} nor \tcode{shr} exhibit undefined behavior.
+}
 }
 }
 
@@ -727,19 +818,19 @@ In \eelis{simd.syn}, change the synopsis as follows:
 \itemdecl{
 \etc
 
-// \serif{[simd.bit], Bit manipulation}
+// \serif{[simd.bit], bit manipulation}
 
 \etc
 
 \ins{template<\exposid{simd-type} V0, \exposid{simd-type} V1>
   constexpr V0 shl(const V0& v, const V1& s) noexcept;
-template<\exposid{simd-type} V>
-  constexpr V  shl(const V& v, int s) noexcept;
+template<\exposid{simd-type} V, class S>
+  constexpr V  shl(const V& v, S s) noexcept;
 
 template<\exposid{simd-type} V0, \exposid{simd-type} V1>
   constexpr V0 shr(const V0& v, const V1& s) noexcept;
-template<\exposid{simd-type} V>
-  constexpr V  shr(const V& v, int s) noexcept;}
+template<\exposid{simd-type} V, class S>
+  constexpr V  shr(const V& v, S s) noexcept;}
 
 template<\exposid{simd-type} V0, \exposid{simd-type} V1>
   constexpr V0 rotl(const V0& v, const V1& s) noexcept;
@@ -753,7 +844,7 @@ template<\exposid{simd-type} V>
 
 \etc
 
-// See \serif{[simd.bit], Bit manipulation}
+// See \serif{[simd.bit], bit manipulation}
 using simd::byteswap;
 using simd::bit_ceil;
 using simd::bit_floor;
@@ -793,40 +884,41 @@ template<\exposid{simd-type} V0, \exposid{simd-type} V1>
 \ul{
   \li{The type \tcode{V0::value_type} is a signed or unsigned integer
       type\iref{basic.fundamental},}
-  \li{the type \tcode{V1::value_type} models \tcode{integral},}
-  \li{\tcode{V0::size() == V1.size()} is \tcode{true}, and}
+  \li{the type \tcode{V1::value_type} is a signed or unsigned integer type,}
+  \li{\tcode{V0::size() == V1::size()} is \tcode{true}, and}
   \li{\tcode{sizeof(typename V0::value_type) == sizeof(typename V1::value_type)}
       is \tcode{true}.}
 }
 
 \pnum
 \returns
-A \tcode{basic_simd} object where the \math{\msup{\mi{i}\mtext{th}}} element
-is initialized to the result of \tcode{\exposid{bit-func}(v0[\math{\mi{i}}],
-static_cast<int>(v1[\math{\mi{i}}]))} for all \math{\mi{i}} in the range
-[\tcode{0}, \tcode{V::size()}), where \tcode{\exposid{bit-func}} has the same
-behavior as the corresponding scalar function from \header{bit} except that the
-type of its second parameter is considered to be \tcode{V1::value_type}.
+A \tcode{basic_vec} object where the \math{\msup{\mi{i}\mtext{th}}} element
+is initialized to the result of
+\tcode{\exposid{bit-func}(v0[\math{\mi{i}}], v1[\math{\mi{i}}])}
+for all \math{\mi{i}} in the range
+[\tcode{0}, \tcode{V0::size()}), where \tcode{\exposid{bit-func}} has the same
+behavior as the corresponding scalar function from \header{bit}.
 }
 
 \itemdecl{
-template<\exposid{simd-type} V>
-  constexpr V shl(const V& v, int s) noexcept;
-template<\exposid{simd-type} V>
-  constexpr V shl(const V& v, int s) noexcept;
+template<\exposid{simd-type} V, class S>
+  constexpr V shl(const V& v, S s) noexcept;
+template<\exposid{simd-type} V, class S>
+  constexpr V shr(const V& v, S s) noexcept;
 }
 
 \itemdescr{
 \pnum
 \constraints
-The type \tcode{V::value_type} is a signed or unsigned integer
-type\iref{basic.fundamental}.
+Each of \tcode{V::value_type} and \tcode{S}
+is a signed or unsigned integer type\iref{basic.fundamental}.
 
 \pnum
 \returns
-A \tcode{basic_simd} object where the \math{\msup{\mi{i}\mtext{th}}} element is
-initialized to the result of \tcode{\exposid{bit-func}(v[\math{\mi{i}}], s)} for
-all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}), where
+A \tcode{basic_vec} object where the \math{\msup{\mi{i}\mtext{th}}} element is
+initialized to the result of
+\tcode{\exposid{bit-func}(v[\math{\mi{i}}], s)}
+for all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}), where
 \tcode{\exposid{bit-func}} is the corresponding scalar function from
 \header{bit}.
 }
@@ -836,12 +928,12 @@ all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}), where
 \h2{References}
 
 \bib(
-  id = N5008,
+  id = N5014,
   title = Working Draft\, Programming Languages — C++,
-  date = 2025-03-15,
+  date = 2025-08-05,
   author = Thomas Köppe,
-  link = https://wg21.link/n5008,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5008.pdf,
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
 )\
 \bib(
   id = P2933R4,
@@ -866,6 +958,16 @@ all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}), where
   author = Jan Schultke,
   link = https://wg21.link/p3764r0,
   long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3764r0.html,
+)\
+\bib(
+  id = QuickBench,
+  title = Benchmark for various ways of handling negative shift amounts,
+  link = https://quick-bench.com/q/HcAUoOoGFHnm5nx1G_rJs52oLaY,
+)\
+\bib(
+  id = CompilerExplorer,
+  title = Assembly comparison for various ways of handling negative shift amounts,
+  link = https://godbolt.org/z/1Won5qjo9,
 )\
 
 \make_bib
