@@ -4,9 +4,9 @@
   title = Bit-precise integers
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3666R1}}
-  \dt{Date:}            \dd{\tt{2025-10-01}}
-  \dt{Audience:}        \dd{SG6, SG22, EWG, LEWG}
+  \dt{Document number:} \dd{\docnum{P3666R2}}
+  \dt{Date:}            \dd{\tt{2025-11-13}}
+  \dt{Audience:}        \dd{EWG, LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3666/github)}
@@ -27,6 +27,13 @@ this proposal introduces a new set of fundamental types to C++.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R1}
+
+\ul{
+  \li{expanded \ref(#passing-bitint) with an observation about return types}
+  \li{fixed missing return types on \tcode{abs} throughout the paper}
+}
 
 \h3{Changes since R0}
 
@@ -1602,7 +1609,7 @@ The proposal adds the following \tcode{abs} overload:
 
 \cppblock{
 template<size_t N>
-  constexpr abs(bit_int<N> j);
+  constexpr bit_int<N> abs(bit_int<N> j);
 }
 
 While \tcode{abs} is not strictly part of the MVP,
@@ -1839,7 +1846,7 @@ should accept \tcode{bit_int} by value.
 The proposal adds this \tcode{abs} overload:
 \cppblock{
 template<size_t N>
-  constexpr abs(bit_int<N> j);
+  constexpr bit_int<N> abs(bit_int<N> j);
 }
 
 If implemented verbatim like this,
@@ -1864,13 +1871,13 @@ An implementation of the \tcode{abs} function template could look as follows:
 
 \cppblock{
 template<size_t __n>
-constexpr abs(_BitInt(__n) __j) { // pass small integers by value
+constexpr _BitInt(n) abs(_BitInt(__n) __j) { // pass small integers by value
   return __j >= 0 ? __j : -__j;
 }
 
 template<size_t __n>
   requires (sizeof(_BitInt(__n)) > __pass_by_value_max_size)
-constexpr abs(const _BitInt(__n)& __j) { // pass large integers by reference
+constexpr _BitInt(n) abs(const _BitInt(__n)& __j) { // pass large integers by reference
   return __j >= 0 ? __j : -__j;
 }
 }
@@ -1879,7 +1886,7 @@ Another plausible implementation strategy is to
 use an ABI-altering, implementation-specific attribute.
 \cppblock{
 template<size_t __n>
-constexpr abs([[impl::pass_large_by_ref]] _BitInt(__n) __j) {
+constexpr _BitInt(n) abs([[impl::pass_large_by_ref]] _BitInt(__n) __j) {
   return __j >= 0 ? __j : -__j;
 }
 }
@@ -1893,6 +1900,13 @@ the false impression that a \tcode{bit_int<N>} function parameter (with unconstr
 is idiomatic and harmless, which is problematic.
 However, it is seemingly the lesser evil,
 since the alternative is wasting LEWG and LWG time on quality of implementation.
+
+Even if \tcode{bit_int} was passed into standard library functions by reference,
+the same issue arises for return types:
+\tcode{bit_int} would be returned by value from \tcode{std::abs}, \tcode{std::rotl},
+\tcode{std::gcd}, \tcode{std::simd::vec::operator[]},
+library types that use a bit-precise \tcode{size_type} or \tcode{difference_type},
+and many more.
 
 \:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -3854,7 +3868,7 @@ In \eelis{cmath.syn}, change the synopsis as follows:
 constexpr int abs(int j);                                         // \serif{freestanding}
 constexpr long int abs(long int j);                               // \serif{freestanding}
 constexpr long long int abs(long long int j);                     // \serif{freestanding}
-\ins{template<size_t N> constexpr abs(bit_int<N> j);                   // \serif{freestanding}}
+\ins{template<size_t N> constexpr bit_int<N> abs(bit_int<N> j);        // \serif{freestanding}}
 constexpr \exposid{floating-point-type} abs(\exposid{floating-point-type} j);         // \serif{freestanding}
 }
 }
@@ -3893,7 +3907,7 @@ Change \eelis{c.math.abs} as follows:
 constexpr int abs(int j);
 constexpr long int abs(long int j);
 constexpr long long int abs(long long int j);
-\ins{template<size_t N> constexpr abs(bit_int<N> j);}
+\ins{template<size_t N> constexpr bit_int<N> abs(bit_int<N> j);}
 }
 
 \del{\effects
