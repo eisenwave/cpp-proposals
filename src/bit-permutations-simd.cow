@@ -1,35 +1,43 @@
-\import{libwg21.cow}
+\cowel_include{libwg21.cow}
 
-\wg21-head[
-    title = \tcode{std::simd} overloads for bit permutations
-]{
+\wg21_head(
+  title = \tcode{std::simd} overloads for bit permutations
+){
 \dl{
-    \dt{Document number:} \dd{\docnum{P3772R0}}
-    \dt{Date:}            \dd{\tt{2025-06-28}}
-    \dt{Audience:}        \dd{SG6}
-    \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
-    \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultkegmail.com}>}
-    \dt{GitHub Issue:}    \dd{\ref[https://wg21.link/P3772/github]}
-    \dt{Source:}          \dd{\ref[https://github.com/Eisenwave/cpp-proposals/blob/master/src/bit-permutations-simd.cow]}
+  \dt{Document number:} \dd{\docnum{P3772R1}}
+  \dt{Date:}            \dd{\tt{2025-11-13}}
+  \dt{Audience:}        \dd{LEWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultkegmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3772/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/bit-permutations-simd.cow)}
 }
 \hr
 }
 
 \Babstract{
-\ref[P3104R3] has been been design-approved by LEWG for C++29.
+\ref(P3104R4) has been been design-approved by LEWG for C++29.
 This proposal adds \tcode{std::simd} overloads
-to add consistency with \ref[P2933R4].
+to add consistency with \ref(P2933R4).
 }
 
-\h2[listed=no]{Contents}
+\h2(listed=false){Contents}
 
-\make-contents
+\make_contents
+
+\h2{Revision history}
+
+\ul{
+  \li{updated paper reference to \ref(P3104R4) (instead of R3)}
+  \li{removed stray \tcode{noexcept} on \tcode{simd::bit_repeat}}
+  \li{rebased \ref(#wording) on \ref(N5014)}
+}
 
 \h2{Introduction}
 
-\ref[P3104R3] has been been design-approved by LEWG for C++29.
+\ref(P3104R4) has been been design-approved by LEWG for C++29.
 During the discussion of the paper,
-it was \em{not} mentioned that \ref[P2933R4] adds \tcode{std::simd}
+it was \em{not} mentioned that \ref(P2933R4) adds \tcode{std::simd}
 overloads for almost all functions in the \header{bit} header.
 
 For the purpose of consistency,
@@ -60,6 +68,11 @@ so naturally,
 \tcode{std::simd::bit_compress} and \tcode{std::simd::bit_expand}
 are binary operations between two \tcode{std::simd::vec}s of the same type.
 
+All added function are \tcode{noexcept},
+except the \tcode{simd::bit_repeat} overloads.
+That is because \tcode{std::bit_repeat} is not \tcode{noexcept} either;
+it has a narrow contract.
+
 \h2{Implementation experience}
 
 None.
@@ -78,9 +91,9 @@ In \eelis{simd.syn}, change the synopsis as follows:
 
 \Bdiff{\itemdecl{
 namespace std::simd {
-  \html{[\N{HORIZONTAL ELLIPSIS}]}
+  \etc
   
-  // \serif{\eelis{simd.bit}, Bit manipulation}
+  // \serif{\eelis{simd.bit}, bit manipulation}
   template<\exposid{simd-type} V> constexpr V byteswap(const V& v) noexcept;
 \ins{  template<\exposid{simd-type} V> constexpr V bit_reverse(const V& v) noexcept;}
   template<\exposid{simd-type} V> constexpr V bit_ceil(const V& v) noexcept;
@@ -100,9 +113,9 @@ namespace std::simd {
     constexpr V  rotr(const V& v, int s) noexcept;
 \ins{
   template<\exposid{simd-type} V0, \exposid{simd-type} V1>
-    constexpr V0 bit_repeat(const V0& v, const V1& l) noexcept;
+    constexpr V0 bit_repeat(const V0& v, const V1& l);
   template<\exposid{simd-type} V>
-    constexpr V  bit_repeat(const V& v, int l) noexcept;}
+    constexpr V  bit_repeat(const V& v, int l);}
 
   template<\exposid{simd-type} V>
     constexpr rebind_t<make_signed_t<typename V::value_type>, V>
@@ -128,13 +141,13 @@ namespace std::simd {
   template<\exposid{simd-type} V>
     constexpr V bit_expand(const V& v, const V& m) noexcept;}
 
-  \html{[\N{HORIZONTAL ELLIPSIS}]}
+  \etc
 }
 
 namespace std {
-  \html{[\N{HORIZONTAL ELLIPSIS}]}
+  \etc
 
-  // \serif{\eelis{simd.bit}}, Bit manipulation
+  // \serif{\eelis{simd.bit}, bit manipulation}
   using simd::byteswap;
   using simd::bit_ceil;
   using simd::bit_floor;
@@ -152,17 +165,17 @@ namespace std {
 \ins{  using simd::bit_compress;}
 \ins{  using simd::bit_expand;}
 
-  \html{[\N{HORIZONTAL ELLIPSIS}]}
+  \etc
 }
 }}
 
 Change \eelis{simd.bit} as follows:
 
-\macro[\mathvar]{\math{\mi{\put}}}
-\macro[\mathvar_th]{\math{\msup{\mi{\put}\mtext{th}}}}
+\cowel_macro(mathvar){\math{\mi{\cowel_put}}}
+\cowel_macro(mathvar_th){\math{\msup{\mi{\cowel_put}\mtext{th}}}}
 
 \Bdiff{
-\html-h3{\tcode{basic_vec} bit library \stable-ref{simd.bit}}
+\cowel_html_element(h3){\tcode{basic_vec} bit library \stable_ref{simd.bit}}
 
 \itemdecl{
 template<\exposconcept{simd-type} V> constexpr V byteswap(const V& v) noexcept;
@@ -262,7 +275,7 @@ template<\exposconcept{simd-type} V0, \exposconcept{simd-type} V1>
 template<\exposconcept{simd-type} V0, \exposconcept{simd-type} V1>
   constexpr V0 rotr(const V0& v0, const V1& v1) noexcept;
 \ins{template<\exposconcept{simd-type} V0, \exposconcept{simd-type} V1>
-  constexpr V0 bit_repeat(const V0& v0, const V1& v1) noexcept;}
+  constexpr V0 bit_repeat(const V0& v0, const V1& v1);}
 }
 
 \itemdescr{
@@ -368,29 +381,29 @@ scalar function from \libheader{bit}.
 
 \h2{References}
 
-\bib[
-  id = N5008,
+\bib(
+  id = N5014,
   title = Working Draft\, Programming Languages — C++,
-  date = 2025-03-15,
+  date = 2025-08-05,
   author = Thomas Köppe,
-  link = https://wg21.link/n5008,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5008.pdf
-]
-\bib[
-  id = P3104R3,
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+)\
+\bib(
+  id = P3104R4,
   title = Bit permutations,
-  date = 2025-02-11,
+  date = 2025-06-28,
   author = Jan Schultke,
-  link = https://wg21.link/p3104r3,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3104r3.html
-]
-\bib[
+  link = https://wg21.link/p3104r4,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3104r4.html,
+)\
+\bib(
   id = P2933R4,
   title = Extend <bit> header function with overloads  for std::simd,
   author = Daniel Towner\, Ruslan Arutyunyan,
   date = 2025-02-13,
   link = https://wg21.link/p2933r4,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2933r4.html
-]
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2933r4.html,
+)\
 
-\make-bib
+\make_bib
