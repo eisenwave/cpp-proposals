@@ -31,8 +31,9 @@ this proposal introduces a new set of fundamental types to C++.
 \h3{Changes since R1}
 
 \ul{
+  \li{added \ref(#preserving-integer-class-types) and corresponding wording changes}
+  \li{fixed missing return types in \ref(#bitint-abs) and throughout the paper}
   \li{expanded \ref(#passing-bitint) with an observation about return types}
-  \li{fixed missing return types on \tcode{abs} throughout the paper}
 }
 
 \h3{Changes since R0}
@@ -1589,6 +1590,18 @@ Dealing with extended integer types extends slightly beyond the scope of the MVP
 but it would be silly to leave the wording in an undesirable state,
 where adding a 128-bit extended integer still forces an ABI break.
 
+\h3(id=preserving-integer-class-types){Preserving integer-class types}
+
+Another very similar wording issue to the one in the previous section
+arises for the so-called "integer-class types"
+in the standard library, in \eelis{iterator.concept.winc#3}.
+Signed-integer-like types are either signed signed integral types,
+or signed-integer-class types.
+Integer-class types are required to be wider than every integral type of the same signedness,
+so introducing bit-precise integers such as \tcode{_BitInt(128)} means that e.g.
+Microsoft's \tcode{std::_Signed128} is no longer an integer-class type,
+and may no longer be used in \tcode{ranges::iota_view}.
+
 \h3{Bit-precise \tcode{size_t}, \tcode{ptrdiff_t}}
 
 As in C,
@@ -2084,6 +2097,15 @@ the possible changes to container \tcode{size_type}s are not listed.
     \td{Expand blanket support for integers.}
     \td{None required}
     \td{\ref(#printing-support)}
+  }
+  \tr{
+    \td{\header{iterator}}
+    \td{
+      Change "integer-class type" to prevent ABI break
+      when integer types are added.
+    }
+    \td{\ref(#iterator.concept.winc)}
+    \td{\ref(#preserving-integer-class-types)}
   }
   \tr{
     \td{\header{limits}}
@@ -3462,6 +3484,18 @@ Change \eelis{stdbit.h.syn#2} as follows:
 }
 }
 
+\h4(show-number=false){[iterator.concept.winc]}
+
+\editnote{See \ref(#preserving-integer-class-types).}
+
+Change \eelis{iterator.concept.winc} as follows:
+
+\Bdiff{
+\etc
+The width of an integer-class type is greater than
+that of every \del{integral} \ins{standard integer} type of the same signedness.
+}
+
 \h4(show-number=false){[range.iota.view]}
 
 \editnote{See \ref(#preventing-iota-view-abi-break).}
@@ -4073,6 +4107,7 @@ without any effort by the author.
 
 I thank
 Erich Keane,
+Jiang An,
 Bill Seymour,
 Howard Hinnant,
 JeanHeyd Meneide,
