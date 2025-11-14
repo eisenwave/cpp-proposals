@@ -28,6 +28,7 @@ Add widening and non-widening carry-less multiplication functions.
 \h3{Changes since R2}
 
 \ul{
+  \li{Add missing \tt{<T>} for \tcode{operator<=>}}
   \li{Rebase \ref(#wording) on \ref(N5014)}
   \li{Improve \ref(#wording) editorially}
 }
@@ -94,6 +95,7 @@ template<class T>
 struct wide_result {
   T low_bits;
   T high_bits;
+  // ...
 };
 
 template<class T>
@@ -414,15 +416,14 @@ there exists a \tcode{std::clmul_wide} function template:
 
 \cppblock{
 template<class T>
-  struct wide_result {
-    T low_bits;
-    T high_bits;
-    friend constexpr bool
-      operator==(const wide_result&, const wide_result&) = default;
-  };
+struct wide_result {
+  T low_bits;
+  T high_bits;
+  friend constexpr bool operator==(const wide_result&, const wide_result&) = default;
+};
 
 template<class T>
-  constexpr auto operator<=>(const wide_result& x, const wide_result& y)
+  constexpr auto operator<=>(const wide_result<T>& x, const wide_result<T>& y)
     noexcept(noexcept(x.low_bits <=> y.low_bits))
     -> decltype(x.low_bits <=> y.low_bits) {
       return tie(x.high_bits, x.low_bits) <=> tie(y.high_bits, y.low_bits);
@@ -554,7 +555,7 @@ struct wide_result {
 };
 
 template<class T>
-  constexpr auto operator<=>(const wide_result& x, const wide_result& y)
+  constexpr auto operator<=>(const wide_result<T>& x, const wide_result<T>& y)
     noexcept(noexcept(x.low_bits <=> y.low_bits))
     -> decltype(x.low_bits <=> y.low_bits);
 
@@ -574,7 +575,7 @@ append a subclause immediately following \eelis{numeric.sat}:
 
 \itemdecl{
 template<class T>
-  constexpr auto operator<=>(const wide_result& x, const wide_result& y)
+  constexpr auto operator<=>(const wide_result<T>& x, const wide_result<T>& y)
     noexcept(noexcept(x.low_bits <=> y.low_bits))
     -> decltype(x.low_bits <=> y.low_bits);
 }
