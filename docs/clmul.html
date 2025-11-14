@@ -1596,8 +1596,10 @@ Add widening and non-widening carry-less multiplication functions.
 <div class=toc><div class=toc-num data-level=2>1</div>
 <a href=#revision-history><h2>Revision history</h2></a>
 <div class=toc-num data-level=3>1.1</div>
-<a href=#changes-since-r1><h3>Changes since R1</h3></a>
+<a href=#changes-since-r2><h3>Changes since R2</h3></a>
 <div class=toc-num data-level=3>1.2</div>
+<a href=#changes-since-r1><h3>Changes since R1</h3></a>
+<div class=toc-num data-level=3>1.3</div>
 <a href=#changes-since-r0><h3>Changes since R0</h3></a>
 <div class=toc-num data-level=2>2</div>
 <a href=#introduction><h2>Introduction</h2></a>
@@ -1623,13 +1625,26 @@ Add widening and non-widening carry-less multiplication functions.
 <a href=#simd-widening-operations-are-out-of-scope><h4>SIMD widening operations are out of scope</h4></a>
 <div class=toc-num data-level=2>6</div>
 <a href=#wording><h2>Proposed wording</h2></a>
+<div class=toc-num data-level=3>6.1</div>
+<a href=#version%2esyn><h3>[version.syn]</h3></a>
+<div class=toc-num data-level=3>6.2</div>
+<a href=#numeric%2eops><h3>[numeric.ops]</h3></a>
+<div class=toc-num data-level=3>6.3</div>
+<a href=#wording-simd><h3>[simd]</h3></a>
 <div class=toc-num data-level=2>7</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
 <h2 id=revision-history><a class=para href=#revision-history></a>1. Revision history</h2>
 
-<h3 id=changes-since-r1><a class=para href=#changes-since-r1></a>1.1. Changes since R1</h3>
+<h3 id=changes-since-r2><a class=para href=#changes-since-r2></a>1.1. Changes since R2</h3>
+
+<ul>
+  <li>Rebase <a href=#wording>§6. Proposed wording</a> on <a href="https://wg21%2elink/n5014">[N5014]</a></li>
+  <li>Improve <a href=#wording>§6. Proposed wording</a> editorially</li>
+</ul>
+
+<h3 id=changes-since-r1><a class=para href=#changes-since-r1></a>1.2. Changes since R1</h3>
 
 <p>The paper was seen by SG6 at Sofia 2025
 with the following feedback:
@@ -1659,7 +1674,7 @@ that the next revision includes <code><h- data-h=id>std</h-><h- data-h=sym_op>::
   <li>Rebase <a href=#wording>§6. Proposed wording</a> on <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>simd</h-></code> naming changes in <a href="https://wg21%2elink/p3691r1">[P3691R1]</a></li>
 </ul>
 
-<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.2. Changes since R0</h3>
+<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.3. Changes since R0</h3>
 
 <ul>
   <li>Generate the proposal using COWEL instead of bikeshed</li>
@@ -1688,10 +1703,10 @@ two polynomials in GF(2), where each bit is a coefficient.
 
 <p>I also propose a widening operation in the style of <a href="https://wg21%2elink/p3161r4">[P3161R4]</a>, as follows:
 </p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>struct</h-> <h- data-h=id>wide_result</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=id>T</h-> <h- data-h=id>low_bits</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=id>T</h-> <h- data-h=id>high_bits</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>struct</h-> <h- data-h=id>wide_result</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=id>T</h-> <h- data-h=id>low_bits</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=id>T</h-> <h- data-h=id>high_bits</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
 
 <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=id>wide_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>clmul_wide</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
@@ -2095,9 +2110,10 @@ For <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clmul</h-
 </p>
 <h2 id=wording><a class=para href=#wording></a>6. Proposed wording</h2>
 
-<p>The proposed changes are relative to <a href="https://wg21%2elink/N5008">[N5008]</a>
-with the changes in <a href="https://wg21%2elink/p3691r1">[P3691R1]</a> applied.
+<p>The proposed changes are relative to <a href="https://wg21%2elink/n5014">[N5014]</a>.
 </p>
+<h3 id=version.syn><a class=para href=#version%2esyn></a>[version.syn]</h3>
+
 <p>Change <a href=https://eel.is/c++draft/version.syn#2>[version.syn] paragraph 2</a> as follows:
 </p>
 <diff-block>
@@ -2107,12 +2123,14 @@ with the changes in <a href="https://wg21%2elink/p3691r1">[P3691R1]</a> applied.
 <h- data-h=mac>#define __cpp_lib_simd </h-><del><h- data-h=mac>202506L</h-></del><h- data-h=mac> </h-><ins><h- data-h=mac>20????L</h-></ins><h- data-h=mac> </h-><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>also in </h-><tt-><h- data-h=cmt>&lt;simd&gt;</h-></tt-></f-serif></code-block>
 </diff-block>
 
-<note-block><p><intro-></intro-> 
+<note-block class=edit><p><intro-></intro-> 
 We only bump <code><h- data-h=id>__cpp_lib_simd</h-></code> without creating a new SIMD
 feature test macro because <a href="https://wg21%2elink/p2933r4">[P2933R4]</a> did the same,
 and because <code><h- data-h=id>__cpp_lib_clmul</h-></code> can be used to test for the presence
 of both the scalar and SIMD version.
 </p></note-block>
+
+<h3 id=numeric.ops><a class=para href=#numeric%2eops></a>[numeric.ops]</h3>
 
 <p>Add the following declarations to the synopsis in <a href=https://eel.is/c++draft/numeric.ops.overview>[numeric.ops.overview]</a>,
 immediately following the declarations associated with <a href=https://eel.is/c++draft/numeric.sat>[numeric.sat]</a>:
@@ -2120,12 +2138,12 @@ immediately following the declarations associated with <a href=https://eel.is/c+
 <ins-block>
 <code-block class=borderless><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>[numeric.clmul], carry-less product</h-></f-serif>
 <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>struct</h-> <h- data-h=id>wide_result</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=id>T</h-> <h- data-h=id>low_bits</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=id>T</h-> <h- data-h=id>high_bits</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>friend</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h->
-      <h- data-h=kw>operator</h-><h- data-h=sym_op>==</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>wide_result</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=id>wide_result</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw>default</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>struct</h-> <h- data-h=id>wide_result</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=id>T</h-> <h- data-h=id>low_bits</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=id>T</h-> <h- data-h=id>high_bits</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>friend</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h->
+    <h- data-h=kw>operator</h-><h- data-h=sym_op>==</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>wide_result</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=id>wide_result</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw>default</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
 
 <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw>auto</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;=&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>wide_result</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=id>wide_result</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h->
@@ -2258,7 +2276,7 @@ you are using an old browser with no MathML support.
 Please open the document in a recent version of Firefox or Chrome.
 </p></warning-block>
 
-<note-block><p><intro-></intro-> 
+<note-block class=edit><p><intro-></intro-> 
 The formula is taken from <a href="https://www%2eintel%2ecom/content/dam/develop/external/us/en/documents/clmul-wp-rev-2-02-2014-04-20%2epdf">[IntelClmul]</a>, with different variable names,
 and with no special case for the upper <math display=inline><mi>N</mi></math> bits;
 we can simply treat the integers as mathematical integers with
@@ -2271,10 +2289,12 @@ for precedent on using <math display=inline><mi>N</mi></math> to denote the widt
 for precedent on wording which includes formulae.
 </p></note-block>
 
-<note-block><p><intro-></intro-> 
+<note-block class=edit><p><intro-></intro-> 
 The formula above in TeX notation is:
 </p><code-block>c<h- data-h=sym_op>_</h->i = <h- data-h=mk_tag>\bigoplus</h-><h- data-h=sym_op>_</h-><h- data-h=sym_brac>{</h->j = 0<h- data-h=sym_brac>}</h-><h- data-h=sym_op>^</h->i x<h- data-h=sym_op>_</h->i y<h- data-h=sym_op>_</h-><h- data-h=sym_brac>{</h->i - j<h- data-h=sym_brac>}</h-></code-block>
 </note-block>
+
+<h3 id=wording-simd><a class=para href=#wording-simd></a>[simd]</h3>
 
 <p>Add the following declarations to the synopsis in <a href=https://eel.is/c++draft/simd.syn>[simd.syn]</a>:
 </p>
@@ -2282,10 +2302,10 @@ The formula above in TeX notation is:
 <code-block class=borderless><h- data-h=kw>namespace</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>simd</h-> <h- data-h=sym_brac>{</h->
   […]
 
-<ins>  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>[simd.clmul], Carry-less product</h-></f-serif>
-  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=id>simd-type</h-></i> <h- data-h=id>V</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>V</h-> <h- data-h=id>clmul</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>v</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></ins>
+<ins>  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>[simd.clmul], carry-less product</h-></f-serif>
+  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=id>simd-vec-type</h-></i> <h- data-h=id>V</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>V</h-> <h- data-h=id>clmul</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>v</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></ins>
 
-  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>[simd.math], Mathematical functions</h-></f-serif>
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>[simd.math], mathematical functions</h-></f-serif>
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=id>math-floating-point</h-></i> <h- data-h=id>V</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <i><h- data-h=id>deduced-simd-t</h-></i><h- data-h=sym_op>&lt;</h-><h- data-h=id>V</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>acos</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   […]
 <h- data-h=sym_brac>}</h-></code-block>
@@ -2295,10 +2315,10 @@ The formula above in TeX notation is:
 append a subclause immediately preceding <a href=https://eel.is/c++draft/simd.math>[simd.math]</a>:
 </p>
 <ins-block>
-<h3><code><h- data-h=id>basic_vec</h-></code> carry-less product <span class=stable-ref>[simd.clmul]</span></h3>
+<h3>Carry-less product <span class=stable-ref>[simd.clmul]</span></h3>
 
 
-<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=id>simd-type</h-></i> <h- data-h=id>V</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>V</h-> <h- data-h=id>clmul</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>v</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=id>simd-vec-type</h-></i> <h- data-h=id>V</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>V</h-> <h- data-h=id>clmul</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>v</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>1
@@ -2317,12 +2337,12 @@ for all <math display=inline><mi>i</mi></math> in the range [<code><h- data-h=nu
 
 
 
-<div class=bib><div id=bib-item-N5008 class=bib-item>
-<a href="https://wg21%2elink/N5008">[N5008]</a>
+<div class=bib><div id=bib-item-N5014 class=bib-item>
+<a href="https://wg21%2elink/n5014">[N5014]</a>
 <span class=bib-author>Thomas Köppe.</span>
 <span class=bib-title>Working Draft, Programming Languages — C++</span>
-<span class=bib-date>2025-03-15</span>
-<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/n5008%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5008.pdf</a></div><div id=bib-item-P0543R3 class=bib-item>
+<span class=bib-date>2025-08-05</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/n5014%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf</a></div><div id=bib-item-P0543R3 class=bib-item>
 <a href="https://wg21%2elink/p0543r3">[P0543R3]</a>
 <span class=bib-author>Jens Maurer.</span>
 <span class=bib-title>Saturation arithmetic</span>

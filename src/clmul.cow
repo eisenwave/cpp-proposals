@@ -25,6 +25,13 @@ Add widening and non-widening carry-less multiplication functions.
 
 \h2{Revision history}
 
+\h3{Changes since R2}
+
+\ul{
+  \li{Rebase \ref(#wording) on \ref(N5014)}
+  \li{Improve \ref(#wording) editorially}
+}
+
 \h3{Changes since R1}
 
 The paper was seen by SG6 at Sofia 2025
@@ -84,10 +91,10 @@ template<class T>
 I also propose a widening operation in the style of \ref(P3161R4), as follows:
 \cppblock{
 template<class T>
-  struct wide_result {
-    T low_bits;
-    T high_bits;
-  };
+struct wide_result {
+  T low_bits;
+  T high_bits;
+};
 
 template<class T>
   constexpr wide_result<T> clmul_wide(T x, T y) noexcept;
@@ -508,8 +515,9 @@ For \tcode{std::clmul}, designing SIMD widening operations would be scope creep.
 
 \h2(id=wording){Proposed wording}
 
-The proposed changes are relative to \ref(N5008)
-with the changes in \ref(P3691R1) applied.
+The proposed changes are relative to \ref(N5014).
+
+\h3(show-number=false){[version.syn]}
 
 Change \eelis{version.syn#2} as follows:
 
@@ -522,12 +530,14 @@ Change \eelis{version.syn#2} as follows:
 }
 }
 
-\Bnote{
+\editnote{
 We only bump \tcode{__cpp_lib_simd} without creating a new SIMD
 feature test macro because \ref(P2933R4) did the same,
 and because \tcode{__cpp_lib_clmul} can be used to test for the presence
 of both the scalar and SIMD version.
 }
+
+\h3(show-number=false){[numeric.ops]}
 
 Add the following declarations to the synopsis in \eelis{numeric.ops.overview},
 immediately following the declarations associated with \eelis{numeric.sat}:
@@ -536,12 +546,12 @@ immediately following the declarations associated with \eelis{numeric.sat}:
 \itemdecl{
 // \serif{[numeric.clmul], carry-less product}
 template<class T>
-  struct wide_result {
-    T low_bits;
-    T high_bits;
-    friend constexpr bool
-      operator==(const wide_result&, const wide_result&) = default;
-  };
+struct wide_result {
+  T low_bits;
+  T high_bits;
+  friend constexpr bool
+    operator==(const wide_result&, const wide_result&) = default;
+};
 
 template<class T>
   constexpr auto operator<=>(const wide_result& x, const wide_result& y)
@@ -681,7 +691,7 @@ you are using an old browser with no MathML support.
 Please open the document in a recent version of Firefox or Chrome.
 }
 
-\Bnote{
+\editnote{
 The formula is taken from \ref(IntelClmul), with different variable names,
 and with no special case for the upper \mathvar{N} bits;
 we can simply treat the integers as mathematical integers with
@@ -694,12 +704,14 @@ See \eelis{sf.cmath.riemann.zeta}
 for precedent on wording which includes formulae.
 }
 
-\Bnote{
+\editnote{
 The formula above in TeX notation is:
 \codeblock(tex){\literally{
 c_i = \bigoplus_{j = 0}^i x_i y_{i - j}
 }}
 }
+
+\h3(show-number=false, id=wording-simd){[simd]}
 
 Add the following declarations to the synopsis in \eelis{simd.syn}:
 
@@ -708,10 +720,10 @@ Add the following declarations to the synopsis in \eelis{simd.syn}:
 namespace std::simd {
   \etc
 
-\ins{  // \serif{[simd.clmul], Carry-less product}
-  template<\exposid{simd-type} V> constexpr V clmul(const V& v) noexcept;}
+\ins{  // \serif{[simd.clmul], carry-less product}
+  template<\exposid{simd-vec-type} V> constexpr V clmul(const V& v) noexcept;}
 
-  // \serif{[simd.math], Mathematical functions}
+  // \serif{[simd.math], mathematical functions}
   template<\exposid{math-floating-point} V> constexpr \exposid{deduced-simd-t}<V> acos(const V& x);
   \etc
 }
@@ -722,11 +734,11 @@ In subclause \eelis{simd},
 append a subclause immediately preceding \eelis{simd.math}:
 
 \Bins{
-\cowel_html_element(h3){\tcode{basic_vec} carry-less product \stable_ref{simd.clmul}}
+\cowel_html_element(h3){Carry-less product \stable_ref{simd.clmul}}
 \Vset(pnum){0}
 
 \itemdecl{
-template<\exposid{simd-type} V> constexpr V clmul(const V& v) noexcept;
+template<\exposid{simd-vec-type} V> constexpr V clmul(const V& v) noexcept;
 }
 
 \itemdescr{
@@ -745,12 +757,12 @@ for all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}).
 \h2{References}
 
 \bib(
-  id = N5008,
+  id = N5014,
   title = Working Draft\, Programming Languages — C++,
-  date = 2025-03-15,
+  date = 2025-08-05,
   author = Thomas Köppe,
-  link = https://wg21.link/N5008,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5008.pdf,
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
 )\
 \bib(
   id = P0543R3,
