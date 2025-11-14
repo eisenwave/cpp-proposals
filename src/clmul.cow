@@ -1,16 +1,16 @@
-\import{libwg21.cow}
+\cowel_include{libwg21.cow}
 
-\wg21_head[
-    title = Carry-less product: \tt{std::clmul}
-]{
+\wg21_head(
+  title = Carry-less product: \tt{std::clmul}
+){
 \dl{
-    \dt{Document number:} \dd{\docnum{P3642R2}}
-    \dt{Date:}            \dd{\tt{2025-07-02}}
-    \dt{Audience:}        \dd{LEWG}
-    \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
-    \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-    \dt{GitHub Issue:}    \dd{\ref[https://wg21.link/P3642/github]}
-    \dt{Source:}          \dd{\ref[https://github.com/Eisenwave/cpp-proposals/blob/master/src/clmul.cow]}
+  \dt{Document number:} \dd{\docnum{P3642R3}}
+  \dt{Date:}            \dd{\tt{2025-11-14}}
+  \dt{Audience:}        \dd{LEWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3642/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/clmul.cow)}
 }
 \hr
 }
@@ -19,7 +19,7 @@
 Add widening and non-widening carry-less multiplication functions.
 }
 
-\h2[listed=no]{Contents}
+\h2(listed=false){Contents}
 
 \make_contents
 
@@ -38,35 +38,35 @@ SG6 had no numerics concerns but recommended to include std::simd overloads into
 Forward P3642R1 to LEWG with the expectation
 that the next revision includes \tcode{std::simd} overloads.
 
-\five_way_poll[7,4,0,0,0]
+\five_way_poll(7,4,0,0,0)
 }
 
 The following changes were made:
 
 \ul{
-  \li{Provide (non-widening) \ref[#simd]}
+  \li{Provide (non-widening) \ref(#simd)}
   \li{Use two-space indentation, and generally match the code style of the C++ standard}
-  \li{Provide detailed design description for \ref[#widening]}
-  \li{Make \ref[#wording] and design independent of \ref[P3161R4]}
-  \li{Fix stray \tcode{U} type name in \ref[#wording], and improve wording generally}
-  \li{Rebase \ref[#wording] on \tcode{std::simd} naming changes in \ref[P3691R1]}
+  \li{Provide detailed design description for \ref(#widening)}
+  \li{Make \ref(#wording) and design independent of \ref(P3161R4)}
+  \li{Fix stray \tcode{U} type name in \ref(#wording), and improve wording generally}
+  \li{Rebase \ref(#wording) on \tcode{std::simd} naming changes in \ref(P3691R1)}
 }
 
 \h3{Changes since R0}
 
 \ul{
-\li{Generate the proposal using COWEL instead of bikeshed}
-\li{Fix incorrect formula in \ref[#wording] for bits \c{ge} the integer width}
-\li{Fix \ref[#hardware-support] missing new VPCLMULQDQ instructions}
-\li{Fix improper uses of \tcode{std::unsigned_integral} in \ref[#introduction]}
-\li{Make slight editorial wording adjustments}
-\li{Rebase on N5008 and \ref[P3161R4]}
-\li{Mention \ref[SimdJsonClmul] in \ref[#motivation]}
+  \li{Generate the proposal using COWEL instead of bikeshed}
+  \li{Fix incorrect formula in \ref(#wording) for bits ≥ the integer width}
+  \li{Fix \ref(#hardware-support) missing new VPCLMULQDQ instructions}
+  \li{Fix improper uses of \tcode{std::unsigned_integral} in \ref(#introduction)}
+  \li{Make slight editorial wording adjustments}
+  \li{Rebase on N5008 and \ref(P3161R4)}
+  \li{Mention \ref(SimdJsonClmul) in \ref(#motivation)}
 }
 
 \h2{Introduction}
 
-\ref[https://en.wikipedia.org/wiki/Carry-less_product]{Carry-less multiplication}
+\ref(https://en.wikipedia.org/wiki/Carry-less_product){Carry-less multiplication}
 is a simple numerical operation on unsigned integers.
 It can be a seen as a regular multiplication where
 \tcode{xor} is being used as a reduction instead of \tcode{+}.
@@ -81,7 +81,7 @@ template<class T>
   constexpr T clmul(T x, T y) noexcept;
 }
 
-I also propose a widening operation in the style of \ref[P3161R4], as follows:
+I also propose a widening operation in the style of \ref(P3161R4), as follows:
 \cppblock{
 template<class T>
   struct wide_result {
@@ -101,7 +101,7 @@ Carry-less multiplication is an important operation in a number of use cases:
 \li{
   \b{CRC Computation:} While cyclic redundancy checks can theoretically be performed with a finite
   field of any length, in practice,
-  \ref[https://en.wikipedia.org/wiki/GF(2)]{GF(2)[X]},
+  \ref(https://en.wikipedia.org/wiki/GF(2)){GF(2)[X]},
   the \i{polynomial ring} over the \i{Galois field} with two elements is used.
   Polynomial addition in this ring can be implemented via \tcode{xor},
   and multiplication via \tcode{clmul},
@@ -109,15 +109,15 @@ Carry-less multiplication is an important operation in a number of use cases:
 }
 \li{
   \b{Cryptography:} \tcode{clmul} may be used to implement AES-GCM.
-  \ref[IntelClmul] describes this process in great detail and motivates hardware support for
+  \ref(IntelClmul) describes this process in great detail and motivates hardware support for
   carry-less multiplication via the \tcode{pclmulqdq} instruction.
 }
 \li{
   \b{Bit manipulation:} \tcode{clmul} performs a large amount
   of \tcode{<<} and \tcode{xor} operations in parallel.
-  This is utilized in the reference implementation \ref[BitPermutations]
+  This is utilized in the reference implementation \ref(BitPermutations)
   of \tcode{std::bit_compressr},
-  proposed in \ref[P3104R3].
+  proposed in \ref(P3104R3).
   For example, the form \nobr{\tcode{clmul(x, -1u)}} computes the bitwise inclusive parity
   for each bit of \tcode{x} and the bits to its right.
 }
@@ -146,7 +146,7 @@ bool parity(std::uint32_t x) {
 
 While the parity of \em{all} bits can be obtained with \tcode{clmul},
 it computes the inclusive cumulative parity,
-which can be used to accelerate parsing JSON and other file formats (\ref[SimdJsonClmul]).
+which can be used to accelerate parsing JSON and other file formats (\ref(SimdJsonClmul)).
 This can be done by mapping each \tcode{"} character onto a \tcode{1}-bit,
 and any other character onto \tcode{0}.
 \tcode{clmul(x, -1)} would then produce masks where string characters
@@ -154,9 +154,9 @@ corresponds to a \tcode{1}-bit.
 
 \Bex{
 \pre{
-abc xxx \code[cpp,nested=yes]{"foobar"} zzz \code[cpp,nested=yes]{"a"} \code[cpp,nested=yes]{// input string}
-00000000\hl[string-delim]{1}000000\hl[string-delim]{1}00000\hl[string-delim]{1}0\hl[string-delim]{1} \code[cpp,nested=yes]{// quote_mask}
-00000000\hl[string-delim]{.}\hl[string]{111111}\hl[string-delim]{.}00000\hl[string-delim]{.}\hl[string]{1}\hl[string-delim]{.} \code[cpp,nested=yes]{// clmul(quote_mask, -1), ignoring 1-bits of quote_mask}
+abc xxx \code(cpp,nested=true){"foobar"} zzz \code(cpp,nested=true){"a"} \code(cpp,nested=true){// input string}
+00000000\hl(string-delim){1}000000\hl(string-delim){1}00000\hl(string-delim){1}0\hl(string-delim){1} \code(cpp,nested=true){// quote_mask}
+00000000\hl(string-delim){.}\hl(string){111111}\hl(string-delim){.}00000\hl(string-delim){.}\hl(string){1}\hl(string-delim){.} \code(cpp,nested=true){// clmul(quote_mask, -1), ignoring 1-bits of quote_mask}
 }
 }
 
@@ -186,7 +186,7 @@ The problem with such a naive curve is that adjacent indices can be positioned v
 For image processing, if we store pixels in this pattern, cache locality is bad;
 two adjacent pixels can be very far apart in memory.
 
-A \ref[https://en.wikipedia.org/wiki/Hilbert_curve]{Hilbert curve}
+A \ref(https://en.wikipedia.org/wiki/Hilbert_curve){Hilbert curve}
 is a family of space-filling curves where the distance between two adjacent
 elements is \tcode{1}:
 \pre{
@@ -196,14 +196,14 @@ elements is \tcode{1}:
 5 6 9 a
 }
 De-interleaving bits of \tcode{i} into \tcode{x} and \tcode{y}
-yields a \ref[https://en.wikipedia.org/wiki/Z-order_curve]{Z-order curve},
+yields a \ref(https://en.wikipedia.org/wiki/Z-order_curve){Z-order curve},
 and performing further transformations yields a
-\ref[https://en.wikipedia.org/wiki/Hilbert_curve]{Hilbert curve}.
+\ref(https://en.wikipedia.org/wiki/Hilbert_curve){Hilbert curve}.
 
 \Bex{
 \tcode{clmul} can be used to compute the bitwise parity for each bit and the bits to its right,
 which is helpful for computing Hilbert curves.
-Note that the following example uses the \tcode{std::bit_compress} function from \ref[P3104R3],
+Note that the following example uses the \tcode{std::bit_compress} function from \ref(P3104R3),
 which may also be accelerated using \tcode{clmul}.
 
 \cppblock{
@@ -222,8 +222,8 @@ pos hilbert_to_xy(uint32_t i) {
   return { .x = a ^ i1, .y = a ^ i0 ^ i1 };
 }
 }
-This specific example is taken from \ref[FastHilbertCurves].
-\ref[HackersDelight] explains the basis behind this computation
+This specific example is taken from \ref(FastHilbertCurves).
+\ref(HackersDelight) explains the basis behind this computation
 of Hilbert curves using bitwise operations.
 }
 
@@ -241,7 +241,7 @@ a b e f
 
 \Bex{
 \tcode{clmul} can be used to implement bit-interleaving in order to generate a
-\ref[https://en.wikipedia.org/wiki/Z-order_curve]{Z-order curves}.
+\ref(https://en.wikipedia.org/wiki/Z-order_curve){Z-order curves}.
 \cppblock{
 uint32_t xy_to_morton(uint32_t x, uint32_t y) {
   uint32_t lo = std::clmul(x, x) << 0; // abcd -> 0a0b0c0d
@@ -253,7 +253,7 @@ uint32_t xy_to_morton(uint32_t x, uint32_t y) {
 
 \Bnote{
 In the example above, \tcode{std::clmul(x, x)} is equivalent to
-\ref[P3104R3]'s \tcode{std::bit_expand(x, 0x55555555u)}.
+\ref(P3104R3)'s \tcode{std::bit_expand(x, 0x55555555u)}.
 }
 
 \h2{Possible implementation}
@@ -285,7 +285,7 @@ and \tt{\N{MULTIPLICATION SIGN}N} denote the amount of operands that are process
   }
 }
 
-\table[id=optable]{
+\table(id=optable){
 \tr{
   \th{Operation}\th{x86_64}\th{ARM}\th{RV64}
 }
@@ -359,21 +359,21 @@ wide_result<uint64_t> clmul_wide(uint64_t x, uint64_t y) noexcept {
 }
 }
 
-There also exists an LLVM pull request (\ref[LLVMClmul])
+There also exists an LLVM pull request (\ref(LLVMClmul))
 which would add an \tt{@llvm.clmul} intrinsic function.
 
 
 \h2{Design considerations}
 
-Multiple design choices lean on \ref[P0543R3] and \ref[P3161R4].
+Multiple design choices lean on \ref(P0543R3) and \ref(P3161R4).
 Specifically,
 
 \ul{
-\li{the choice of header \header{numeric},}
-\li{the choice to have a widening operation,}
-\li{the \tcode{_wide} naming scheme,}
-\li{the \tcode{wide_result} template, and}
-\li{the decision to have a \tcode{(T, T)} parameter list.}
+  \li{the choice of header \header{numeric},}
+  \li{the choice to have a widening operation,}
+  \li{the \tcode{_wide} naming scheme,}
+  \li{the \tcode{wide_result} template, and}
+  \li{the decision to have a \tcode{(T, T)} parameter list.}
 }
 
 \h3{Naming}
@@ -384,23 +384,23 @@ The name \tcode{clmul} was chosen because it carries no domain-specific connotat
 and because it is widespread:
 
 \ul{
-\li{
-Intel refers to \tcode{PCLMULQDQ} As "Carry-Less Multiplication Quadword" in its manual;
-see \ref[IntelManual].
-}
-\li{
-RISC-V refers to \tcode{clmul} as carry-less multiplication,
-and this is obvious from the mnemonic.
-}
-\li{
-The Wikipedia article (\ref[WikipediaClmul]) for this operation is titled "Carry-less product".
-}
-\li{
-The (proposed) LLVM intrinsic function (\ref[LLVMClmul]) is tentatively named \tt{@llvm.clmul}.
-}
+  \li{
+    Intel refers to \tcode{PCLMULQDQ} As "Carry-Less Multiplication Quadword" in its manual;
+    see \ref(IntelManual).
+  }
+  \li{
+    RISC-V refers to \tcode{clmul} as carry-less multiplication,
+    and this is obvious from the mnemonic.
+  }
+  \li{
+    The Wikipedia article (\ref(WikipediaClmul)) for this operation is titled "Carry-less product".
+  }
+  \li{
+    The (proposed) LLVM intrinsic function (\ref(LLVMClmul)) is tentatively named \tt{@llvm.clmul}.
+  }
 }
 
-\h3[id=widening]{Widening operation}
+\h3(id=widening){Widening operation}
 
 In addition to the \tcode{std::clmul} function template,
 there exists a \tcode{std::clmul_wide} function template:
@@ -426,10 +426,10 @@ template<class T>
 }
 
 Such a widening function is important in a various cryptographic use cases.
-There is universal \ref[#hardware-support] for obtaining all 128 bits
+There is universal \ref(#hardware-support) for obtaining all 128 bits
 of a multiplication for that reason.
 
-Most of the design choices take the design of \ref[P3161R4] into consideration:
+Most of the design choices take the design of \ref(P3161R4) into consideration:
 
 \ul{
   \li{
@@ -469,12 +469,12 @@ width of the input because it is not guaranteed that such a type exists,
 especially in the case of \tcode{unsigned long long} inputs.
 }
 
-\h3[id=simd]{SIMD support}
+\h3(id=simd){SIMD support}
 
 Upon seeing this proposal at Sofia 2025,
 SG6 recommended to add SIMD support.
 This recommendation was provided under the assumption that it would be
-a simple addition in the style of \ref[P2933R4].
+a simple addition in the style of \ref(P2933R4).
 Therefore, this proposal provides non-widening SIMD carry-less multiplication
 with the following signature:
 
@@ -496,7 +496,7 @@ especially if one wants to expose the full \tt{VPCLMULQDQ} behavior,
 which allows choosing for each \tt{u64\N{MULTIPLICATION SIGN}2} integer pair,
 which of these integers is multiplied and which is ignored.
 Procedurally, that design effort should be part of
-\ref[P3161R4] (which proposes widening operations in general)
+\ref(P3161R4) (which proposes widening operations in general)
 or some follow-up proposal for SIMD widening operations.
 Some other SIMD instructions like \tt{PMULUDQ} perform multiple widening multiplications in parallel,
 in the same style as \tt{VPCLMULQDQ},
@@ -506,25 +506,25 @@ This is a broad design space.
 In conclusion, a proposal for widening SIMD operations \em{in general} would be well-motivated.
 For \tcode{std::clmul}, designing SIMD widening operations would be scope creep.
 
-\h2[id=wording]{Proposed wording}
+\h2(id=wording){Proposed wording}
 
-The proposed changes are relative to \ref[N5008]
-with the changes in \ref[P3691R1] applied.
+The proposed changes are relative to \ref(N5008)
+with the changes in \ref(P3691R1) applied.
 
 Change \eelis{version.syn#2} as follows:
 
 \Bdiff{
 \itemdecl{
-\html{[\N{HORIZONTAL ELLIPSIS}]}
-\ins{#define __cpp_lib_clmul 20????L // \serif{also in <numeric>}}
-\html{[\N{HORIZONTAL ELLIPSIS}]}
-#define __cpp_lib_simd \del{202506L} \ins{20????L} // \serif{also in <simd>}
+\etc
+\ins{#define __cpp_lib_clmul 20????L // \serif{also in \tt{<numeric>}}}
+\etc
+#define __cpp_lib_simd \del{202506L} \ins{20????L} // \serif{also in \tt{<simd>}}
 }
 }
 
 \Bnote{
 We only bump \tcode{__cpp_lib_simd} without creating a new SIMD
-feature test macro because \ref[P2933R4] did the same,
+feature test macro because \ref(P2933R4) did the same,
 and because \tcode{__cpp_lib_clmul} can be used to test for the presence
 of both the scalar and SIMD version.
 }
@@ -559,8 +559,8 @@ In subclause \eelis{numeric.ops},
 append a subclause immediately following \eelis{numeric.sat}:
 
 \Bins{
-\html-h3{Carry-less product \stable-ref{numeric.clmul}}
-\Vset[pnum]{0}
+\cowel_html_element(h3){Carry-less product \stable_ref{numeric.clmul}}
+\Vset(pnum){0}
 
 \itemdecl{
 template<class T>
@@ -580,8 +580,8 @@ template<class T>
   constexpr wide_result<T> clmul_wide(T x, T y) noexcept;
 }
 \itemdescr{
-\macro[\alpha]{\N{GREEK SMALL LETTER ALPHA}}
-\macro[\mathvar]{\math{\mi{\put}}}
+\cowel_macro(alpha){\N{GREEK SMALL LETTER ALPHA}}
+\cowel_macro(mathvar){\math{\mi{\cowel_put}}}
 \pnum
 Let:
 \ul{
@@ -599,7 +599,7 @@ Let:
 
 \pnum
 \constraints
-\tcode{T} is an unsigned integer type (\eelis{basic.fundamental}).
+\tcode{T} is an unsigned integer type\iref{basic.fundamental}.
 
 \pnum
 \returns
@@ -635,8 +635,8 @@ The result object is initialized so that
   }
 }
 
-\block{\html-div[class=formula-container]{
-  \html-span[class=formula-number]{[FORMULA ?.?]}
+\div(class=formula-container){
+  \span(class=formula-number){[FORMULA ?.?]}
   \mathblock{
     \mrow{
       \msub{
@@ -658,7 +658,7 @@ The result object is initialized so that
       }
     }
   }
-}}
+}
 
 }
 
@@ -682,7 +682,7 @@ Please open the document in a recent version of Firefox or Chrome.
 }
 
 \Bnote{
-The formula is taken from \ref[IntelClmul], with different variable names,
+The formula is taken from \ref(IntelClmul), with different variable names,
 and with no special case for the upper \mathvar{N} bits;
 we can simply treat the integers as mathematical integers with
 \math{\mrow{\mn{2}\mi{N}}} width.
@@ -696,7 +696,7 @@ for precedent on wording which includes formulae.
 
 \Bnote{
 The formula above in TeX notation is:
-\codeblock[tex]{\literally{
+\codeblock(tex){\literally{
 c_i = \bigoplus_{j = 0}^i x_i y_{i - j}
 }}
 }
@@ -706,14 +706,14 @@ Add the following declarations to the synopsis in \eelis{simd.syn}:
 \Bdiff{
 \itemdecl{
 namespace std::simd {
-  \html{[\N{HORIZONTAL ELLIPSIS}]}
+  \etc
 
 \ins{  // \serif{[simd.clmul], Carry-less product}
   template<\exposid{simd-type} V> constexpr V clmul(const V& v) noexcept;}
 
   // \serif{[simd.math], Mathematical functions}
   template<\exposid{math-floating-point} V> constexpr \exposid{deduced-simd-t}<V> acos(const V& x);
-  \html{[\N{HORIZONTAL ELLIPSIS}]}
+  \etc
 }
 }
 }
@@ -722,8 +722,8 @@ In subclause \eelis{simd},
 append a subclause immediately preceding \eelis{simd.math}:
 
 \Bins{
-\html-h3{\tcode{basic_vec} carry-less product \stable-ref{simd.clmul}}
-\Vset[pnum]{0}
+\cowel_html_element(h3){\tcode{basic_vec} carry-less product \stable_ref{simd.clmul}}
+\Vset(pnum){0}
 
 \itemdecl{
 template<\exposid{simd-type} V> constexpr V clmul(const V& v) noexcept;
@@ -744,104 +744,104 @@ for all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}).
 
 \h2{References}
 
-\bib[
+\bib(
   id = N5008,
   title = Working Draft\, Programming Languages — C++,
   date = 2025-03-15,
   author = Thomas Köppe,
   link = https://wg21.link/N5008,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5008.pdf
-]
-\bib[
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5008.pdf,
+)\
+\bib(
   id = P0543R3,
   title = Saturation arithmetic,
   date = 2023-07-19,
   author = Jens Maurer,
   link = https://wg21.link/p0543r3,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p0543r3.html
-]
-\bib[
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p0543r3.html,
+)\
+\bib(
   id = P3104R3,
   title = Bit permutations,
   date = 2025-02-11,
   author = Jan Schultke,
   link = https://wg21.link/p3104r3,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3104r3.html
-]
-\bib[
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3104r3.html,
+)
+\bib(
   id = P3161R4,
   title = Unified integer overflow arithmetic,
   date = 2025-03-26,
   author = Tiago Freire,
   link = https://wg21.link/p3161r4,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3161r4.html
-]
-\bib[
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3161r4.html,
+)\
+\bib(
   id = P2933R4,
   title = Extend <bit> header function with overloads for std::simd,
   date = 2025-02-13,
   author = Daniel Towner\, Ruslan Arutyunyan,
   link = https://wg21.link/p2933r4,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2933r4.html
-]
-\bib[
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2933r4.html,
+)\
+\bib(
   id = P3691R1,
   title = Reconsider naming of the namespace for "std::simd",
   date = 2025-06-17,
   author = Matthias Kretz et al.,
-  link = https://wg21.link/p3691r1
-]
-\bib[
+  link = https://wg21.link/p3691r1,
+)\
+\bib(
   id = BitPermutations,
   title = C++26 Bit permutations reference implementation,
   author = Jan Schultke,
-  link = https://github.com/Eisenwave/cxx26-bit-permutations
-]
-\bib[
+  link = https://github.com/Eisenwave/cxx26-bit-permutations,
+)\
+\bib(
   id = SimdJsonClmul,
   author = Geoff Langdale,
   title = Code Fragment: Finding quote pairs with carry-less multiply (PCLMULQD),
   date = 2019-03-06,
-  link = https://branchfree.org/2019/03/06/code-fragment-finding-quote-pairs-with-carry-less-multiply-pclmulqdq/
-]
-\bib[
+  link = https://branchfree.org/2019/03/06/code-fragment-finding-quote-pairs-with-carry-less-multiply-pclmulqdq/,
+)\
+\bib(
   id = IntelClmul,
   author = Shay Gueron\, Michael E. Kounavis,
   title = Intel® Carry-Less Multiplication Instruction and its Usage for Computing the GCM Mode,
   link = https://www.intel.com/content/dam/develop/external/us/en/documents/clmul-wp-rev-2-02-2014-04-20.pdf,
-  publisher = Intel Corporation
-]
-\bib[
+  publisher = Intel Corporation,
+)\
+\bib(
   id = IntelManual,
   author = Intel Corporation,
   title = Intel® 64 and IA-32 Architectures Software Developer's Manual,
   link = https://software.intel.com/en-us/download/intel-64-and-ia-32-architectures-sdm-combined-volumes-1-2a-2b-2c-2d-3a-3b-3c-3d-and-4,
-  publisher = Intel Corporation
-]
-\bib[
+  publisher = Intel Corporation,
+)\
+\bib(
   id = HackersDelight,
-  author = Henry S. Warren, Jr,
+  author = Henry S. Warren\, Jr,
   title = Hacker's Delight\, Second Edition,
-  link = https://doc.lagout.org/security/Hackers'Delight.pdf
-]
-\bib[
+  link = https://doc.lagout.org/security/Hackers'Delight.pdf,
+)\
+\bib(
   id = FastHilbertCurves,
   author = rawrunprotected,
   title = 2D Hilbert curves in O(1),
-  link = "http://threadlocalmutex.com/?p=188
-]
-\bib[
+  link = "http://threadlocalmutex.com/?p=188,
+)\
+\bib(
   id = WikipediaClmul,
   author = Wikipedia community,
   title = Carry-less product,
   link = https://en.wikipedia.org/wiki/Carry-less_product,
-  publisher = Wikimedia Foundation
-]
-\bib[
+  publisher = Wikimedia Foundation,
+)\
+\bib(
   id = LLVMClmul,
   author = Oscar Smith,
   title = [IR] Add llvm clmul intrinsic,
-  link = https://github.com/llvm/llvm-project/pull/140301
-]
+  link = https://github.com/llvm/llvm-project/pull/140301,
+)\
 
 \make_bib
