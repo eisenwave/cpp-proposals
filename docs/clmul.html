@@ -1641,6 +1641,7 @@ Add widening and non-widening carry-less multiplication functions.
 
 <ul>
   <li>Add missing <tt->&lt;T&gt;</tt-> for <code><h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;=&gt;</h-></code></li>
+  <li>Provide a <a href=#possible-implementation>§4. Possible implementation</a> better suited for SIMD parallelization</li>
   <li>Rebase <a href=#wording>§6. Proposed wording</a> on <a href="https://wg21%2elink/n5014">[N5014]</a></li>
   <li>Improve <a href=#wording>§6. Proposed wording</a> editorially</li>
 </ul>
@@ -1871,14 +1872,29 @@ In the example above, <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- d
 <h2 id=possible-implementation><a class=para href=#possible-implementation></a>4. Possible implementation</h2>
 
 <p>A naive and unconstrained implementation looks as follows:
-</p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
+</p>
+<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>clmul</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h->
     <h- data-h=id>T</h-> <h- data-h=id>result</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
     <h- data-h=kw_ctrl>for</h-> <h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>i</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h-> <h- data-h=id>i</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=id>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=id>digits</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_op>++</h-><h- data-h=id>i</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
-      <h- data-h=id>result</h-> <h- data-h=sym_op>^=</h-> <h- data-h=sym_par>(</h-><h- data-h=id>x</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=id>i</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=sym_par>(</h-><h- data-h=sym_par>(</h-><h- data-h=id>y</h-> <h- data-h=sym_op>&gt;&gt;</h-> <h- data-h=id>i</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+      <h- data-h=id>result</h-> <h- data-h=sym_op>^=</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>*</h-> <h- data-h=sym_par>(</h-><h- data-h=id>y</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=sym_par>(</h-><h- data-h=id>T</h-><h- data-h=sym_brac>{</h-><h- data-h=num>1</h-><h- data-h=sym_brac>}</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=id>i</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
     <h- data-h=sym_brac>}</h->
     <h- data-h=kw_ctrl>return</h-> <h- data-h=id>result</h-><h- data-h=sym_punc>;</h->
   <h- data-h=sym_brac>}</h-></code-block>
+
+<note-block><p><intro-></intro-> 
+This implementation is particularly suited for auto-vectorization.
+Assuming the loop is unrolled,
+<code><h- data-h=id>T</h-><h- data-h=sym_brac>{</h-><h- data-h=num>1</h-><h- data-h=sym_brac>}</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=id>i</h-></code> is constant and
+each bitwise AND and multiplication can be done in parallel.
+Lastly, all results have to be accumulated using a horizontal XOR.
+</p>
+<p>Expressed in <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>simd</h-></code> terms,
+this looks something like:
+</p><code-block><h- data-h=kw>using</h-> <h- data-h=id>V</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>simd</h-><h- data-h=sym_op>::</h-><h- data-h=id>vec</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=id>digits</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>V</h-> <h- data-h=id>powers</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>array</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>V</h-><h- data-h=sym_op>::</h-><h- data-h=id>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_brac>{</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>1</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>2</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>4</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>8</h-><h- data-h=sym_punc>,</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw_ctrl>return</h-> <h- data-h=id>simd</h-><h- data-h=sym_op>::</h-><h- data-h=id>reduce</h-><h- data-h=sym_par>(</h-><h- data-h=id>V</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=sym_par>(</h-><h- data-h=id>V</h-><h- data-h=sym_par>(</h-><h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=id>powers</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>bit_xor</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+</note-block>
 
 <h3 id=hardware-support><a class=para href=#hardware-support></a>4.1. Hardware support</h3>
 
@@ -2142,8 +2158,7 @@ immediately following the declarations associated with <a href=https://eel.is/c+
 <h- data-h=kw>struct</h-> <h- data-h=id>wide_result</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=id>T</h-> <h- data-h=id>low_bits</h-><h- data-h=sym_punc>;</h->
   <h- data-h=id>T</h-> <h- data-h=id>high_bits</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>friend</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h->
-    <h- data-h=kw>operator</h-><h- data-h=sym_op>==</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>wide_result</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=id>wide_result</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw>default</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>friend</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>==</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>wide_result</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=id>wide_result</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw>default</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
 
 <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->

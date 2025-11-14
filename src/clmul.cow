@@ -29,6 +29,7 @@ Add widening and non-widening carry-less multiplication functions.
 
 \ul{
   \li{Add missing \tt{<T>} for \tcode{operator<=>}}
+  \li{Provide a \ref(#possible-implementation) better suited for SIMD parallelization}
   \li{Rebase \ref(#wording) on \ref(N5014)}
   \li{Improve \ref(#wording) editorially}
 }
@@ -268,15 +269,32 @@ In the example above, \tcode{std::clmul(x, x)} is equivalent to
 \h2{Possible implementation}
 
 A naive and unconstrained implementation looks as follows:
+
 \cppblock{
 template<class T>
   constexpr T clmul(const T x, const T y) noexcept {
     T result = 0;
     for (int i = 0; i < numeric_limits<T>::digits; ++i) {
-      result ^= (x << i) * ((y >> i) & 1);
+      result ^= x * (y & (T{1} << i));
     }
     return result;
   }
+}
+
+\Bnote{
+This implementation is particularly suited for auto-vectorization.
+Assuming the loop is unrolled,
+\tcode{T{1} << i} is constant and
+each bitwise AND and multiplication can be done in parallel.
+Lastly, all results have to be accumulated using a horizontal XOR.
+
+Expressed in \tcode{std::simd} terms,
+this looks something like:
+\cppblock{
+using V = simd::vec<T, numeric_limits<T>::digits>;
+static constexpr V powers = array<T, V::size()>{ 0, 1, 2, 4, 8, /* ... */ };
+return simd::reduce(V(x) * (V(y) & powers), bit_xor<T>{});
+}
 }
 
 \h3{Hardware support}
@@ -550,8 +568,7 @@ template<class T>
 struct wide_result {
   T low_bits;
   T high_bits;
-  friend constexpr bool
-    operator==(const wide_result&, const wide_result&) = default;
+  friend constexpr bool operator==(const wide_result&, const wide_result&) = default;
 };
 
 template<class T>
