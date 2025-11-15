@@ -1710,6 +1710,10 @@ this proposal introduces a new set of fundamental types to C++.
 <a href=#feature-testing><h3>Feature testing</h3></a>
 <div class=toc-num data-level=3>5.15</div>
 <a href=#passing-bitint><h3>Passing <tt->bit_int</tt-> into standard library function templates</h3></a>
+<div class=toc-num data-level=3>5.16</div>
+<a href=#bitint-width-int-problems><h3>The problem of representing widths as <tt->int</tt-></h3></a>
+<div class=toc-num data-level=3>5.17</div>
+<a href=#library-policy-for-templates><h3>Library policy for function templates accepting <tt->bit_int</tt-></h3></a>
 <div class=toc-num data-level=2>6</div>
 <a href=#education><h2>Education</h2></a>
 <div class=toc-num data-level=3>6.1</div>
@@ -1817,6 +1821,11 @@ this proposal introduces a new set of fundamental types to C++.
   <li>added <a href=#preserving-integer-class-types>§5.4. Preserving integer-class types</a> and corresponding wording changes</li>
   <li>fixed missing return types in <a href=#bitint-abs>§5.6. New <tt->abs</tt-> overload</a> and throughout the paper</li>
   <li>expanded <a href=#passing-bitint>§5.15. Passing <tt->bit_int</tt-> into standard library function templates</a> with an observation about return types</li>
+  <li>added <a href=#bitint-width-int-problems>§5.16. The problem of representing widths as <tt->int</tt-></a></li>
+  <li>
+    added <a href=#library-policy-for-templates>§5.17. Library policy for function templates accepting <tt->bit_int</tt-></a> and applied the proposed policy
+    to <a href=#bitint-abs>§5.6. New <tt->abs</tt-> overload</a>
+  </li>
 </ul>
 
 <h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.2. Changes since R0</h3>
@@ -3442,15 +3451,25 @@ so it is unlikely we will see an implementation that makes use of this freedom a
 
 <p>The proposal adds the following <code><h- data-h=id>abs</h-></code> overload:
 </p>
-<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <p>While <code><h- data-h=id>abs</h-></code> is not strictly part of the MVP,
 taking the absolute of an integer is such a fundamental, easy-to-implement, and useful
 operation that we may as well include it here.
 </p>
+<p><code><h- data-h=id>T</h-></code> is constrained to accept any bit-precise signed or extended signed integer type.
+Adding support is extended integer types is basically a drive-by-fix.
+Standard signed integers are not supported because it would alter the type
+of existing code such as <code><h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_par>)</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-></code>
+from <code><h- data-h=kw_type>int</h-></code> to <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code>.
+Even if that didn't introduce any breaking change,
+having "promotion to <code><h- data-h=kw_type>int</h-></code>" take place here is arguably a feature
+because it may reduce the amount of template instantiations down the line.
+</p>
 <note-block><p><intro-></intro-> 
-See <a href=#passing-bitint>§5.15. Passing <tt->bit_int</tt-> into standard library function templates</a> for an explanation as to why this signature is chosen.
+See <a href=#passing-bitint>§5.15. Passing <tt->bit_int</tt-> into standard library function templates</a> and <a href=#library-policy-for-templates>§5.17. Library policy for function templates accepting <tt->bit_int</tt-></a>
+for an explanation as to why this signature is chosen.
 </p></note-block>
 
 <h3 id=bitint-cmath><a class=para href=#bitint-cmath></a>5.7. Using bit-precise integers in <tt->&lt;cmath&gt;</tt-> functions</h3>
@@ -3671,8 +3690,8 @@ should accept <code><h- data-h=id>bit_int</h-></code> by value.
 </p>
 <example-block><p><intro-></intro-> 
 The proposal adds this <code><h- data-h=id>abs</h-></code> overload:
-</p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+</p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> constrained to accept bit-precise integers</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <p>If implemented verbatim like this,
 in the <a href=https://gitlab.com/x86-psABIs/x86-64-ABI>x86-64 psABI</a>,
@@ -3694,21 +3713,20 @@ in the standard.
 <example-block><p><intro-></intro-> 
 An implementation of the <code><h- data-h=id>abs</h-></code> function template could look as follows:
 </p>
-<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>__n</h-><h- data-h=sym_op>&gt;</h->
-<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=id>n</h-><h- data-h=sym_par>)</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=id>__n</h-><h- data-h=sym_par>)</h-> <h- data-h=id>__j</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> pass small integers by value</h->
+<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>__small_signed_bit_int</h-> <h- data-h=id>_T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> e.g. 128 bits or below</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=id>_T</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=id>_T</h-> <h- data-h=id>__j</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=kw_ctrl>return</h-> <h- data-h=id>__j</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=id>__j</h-> <h- data-h=sym_punc>:</h-> <h- data-h=sym_op>-</h-><h- data-h=id>__j</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h->
 
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>__n</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>requires</h-> <h- data-h=sym_par>(</h-><h- data-h=kw>sizeof</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=id>__n</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&gt;</h-> <h- data-h=id>__pass_by_value_max_size</h-><h- data-h=sym_par>)</h->
-<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=id>n</h-><h- data-h=sym_par>)</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=id>__n</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>__j</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> pass large integers by reference</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>__large_signed_bit_int</h-> <h- data-h=id>_T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> e.g. more than 128 bits</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=id>_T</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>_T</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>__j</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=kw_ctrl>return</h-> <h- data-h=id>__j</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=id>__j</h-> <h- data-h=sym_punc>:</h-> <h- data-h=sym_op>-</h-><h- data-h=id>__j</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h-></code-block>
 
 <p>Another plausible implementation strategy is to
 use an ABI-altering, implementation-specific attribute.
-</p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>__n</h-><h- data-h=sym_op>&gt;</h->
-<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=id>n</h-><h- data-h=sym_par>)</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=id>impl</h-><h- data-h=sym_op>::</h-><h- data-h=id>pass_large_by_ref</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=id>__n</h-><h- data-h=sym_par>)</h-> <h- data-h=id>__j</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+</p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>_T</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=id>_T</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=id>impl</h-><h- data-h=sym_op>::</h-><h- data-h=id>pass_large_by_ref</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=id>_T</h-> <h- data-h=id>__j</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=kw_ctrl>return</h-> <h- data-h=id>__j</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=id>__j</h-> <h- data-h=sym_punc>:</h-> <h- data-h=sym_op>-</h-><h- data-h=id>__j</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h-></code-block>
 <p>Such an attribute could alter the ABI for <code><h- data-h=id>__j</h-></code>
@@ -3717,7 +3735,7 @@ not on the stack.
 </p></example-block>
 
 <p>Admittedly, having the standard pass all integers by value may give the user
-the false impression that a <code><h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-></code> function parameter (with unconstrained <code><h- data-h=id>N</h-></code>)
+the false impression that a by-value function parameter for bit-precise integers
 is idiomatic and harmless, which is problematic.
 However, it is seemingly the lesser evil,
 since the alternative is wasting LEWG and LWG time on quality of implementation.
@@ -3728,6 +3746,68 @@ the same issue arises for return types:
 <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>gcd</h-></code>, <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>simd</h-><h- data-h=sym_op>::</h-><h- data-h=id>vec</h-><h- data-h=sym_op>::</h-><h- data-h=kw>operator</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>]</h-></code>,
 library types that use a bit-precise <code><h- data-h=id>size_type</h-></code> or <code><h- data-h=id>difference_type</h-></code>,
 and many more.
+</p>
+<h3 id=bitint-width-int-problems><a class=para href=#bitint-width-int-problems></a>5.16. The problem of representing widths as <tt->int</tt-></h3>
+
+<p>A pre-existing and prolific issue in the C++ standard library is the use of <code><h- data-h=kw_type>int</h-></code>
+to represent properties of integers,
+such as
+</p><ul>
+  <li><code><h- data-h=kw_type>int</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>numeric_limits</h-><h- data-h=sym_op>::</h-><h- data-h=id>digits</h-></code> or</li>
+  <li><code><h- data-h=kw_type>int</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>popcount</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-><h- data-h=sym_par>)</h-></code>.</li>
+</ul>
+<p>This has never been a practical issue before,
+it is now theoretically possible that an implementation
+may want to provide <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>32</h-><h- data-h=num_dlim>'</h-><h- data-h=num>768</h-><h- data-h=sym_par>)</h-></code> or wider.
+<code><h- data-h=kw_type>int</h-></code> is only guaranteed to have the range of a 16-bit signed integer,
+so it may not be able to represent such huge widths.
+</p>
+<p>The easiest solution is to ignore the problem;
+this is proposed.
+It would require substantial design changes to <code><h- data-h=str>&lt;bit&gt;</h-></code>, <code><h- data-h=str>&lt;limits&gt;</h-></code>,
+and more to fix the issue.
+Furthermore, the practical utility of <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>32</h-><h- data-h=num_dlim>'</h-><h- data-h=num>768</h-><h- data-h=sym_par>)</h-></code> and wider
+is somewhat questionable,
+especially on 16-bit architectures (which are typically embedded architectures).
+On 32-bit architectures and above, <code><h- data-h=kw_type>int</h-></code> is typically 32-bit,
+so this problem doesn't exist.
+</p>
+<h3 id=library-policy-for-templates><a class=para href=#library-policy-for-templates></a>5.17. Library policy for function templates accepting <tt->bit_int</tt-></h3>
+
+<p>This proposal adds various new function templates
+for bit-precise integers.
+In one case, there is a non-obvious choice between:
+</p>
+<code-block><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> template type parameter</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=id>signed-bit-int</h-></i> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>T</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> constant template parameter</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>I argue that the former option (template type parameter) is superior
+for the following reasons:
+</p>
+<ul>
+  <li>
+    It can be more flexibly extended to support more types in the future,
+    without adding any declared overloads.
+  </li>
+  <li>
+    Many places in the standard library need that form to handle both signed and unsigned
+    bit-precise integers anyway,
+    and using <code><h- data-h=id>T</h-></code> provides a more consistent "feel".
+  </li>
+  <li>
+    If the user was to pass a template argument explicitly for whatever reason,
+    the call site would express intent more clearly.
+    That is, <code><h- data-h=id>abs</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-></code> has obvious meaning,
+    but <code><h- data-h=id>abs</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-></code> does not.
+  </li>
+</ul>
+
+<p>Therefore, as a general policy,
+the C++ standard library should never use constant template arguments for function templates
+that accept bit-precise integers.
 </p>
 
 <h2 id=education><a class=para href=#education></a>6. Education</h2>
@@ -5609,7 +5689,7 @@ See <a href=#bitint-cmath>§5.7. Using bit-precise integers in <tt->&lt;cmath&gt
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                                         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
 <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                               <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
 <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
-<ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->        <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif></ins>
+<ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                           <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif></ins>
 <h- data-h=kw>constexpr</h-> <i><h- data-h=id>floating-point-type</h-></i> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>floating-point-type</h-></i> <h- data-h=id>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif></code-block>
 </diff-block>
 
@@ -5627,7 +5707,7 @@ See <a href=#bitint-abs>§5.6. New <tt->abs</tt-> overload</a>.
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=id>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins></code-block>
+<ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>abs</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins></code-block>
 
 <p><del><i>Effects</i>:
 These functions have the semantics specified in the C standard library for the functions
@@ -5641,6 +5721,9 @@ the program is ill-formed.
 <br/>[<i>Note</i>: 
 Allowing arguments that can be promoted to <code><h- data-h=kw_type>int</h-></code> provides compatibility with C.
  — <i>end note</i>]</del></p>
+
+<p><ins><i>Constraints</i>:
+<code><h- data-h=id>T</h-></code> is a bit-precise signed or extended signed integer type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>).</ins></p>
 
 <p><ins><i>Effects</i>:
 Equivalent to <code><h- data-h=id>j</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=id>j</h-> <h- data-h=sym_punc>:</h-> <h- data-h=sym_op>-</h-><h- data-h=id>j</h-></code>.

@@ -41,6 +41,11 @@ this proposal introduces a new set of fundamental types to C++.
   \li{added \ref(#preserving-integer-class-types) and corresponding wording changes}
   \li{fixed missing return types in \ref(#bitint-abs) and throughout the paper}
   \li{expanded \ref(#passing-bitint) with an observation about return types}
+  \li{added \ref(#bitint-width-int-problems)}
+  \li{
+    added \ref(#library-policy-for-templates) and applied the proposed policy
+    to \ref(#bitint-abs)
+  }
 }
 
 \h3{Changes since R0}
@@ -1734,16 +1739,26 @@ so it is unlikely we will see an implementation that makes use of this freedom a
 The proposal adds the following \tcode{abs} overload:
 
 \cppblock{
-template<size_t N>
-  constexpr bit_int<N> abs(bit_int<N> j);
+template<class T>
+  constexpr T abs(T j);
 }
 
 While \tcode{abs} is not strictly part of the MVP,
 taking the absolute of an integer is such a fundamental, easy-to-implement, and useful
 operation that we may as well include it here.
 
+\tcode{T} is constrained to accept any bit-precise signed or extended signed integer type.
+Adding support is extended integer types is basically a drive-by-fix.
+Standard signed integers are not supported because it would alter the type
+of existing code such as \tcode{abs((unsigned char) 0)}
+from \tcode{int} to \tcode{unsigned char}.
+Even if that didn't introduce any breaking change,
+having "promotion to \tcode{int}" take place here is arguably a feature
+because it may reduce the amount of template instantiations down the line.
+
 \Bnote{
-See \ref(#passing-bitint) for an explanation as to why this signature is chosen.
+See \ref(#passing-bitint) and \ref(#library-policy-for-templates)
+for an explanation as to why this signature is chosen.
 }
 
 \h3(id=bitint-cmath){Using bit-precise integers in \tt{<cmath>} functions}
@@ -1971,8 +1986,8 @@ should accept \tcode{bit_int} by value.
 \Bex{
 The proposal adds this \tcode{abs} overload:
 \cppblock{
-template<size_t N>
-  constexpr bit_int<N> abs(bit_int<N> j);
+template<class T> // constrained to accept bit-precise integers
+  constexpr T abs(T j);
 }
 
 If implemented verbatim like this,
@@ -1996,14 +2011,13 @@ in the standard.
 An implementation of the \tcode{abs} function template could look as follows:
 
 \cppblock{
-template<size_t __n>
-constexpr _BitInt(n) abs(_BitInt(__n) __j) { // pass small integers by value
+template<__small_signed_bit_int _T> // e.g. 128 bits or below
+constexpr _T abs(_T __j) {
   return __j >= 0 ? __j : -__j;
 }
 
-template<size_t __n>
-  requires (sizeof(_BitInt(__n)) > __pass_by_value_max_size)
-constexpr _BitInt(n) abs(const _BitInt(__n)& __j) { // pass large integers by reference
+template<__large_signed_bit_int _T> // e.g. more than 128 bits
+constexpr _T abs(const _T& __j) {
   return __j >= 0 ? __j : -__j;
 }
 }
@@ -2011,8 +2025,8 @@ constexpr _BitInt(n) abs(const _BitInt(__n)& __j) { // pass large integers by re
 Another plausible implementation strategy is to
 use an ABI-altering, implementation-specific attribute.
 \cppblock{
-template<size_t __n>
-constexpr _BitInt(n) abs([[impl::pass_large_by_ref]] _BitInt(__n) __j) {
+template<class _T>
+constexpr _T abs([[impl::pass_large_by_ref]] _T __j) {
   return __j >= 0 ? __j : -__j;
 }
 }
@@ -2022,7 +2036,7 @@ not on the stack.
 }
 
 Admittedly, having the standard pass all integers by value may give the user
-the false impression that a \tcode{bit_int<N>} function parameter (with unconstrained \tcode{N})
+the false impression that a by-value function parameter for bit-precise integers
 is idiomatic and harmless, which is problematic.
 However, it is seemingly the lesser evil,
 since the alternative is wasting LEWG and LWG time on quality of implementation.
@@ -2033,6 +2047,70 @@ the same issue arises for return types:
 \tcode{std::gcd}, \tcode{std::simd::vec::operator[]},
 library types that use a bit-precise \tcode{size_type} or \tcode{difference_type},
 and many more.
+
+\h3(id=bitint-width-int-problems){The problem of representing widths as \tt{int}}
+
+A pre-existing and prolific issue in the C++ standard library is the use of \tcode{int}
+to represent properties of integers,
+such as
+\ul{
+  \li{\tcode{int std::numeric_limits::digits} or}
+  \li{\tcode{int std::popcount(T)}.}
+}
+This has never been a practical issue before,
+it is now theoretically possible that an implementation
+may want to provide \tcode{_BitInt(32'768)} or wider.
+\tcode{int} is only guaranteed to have the range of a 16-bit signed integer,
+so it may not be able to represent such huge widths.
+
+The easiest solution is to ignore the problem;
+this is proposed.
+It would require substantial design changes to \header{bit}, \header{limits},
+and more to fix the issue.
+Furthermore, the practical utility of \tcode{_BitInt(32'768)} and wider
+is somewhat questionable,
+especially on 16-bit architectures (which are typically embedded architectures).
+On 32-bit architectures and above, \tcode{int} is typically 32-bit,
+so this problem doesn't exist.
+
+\h3(id=library-policy-for-templates){Library policy for function templates accepting \tt{bit_int}}
+
+This proposal adds various new function templates
+for bit-precise integers.
+In one case, there is a non-obvious choice between:
+
+\cppblock{
+// template type parameter
+template<\exposid{signed-bit-int} T> T abs(T x);
+
+// constant template parameter
+template<size_t N> bit_int<N> abs(bit_int<N> x);
+}
+
+I argue that the former option (template type parameter) is superior
+for the following reasons:
+
+\ul{
+  \li{
+    It can be more flexibly extended to support more types in the future,
+    without adding any declared overloads.
+  }
+  \li{
+    Many places in the standard library need that form to handle both signed and unsigned
+    bit-precise integers anyway,
+    and using \tcode{T} provides a more consistent "feel".
+  }
+  \li{
+    If the user was to pass a template argument explicitly for whatever reason,
+    the call site would express intent more clearly.
+    That is, \tcode{abs<bit_int<N>>(x)} has obvious meaning,
+    but \tcode{abs<N>(x)} does not.
+  }
+}
+
+Therefore, as a general policy,
+the C++ standard library should never use constant template arguments for function templates
+that accept bit-precise integers.
 
 \:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -4015,7 +4093,7 @@ In \eelis{cmath.syn}, change the synopsis as follows:
 constexpr int abs(int j);                                         // \serif{freestanding}
 constexpr long int abs(long int j);                               // \serif{freestanding}
 constexpr long long int abs(long long int j);                     // \serif{freestanding}
-\ins{template<size_t N> constexpr bit_int<N> abs(bit_int<N> j);        // \serif{freestanding}}
+\ins{template<class T> constexpr T abs(T j);                           // \serif{freestanding}}
 constexpr \exposid{floating-point-type} abs(\exposid{floating-point-type} j);         // \serif{freestanding}
 }
 }
@@ -4054,7 +4132,7 @@ Change \eelis{c.math.abs} as follows:
 constexpr int abs(int j);
 constexpr long int abs(long int j);
 constexpr long long int abs(long long int j);
-\ins{template<size_t N> constexpr bit_int<N> abs(bit_int<N> j);}
+\ins{template<class T> constexpr T abs(T j);}
 }
 
 \del{\effects
@@ -4069,6 +4147,9 @@ the program is ill-formed.
 \br\note{
 Allowing arguments that can be promoted to \tcode{int} provides compatibility with C.
 }}
+
+\ins{\constraints
+\tcode{T} is a bit-precise signed or extended signed integer type\iref{basic.fundamental}.}
 
 \ins{\effects
 Equivalent to \tcode{j >= 0 ? j : -j}.
