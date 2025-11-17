@@ -1,16 +1,16 @@
-\import{libwg21.cow}
+\cowel_include{libwg21.cow}
 
-\wg21-head[
-    title = \tcode{partial_sort_n}\, \tcode{nth_element_n}
-]{
+\wg21_head(
+  title = \tcode{partial_sort_at_most}\, \tcode{nth_element_at_most}
+){
 \dl{
-    \dt{Document number:} \dd{\docnum{P3735R0}}
-    \dt{Date:}            \dd{\tt{2025-06-28}}
-    \dt{Audience:}        \dd{SG9}
-    \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
-    \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-    \dt{GitHub Issue:}    \dd{\ref[https://wg21.link/P3735/github]}
-    \dt{Source:}          \dd{\ref[https://github.com/Eisenwave/cpp-proposals/blob/master/src/n-algorithms.cow]}
+  \dt{Document number:} \dd{\docnum{P3735R1}}
+  \dt{Date:}            \dd{\tt{2025-11-17}}
+  \dt{Audience:}        \dd{SG9}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3735/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/n-algorithms.cow)}
 }
 \hr
 }
@@ -20,13 +20,29 @@ The \tcode{partial_sort},
 and \tcode{nth_element} algorithms
 require the user to "manually offset" iterators,
 which is neither ergonomic nor safe.
-I propose \tcode{_n} variants of these algorithms
+I propose \tcode{_at_most} variants of these algorithms
 in the style of \tcode{shift_left}.
 }
 
-\h2[listed=no]{Contents}
+\h2(listed=false){Contents}
 
-\make-contents
+\make_contents
+
+\h2{Revision history}
+
+\h3{Change since R0}
+
+\ul{
+  \li{incorporate feedback from SG9}
+  \li{
+    changed the \tt{_n} suffix to \tt{_at_most}
+    in accordance with SG9 recommendations;
+    see \ref(#naming)
+  }
+  \li{added \ref(#additional-variants-of-partial_sort)}
+  \li{rebased \ref(#wording) on \ref(N5014)}
+  \li{removed stray \tcode{<Size>} template arguments in \ref(#wording)}
+}
 
 \h2{Introduction}
 
@@ -96,13 +112,13 @@ Users generally prefer to use to "path of least resistance",
 and we should make that path safe:
 \cppblock{
 // OK, even if n is greater than the size of the range
-std::ranges::partial_sort_n(scores, n, std::ranges::greater{});
+std::ranges::partial_sort_at_most(scores, n, std::ranges::greater{});
 }
 
 \h3{Middle iterators are annoying}
 
 Since we need to obtain the middle iterator from the range
-but also provide the range to \tcode{partial_sort_n},
+but also provide the range to \tcode{partial_sort},
 we may have to repeat ourselves.
 
 \Bex{
@@ -126,7 +142,7 @@ rgs::partial_sort(r, rgs::next(rgs::begin(r), n, rgs::end(r)), rgs::greater{});
 
 Either options is somewhat annoying if it could theoretically be written as:
 \cppblock{
-rgs::partial_sort_n(long_function_to_get_scores_range(), n, rgs::greater{});
+rgs::partial_sort_at_most(long_function_to_get_scores_range(), n, rgs::greater{});
 }
 
 One key benefit of \tcode{std::ranges} is that we rarely have to work with
@@ -139,8 +155,8 @@ To address the problems above,
 I propose the following additional algorithms:
 
 \ul{
-\li{\tcode{partial_sort_n}}
-\li{\tcode{nth_element_n}}
+\li{\tcode{partial_sort_at_most}}
+\li{\tcode{nth_element_at_most}}
 }
 
 These should exist both for the \tcode{std::ranges::} and the \tcode{std::} algorithms,
@@ -154,27 +170,88 @@ they do not exclusively operate on random access iterators,
 which results in different design concerns.
 There is also no proposed overload for \tcode{partial_sort_copy}
 because its result can already be specified as a range or iterator pair,
-so the concerns in \ref[#middle-iterators-are-unsafe] do not apply.
+so the concerns in \ref(#middle-iterators-are-unsafe) do not apply.
 
-\Bdecision{
-Depending on SG9 feedback,
-the scope of this paper could be widened to provide alternatives to middle iterators
-across \header{algorithm} as a whole.
+\Bnote{
+During Kona 2025 review of R0 of this paper by SG9,
+the opinion of room was that other algorithms
+could be addressed in a separate papers.
 }
 
 \h2{Design}
 
-While the names follow the scheme of \tcode{copy_n},
-the design is essentially copied from \tcode{shift_left},
-which is the \tcode{_n} counterpart to \tcode{rotate}.
-\tcode{copy_n} takes an iterator and the size of the range,
-without an end iterator,
-and thus without any safety benefits.
-
-The proposed functions would take either an iterator pair and a size,
+The design of the function signatures
+is essentially copied from \tcode{shift_left}.
+The proposed functions take either an iterator pair and a size,
 or a range and a size,
 just like \tcode{shift_left} and \tcode{shift_right}, and with similar interface.
 See \eelis{alg.shift}.
+
+\h3{Naming}
+
+The naming is novel.
+R0 of this paper proposed \tcode{_n} suffixes instead of \tcode{_at_most},
+but this was unpopular in SG9.
+The issue with \tcode{_n} is that this suffix is used to mean
+"exactly N", not "at most" (with clamping/\tcode{views::take}-like) behavior.
+
+A few possible candidates were discussed,
+and the currently proposed one is simply the most popular:
+
+\Bquote{
+\b{Approval of naming scheme:}
+
+\table{
+  \tr{
+    \th{Name}
+    \th{Votes}
+  }
+  \tr{\td{\tcode{_n}}       \td{1}}
+  \tr{\td{\tcode{_at_most}} \td{7}}
+  \tr{\td{\tcode{_up_to}}   \td{5}}
+  \tr{\td{\tcode{_clamped}} \td{3}}
+  \tr{\td{\tcode{_safe}}    \td{0}}
+}
+
+Attendance: 7
+}
+
+\h3{Additional variants of \tcode{partial_sort}}
+
+In addition to the "clamping" behavior of the proposed functions,
+SG9 also expressed interest in functions that detect misuses of \tcode{partial_sort}
+as a hardened precondition or by throwing an exception:
+
+\Bquote{
+We want a variant of \tcode{partial_sort}/\tcode{nth_element}
+that takes a count \tcode{n} instead of an iterator \tcode{mid}
+and has a precondition/hardened precondition/erroneous behavior/throws an exception
+if \tcode{n} is too large.
+
+\five_way_poll(0,5,0,2,0)
+
+Author: A\br
+Attendance: 7\br
+Consensus in favor.
+}
+
+However, just because there is interest,
+doesn't mean these functions need to be in \em{this} paper.
+Such new functions would have to be separate overload sets because
+adding additional "safer" overloads to \tcode{partial_sort}
+\ul{
+  \li{bloats the size of the overload set, and}
+  \li{
+    creates an ambiguity between passing a null pointer constant \tcode{0}
+    (where the \tcode{iterator} is a pointer, for a contiguous range)
+    and a \tcode{0} that is convertible to a \tcode{difference_type},
+    when \tcode{0} is passed as the size argument to the algorithm.
+  }
+}
+
+However, creating an entirely new overload set
+just to add a range check is novel and arguably overkill;
+I believe it would decrease consensus on this proposal.
 
 \h2{Impact on existing code}
 
@@ -184,27 +261,25 @@ Existing overload sets are not modified.
 
 \h2{Wording}
 
-The proposed changes are relative to \ref[N5008].
+The proposed changes are relative to \ref(N5014).
 
 In \eelis{version.syn},
 add two feature-test macros as follows:
 
 \Bins{
 \itemdecl{
-#define __cpp_lib_ranges_partial_sort_n \hl[number]{20XXXXL} // \serif{also in \tt{<algorithm>}}
-#define __cpp_lib_ranges_nth_element_n  \hl[number]{20XXXXL} // \serif{also in \tt{<algorithm>}}
+#define __cpp_lib_ranges_partial_sort_at_most \hl(number){20XXXXL} // \serif{also in \tt{<algorithm>}}
+#define __cpp_lib_ranges_nth_element_at_most  \hl(number){20XXXXL} // \serif{also in \tt{<algorithm>}}
 }
 }
 
 In \eelis{algorithm.syn},
 change the synopsis of \header{algorithm} as follows:
 
-\macro[\black_comment]{\hl[sym-punc]{//}\serif{\i{\hl[sym-punc]{ \put}}}}
-
 \Bdiff{
 \itemdecl{
 namespace std {
-  \html{[\N{HORIZONTAL ELLIPSIS}]}
+  \etc
 
   template<class RandomAccessIterator>
     constexpr void partial_sort(RandomAccessIterator first, RandomAccessIterator middle,
@@ -213,11 +288,11 @@ namespace std {
     constexpr void partial_sort(RandomAccessIterator first, RandomAccessIterator middle,
                                 RandomAccessIterator last, Compare comp);
   template<class ExecutionPolicy, class RandomAccessIterator>
-    void partial_sort(ExecutionPolicy&& exec,                   \black_comment{freestanding-deleted, see [algorithms.parallel.overloads]}
+    void partial_sort(ExecutionPolicy&& exec, // \serif{freestanding-deleted, see [algorithms.parallel.overloads]}
                       RandomAccessIterator first, RandomAccessIterator middle,
                       RandomAccessIterator last);
   template<class ExecutionPolicy, class RandomAccessIterator, class Compare>
-    void partial_sort(ExecutionPolicy&& exec,                   \black_comment{freestanding-deleted, see [algorithms.parallel.overloads]}
+    void partial_sort(ExecutionPolicy&& exec, // \serif{freestanding-deleted, see [algorithms.parallel.overloads]}
                       RandomAccessIterator first, RandomAccessIterator middle,
                       RandomAccessIterator last, Compare comp);
 
@@ -235,37 +310,38 @@ namespace std {
   }
 
   \ins{template<class RandomAccessIterator>
-    void partial_sort_n(RandomAccessIterator first, RandomAccessIterator last,
-                        typename iterator_traits<RandomAccessIterator>::difference_type n);
+    void partial_sort_at_most(RandomAccessIterator first, RandomAccessIterator last,
+                              typename iterator_traits<RandomAccessIterator>::difference_type n);
   template<class ExecutionPolicy, class RandomAccessIterator, class Compare>
-    void partial_sort_n(ExecutionPolicy&& exec,                 // \serif{freestanding-deleted, see [algorithms.parallel.overloads]}
-                        RandomAccessIterator first, RandomAccessIterator last,
-                        typename iterator_traits<RandomAccessIterator>::difference_type n);
+    void partial_sort_at_most(ExecutionPolicy&& exec, // \serif{freestanding-deleted, see [algorithms.parallel.overloads]}
+                              RandomAccessIterator first, RandomAccessIterator last,
+                              typename iterator_traits<RandomAccessIterator>::difference_type n);
   template<class RandomAccessIterator, class Compare>
-    void partial_sort_n(RandomAccessIterator first, RandomAccessIterator last,
-                        typename iterator_traits<RandomAccessIterator>::difference_type n,
-                        Compare comp);
+    void partial_sort_at_most(RandomAccessIterator first, RandomAccessIterator last,
+                              typename iterator_traits<RandomAccessIterator>::difference_type n,
+                              Compare comp);
   template<class ExecutionPolicy, class RandomAccessIterator, class Compare>
-    void partial_sort_n(ExecutionPolicy&& exec,                 // \serif{freestanding-deleted, see [algorithms.parallel.overloads]}
-                        RandomAccessIterator first, RandomAccessIterator last,
-                        typename iterator_traits<RandomAccessIterator>::difference_type n,
-                        Compare comp);
+    void partial_sort_at_most(ExecutionPolicy&& exec, // \serif{freestanding-deleted, see [algorithms.parallel.overloads]}
+                              RandomAccessIterator first, RandomAccessIterator last,
+                              typename iterator_traits<RandomAccessIterator>::difference_type n,
+                              Compare comp);
   
   namespace ranges {
     template<random_access_iterator I, sentinel_for<I> S, class Comp = ranges::less,
              class Proj = identity>
       requires sortable<I, Comp, Proj>
-      constexpr I
-        partial_sort_n(I first, iter_difference_t<I> n, S last, Comp comp = {}, Proj proj = {});
+      constexpr I partial_sort_at_most(I first, iter_difference_t<I> n, S last,
+                                       Comp comp = {}, Proj proj = {});
     template<random_access_range R, class Comp = ranges::less, class Proj = identity>
       requires sortable<iterator_t<R>, Comp, Proj>
-      constexpr borrowed_iterator_t<R>
-        partial_sort_n(R&& r, ranges::range_difference_t<R> n, Comp comp = {}, Proj proj = {});
+      constexpr borrowed_iterator_t<R> partial_sort_at_most(R&& r,
+                                                            ranges::range_difference_t<R> n,
+                                                            Comp comp = {}, Proj proj = {});
   }}
 
-  \html{[\N{HORIZONTAL ELLIPSIS}]}
+  \etc
 
-  \black_comment{[alg.nth.element] Nth element}
+  // \serif{[alg.nth.element], Nth element}
   template<class RandomAccessIterator>
     constexpr void nth_element(RandomAccessIterator first, RandomAccessIterator nth,
                                RandomAccessIterator last);
@@ -273,11 +349,11 @@ namespace std {
     constexpr void nth_element(RandomAccessIterator first, RandomAccessIterator nth,
                                RandomAccessIterator last, Compare comp);
   template<class ExecutionPolicy, class RandomAccessIterator>
-    void nth_element(ExecutionPolicy&& exec,                    \black_comment{freestanding-deleted, see [algorithms.parallel.overloads]}
+    void nth_element(ExecutionPolicy&& exec, // \serif{freestanding-deleted, see [algorithms.parallel.overloads]}
                      RandomAccessIterator first, RandomAccessIterator nth,
                      RandomAccessIterator last);
   template<class ExecutionPolicy, class RandomAccessIterator, class Compare>
-    void nth_element(ExecutionPolicy&& exec,                    \black_comment{freestanding-deleted, see [algorithms.parallel.overloads]}
+    void nth_element(ExecutionPolicy&& exec, // \serif{freestanding-deleted, see [algorithms.parallel.overloads]}
                      RandomAccessIterator first, RandomAccessIterator nth,
                      RandomAccessIterator last, Compare comp);
   
@@ -294,35 +370,36 @@ namespace std {
   }
 
   \ins{template<class RandomAccessIterator>
-    void nth_element_n(RandomAccessIterator first, RandomAccessIterator last,
-                       typename iterator_traits<RandomAccessIterator>::difference_type n);
+    void nth_element_at_most(RandomAccessIterator first, RandomAccessIterator last,
+                            typename iterator_traits<RandomAccessIterator>::difference_type n);
   template<class ExecutionPolicy, class RandomAccessIterator, class Compare>
-    void nth_element_n(ExecutionPolicy&& exec, RandomAccessIterator first,
-                       RandomAccessIterator last,
-                       typename iterator_traits<RandomAccessIterator>::difference_type n);
+    void nth_element_at_most(ExecutionPolicy&& exec, RandomAccessIterator first,
+                             RandomAccessIterator last,
+                             typename iterator_traits<RandomAccessIterator>::difference_type n);
   template<class RandomAccessIterator, class Compare>
-    void nth_element_n(RandomAccessIterator first, RandomAccessIterator last,
-                       typename iterator_traits<RandomAccessIterator>::difference_type n,
-                       Compare comp);
+    void nth_element_at_most(RandomAccessIterator first, RandomAccessIterator last,
+                             typename iterator_traits<RandomAccessIterator>::difference_type n,
+                             Compare comp);
   template<class ExecutionPolicy, class RandomAccessIterator, class Compare>
-    void nth_element_n(ExecutionPolicy&& exec, RandomAccessIterator first,
-                       RandomAccessIterator last,
-                       typename iterator_traits<RandomAccessIterator>::difference_type n,
-                       Compare comp);
+    void nth_element_at_most(ExecutionPolicy&& exec, RandomAccessIterator first,
+                             RandomAccessIterator last,
+                             typename iterator_traits<RandomAccessIterator>::difference_type n,
+                             Compare comp);
   
   namespace ranges {
     template<random_access_iterator I, sentinel_for<I> S, class Comp = ranges::less,
              class Proj = identity>
       requires sortable<I, Comp, Proj>
-      constexpr I
-        nth_element_n(I first, S last, iter_difference_t<I> n, Comp comp = {}, Proj proj = {});
+      constexpr I nth_element_at_most(I first, S last, iter_difference_t<I> n,
+                                      Comp comp = {}, Proj proj = {});
     template<random_access_range R, class Comp = ranges::less, class Proj = identity>
       requires sortable<iterator_t<R>, Comp, Proj>
-      constexpr borrowed_iterator_t<R>
-        nth_element_n(R&& r, ranges::range_difference_t<R> n, Comp comp = {}, Proj proj = {});
+      constexpr borrowed_iterator_t<R> nth_element_at_most(R&& r,
+                                                           ranges::range_difference_t<R> n,
+                                                           Comp comp = {}, Proj proj = {});
   }}
 
-  \html{[\N{HORIZONTAL ELLIPSIS}]}
+  \etc
 }
 }
 }
@@ -333,28 +410,28 @@ append the following items at the end of the subclause:
 \Bins{
 \itemdecl{
 template<class RandomAccessIterator>
-  void partial_sort_n(RandomAccessIterator first, RandomAccessIterator last,
-                      typename iterator_traits<RandomAccessIterator>::difference_type n);
+  void partial_sort_at_most(RandomAccessIterator first, RandomAccessIterator last,
+                            typename iterator_traits<RandomAccessIterator>::difference_type n);
 template<class ExecutionPolicy, class RandomAccessIterator, class Compare>
-  void partial_sort_n(ExecutionPolicy&& exec,
-                      RandomAccessIterator first, RandomAccessIterator last,
-                      typename iterator_traits<RandomAccessIterator>::difference_type n);
+  void partial_sort_at_most(ExecutionPolicy&& exec,
+                            RandomAccessIterator first, RandomAccessIterator last,
+                            typename iterator_traits<RandomAccessIterator>::difference_type n);
 template<class RandomAccessIterator, class Compare>
-  void partial_sort_n(RandomAccessIterator first, RandomAccessIterator last,
-                      typename iterator_traits<RandomAccessIterator>::difference_type n,
-                      Compare comp);
+  void partial_sort_at_most(RandomAccessIterator first, RandomAccessIterator last,
+                            typename iterator_traits<RandomAccessIterator>::difference_type n,
+                            Compare comp);
 template<class ExecutionPolicy, class RandomAccessIterator, class Compare>
-  void partial_sort_n(ExecutionPolicy&& exec,
-                      RandomAccessIterator first, RandomAccessIterator last,
-                      typename iterator_traits<RandomAccessIterator>::difference_type n,
-                      Compare comp);
+  void partial_sort_at_most(ExecutionPolicy&& exec,
+                            RandomAccessIterator first, RandomAccessIterator last,
+                            typename iterator_traits<RandomAccessIterator>::difference_type n,
+                            Compare comp);
 }
 
 \itemdescr{
 \effects
 Equivalent to calling \tcode{partial_sort}
 with all parameters excluding \tcode{n} in the same order,
-except that \nobr{\tcode{first + min<Size>(n, last - first)}} is
+except that \nobr{\tcode{first + min(n, last - first)}} is
 provided as an argument for the \tcode{middle} parameter in \tcode{partial_sort}.
 }
 
@@ -362,9 +439,8 @@ provided as an argument for the \tcode{middle} parameter in \tcode{partial_sort}
 template<random_access_iterator I, sentinel_for<I> S, class Comp = ranges::less,
          class Proj = identity>
   requires sortable<I, Comp, Proj>
-  constexpr I
-    ranges::partial_sort_n(I first, iter_difference_t<I> n, S last, Comp comp = {},
-                           Proj proj = {});
+  constexpr I ranges::partial_sort_at_most(I first, iter_difference_t<I> n, S last,
+                                           Comp comp = {}, Proj proj = {});
 }
 
 \itemdescr{
@@ -378,16 +454,16 @@ Equivalent to:
 \itemdecl{
 template<random_access_range R, class Comp = ranges::less, class Proj = identity>
   requires sortable<iterator_t<R>, Comp, Proj>
-  constexpr borrowed_iterator_t<R>
-    ranges::partial_sort_n(R&& r, ranges::range_difference_t<R> n, Comp comp = {},
-                           Proj proj = {});
+  constexpr borrowed_iterator_t<R> ranges::partial_sort_n(R&& r,
+                                                          ranges::range_difference_t<R> n,
+                                                          Comp comp = {}, Proj proj = {});
 }
 
 \itemdescr{
 \effects
 Equivalent to:
 \Bindent{
-\tcode{return ranges::partial_sort_n(ranges::begin(r), n, ranges::end(r), comp, proj);}
+\tcode{return ranges::partial_sort_at_most(ranges::begin(r), n, ranges::end(r), comp, proj);}
 }
 }
 }
@@ -398,28 +474,28 @@ append the following items at the end of the subclause:
 \Bins{
 \itemdecl{
 template<class RandomAccessIterator>
-  void nth_element_n(RandomAccessIterator first, RandomAccessIterator last,
-                     typename iterator_traits<RandomAccessIterator>::difference_type n);
+  void nth_element_at_most(RandomAccessIterator first, RandomAccessIterator last,
+                           typename iterator_traits<RandomAccessIterator>::difference_type n);
 template<class ExecutionPolicy, class RandomAccessIterator, class Compare>
-  void nth_element_n(ExecutionPolicy&& exec, RandomAccessIterator first,
-                     RandomAccessIterator last,
-                     typename iterator_traits<RandomAccessIterator>::difference_type n);
+  void nth_element_at_most(ExecutionPolicy&& exec, RandomAccessIterator first,
+                           RandomAccessIterator last,
+                           typename iterator_traits<RandomAccessIterator>::difference_type n);
 template<class RandomAccessIterator, class Compare>
-  void nth_element_n(RandomAccessIterator first, RandomAccessIterator last,
-                     typename iterator_traits<RandomAccessIterator>::difference_type n,
-                     Compare comp);
+  void nth_element_at_most(RandomAccessIterator first, RandomAccessIterator last,
+                           typename iterator_traits<RandomAccessIterator>::difference_type n,
+                           Compare comp);
 template<class ExecutionPolicy, class RandomAccessIterator, class Compare>
-  void nth_element_n(ExecutionPolicy&& exec, RandomAccessIterator first,
-                     RandomAccessIterator last,
-                     typename iterator_traits<RandomAccessIterator>::difference_type n,
-                     Compare comp);
+  void nth_element_at_most(ExecutionPolicy&& exec, RandomAccessIterator first,
+                           RandomAccessIterator last,
+                           typename iterator_traits<RandomAccessIterator>::difference_type n,
+                           Compare comp);
 }
 
 \itemdescr{
 \effects
 Equivalent to calling \tcode{nth_element}
 with all parameters excluding \tcode{n} in the same order,
-except that \nobr{\tcode{first + min<Size>(n, last - first)}} is
+except that \nobr{\tcode{first + min(n, last - first)}} is
 provided as an argument for the \tcode{nth} parameter in \tcode{nth_element}.
 }
 
@@ -427,9 +503,8 @@ provided as an argument for the \tcode{nth} parameter in \tcode{nth_element}.
 template<random_access_iterator I, sentinel_for<I> S, class Comp = ranges::less,
          class Proj = identity>
   requires sortable<I, Comp, Proj>
-  constexpr I
-    ranges::nth_element_n(I first, S last, iter_difference_t<I> n, Comp comp = {},
-                          Proj proj = {});
+  constexpr I ranges::nth_element_at_most(I first, S last, iter_difference_t<I> n,
+                                          Comp comp = {}, Proj proj = {});
 }
 
 \itemdescr{
@@ -443,16 +518,16 @@ Equivalent to:
 \itemdecl{
 template<random_access_range R, class Comp = ranges::less, class Proj = identity>
   requires sortable<iterator_t<R>, Comp, Proj>
-  constexpr borrowed_iterator_t<R>
-    ranges::nth_element_n(R&& r, ranges::range_difference_t<R> n, Comp comp = {},
-                          Proj proj = {});
+  constexpr borrowed_iterator_t<R> ranges::nth_element_at_most(R&& r,
+                                                               ranges::range_difference_t<R> n,
+                                                               Comp comp = {}, Proj proj = {});
 }
 
 \itemdescr{
 \effects
 Equivalent to:
 \Bindent{
-\tcode{return ranges::nth_element_n(ranges::begin(r), n, ranges::end(r), comp, proj);}
+\tcode{return ranges::nth_element_at_most(ranges::begin(r), n, ranges::end(r), comp, proj);}
 }
 }
 }
@@ -460,13 +535,13 @@ Equivalent to:
 
 \h2{References}
 
-\bib[
-  id = N5008,
+\bib(
+  id = N5014,
   title = Working Draft\, Programming Languages — C++,
-  date = 2025-03-15,
+  date = 2025-08-05,
   author = Thomas Köppe,
-  link = https://wg21.link/n5008,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5008.pdf
-]
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+)\
 
-\make-bib
+\make_bib
