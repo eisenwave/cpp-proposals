@@ -656,37 +656,30 @@ or by a scalar shift amount which applies to all elements in the \tcode{simd::ve
 The scalar \tcode{std::shl} and \tcode{std::shr} may be implemented as follows:
 
 \cppblock{
-template<class T>
-concept __signed_or_unsigned
-  =  is_integral_v<T>
-  && !is_const_v<T>
-  && !is_volatile_v<T>
-  && !is_same_v<T, bool>;
-
-template<__signed_or_unsigned T, __signed_or_unsigned S>
+template<\exposid{signed-or-unsigned} T, \exposid{signed-or-unsigned} S>
 constexpr T shl(T x, S s) noexcept {
   constexpr auto width = S(numeric_limits<make_unsigned_t<T>>::digits);
   if constexpr (is_signed_v<S>) {
     if (s < 0) {
-      constexpr auto fill = T(is_signed_v<T> ? -1 : 0);
-      return s <= -width ? fill : x >> -s;
+      return s <= -width ? T(x < 0 ? -1 : 0) : x >> -s;
     }
   }
   return s >= width ? T(0) : x << s;
 }
 
-template<__signed_or_unsigned T, __signed_or_unsigned S>
+template<\exposid{signed-or-unsigned} T, \exposid{signed-or-unsigned} S>
 constexpr T shr(T x, S s) noexcept {
   constexpr auto width = S(numeric_limits<make_unsigned_t<T>>::digits);
   if constexpr (is_signed_v<S>) {
-    if (s >= 0) {
-      constexpr auto fill = T(is_signed_v<T> ? -1 : 0);
-      return s >= width ? fill : x >> s;
+    if (s < 0) {
+      return s <= -width ? T(0) : x << -s;
     }
   }
-  return s <= -width ? T(0) : x << -s;
+  return s >= width ? T(x < 0 ? -1 : 0) : x >> s;
 }
 }
+
+See also \ref(Cxx26BitPermutations) for a reference implementation and test code.
 
 \tcode{simd::shl} and \tcode{simd::shr} may be implemented (naively)
 by performing the operation for each element.
@@ -967,6 +960,11 @@ for all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}), where
   id = CompilerExplorer,
   title = Assembly comparison for various ways of handling negative shift amounts,
   link = https://godbolt.org/z/1Won5qjo9,
+)\
+\bib(
+  id = Cxx26BitPermutations,
+  author = Jan Schultke,
+  link = https://github.com/Eisenwave/cxx26-bit-permutations,
 )\
 
 \make_bib
