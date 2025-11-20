@@ -4,8 +4,8 @@
   title = \tcode{std::array} is a wrapper for an array!
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3737R1}}
-  \dt{Date:}            \dd{\tt{2025-09-27}}
+  \dt{Document number:} \dd{\docnum{P3737R2}}
+  \dt{Date:}            \dd{\tt{2025-11-20}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -27,6 +27,13 @@ and should be simplified.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R1}
+
+\ul{
+  \li{Fixed a typo in \ref(#problematic-iterator-requirements-for-zero-length-arrays)}
+  \li{Updated discussion and wording based on \ref(LWG4276) being accepted in Kona}
+}
 
 \h3{Changes since R0}
 
@@ -361,7 +368,7 @@ template<class T>
 struct zero_length_array {
   union U {
     char c;
-    int i;
+    T i;
     U() = default;
   } u;
 
@@ -387,39 +394,6 @@ Without specifying anything special for zero-length arrays,
 it still acts as an empty range, and \tcode{begin() == end()} is \tcode{true},
 which is all we really need.
 
-\h3(id=front-is-unreachable){\tcode{std::array<T,0>::front()} is \tcode{std::unreachable()}?!}
-
-This proposal assumes that \ref(LWG4276) will be accepted,
-meaning that \tcode{front()} and \tcode{back()} will unconditionally
-fail a hardened precondition.
-The status quo is that these functions have undefined behavior,
-making them alternative spellings of \tcode{std::unreachable}.
-
-Deleting \tcode{front()} and \tcode{back()} for zero-length arrays is not feasible because
-of (existing) code along the lines of:
-
-\cppblock{
-if (a.size() != 0) {
-    return a.front();
-}
-}
-
-It is quite plausible that \tcode{std::array<T,0>::front()} is called in code
-that is logically unreachable,
-so it should not result in a compiler error, which would be the consequence of
-\tcode{= delete;}.
-
-\Bnote{
-This proposal could remove \tcode{constexpr} from these functions to
-avoid "library UB" during constant evaluation
-but following \ref(LWG4276), this is no longer necessary.
-
-There is no observable difference between the various reasons why
-an expression is disqualified from being a constant expression,
-so whether this happens due to failing a hardened precondition or
-because a call to a non-\tcode{constexpr} function takes place is irrelevant.
-}
-
 \h2{Impact on implementations}
 
 For \tcode{std::array}s of nonzero length,
@@ -436,7 +410,8 @@ the implementation can simply be aligned with what is being proposed here.
 
 \h2{Wording}
 
-The following changes are relative to \ref(N5014).
+The following changes are relative to \ref(N5014)
+with the changes in \ref(LWG4276) applied.
 
 \h3{[array.overview]}
 
@@ -525,8 +500,7 @@ namespace std {
 
 \h3{[array.zero]}
 
-Delete all paragraphs within \eelis{array.zero}
-(paragraph 3 may have already been deleted by \ref(LWG4276)):
+Delete all paragraphs within \eelis{array.zero}:
 
 \Vset(pnum){0}
 
@@ -537,10 +511,6 @@ Delete all paragraphs within \eelis{array.zero}
 \pnum
 In the case that \tcode{N == 0}, \tcode{begin() == end() ==} unique value.
 The return value of \tcode{data()} is unspecified.
-
-\pnum
-The effect of calling \tcode{front()} or \tcode{back()} for a zero-sized array is
-undefined.
 
 \pnum
 Member function \tcode{swap()} shall have a
