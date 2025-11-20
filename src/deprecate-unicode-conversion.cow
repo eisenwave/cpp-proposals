@@ -5,9 +5,9 @@
           between \tt{char8_t} and \tt{char16_t}\, \tt{char32_t}\, or \tt{wchar_t}
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3695R2}}
-  \dt{Date:}            \dd{\tt{2025-09-28}}
-  \dt{Audience:}        \dd{EWG, SG16}
+  \dt{Document number:} \dd{\docnum{D3695R3}}
+  \dt{Date:}            \dd{\tt{2025-11-20}}
+  \dt{Audience:}        \dd{EWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Author:}          \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3695/github)}
@@ -28,6 +28,19 @@ I propose to deprecate them.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R2}
+
+R1 was seen by SG16 again.
+
+\Btodo{
+Add poll results here!
+}
+
+\ul{
+  \li{reverted the deprecation of conversions with \tcode{wchar_t}}
+  \li{improved the wording based on [isocpp-core] reflector feedback}
+}
 
 \h3{Changes since R1}
 
@@ -57,10 +70,7 @@ R0 of the paper was seen by SG16, with the following poll results:
 Consequently, the following changes were made:
 
 \ul{
-  \li{
-    also deprecated conversion between \tcode{char8_t} and \tcode{wchar_t};
-    see \ref(#char-and-wchar_t)
-  }
+  \li{also deprecated conversion between \tcode{char8_t} and \tcode{wchar_t}}
   \li{changed title and abstract to reflect this new direction}
   \li{rewrote \ref(#char16_t-char32_t)}
   \li{expanded note on tautology warnings in \ref(#this-really-happens)}
@@ -174,7 +184,7 @@ However, that is their primary purpose, and the assumption holds true for any Un
 \h2{Scope}
 
 I propose to deprecate implicit conversions between
-\tcode{char8_t} and \tcode{char16_t}, \tcode{char32_t}, or \tcode{wchar_t}.
+\tcode{char8_t} and \tcode{char16_t} or \tcode{char32_t}.
 As demonstrated above, these are extremely bug-prone.
 Conversions between \tcode{char16_t} and \tcode{char32_t} are not affected.
 
@@ -281,30 +291,15 @@ Not one participant in SG16 voted in favor of deprecating \tcode{char16_t} ↔ \
 conversions; see \ref(#changes-since-r1).
 }
 
-\h3(id=char-and-wchar_t){What about \tcode{char} and \tcode{wchar_t}?}
+\h3(id=char){What about \tcode{char}?}
 
 As recommended by SG16,
-I propose to leave \tcode{char} intact,
-but deprecate conversions between \tcode{char8_t} and \tcode{wchar_t}.
-Since \tcode{wchar_t} almost certainly has a different encoding than \tcode{char8_t},
-this conversions is as problematic as the \tcode{char16_t} and \tcode{char32_t} conversions.
+I propose to leave \tcode{char} intact.
 
-The following conversions are \u{not} deprecated:
-
-\ul{
-  \li{
-    \tcode{char} ↔ \tcode{char8_t} is not deprecated because the encoding of both sides
-    is likely UTF-8, in which case the conversion is obviously safe.
-    Substantial amounts of code may already rely on this.
-  }
-  \li{
-    \tcode{wchar_t} ↔ \tcode{char16_t} and \tcode{wchar_t} ↔ \tcode{char32_t}
-    can also be safe, depending on the platform.
-    Windows-only code can likely treat \tcode{wchar_t} and \tcode{char16_t}
-    interchangeably,
-    and Linux-only code may treat \tcode{wchar_t} and \tcode{char32_t} interchangeably.
-  }
-}
+\tcode{char} ↔ \tcode{char8_t} in particular should not be deprecated
+because the encoding of both sides
+is likely UTF-8, in which case the conversion is obviously safe.
+Substantial amounts of code may already rely on this.
 
 Furthermore, deprecating \em{any} conversion from \tcode{char}
 to other character types is a bad idea,
@@ -319,6 +314,27 @@ depending on ordinary literal encoding,
 but \tcode{char} is not necessarily using literal encoding,
 and doing so would invite non-portable code that fails to compile on e.g. EBCDIC platforms,
 to the great surprise of the author.
+
+\h3(id=wchar_t){What about \tcode{wchar_t}?}
+
+As recommended by SG16,
+\tcode{wchar_t} is also not affected by the deprecation.
+
+While \tcode{wchar_t} almost certainly has a different encoding than \tcode{char8_t},
+converting between it and \tcode{char8_t} is as problematic
+as the \tcode{char16_t} and \tcode{char32_t} conversions.
+However, while this is practically never the case,
+C2y permits UTF-8 as an encoding for \tcode{wchar_t}.
+Furthermore, \tcode{wchar_t} is not strictly guaranteed to be any wide than \tcode{char}
+or represent any more characters.
+Overall, it is a C compatibility hazard to touch \tcode{wchar_t}.
+
+Besides \tcode{char8_t} ↔ \tcode{wchar_t},
+\tcode{wchar_t} ↔ \tcode{char16_t} and \tcode{wchar_t} ↔ \tcode{char32_t}
+may be always correct, depending on the platform.
+Windows-only code can likely treat \tcode{wchar_t} and \tcode{char16_t}
+interchangeably,
+and Linux-only code may treat \tcode{wchar_t} and \tcode{char32_t} interchangeably.
 
 \h3(id=integer-comparisons){What about conversions with integers?}
 
@@ -443,12 +459,7 @@ and split it into two paragraphs:
 can be converted to a prvalue of another integer type.
 \ins{The conversion is deprecated ([depr.conv.unicode]) if
 one of the types involved in the conversion is \tcode{char8_t},
-and the other type is \tcode{char16_t}, \tcode{char32_t}, or \tcode{wchar_t}.}
-
-\ins{\note{
-This deprecation also applies to cv-qualified types
-because prvalues of such types are adjusted to cv-unqualified types\iref{expr.type}.
-}}
+and the other type is \tcode{char16_t} or \tcode{char32_t}.}
 
 \ins{2} A prvalue of an unscoped enumeration type can be converted to a prvalue of an integer type.
 }
@@ -471,8 +482,8 @@ This pattern is called the \i{usual arithmetic conversions}, which are defined a
   \li{\etc}
   \li{
     Otherwise, each operand is converted to a common type \tcode{C}.
-    \ins{The conversion is deprecated if one operand is \tcode{char8_t}
-    and the other operand is \tcode{char16_t}, \tcode{char32_t}, or \tcode{wchar_t}.}
+    \ins{The conversion is deprecated if one operand is of type \tcode{char8_t}
+    and the other operand is of the types \tcode{char16_t} or \tcode{char32_t}.}
     The integral promotion rules\iref{conv.prom} are used
     to determine a type \tcode{T1} and type \tcode{T2} for each operand.
     Then the following rules are applied to determine C:
@@ -491,40 +502,55 @@ the conversion would not be deprecated.
 
 \h3(show-number=false){[expr.static.cast]}
 
-Immediately prior to \eelis{expr.static.cast#5},
+Change \eelis{expr.static.cast#5} as follows:
+
+\Bdiff{
+Otherwise, an expression \math{\mi{E}} can be explicitly converted
+to a type \tcode{T} if there is an implicit conversion sequence\iref{over.best.ics}
+\ins{containing no deprecated conversion}
+from \math{\mi{E}} to \math{\mi{T}}, if \etc
+
+\etc
+Otherwise, the result is direct-initialized from \math{\mi{E}}.
+}
+
+\editnote{
+There are no other deprecated conversions at the time of writing.
+}
+
+Do \u{not} change \eelis{expr.static.cast#6}:
+
+\Bquote{
+Otherwise, the
+lvalue-to-rvalue\iref{const.lval},
+array-to-pointer\iref{conv.array}, and
+function-to-pointer\iref{conv.func}
+conversions are applied to the operand,
+and the conversions that can be performed using \tcode{static_cast} are listed below.
+No other conversion can be performed using \tcode{static_cast}.
+}
+
+\editnote{
+The wording strategy is to get "nice and clean" prvalues
+out of the lvalue-to-rvalue conversion above,
+making the permitted conversion below easier to specify.
+}
+
+Immediately following \eelis{expr.static.cast#6},
 insert a new paragraph:
 
 \Bins{
-An expression \math{\mi{E}} of type \i{cv} \tcode{char8_t}
-can be explicitly converted to
-\i{cv} \tcode{char16_t}, \i{cv} \tcode{char32_t}, or \i{cv} \tcode{wchar_t}
-and vice-versa.
-The effect is equivalent to
-explicitly converting to \tcode{unsigned char},
-then to the target type.
+An expression \math{\mi{E}} of type \tcode{char8_t}
+can be explicitly converted to \tcode{char16_t} or \tcode{char32_t},
+and vice versa.
+Such a conversion to a target type \tcode{T} is equivalent to
+\tcode{static_cast<T>(static_cast<unsigned char>(\math{\mi{E}}))}.
 
 \note{
 Integral conversions\iref{conv.integral}
 between these types have the same effect and are deprecated,
 unlike this explicit conversion\iref{depr.conv.unicode}.
 }
-}
-
-\Btip{
-The wording for \tcode{static_cast} needs to permit possibly cv-qualified types with "\i{cv}".
-While cv-qualifications get dropped from expressions\iref{expr.type},
-we still need to say that you can write e.g. \tcode{static_cast<const char8_t>}.
-Cv-qualifications do not get dropped automatically from the \grammarterm{type-id}.
-}
-
-Do \u{not} change \eelis{expr.static.cast#5};
-it is cited here for reference:
-
-\Bquote{
-Otherwise, an expression \math{\mi{E}} can be explicitly converted to a type \tcode{T}
-if there is an implicit conversion sequence\iref{over.best.ics}
-from \math{\mi{E}} to \tcode{T}, \etc.
-\etc, the result object is direct-initialized from \math{\mi{E}}.
 }
 
 \h3(show-number=false){[depr.conv.unicode]}
@@ -538,16 +564,12 @@ containing a single paragraph:
 The following conversions are deprecated:
 \ul{
   \li{
-    Integral conversions\iref{conv.integral},
-    where out of the types involved in the conversion,
-    one is \tcode{char8_t}
-    and the other is \tcode{char16_t}, \tcode{char32_t}, or \tcode{wchar_t}.
+    Integral conversions between \tcode{char8_t} and \tcode{char16_t} or
+    \tcode{char32_t}\iref{conv.integral}.
   }
   \li{
-    Usual arithmetic conversions\iref{expr.arith.conv}
-    where out of the operand types after lvalue-to-rvalue conversion\iref{conv.lval},
-    one is \tcode{char8_t}
-    and the other is \tcode{char16_t}, \tcode{char32_t}, or \tcode{wchar_t}.
+    Arithmetic conversions from one operand of type \tcode{char8_t} and
+    another operand of type \tcode{char16_t} or \tcode{char32_t}\iref{expr.arith.conv}.
   }
 }
 \example{
@@ -566,6 +588,11 @@ void f() {
 }
 }
 }
+
+\h2{Acknowledgements}
+
+I thank Jens Maurer for reviewing the wording above
+and providing multiple suggestions for improvement.
 
 \h2{References}
 
