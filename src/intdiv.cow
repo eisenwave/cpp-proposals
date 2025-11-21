@@ -4,9 +4,9 @@
   title = Integer division
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3724R1}}
-  \dt{Date:}            \dd{\tt{2025-09-29}}
-  \dt{Audience:}        \dd{LEWG, SG6}
+  \dt{Document number:} \dd{\docnum{P3724R2}}
+  \dt{Date:}            \dd{\tt{2025-10-21}}
+  \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-To:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3724/github)}
@@ -26,6 +26,32 @@ with other rounding modes.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R1}
+
+R1 of this paper was
+\ref(https://github.com/cplusplus/papers/issues/2354#issuecomment-3506783900){seen by SG6}.
+Several polls were taken, with one consensus for change:
+
+\Bquote{
+POLL: Remove \tt{div_to_even} and \tt{div_to_odd} from the proposed functions.
+
+\five_way_poll(4, 2, 3, 0, 0)
+\ul{
+  \li{\b{Author position}: N}
+  \li{\b{Outcome}: Consensus}
+}
+}
+
+Consequently, the following changes were made:
+
+\ul{
+  \li{
+    removed \tcode{div_to_even}, \tcode{div_to_odd},
+    \tcode{div_rem_to_even}, and \tcode{div_rem_to_odd}
+  }
+  \li{added \ref(#iso-iec-60559-rounding-modes)}
+}
 
 \h3{Changes since R0}
 
@@ -910,12 +936,23 @@ rounding mode explicitly with \tcode{std::div_to_zero} to avoid confusion.
 
 \h4{Rounding to even/odd}
 
-Rounding to even/odd integers is mainly useful because it is unbiased.
-That is, when dividing a large amount of integers,
-results would not gravitate towards one end due to rounding mode bias towards zero, \pos_inf, etc.
-This may be important when operating on fixed-point numbers.
+The proposal has \tcode{div_ties_to_even} but not \tcode{div_to_even}.
+A \tcode{div_to_even} function was proposed in R0 and R1 of the paper,
+but during SG6 review, no one (including the author) was able to come up
+with a plausible use case.
+Rounding to even (not in the tie-breaking case, but in general)
+"fills a gap" and may be academically interesting,
+but seems otherwise pointless.
+R2 removed \tcode{div_to_even} (and \tcode{div_to_odd} for the same reason).
 
-\ref(P0105R1) provides additional motivation and explanation of these rounding modes.
+A user may even use \tcode{div_to_even} instead of \tcode{div_ties_to_even} by accident,
+simply because they don't expect a mode as exotic as "top-level to-even" to exist,
+so they assume \tcode{div_to_even} to be a shorthand rather than a distinct mode.
+
+\Bnote{
+\ref(P0105R1) provides additional motivation for and explanation of
+rounding to even/odd as tie-breakers.
+}
 
 \h4{To-nearest-rounding division and tie breaking}
 
@@ -925,6 +962,25 @@ could also be resolved in multiple ways.
 Any of the "top-level rounding modes" could plausibly be chosen
 as a "tie-breaking rounding mode" as well,
 which is what this proposal offers.
+
+\h4(id=iso-iec-60559-rounding-modes){ISO/IEC 60559 Rounding modes}
+
+Of the proposed functions,
+the following match a rounding mode that is standardized in ISO/IEC 60559
+for floating-point numbers:
+
+\ul{
+  \li{\tcode{div_to_zero}}
+  \li{\tcode{div_to_inf}}
+  \li{\tcode{div_to_neg_inf}}
+  \li{\tcode{div_to_ties_away_zero}}
+  \li{\tcode{div_to_ties_to_even}}
+}
+
+Some software uses fixed-point numbers instead of floating-point numbers
+(possibly due to lack of floating-point hardware support).
+Fixed-point arithmetic also requires rounding (with such modes),
+so ISO/IEC 60559 rounding modes are useful to have in integer division.
 
 \h3(id=mod){\tcode{std::mod}}
 
@@ -1067,8 +1123,6 @@ std::div_to_zero(x, y)          \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-t
 std::div_away_zero(x, y)        \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-mag){-3}}
 std::div_to_inf(x, y)           \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-ceil){-2}}
 std::div_to_neg_inf(x, y)       \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-floor){-3}}
-std::div_to_odd(x, y)           \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-odd){-3}}
-std::div_to_even(x, y)          \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-even){-2}}
 
 std::div_ties_to_zero(x, y)     \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-ties-trunc){-2}}
 std::div_ties_away_zero(x, y)   \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-ties-mag){-2}}
@@ -1215,10 +1269,6 @@ namespace std {
   template<class T>
     constexpr T div_to_neg_inf(T x, T y);
   template<class T>
-    constexpr T div_to_odd(T x, T y);
-  template<class T>
-    constexpr T div_to_even(T x, T y);
-  template<class T>
     constexpr T div_ties_to_zero(T x, T y);
   template<class T>
     constexpr T div_ties_away_zero(T x, T y);
@@ -1239,10 +1289,6 @@ namespace std {
     constexpr div_result<T> div_rem_to_inf(T x, T y);
   template<class T>
     constexpr div_result<T> div_rem_to_neg_inf(T x, T y);
-  template<class T>
-    constexpr div_result<T> div_rem_to_odd(T x, T y);
-  template<class T>
-    constexpr div_result<T> div_rem_to_even(T x, T y);
   template<class T>
     constexpr div_result<T> div_rem_ties_to_zero(T x, T y);
   template<class T>
@@ -1365,40 +1411,6 @@ template<class T>
 
 \pnum
 \div_returns{towards negative infinity}
-}
-
-\itemdecl{
-template<class T>
-  constexpr T div_to_odd(T x, T y);
-}
-
-\itemdescr{
-\pnum
-\div_constraints
-
-\pnum
-\constexpects
-\tcode{x / y} is well-defined.
-
-\pnum
-\div_returns{towards the nearest odd integer}
-}
-
-\itemdecl{
-template<class T>
-  constexpr T div_to_even(T x, T y);
-}
-
-\itemdescr{
-\pnum
-\div_constraints
-
-\pnum
-\constexpects
-\tcode{x / y} is well-defined.
-
-\pnum
-\div_returns{towards the nearest even integer}
 }
 
 \itemdecl{
@@ -1533,7 +1545,8 @@ A result object where
   }
 }
 \note{
-It is possible for \tcode{div_\exposid{rounding}(x, y)} to have well-defined behavior even when
+It is possible for \tcode{div_rem_\exposid{rounding}(x, y)}
+to have well-defined behavior even when
 \tcode{x - quotient * y} has undefined behavior.
 \br\example{
 Assume that \tcode{\hl(macro){INT_MAX}} equals \tcode{2'147'483'647}.
