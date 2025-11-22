@@ -1524,7 +1524,7 @@ if (theme !== null) {
   }
 
   note-block.edit intro-::before {
-    content: "Editor's note:";
+    content: "Drafting note:";
     color: var(--edit-note-block-border-color);
   }
 
@@ -1577,14 +1577,14 @@ if (theme !== null) {
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/D3899R0>D3899R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2025-11-02</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2025-11-22</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6, EWG, CWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>
     Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;<br/>
     Matthias Kretz &lt;<a href=mailto:m.kretz@gsi.de class=sans>m.kretz@gsi.de</a>&gt;
   </dd>
-  <dt>GitHub Issue:</dt>    <dd><a href=https://wg21.link/P3688/github class=sans>wg21.link/P3688/github</a></dd>
+  <dt>GitHub Issue:</dt>    <dd><a href=https://wg21.link/P3899/github class=sans>wg21.link/P3899/github</a></dd>
   <dt>Source:</dt>          <dd><a href=https://github.com/eisenwave/cpp-proposals/blob/master/src/clarify-fp-overflow.cow class=sans>github.com/eisenwave/cpp-proposals/blob/master/src/clarify-fp-overflow.cow</a></dd>
 </dl>
 <hr/>
@@ -1727,7 +1727,7 @@ of a floating-point type adhering to ISO/IEC/IEEE 60559.
   </li>
 </ul>
 
-<p>I will not judge which of these interpretations is correct in my opinion.
+<p>We will not judge which of these interpretations is correct in our opinion.
 With these definitions out of the way,
 there are three competing opinions on the status quo:
 </p>
@@ -2038,7 +2038,8 @@ due to Compiler Explorer limitations.
 
 <p>The goal of this paper is to make minimal changes
 that may find consensus,
-while staying consistent with SG6 guidance and creating symmetry with both C
+while staying consistent with SG6 guidance (with one exception)
+and creating symmetry with both C
 and with the <code><h- data-h=str>&lt;cmath&gt;</h-></code> functions, which are now <code><h- data-h=kw>constexpr</h-></code>.
 The conditions for <code><h- data-h=str>&lt;cmath&gt;</h-></code> functions to be <code><h- data-h=kw>constexpr</h-></code>
 are stated in <a href=https://eel.is/c++draft/library.c#3>[library.c] paragraph 3</a>:
@@ -2130,6 +2131,26 @@ this design is consistent with the <code><h- data-h=str>&lt;cmath&gt;</h-></code
 which operate on infinity without reporting a range error;
 for example, <code><h- data-h=id>pow</h-><h- data-h=sym_par>(</h-><h- data-h=id>infinity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code> is a constant expression.
 </p>
+<p>If infinity propagation was not a constant expression,
+the intuitive spelling of negative infinity couldn't work in constant expressions:
+</p><code-block><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_op>-</h-><h- data-h=id>INFINITY</h-><h- data-h=sym_punc>;</h->                               <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> error, but we want OK</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_op>-</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>float</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=id>infinity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> error, but we want OK</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h-> <h- data-h=id>z</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>copysign</h-><h- data-h=sym_par>(</h-><h- data-h=id>INFINITY</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->           <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK</h-></code-block>
+<p>It would seem like a weird and unnecessary step if the user wasn't permitted
+to negate infinity
+and had to use <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>copysign</h-></code> instead.
+While negation of infinity in particular could be permitted,
+it would seem weird and inconsistent if <code><h- data-h=sym_op>-</h-><h- data-h=id>INFINITY</h-></code> was okay
+but <code><h- data-h=id>INFINITY</h-> <h- data-h=sym_op>*</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1</h-></code> wasn't.
+</p>
+<p>The logical conclusion is that infinity propagation in arithmetic
+needs to be a constant expression.
+</p>
+<note-block><p><intro-></intro-> 
+The approach to permit infinity propagation in constant expressions
+is not in line with aforementioned SG6 guidance on <a href="https://cplusplus%2egithub%2eio/CWG/issues/2168%2ehtml">[CWG2168]</a>.
+</p></note-block>
+
 <h3 id=division-by-zero><a class=para href=#division-by-zero></a>2.4. Division by zero</h3>
 
 <p>Division by zero has always been undefined behavior,
@@ -2145,12 +2166,18 @@ the behavior is undefined.
 where positive infinity, negative infinity, or NaN is produced,
 the handling of infinity sign (also considering negative zero)
 and NaN payloads may be inconsistent in hardware.
-Furthermore,
+Also, there are floating-point types that don't adhere to ISO/IEC 60559,
+so this needs to be specified directly in C++.
+We would need to say whether division by zero produces positive or negative infinity,
+and how division by negative zero is treated.
+</p>
+<p>Furthermore,
 division by zero is reported as a "pole error"
 in, e.g. <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>remainder</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-></code>,
 and is not a constant expression.
-</p>
-<p>Implementations retain the freedom to define division by zero to produce infinity,
+Therefore, it should not be a constant expression in the core language either,
+considering that this proposal aims to achieve consistency.
+Implementations retain the freedom to define division by zero to produce infinity,
 but this should not be mandated by the C++ standard.
 </p>
 <h3 id=nan><a class=para href=#nan></a>2.5. NaN</h3>
@@ -2257,7 +2284,7 @@ of evaluating an arithmetic expression
 </ul>
 
 <p>[<i>Note</i>: 
-If the operands are of a type that adheres to ISO/IEC 60559:2020,
+If the operands are of a type that adheres to ISO/IEC 60559,
 division by zero is the only case where an arithmetic expression has undefined behavior.
 However, some well-defined arithmetic expressions
 are not core constant expressions (<a href=https://eel.is/c++draft/expr.const>[expr.const]</a>).
@@ -2291,6 +2318,14 @@ any result is representable as NaN in <em>some other</em> type.
 That is, signed integer overflow could be well-defined because of <code><h- data-h=kw_type>float</h-></code> infinity.
 </p></note-block>
 
+<note-block class=edit><p><intro-></intro-> 
+<code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>float32_t</h-></code> is used in the example
+because this is a convenient way of writing an example in terms of a type that
+definitely adheres to ISO/IEC 60599,
+without having to make the example conditional or making the explanatory comments
+more complicated than need be.
+</p></note-block>
+
 <p>Do <u>not</u> make any changes to the note attached to <a href=https://eel.is/c++draft/expr.pre#4>[expr.pre] paragraph 4</a>:
 </p>
 <blockquote>
@@ -2300,14 +2335,6 @@ and all floating-point exceptions varies among machines,
 and is sometimes adjustable by a library function.
  — <i>end note</i>]
 </p></blockquote>
-
-<note-block class=edit><p><intro-></intro-> 
-<code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>float32_t</h-></code> is used in the example
-because this is a convenient way of writing an example in terms of a type that
-definitely adheres to ISO/IEC 60599:2020,
-without having to make the example conditional or making the explanatory comments
-more complicated than need be.
-</p></note-block>
 
 <h3 id=expr.const><a class=para href=#expr%2econst></a>[expr.const]</h3>
 

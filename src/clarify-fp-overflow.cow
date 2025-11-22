@@ -5,14 +5,14 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{D3899R0}}
-  \dt{Date:}            \dd{\tt{2025-11-02}}
+  \dt{Date:}            \dd{\tt{2025-11-22}}
   \dt{Audience:}        \dd{SG6, EWG, CWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{
     Jan Schultke <\mail{janschultke@gmail.com}>\br
     Matthias Kretz <\mail{m.kretz@gsi.de}>
   }
-  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3688/github)}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3899/github)}
   \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/clarify-fp-overflow.cow)}
 }
 \hr
@@ -113,7 +113,7 @@ This wording has been interpreted in two different ways:
   }
 }
 
-I will not judge which of these interpretations is correct in my opinion.
+We will not judge which of these interpretations is correct in our opinion.
 With these definitions out of the way,
 there are three competing opinions on the status quo:
 
@@ -425,7 +425,8 @@ due to Compiler Explorer limitations.
 
 The goal of this paper is to make minimal changes
 that may find consensus,
-while staying consistent with SG6 guidance and creating symmetry with both C
+while staying consistent with SG6 guidance (with one exception)
+and creating symmetry with both C
 and with the \header{cmath} functions, which are now \tcode{constexpr}.
 The conditions for \header{cmath} functions to be \tcode{constexpr}
 are stated in \eelis{library.c#3}:
@@ -517,6 +518,28 @@ this design is consistent with the \header{cmath} functions,
 which operate on infinity without reporting a range error;
 for example, \tcode{pow(infinity(), 1)} is a constant expression.
 
+If infinity propagation was not a constant expression,
+the intuitive spelling of negative infinity couldn't work in constant expressions:
+\cppblock{
+constexpr float x = -INFINITY;                               // error, but we want OK
+constexpr float y = -std::numeric_limits<float>::infinity(); // error, but we want OK
+constexpr float z = std::copysign(INFINITY, -1.f);           // OK
+}
+It would seem like a weird and unnecessary step if the user wasn't permitted
+to negate infinity
+and had to use \tcode{std::copysign} instead.
+While negation of infinity in particular could be permitted,
+it would seem weird and inconsistent if \tcode{-INFINITY} was okay
+but \tcode{INFINITY * -1} wasn't.
+
+The logical conclusion is that infinity propagation in arithmetic
+needs to be a constant expression.
+
+\Bnote{
+The approach to permit infinity propagation in constant expressions
+is not in line with aforementioned SG6 guidance on \ref(CWG2168).
+}
+
 \h3{Division by zero}
 
 Division by zero has always been undefined behavior,
@@ -532,11 +555,17 @@ While \ref(ISO/IEC 60559:2020) defines behavior for division by zero,
 where positive infinity, negative infinity, or NaN is produced,
 the handling of infinity sign (also considering negative zero)
 and NaN payloads may be inconsistent in hardware.
+Also, there are floating-point types that don't adhere to ISO/IEC 60559,
+so this needs to be specified directly in C++.
+We would need to say whether division by zero produces positive or negative infinity,
+and how division by negative zero is treated.
+
 Furthermore,
 division by zero is reported as a "pole error"
 in, e.g. \tcode{std::remainder(1, 0)},
 and is not a constant expression.
-
+Therefore, it should not be a constant expression in the core language either,
+considering that this proposal aims to achieve consistency.
 Implementations retain the freedom to define division by zero to produce infinity,
 but this should not be mandated by the C++ standard.
 
@@ -644,7 +673,7 @@ of evaluating an arithmetic expression
 }
 
 \note{
-If the operands are of a type that adheres to ISO/IEC 60559:2020,
+If the operands are of a type that adheres to ISO/IEC 60559,
 division by zero is the only case where an arithmetic expression has undefined behavior.
 However, some well-defined arithmetic expressions
 are not core constant expressions\iref{expr.const}.
@@ -680,6 +709,14 @@ any result is representable as NaN in \em{some other} type.
 That is, signed integer overflow could be well-defined because of \tcode{float} infinity.
 }
 
+\editnote{
+\tcode{std::float32_t} is used in the example
+because this is a convenient way of writing an example in terms of a type that
+definitely adheres to ISO/IEC 60599,
+without having to make the example conditional or making the explanatory comments
+more complicated than need be.
+}
+
 Do \u{not} make any changes to the note attached to \eelis{expr.pre#4}:
 
 \Bquote{
@@ -688,14 +725,6 @@ Treatment of division by zero, forming a remainder using a zero divisor,
 and all floating-point exceptions varies among machines,
 and is sometimes adjustable by a library function.
 }
-}
-
-\editnote{
-\tcode{std::float32_t} is used in the example
-because this is a convenient way of writing an example in terms of a type that
-definitely adheres to ISO/IEC 60599:2020,
-without having to make the example conditional or making the explanatory comments
-more complicated than need be.
 }
 
 \h3(show-number=false){[expr.const]}
