@@ -1,0 +1,329 @@
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+  title = Fix inappropriate font choices for "declaration"
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D3924R0}}
+  \dt{Date:}            \dd{\tt{2025-11-22}}
+  \dt{Audience:}        \dd{CWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3924/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/fix-declaration-font.cow)}
+}
+\hr
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+The C++ standard has two similar terms:
+
+\ul{
+  \li{the regular-font "declaration" defined in \eelis{basic.pre}}
+  \li{the grammatical \gterm{declaration} defined in \eelis{dcl}}
+}
+
+\Bex{
+There exist declarations that are not \gterm{declaration}s,
+such as the \gterm{elaborated-type-specifier} \tcode{struct S}.
+}
+
+There are instances where these have been used incorrectly.
+NB comment US 11-400 requests:
+
+\Bquote{
+Perform a thorough review of each usage of the term "declaration"
+to confirm that it is rendered in the correct style.
+}
+
+Such a review has been performed.
+The vast majority of occurrences are "declaration", not \gterm{declaration}.
+Since "declaration" is somewhat of a superset,
+the term can almost always be used without grammatical font.
+Using grammatical font is more likely to result in a mistake,
+so it should be done with great caution and confidence.
+
+In some cases, the surrounding wording is adjusted
+to fit the existing use of \gterm{declaration}.
+
+\h2{Wording}
+
+\editnote{
+Some mistakes in \ref(N5014) have already been fixed,
+such as the misuse in \eelis{basic.pre} pointed out by US 12-026.
+}
+
+\h3(show-number=false){[basic]}
+
+Change \eelis{basic.def#2} as follows:
+
+\Bdiff{
+Each entity declared by a declaration is also
+\dfn{defined} by that declaration unless:
+\ul{
+  \li{\etc}
+  \li{
+    it is an \del{explicit specialization}
+    \ins{\gterm{explicit-specialization}}\iref{temp.expl.spec}
+    whose \gterm{declaration} is not a definition.
+  }
+}
+}
+
+Change \eelis{basic.scope.scope#note-1} as follows:
+
+\Bdiff{
+\note{
+Special cases include that:
+\ul{
+  \li{\etc}
+  \li{
+    The \del{declaration in} \ins{\gterm{declaration} of} a \grammarterm{template-declaration}
+    inhabits the same scope as the \grammarterm{template-declaration}.
+  }
+  \li{\etc}
+}
+}
+}
+
+Do \u{not} change \eelis{basic.link#1}:
+
+\Bquote{
+A program consists of one or more translation units\iref{lex.separate} linked together.
+A translation unit consists of a sequence of declarations.
+
+\dl(class=grammar){
+  \dt{\grammarterm{translation-unit}:}
+  \dd{\etc}
+}
+}
+
+\editnote{
+The "introductory" wording at the start of subclauses
+that introduce various syntactical constructs
+could use grammatical font in many cases.
+However, this is a general issue, not specific to "declaration",
+and should be addressed holistically.
+}
+
+\h3(show-number=false){[stmt]}
+
+Do \u{not} change \eelis{stmt.pre#7}:
+
+\Bquote{
+If a \gterm{condition} can be syntactically resolved as
+either an expression or a declaration,
+it is interpreted as the latter.
+}
+
+\editnote{
+It feels incorrect not to use \gterm{expression} and \gterm{declaration} here.
+However, a \gterm{condition} cannot directly be a \gterm{declaration},
+so this problem cannot be easily fixed.
+Changing the font here is not strictly better.
+}
+
+\Btodo{
+Resolve this problem separately in a CWG issue,
+possibly by factoring out the two non-\gterm{expression} grammar rules
+that \gterm{condition} may expand to.
+}
+
+Change \eelis{stmt.block#2} as follows:
+
+\Bdiff{
+\note{
+A compound statement defines a block scope\iref{block.scope}.
+\del{A declaration 
+is a \gterm{statement}\iref{stmt.dcl}.}
+}
+}
+
+\editnote{
+Not every declaration is a \grammarterm{statement},
+only a \grammarterm{declaration-statement} is.
+The second sentence is also unnecessary in general
+because the surrounding wording and the grammar are already clear.
+}
+
+Change \eelis{stmt.expand#5.3} as follows:
+
+\Bdiff{
+Otherwise, \math{\mi{S}} is a destructuring expansion statement
+and \math{\mi{S}} is equivalent to:
+\codeblock(txt,borders=false){
+{
+  \grammarterm{init-statement}
+  \opt{constexpr} auto&& [\math{\msub{\mi{u}\mn{0}}}, \math{\msub{\mi{u}\mn{1}}}, \N{HORIZONTAL ELLIPSIS}, \math{\msub{\mi{u}\mrow{\mi{N}\mo{−}\mn{1}}}}] = \grammarterm{expansion-initializer};
+  \math{\msub{\mi{S}\mn{0}}}
+  ⋮
+  \math{\msub{\mi{S}\mrow{\mi{N}\mo{−}\mn{1}}}}
+}
+}
+
+where \math{\mi{N}} is the structured binding size
+of the type of the \gterm{expansion-initializer} and \math{\msub{\mi{S}\mi{i}}} is
+\codeblock(txt,borders=false){
+{
+  \gterm{for-range-declaration} = \math{\msub{\mi{u}\mi{i}}} ;
+  \grammarterm{compound-statement}
+}
+}
+The keyword \tcode{constexpr} is present in the
+\del{declaration} \ins{\gterm{structured-binding-declaration}} of
+\math{\mrow{
+  \msub{\mi{u}\mn{0}}
+  \mo{,}
+  \msub{\mi{u}\mn{1}}
+  \mo{,}
+  \mi{…}
+  \mo{,}
+  \msub{\mi{u}\mrow{\mi{N}\mo{−}\mn{1}}}
+}}
+if and only if \tcode{constexpr} is one of the
+\grammarterm{decl-specifier}s of the \grammarterm{decl-specifier-seq}
+of the \grammarterm{for-range-declaration}.
+}
+
+\h3(show-number=false){[dcl]}
+
+Change \eelis{dcl.stc#1} as follows:
+
+\Bdiff{
+\etc
+If a \gterm{storage-class-specifier} appears in a \gterm{decl-specifier-seq},
+there can be no \tcode{typedef} specifier in the same \gterm{decl-specifier-seq} and the
+\gterm{init-declarator-list} \ins{of the \gterm{simple-declaration}} or
+\gterm{member-declarator-list} of the \del{declaration} \ins{\gterm{member-declaration}}
+shall not be empty
+(except for an anonymous union declared in a namespace scope\iref{class.union.anon}).
+\etc
+}
+
+Change \eelis{dcl.type.cv#1} as follows:
+
+\Bdiff{
+\etc
+If a \gterm{cv-qualifier} appears in a \gterm{decl-specifier-seq}, the
+\gterm{init-declarator-list} \ins{of the \gterm{simple-declaration}} or
+\gterm{member-declarator-list} of the \del{declaration} \ins{\gterm{member-declaration}}
+shall not be empty.
+\etc
+}
+
+Do \u{not} change \eelis{dcl.type.elab#2} as follows:
+
+\Bquote{
+If an \gterm{elaborated-type-specifier} is the sole constituent of a
+declaration,
+the declaration is ill-formed unless it is
+an explicit specialization\iref{temp.expl.spec},
+a partial specialization\iref{temp.spec.partial},
+an explicit instantiation\iref{temp.explicit},
+or it has one of the following forms:
+
+\etc
+}
+
+\editnote{
+If the wording was restricted to \grammarterm{declaration}s,
+this rule may not apply because grammatically,
+a \grammarterm{declaration} cannot solely consist of a
+\grammarterm{elaborated-type-specifier}.
+}
+
+Change \eelis{dcl.decl.general#3} as follows:
+
+\Bdiff{
+Each \gterm{init-declarator}
+\ins{of a \gterm{simple-declaration}}
+or \gterm{member-declarator}
+\ins{of a \gterm{member-declaration}}
+\del{in a declaration}
+is analyzed separately
+as if it were in a \del{declaration}
+\ins{\gterm{simple-declaration} or \gterm{member-declaration}}
+by itself.
+}
+
+Do \u{not} change \eelis{dcl.ambig.res#1}:
+
+\Bquote{
+\etc
+However, a construct that can syntactically be a \gterm{declaration}
+whose outermost \gterm{declarator} would match the grammar of a \gterm{declarator}
+with a \gterm{trailing-return-type} is a declaration
+only if it starts with \tcode{auto}.
+}
+
+\editnote{
+The above also applies to things like function parameters,
+which are not \grammarterm{declaration}s,
+but may syntactically match a \grammarterm{declaration}.
+}
+
+Change \eelis{dcl.meaning.general#4} as follows:
+
+\Bdiff{
+A \tcode{static}, \tcode{thread_local}, \tcode{extern}, \tcode{mutable}, \tcode{friend},
+\tcode{inline}, \tcode{virtual}, \tcode{constexpr}, \tcode{consteval}, \tcode{constinit},
+or \tcode{typedef} specifier or an \gterm{explicit-specifier} applies directly to
+each \gterm{declarator-id} in a \del{declaration} \ins{\gterm{simple-declaration} or \gterm{member-declaration}};
+the type specified for each \gterm{declarator-id}
+depends on both the \gterm{decl-specifier-seq} and its \gterm{declarator}.
+}
+
+\h3(show-number=false){[class.dtor]}
+
+Do \u{not} change \eelis{class.dtor#1}:
+
+\Bquote{
+A declaration whose \gterm{declarator-id} has an \gterm{unqualified-id}
+that begins with a \tcode{~} declares a \dfn{prospective destructor};
+its \gterm{declarator} shall be a function declarator\iref{dcl.fct} of the form
+\etc
+}
+
+\editnote{
+A \grammarterm{declarator-id} does not directly belong to a \gterm{declaration}.
+This wording seems to make use of the fact that separate \gterm{declarator}s
+in a single \gterm{declaration} are separate declarations.
+}
+
+Do \u{not} change \eelis{class.conv.fct#1}:
+
+\Bquote{
+A declaration whose \gterm{declarator-id} has an \gterm{unqualified-id}
+that is a \gterm{conversion-function-id}
+declares a \dfn{conversion function};
+its \gterm{declarator} shall be a function declarator\iref{dcl.fct} of the form
+\etc
+}
+
+\h3(show-number=false){[over.literal]}
+
+Do \u{not} change \eelis{over.literal#2}:
+
+\Bquote{
+A declaration whose \gterm{declarator-id} is a \gterm{literal-operator-id}
+shall declare a function or function template
+\etc
+}
+
+\h2{References}
+
+\bib(
+  id = N5014,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-08-05,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+)\
+
+\make_bib
