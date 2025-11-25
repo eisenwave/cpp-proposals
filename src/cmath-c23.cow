@@ -36,6 +36,8 @@ which are useful not only to decimal floating-point numbers.
 
 \h2{Design}
 
+\h3{New functions}
+
 The functions in the table below are proposed for inclusion in C++29.
 The placeholder \tcode{\exposid{F}} is a shorthand for the
 \tcode{\exposid{floating-point-type}} placeholder in \eelis{cmath.syn}.
@@ -60,27 +62,27 @@ refer to \ref(#wording) for the complete list.
     \th{Returns}
   }
   \tr{
-    \td{\tcode{int iscanonical(\exposid{F} x);}}
+    \td{\tcode{bool iscanonical(\exposid{F} x);}}
     \td{
-      nonzero value if and only if \tcode{x} is canonical
+      \tcode{true} if and only if \tcode{x} is canonical
     }
   }
   \tr{
-    \td{\tcode{int issignaling(\exposid{F} x);}}
+    \td{\tcode{bool issignaling(\exposid{F} x);}}
     \td{
-      nonzero value if and only if \tcode{x} is a signaling NaN
+      \tcode{true} if and only if \tcode{x} is a signaling NaN
     }
   }
   \tr{
-    \td{\tcode{int issubnormal(\exposid{F} x);}}
+    \td{\tcode{bool issubnormal(\exposid{F} x);}}
     \td{
-      nonzero value if and only if \tcode{x} is subnormal
+      \tcode{true} if and only if \tcode{x} is subnormal
     }
   }
   \tr{
-    \td{\tcode{int iszero(\exposid{F} x);}}
+    \td{\tcode{bool iszero(\exposid{F} x);}}
     \td{
-      nonzero value if and only if \tcode{x} is zero
+      \tcode{true} if and only if \tcode{x} is zero
     }
   }
   \tr{
@@ -308,9 +310,9 @@ refer to \ref(#wording) for the complete list.
     }
   }
   \tr{
-    \td{\tcode{int canonicalize(\exposid{F}* cx, const \exposid{F}* x);}}
+    \td{\tcode{bool canonicalize(\exposid{F}* cx, const \exposid{F}* x);}}
     \td{
-      zero if and only if canonicalization succeeded
+      \tcode{true} if and only if canonicalization failed
     }
   }
   \tr{
@@ -343,9 +345,8 @@ refer to \ref(#wording) for the complete list.
   }
   \tr{
     \td{
-      \tcode{float fadd(double x, double y);\br
-      float faddl(long double x, long double y);\br
-      double daddl(long double x, long double y);}
+      \tcode{float fadd(\exposid{F} x, \exposid{F} y);\br
+      double dadd(\exposid{F} x, \exposid{F} y);}
     }
     \td{
       \math{\mrow{\mi{x}\mo{+}\mi{y}}}
@@ -353,9 +354,8 @@ refer to \ref(#wording) for the complete list.
   }
   \tr{
     \td{
-      \tcode{float fsub(double x, double y);\br
-      float fsubl(long double x, long double y);\br
-      double dsubl(long double x, long double y);}
+      \tcode{float fsub(\exposid{F} x, \exposid{F} y);\br
+      double dsub(\exposid{F} x, \exposid{F} y);}
     }
     \td{
       \math{\mrow{\mi{x}\mo{−}\mi{y}}}
@@ -363,9 +363,8 @@ refer to \ref(#wording) for the complete list.
   }
   \tr{
     \td{
-      \tcode{float fmul(double x, double y);\br
-      float fmull(long double x, long double y);\br
-      double dmull(long double x, long double y);}
+      \tcode{float fmul(\exposid{F} x, \exposid{F} y);\br
+      double dmul(\exposid{F} x, \exposid{F} y);}
     }
     \td{
       \math{\mrow{\mi{x}\mo{×}\mi{y}}}
@@ -373,9 +372,8 @@ refer to \ref(#wording) for the complete list.
   }
   \tr{
     \td{
-      \tcode{float fdiv(double x, double y);\br
-      float fdivl(long double x, long double y);\br
-      double ddivl(long double x, long double y);}
+      \tcode{float fdiv(\exposid{F} x, \exposid{F} y);\br
+      double ddiv(\exposid{F} x, \exposid{F} y);}
     }
     \td{
       \math{\mrow{\mi{x}\mo{÷}\mi{y}}}
@@ -383,9 +381,8 @@ refer to \ref(#wording) for the complete list.
   }
   \tr{
     \td{
-      \tcode{float ffma(double x, double y, double z);\br
-      float ffmal(long double x, /* ... */);\br
-      double dfmal(long double x, /* ... */);}
+      \tcode{float ffma(\exposid{F} x, \exposid{F} y, \exposid{F} z);\br
+      double dfma(\exposid{F} x, \exposid{F} y, \exposid{F} z);}
     }
     \td{
       \math{\mrow{
@@ -396,26 +393,95 @@ refer to \ref(#wording) for the complete list.
   }
   \tr{
     \td{
-      \tcode{float fsqrt(double x);\br
-      float fsqrtl(long double x);\br
-      double dsqrtl(long double x);}
+      \tcode{float fsqrt(\exposid{F} x);\br
+      double dsqrt(\exposid{F} x);}
     }
     \td{
       \math{\msqrt{\mi{x}}}
     }
   }
   \tr{
-    \td{\tcode{int iseqsig(\exposid{F} x, \exposid{F} y)}}
+    \td{\tcode{bool iseqsig(\exposid{F} x, \exposid{F} y)}}
     \td{
-      \tcode{1} if \tcode{x} and \tcode{y} are equal and\br
-      \tcode{0} otherwise
+      \tcode{true} if \tcode{x} and \tcode{y} are equal and\br
+      \tcode{false} otherwise
     }
   }
 }
 
+\h4{Narrow rounding functions}
+
+The narrow rounding functions (such as \tcode{fadd})
+are unusually difficult to expose in C++ in a generic way.
+Even the \header{tgmath.h} versions require the user to specify the return type
+as a prefix (\tt{f}, \tt{d}, \tt{f32}, …) as part of the function name.
+This is extremely hostile to generic code,
+and also means there is no support for extended floating-types in C++
+because we don't consider \tcode{std::float32_t} to be C23's \tcode{_Float32}
+and to have \tcode{sqrtf32} and other functions that accept it.
+
+To solve this, we can do something novel:
+add function templates for these rounding functions:
+
+\cppblock{
+template<class T, class F> constexpr T fadd(F x, F y) noexcept;
+template<class T, class F> constexpr T fsub(F x, F y) noexcept;
+template<class T, class F> constexpr T fmul(F x, F y) noexcept;
+template<class T, class F> constexpr T fdiv(F x, F y) noexcept;
+template<class T, class F> constexpr T ffma(F x, F y, F z) noexcept;
+template<class T, class F> constexpr T fsqrt(F x) noexcept;
+}
+
+While the prefix \q{\tt{f}} is a bit inappropriate
+(it it supposed to indicate a \tcode{float} return type),
+there is no obvious alternative prefix,
+\q{\tt{f}} definitely won't clash with future \header{math.h} functions,
+and having no prefix at all would create undesirable overload sets with other functions.
+
+These templates are constrained so that \tcode{F}
+has to be of greater conversion rank than \tcode{T},
+which matches the C23 restrictions.
+Furthermore, mixing standard and extended floating-point types is not supported.
+
+\h3{New macros}
+
+Besides the new functions,
+there are also macros which are pulled in from C23.
+
 \Bnote{
 The \tcode{int rnd} parameter in functions such as \tcode{fromfp}
 corresponds to one of \tt{FP_INT_*} rounding direction macros.
+}
+
+The block below lists all new macros:
+
+\cppblock{
+// math rounding direction macros
+FP_INT_UPWARD
+FP_INT_DOWNWARD
+FP_INT_TOWARDZERO
+FP_INT_TONEARESTFROMZERO
+FP_INT_TONEAREST
+
+// indicates that the respective function is "fast"
+FP_FAST_FADD
+FP_FAST_FADDL
+FP_FAST_DADDL
+FP_FAST_FSUB
+FP_FAST_FSUBL
+FP_FAST_DSUBL
+FP_FAST_FMUL
+FP_FAST_FMULL
+FP_FAST_DMULL
+FP_FAST_FDIV
+FP_FAST_FDIVL
+FP_FAST_DDIVL
+FP_FAST_FSQRT
+FP_FAST_FSQRTL
+FP_FAST_DSQRTL
+FP_FAST_FFMA
+FP_FAST_FFMAL
+FP_FAST_DFMAL
 }
 
 \h2{Wording}
@@ -429,6 +495,411 @@ Add a feature-test macro to \eelis{version.syn} as follows:
 \Bins{
 \itemdecl{
 #define __cpp_my_new_feature 20XXXXL // \serif{freestanding, also in \tt{<header>}}
+}
+}
+
+\h3(show-number=false){[cmath.syn]}
+
+\cowel_macro(floating_point_typ){\exposid{floating-point-type}}
+
+\Bdiff{
+\itemdecl{
+#define HUGE_VAL \seebelow
+#define HUGE_VALF \seebelow
+#define HUGE_VALL \seebelow
+#define INFINITY \seebelow
+#define NAN \seebelow
+#define FP_INFINITE \seebelow
+#define FP_NAN \seebelow
+#define FP_NORMAL \seebelow
+#define FP_SUBNORMAL \seebelow
+#define FP_ZERO \seebelow
+#define FP_FAST_FMA \seebelow
+#define FP_FAST_FMAF \seebelow
+#define FP_FAST_FMAL \seebelow
+#define FP_ILOGB0 \seebelow
+#define FP_ILOGBNAN \seebelow
+#define MATH_ERRNO \seebelow
+#define MATH_ERREXCEPT \seebelow
+
+#define math_errhandling \seebelow
+
+namespace std {
+  using float_t = \seebelow;
+  using double_t = \seebelow;
+
+  constexpr \floating_point_typ acos(\floating_point_typ x);
+  constexpr float               acosf(float x);
+  constexpr long double         acosl(long double x);
+
+  constexpr \floating_point_typ asin(\floating_point_typ x);
+  constexpr float               asinf(float x);
+  constexpr long double         asinl(long double x);
+
+  constexpr \floating_point_typ atan(\floating_point_typ x);
+  constexpr float               atanf(float x);
+  constexpr long double         atanl(long double x);
+
+  constexpr \floating_point_typ atan2(\floating_point_typ y, \floating_point_typ x);
+  constexpr float               atan2f(float y, float x);
+  constexpr long double         atan2l(long double y, long double x);
+
+  constexpr \floating_point_typ cos(\floating_point_typ x);
+  constexpr float               cosf(float x);
+  constexpr long double         cosl(long double x);
+
+  constexpr \floating_point_typ sin(\floating_point_typ x);
+  constexpr float               sinf(float x);
+  constexpr long double         sinl(long double x);
+
+  constexpr \floating_point_typ tan(\floating_point_typ x);
+  constexpr float               tanf(float x);
+  constexpr long double         tanl(long double x);
+\ins{
+  constexpr \floating_point_typ acospi(\floating_point_typ x);
+  constexpr float               acospif(float x);
+  constexpr long double         acospil(long double x);
+
+  constexpr \floating_point_typ asinpi(\floating_point_typ x);
+  constexpr float               asinpif(float x);
+  constexpr long double         asinpil(long double x);
+
+  constexpr \floating_point_typ atanpi(\floating_point_typ x);
+  constexpr float               atanpif(float x);
+  constexpr long double         atanpil(long double x);
+
+  constexpr \floating_point_typ atan2(\floating_point_typ y, \floating_point_typ x);
+  constexpr float               atan2f(float y, float x);
+  constexpr long double         atan2l(long double y, long double x);
+  
+  constexpr \floating_point_typ cospi(\floating_point_typ x);
+  constexpr float               cospif(float x);
+  constexpr long double         cospil(long double x);
+
+  constexpr \floating_point_typ sinpi(\floating_point_typ x);
+  constexpr float               sinpif(float x);
+  constexpr long double         sinpil(long double x);
+
+  constexpr \floating_point_typ tanpi(\floating_point_typ x);
+  constexpr float               tanpif(float x);
+  constexpr long double         tanpil(long double x);}
+
+  constexpr \floating_point_typ acosh(\floating_point_typ x);
+  constexpr float               acoshf(float x);
+  constexpr long double         acoshl(long double x);
+
+  constexpr \floating_point_typ asinh(\floating_point_typ x);
+  constexpr float               asinhf(float x);
+  constexpr long double         asinhl(long double x);
+
+  constexpr \floating_point_typ atanh(\floating_point_typ x);
+  constexpr float               atanhf(float x);
+  constexpr long double         atanhl(long double x);
+
+  constexpr \floating_point_typ cosh(\floating_point_typ x);
+  constexpr float               coshf(float x);
+  constexpr long double         coshl(long double x);
+
+  constexpr \floating_point_typ sinh(\floating_point_typ x);
+  constexpr float               sinhf(float x);
+  constexpr long double         sinhl(long double x);
+
+  constexpr \floating_point_typ tanh(\floating_point_typ x);
+  constexpr float               tanhf(float x);
+  constexpr long double         tanhl(long double x);
+
+  constexpr \floating_point_typ exp(\floating_point_typ x);
+  constexpr float               expf(float x);
+  constexpr long double         expl(long double x);
+\ins{
+  constexpr \floating_point_typ exp10(\floating_point_typ x);
+  constexpr float               exp10f(float x);
+  constexpr long double         exp10l(long double x);
+  
+  constexpr \floating_point_typ exp10m1(\floating_point_typ x);
+  constexpr float               exp10m1f(float x);
+  constexpr long double         exp10m1l(long double x);}
+
+  constexpr \floating_point_typ exp2(\floating_point_typ x);
+  constexpr float               exp2f(float x);
+  constexpr long double         exp2l(long double x);
+\ins{
+  constexpr \floating_point_typ exp2m1(\floating_point_typ x);
+  constexpr float               exp2m1f(float x);
+  constexpr long double         exp2m1l(long double x);}
+
+  constexpr \floating_point_typ expm1(\floating_point_typ x);
+  constexpr float               expm1f(float x);
+  constexpr long double         expm1l(long double x);
+
+  constexpr \floating_point_typ frexp(\floating_point_typ value, int* exp);
+  constexpr float               frexpf(float value, int* exp);
+  constexpr long double         frexpl(long double value, int* exp);
+
+  constexpr int ilogb(\floating_point_typ x);
+  constexpr int ilogbf(float x);
+  constexpr int ilogbl(long double x);
+
+  constexpr \floating_point_typ ldexp(\floating_point_typ x, int exp);
+  constexpr float               ldexpf(float x, int exp);
+  constexpr long double         ldexpl(long double x, int exp);
+
+  constexpr \floating_point_typ log(\floating_point_typ x);
+  constexpr float               logf(float x);
+  constexpr long double         logl(long double x);
+
+  constexpr \floating_point_typ log10(\floating_point_typ x);
+  constexpr float               log10f(float x);
+  constexpr long double         log10l(long double x);
+\ins{
+  constexpr \floating_point_typ log10p1(\floating_point_typ x);
+  constexpr float               log10p1f(float x);
+  constexpr long double         log10p1l(long double x);}
+
+  constexpr \floating_point_typ log1p(\floating_point_typ x);
+  constexpr float               log1pf(float x);
+  constexpr long double         log1pl(long double x);
+\ins{  
+  constexpr \floating_point_typ logp1(\floating_point_typ x);
+  constexpr float               logp1f(float x);
+  constexpr long double         logp1l(long double x);}  
+
+  constexpr \floating_point_typ log2(\floating_point_typ x);
+  constexpr float               log2f(float x);
+  constexpr long double         log2l(long double x);
+\ins{
+  constexpr \floating_point_typ log2p1(\floating_point_typ x);
+  constexpr float               log2p1f(float x);
+  constexpr long double         log2p1l(long double x);}
+
+  constexpr \floating_point_typ logb(\floating_point_typ x);
+  constexpr float               logbf(float x);
+  constexpr long double         logbl(long double x);
+
+  constexpr \floating_point_typ modf(\floating_point_typ value, \floating_point_typ* iptr);
+  constexpr float               modff(float value, float* iptr);
+  constexpr long double         modfl(long double value, long double* iptr);
+
+  constexpr \floating_point_typ scalbn(\floating_point_typ x, int n);
+  constexpr float               scalbnf(float x, int n);
+  constexpr long double         scalbnl(long double x, int n);
+
+  constexpr \floating_point_typ scalbln(\floating_point_typ x, long int n);
+  constexpr float               scalblnf(float x, long int n);
+  constexpr long double         scalblnl(long double x, long int n);
+
+  constexpr \floating_point_typ cbrt(\floating_point_typ x);
+  constexpr float               cbrtf(float x);
+  constexpr long double         cbrtl(long double x);
+\ins{
+  constexpr \floating_point_typ compoundn(\floating_point_typ x, long long int n);
+  constexpr float               compoundn(float x, long long int n);
+  constexpr long double         compoundn(long double x, long long int n);}
+
+  //\serif{ [c.math.abs], absolute values}
+  constexpr int                 abs(int j);                             //\serif{ freestanding}
+  constexpr long int            abs(long int j);                        //\serif{ freestanding}
+  constexpr long long int       abs(long long int j);                   //\serif{ freestanding}
+  constexpr \floating_point_typ abs(\floating_point_typ j);             //\serif{ freestanding-deleted}
+
+  constexpr \floating_point_typ fabs(\floating_point_typ x);
+  constexpr float               fabsf(float x);
+  constexpr long double         fabsl(long double x);
+
+  constexpr \floating_point_typ hypot(\floating_point_typ x, \floating_point_typ y);
+  constexpr float               hypotf(float x, float y);
+  constexpr long double         hypotl(long double x, long double y);
+
+  //\serif{ [c.math.hypot3], three-dimensional hypotenuse}
+  constexpr \floating_point_typ hypot(\floating_point_typ x, \floating_point_typ y,
+                                      \floating_point_typ z);
+
+  constexpr \floating_point_typ pow(\floating_point_typ x, \floating_point_typ y);
+  constexpr float               powf(float x, float y);
+  constexpr long double         powl(long double x, long double y);
+\ins{
+  constexpr \floating_point_typ pown(\floating_point_typ x, long long int n);
+  constexpr float               pownf(float x, long long int n);
+  constexpr long double         pownl(long double x, long long long int n);
+
+  constexpr \floating_point_typ powr(\floating_point_typ x, \floating_point_typ y);
+  constexpr float               powrf(float x, float y);
+  constexpr long double         powrl(long double x, long double y);
+
+  constexpr \floating_point_typ rootn(\floating_point_typ x);
+  constexpr float               rootnf(float x);
+  constexpr long double         rootnl(long double x);
+
+  constexpr \floating_point_typ rsqrt(\floating_point_typ x);
+  constexpr float               rsqrtf(float x);
+  constexpr long double         rsqrtl(long double x);}
+
+  constexpr \floating_point_typ sqrt(\floating_point_typ x);
+  constexpr float               sqrtf(float x);
+  constexpr long double         sqrtl(long double x);
+
+  constexpr \floating_point_typ erf(\floating_point_typ x);
+  constexpr float               erff(float x);
+  constexpr long double         erfl(long double x);
+
+  constexpr \floating_point_typ erfc(\floating_point_typ x);
+  constexpr float               erfcf(float x);
+  constexpr long double         erfcl(long double x);
+
+  constexpr \floating_point_typ lgamma(\floating_point_typ x);
+  constexpr float               lgammaf(float x);
+  constexpr long double         lgammal(long double x);
+
+  constexpr \floating_point_typ tgamma(\floating_point_typ x);
+  constexpr float               tgammaf(float x);
+  constexpr long double         tgammal(long double x);
+
+  constexpr \floating_point_typ ceil(\floating_point_typ x);
+  constexpr float               ceilf(float x);
+  constexpr long double         ceill(long double x);
+
+  constexpr \floating_point_typ floor(\floating_point_typ x);
+  constexpr float               floorf(float x);
+  constexpr long double         floorl(long double x);
+
+  \floating_point_typ nearbyint(\floating_point_typ x);
+  float               nearbyintf(float x);
+  long double         nearbyintl(long double x);
+
+  \floating_point_typ rint(\floating_point_typ x);
+  float               rintf(float x);
+  long double         rintl(long double x);
+
+  long int lrint(\floating_point_typ x);
+  long int lrintf(float x);
+  long int lrintl(long double x);
+
+  long long int llrint(\floating_point_typ x);
+  long long int llrintf(float x);
+  long long int llrintl(long double x);
+
+  constexpr \floating_point_typ round(\floating_point_typ x);
+  constexpr float               roundf(float x);
+  constexpr long double         roundl(long double x);
+
+  constexpr long int lround(\floating_point_typ x);
+  constexpr long int lroundf(float x);
+  constexpr long int lroundl(long double x);
+
+  constexpr long long int llround(\floating_point_typ x);
+  constexpr long long int llroundf(float x);
+  constexpr long long int llroundl(long double x);
+\ins{
+  constexpr \floating_point_typ roundeven(\floating_point_typ x);
+  constexpr float               roundevenf(float x);
+  constexpr long double         roundevenl(long double x);}
+
+  constexpr \floating_point_typ trunc(\floating_point_typ x);
+  constexpr float               truncf(float x);
+  constexpr long double         truncl(long double x);
+\ins{
+  constexpr \floating_point_typ fromfp(\floating_point_typ x, int rnd, unsigned int width);
+  constexpr float               fromfpf(float x, int rnd, unsigned int width);
+  constexpr long double         fromfpl(long double x, int rnd, unsigned int width);
+
+  constexpr \floating_point_typ ufromfp(\floating_point_typ x, int rnd, unsigned int width);
+  constexpr float               ufromfpf(float x, int rnd, unsigned int width);
+  constexpr long double         ufromfpl(long double x, int rnd, unsigned int width);}
+
+  constexpr \floating_point_typ fmod(\floating_point_typ x, \floating_point_typ y);
+  constexpr float               fmodf(float x, float y);
+  constexpr long double         fmodl(long double x, long double y);
+
+  constexpr \floating_point_typ remainder(\floating_point_typ x, \floating_point_typ y);
+  constexpr float               remainderf(float x, float y);
+  constexpr long double         remainderl(long double x, long double y);
+
+  constexpr \floating_point_typ remquo(\floating_point_typ x, \floating_point_typ y, int* quo);
+  constexpr float               remquof(float x, float y, int* quo);
+  constexpr long double         remquol(long double x, long double y, int* quo);
+
+  constexpr \floating_point_typ copysign(\floating_point_typ x, \floating_point_typ y);
+  constexpr float               copysignf(float x, float y);
+  constexpr long double         copysignl(long double x, long double y);
+
+  double      nan(const char* tagp);
+  float       nanf(const char* tagp);
+  long double nanl(const char* tagp);
+
+  constexpr \floating_point_typ nextafter(\floating_point_typ x, \floating_point_typ y);
+  constexpr float               nextafterf(float x, float y);
+  constexpr long double         nextafterl(long double x, long double y);
+
+  constexpr \floating_point_typ nexttoward(\floating_point_typ x, long double y);
+  constexpr float               nexttowardf(float x, long double y);
+  constexpr long double         nexttowardl(long double x, long double y);
+
+  constexpr \floating_point_typ nextup(\floating_point_typ x);
+  constexpr float               nextupf(float x);
+  constexpr long double         nextupl(long double x);
+
+  constexpr \floating_point_typ nextdown(\floating_point_typ x);
+  constexpr float               nextdownf(float x);
+  constexpr long double         nextdownl(long double x);
+\ins{
+  constexpr bool canonicalize(\floating_point_typ* cx, const \floating_point_typ* x);
+  constexpr bool canonicalizef(float cx, const float* f);
+  constexpr bool canonicalizel(long double cx, const long double* x);}
+
+  constexpr \floating_point_typ fdim(\floating_point_typ x, \floating_point_typ y);
+  constexpr float               fdimf(float x, float y);
+  constexpr long double         fdiml(long double x, long double y);
+
+  constexpr \floating_point_typ fmax(\floating_point_typ x, \floating_point_typ y);
+  constexpr float               fmaxf(float x, float y);
+  constexpr long double         fmaxl(long double x, long double y);
+
+  constexpr \floating_point_typ fmin(\floating_point_typ x, \floating_point_typ y);
+  constexpr float               fminf(float x, float y);
+  constexpr long double         fminl(long double x, long double y);
+
+  constexpr \floating_point_typ fmaximum(\floating_point_typ x, \floating_point_typ y);
+  constexpr \floating_point_typ fmaximum_num(\floating_point_typ x, \floating_point_typ y);
+\ins{  constexpr \floating_point_typ fmaximum_mag(\floating_point_typ x, \floating_point_typ y);
+  constexpr \floating_point_typ fmaximum_mag_num(\floating_point_typ x, \floating_point_typ y);
+  }
+  constexpr \floating_point_typ fminimum(\floating_point_typ x, \floating_point_typ y);
+  constexpr \floating_point_typ fminimum_num(\floating_point_typ x, \floating_point_typ y);
+\ins{  constexpr \floating_point_typ fminimum_mag(\floating_point_typ x, \floating_point_typ y);
+  constexpr \floating_point_typ fminimum_mag_num(\floating_point_typ x, \floating_point_typ y);}
+
+  constexpr \floating_point_typ fma(\floating_point_typ x, \floating_point_typ y,
+                                    \floating_point_typ z);
+  constexpr float               fmaf(float x, float y, float z);
+  constexpr long double         fmal(long double x, long double y, long double z);
+
+  //\serif{ [c.math.lerp], linear interpolation}
+  constexpr \floating_point_typ lerp(\floating_point_typ a, \floating_point_typ b,
+                                     \floating_point_typ t) noexcept;
+
+  //\serif{ [c.math.fpclass], classification / comparison functions}
+  constexpr int fpclassify(\floating_point_typ x);
+\ins{  constexpr bool iscanonical(\floating_point_typ x);}
+  constexpr bool isfinite(\floating_point_typ x);
+  constexpr bool isinf(\floating_point_typ x);
+  constexpr bool isnan(\floating_point_typ x);
+  constexpr bool isnormal(\floating_point_typ x);
+  constexpr bool signbit(\floating_point_typ x);
+\ins{  constexpr bool issignaling(\floating_point_typ x);}
+\ins{  constexpr bool issubnormal(\floating_point_typ x);}
+\ins{  constexpr bool iszero(\floating_point_typ x);}
+  constexpr bool isgreater(\floating_point_typ x, \floating_point_typ y);
+  constexpr bool isgreaterequal(\floating_point_typ x, \floating_point_typ y);
+  constexpr bool isless(\floating_point_typ x, \floating_point_typ y);
+  constexpr bool islessequal(\floating_point_typ x, \floating_point_typ y);
+  constexpr bool islessgreater(\floating_point_typ x, \floating_point_typ y);
+  constexpr bool isunordered(\floating_point_typ x, \floating_point_typ y);
+\ins{  constexpr bool iseqsig(\floating_point_typ x, \floating_point_typ y);}
+
+  //\serif{ [sf.cmath], mathematical special functions}
+
+  \etc
+}
 }
 }
 
