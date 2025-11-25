@@ -1,0 +1,444 @@
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+  title = Rebasing \tt{<cmath>} on C23
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D3935R0}}
+  \dt{Date:}            \dd{\tt{2025-11-25}}
+  \dt{Audience:}        \dd{SG6}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3935/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/cmath-c23.cow)}
+}
+\hr
+}
+
+\Babstract{
+
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+\ref(P3348R4) rebased the C++26 standard on C23;
+it previously referred to C17.
+However, this process was deliberately left incomplete:
+some of the new C23 \header{math.h} features are only used by decimal floating-point types,
+or they require core language changes, etc.
+
+The goal of this proposal is to pull in all the new C23 \header{math.h} features
+which are useful not only to decimal floating-point numbers.
+
+\h2{Design}
+
+The following new functions from C23 are proposed:
+
+\style{
+  #new-functions {
+    margin-left: auto;
+    margin-right: auto;
+  }
+  #new-functions td {
+    border-top: 1px solid var(--border-color);
+  }
+}
+
+\table(id=new-functions){
+  \tr{
+    \th{Function}
+    \th{Returns}
+  }
+  \tr{
+    \td{\tcode{int iscanonical(\exposid{F} x);}}
+    \td{
+      nonzero value if and only if \tcode{x} is canonical
+    }
+  }
+  \tr{
+    \td{\tcode{int issignaling(\exposid{F} x);}}
+    \td{
+      nonzero value if and only if \tcode{x} is a signaling NaN
+    }
+  }
+  \tr{
+    \td{\tcode{int issubnormal(\exposid{F} x);}}
+    \td{
+      nonzero value if and only if \tcode{x} is subnormal
+    }
+  }
+  \tr{
+    \td{\tcode{int iszero(\exposid{F} x);}}
+    \td{
+      nonzero value if and only if \tcode{x} is zero
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} acospi(\exposid{F} x);}}
+    \td{
+      \math{\mfrac{
+        \mrow{\mi{arccos}\mo(stretchy=false){(}\mi{x}\mo(stretchy=false){)}}
+        \mi{π}
+      }}
+      in the interval [0, 1]
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} asinpi(\exposid{F} x);}}
+    \td{
+      \math{\mfrac{
+        \mrow{\mi{arcsin}\mo(stretchy=false){(}\mi{x}\mo(stretchy=false){)}}
+        \mi{π}
+      }}
+      in the interval [-12, +12]
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} atanpi(\exposid{F} x);}}
+    \td{
+      \math{\mfrac{
+        \mrow{\mi{arctan}\mo(stretchy=false){(}\mi{x}\mo(stretchy=false){)}}
+        \mi{π}
+      }}
+      in the interval [-21, +12]
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} atan2pi(\exposid{F} y, \exposid{F} x);}}
+    \td{
+      \math{\mfrac{
+        \mrow{\mi{atan2}\mo(stretchy=false){(}\mi{x}\mo{,}\mi{y}\mo(stretchy=false){)}}
+        \mi{π}
+      }}
+      in the interval [-1, +1]
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} cospi(\exposid{F} x);}}
+    \td{
+      \math{\mrow{
+        \mi{cos}\mo(stretchy=false){(}
+        \mi{x}\mi{π}
+        \mo(stretchy=false){)}
+      }}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} sinpi(\exposid{F} x);}}
+    \td{
+      \math{\mrow{
+        \mi{sin}\mo(stretchy=false){(}
+        \mi{x}\mi{π}
+        \mo(stretchy=false){)}
+      }}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} tanpi(\exposid{F} x);}}
+    \td{
+      \math{\mrow{
+        \mi{sin}\mo(stretchy=false){(}
+        \mi{x}\mi{π}
+        \mo(stretchy=false){)}
+      }}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} exp10(\exposid{F} x);}}
+    \td{
+      \math{\msup{
+        \mn{10}\mi{x}
+      }}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} exp10m1(\exposid{F} x);}}
+    \td{
+      \math{\mrow{
+        \msup{\mn{10}\mi{x}}
+        \mo{−}
+        \mn{1}
+      }}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} exp2m1(\exposid{F} x);}}
+    \td{
+      \math{\mrow{
+        \msup{\mn{2}\mi{x}}
+        \mo{−}
+        \mn{1}
+      }}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} log10p1(\exposid{F} x);}}
+    \td{
+      \math{\mrow{
+        \msub{\mi{log}\mn{10}}
+        \mo(stretchy=false){(}
+        \mn{1}\mo{+}\mi{x}
+        \mo(stretchy=false){)}
+      }}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} logp1(\exposid{F} x);}}
+    \td{
+      \math{\mrow{
+        \mi{log}\mo(stretchy=false){(}
+        \mn{1}\mo{+}\mi{x}
+        \mo(stretchy=false){)}
+      }}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} log2p1(\exposid{F} x);}}
+    \td{
+      \math{\mrow{
+        \msub{\mi{log}\mn{2}}
+        \mo(stretchy=false){(}
+        \mn{1}\mo{+}\mi{x}
+        \mo(stretchy=false){)}
+      }}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} compoundn(\exposid{F} x, long long n);}}
+    \td{
+      \math{\msup{
+        \mrow{
+          \mo(stretchy=false){(}
+          \mn{1}\mo{+}\mi{x}
+          \mo(stretchy=false){)}
+        }
+        \mi{n}
+      }}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} pown(\exposid{F} x, long long n);}}
+    \td{
+      \math{\msup{
+        \mi{x}
+        \mi{n}
+      }}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} powr(\exposid{F} y, \exposid{F} x);}}
+    \td{
+      \math{\msup{
+        \mi{e}
+        \mrow{
+          \mi{y}
+          \msub{\mo{log}\mi{e}}
+          \mi{x}
+        }
+      }}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} rootn(\exposid{F} x, long long n);}}
+    \td{
+      \math{\msup{
+        \mi{x}
+        \mfrac{\mn{1}\mi{n}}
+      }}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} rsqrt(\exposid{F} x);}}
+    \td{
+      \math{\mfrac{
+        \mn{1}
+        \msqrt{\mi{x}}
+      }}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} roundeven(\exposid{F} x);}}
+    \td{
+      \tcode{x} rounded to the nearest integer,\br
+      rounding halfway cases to even
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} fromfp(\exposid{F} x, int rnd, unsigned width);}}
+    \td{
+      \tcode{x} rounded to a signed \tcode{width}-bit integer,\br
+      or NaN if \tcode{x} is not in range;\br
+      \tcode{rnd} is the rounding mode
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} ufromfp(\exposid{F} x, int rnd, unsigned width);}}
+    \td{
+      \tcode{x} rounded to an unsigned \tcode{width}-bit integer,\br
+      or NaN if \tcode{x} is not in range;\br
+      \tcode{rnd} is the rounding mode
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} fromfpx(\exposid{F} x, int rnd, unsigned width);}}
+    \td{
+      \tcode{fromfp(x, rnd, width)};\br
+      may also raise \tt{FE_INEXACT}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} ufromfpx(\exposid{F} x, int rnd, unsigned width);}}
+    \td{
+      \tcode{ufromfp(x, rnd, width)};\br
+      may also raise \tt{FE_INEXACT}
+    }
+  }
+  \tr{
+    \td{\tcode{int canonicalize(\exposid{F}* cx, const \exposid{F}* x);}}
+    \td{
+      zero if and only if canonicalization succeeded
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} fmaximum_mag(\exposid{F} x, \exposid{F} y);}}
+    \td{
+      the value with greater magnitude,\br
+      or \tcode{fmaximum(x, y)}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} fminimum_mag(\exposid{F} x, \exposid{F} y);}}
+    \td{
+      the value with greater magnitude,\br
+      or \tcode{fminimum(x, y)}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} fmaximum_mag_num(\exposid{F} x, \exposid{F} y);}}
+    \td{
+      the value with greater magnitude,\br
+      or \tcode{fmaximum_num(x, y)}
+    }
+  }
+  \tr{
+    \td{\tcode{\exposid{F} fminimum_mag_num(\exposid{F} x, \exposid{F} y);}}
+    \td{
+      the value with greater magnitude,\br
+      or \tcode{fminimum_num(x, y)}
+    }
+  }
+  \tr{
+    \td{
+      \tcode{float fadd(double x, double y);\br
+      float faddl(long double x, long double y);\br
+      double daddl(long double x, long double y);}
+    }
+    \td{
+      \math{\mrow{\mi{x}\mo{+}\mi{y}}}
+    }
+  }
+  \tr{
+    \td{
+      \tcode{float fsub(double x, double y);\br
+      float fsubl(long double x, long double y);\br
+      double dsubl(long double x, long double y);}
+    }
+    \td{
+      \math{\mrow{\mi{x}\mo{−}\mi{y}}}
+    }
+  }
+  \tr{
+    \td{
+      \tcode{float fmul(double x, double y);\br
+      float fmull(long double x, long double y);\br
+      double dmull(long double x, long double y);}
+    }
+    \td{
+      \math{\mrow{\mi{x}\mo{×}\mi{y}}}
+    }
+  }
+  \tr{
+    \td{
+      \tcode{float fdiv(double x, double y);\br
+      float fdivl(long double x, long double y);\br
+      double ddivl(long double x, long double y);}
+    }
+    \td{
+      \math{\mrow{\mi{x}\mo{÷}\mi{y}}}
+    }
+  }
+  \tr{
+    \td{
+      \tcode{float ffma(double x, double y, double z);\br
+      float ffmal(long double x, /* ... */);\br
+      double dfmal(long double x, /* ... */);}
+    }
+    \td{
+      \math{\mrow{
+        \mo{(}\mi{x}\mo{×}\mi{y}\mo{)}
+        \mo{+}\mi{z}
+      }}
+    }
+  }
+  \tr{
+    \td{
+      \tcode{float fsqrt(double x);\br
+      float fsqrtl(long double x);\br
+      double dsqrtl(long double x);}
+    }
+    \td{
+      \math{\msqrt{\mi{x}}}
+    }
+  }
+  \tr{
+    \td{\tcode{int iseqsig(\exposid{F} x, \exposid{F} y)}}
+    \td{
+      \tcode{1} if \tcode{x} and \tcode{y} are equal and\br
+      \tcode{0} otherwise
+    }
+  }
+}
+
+\Bnote{
+The \tcode{int rnd} parameter in functions such as \tcode{fromfp}
+corresponds to one of \tt{FP_INT_*} rounding direction macros.
+}
+
+\h2{Wording}
+
+The changes are relative to \ref(N5014).
+
+\h3(show-number=false){[version.syn]}
+
+Add a feature-test macro to \eelis{version.syn} as follows:
+
+\Bins{
+\itemdecl{
+#define __cpp_my_new_feature 20XXXXL // \serif{freestanding, also in \tt{<header>}}
+}
+}
+
+\h2{References}
+
+\bib(
+  id = N5014,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-08-05,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+)\
+\bib(
+  id = P3348R4,
+  title = C++26 should refer to C23 not C17,
+  date = 2025-06-19,
+  author = Jonathan Wakely,
+  link = https://wg21.link/p3348r4,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3348r4.pdf,
+)\
+
+\make_bib
