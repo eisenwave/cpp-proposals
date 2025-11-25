@@ -881,6 +881,49 @@ namespace std {
   constexpr float               fmaf(float x, float y, float z);
   constexpr long double         fmal(long double x, long double y, long double z);
 
+\ins{  //\serif{ [c.math.narrow], narrowing operations}
+  template<class T, class F> constexpr T fadd(F x, F y) noexcept;
+  constexpr float  fadd(double x, double y);
+  constexpr float  fadd(long double x, long double y);
+  constexpr float  faddl(long double x, long double y);
+  constexpr double dadd(long double x, long double y);
+  constexpr double daddl(long double x, long double y);
+
+  template<class T, class F> constexpr T fsub(F x, F y) noexcept;
+  constexpr float  fsub(double x, double y);
+  constexpr float  fsub(long double x, long double y);
+  constexpr float  fsubl(long double x, long double y);
+  constexpr double dsub(long double x, long double y);
+  constexpr double dsubl(long double x, long double y);
+
+  template<class T, class F> constexpr T fmul(F x, F y) noexcept;
+  constexpr float  fmul(double x, double y);
+  constexpr float  fmul(long double x, long double y);
+  constexpr float  fmull(long double x, long double y);
+  constexpr double dmul(long double x, long double y);
+  constexpr double dmull(long double x, long double y);
+
+  template<class T, class F> constexpr T fdiv(F x, F y) noexcept;
+  constexpr float  fdiv(double x, double y);
+  constexpr float  fdiv(long double x, long double y);
+  constexpr float  fdivl(long double x, long double y);
+  constexpr double ddiv(long double x, long double y);
+  constexpr double ddivl(long double x, long double y);
+
+  template<class T, class F> constexpr T ffma(F x, F y, F z) noexcept;
+  constexpr float  ffma(double x, double y, double z);
+  constexpr float  ffma(long double x, long double y, long double z);
+  constexpr float  ffmal(long double x, long double y, long double z);
+  constexpr double dfma(long double x, long double y, long double z);
+  constexpr double dfmal(long double x, long double y, long double z);
+
+  template<class T, class F> constexpr T fsqrt(F x) noexcept;
+  constexpr float  fsqrt(double x);
+  constexpr float  fsqrt(long double x);
+  constexpr float  fsqrtl(long double x);
+  constexpr double dsqrt(long double x);
+  constexpr double dsqrtl(long double x);}
+
   //\serif{ [c.math.lerp], linear interpolation}
   constexpr \floating_point_typ lerp(\floating_point_typ a, \floating_point_typ b,
                                      \floating_point_typ t) noexcept;
@@ -908,6 +951,58 @@ namespace std {
 
   \etc
 }
+}
+}
+
+\h3(show-number=false){[c.math.narrow]}
+
+Add a new subclause as follows:
+
+\Bins{
+\cowel_html_element(h3){Narrowing operations \stable_ref{c.math.narrow}}
+
+\itemdecl{
+constexpr float  f\placeholder{op}(long double x, long double y);
+constexpr double d\placeholder{op}(long double x, long double y);
+}
+
+\itemdescr{
+Let \tcode{\placeholder{op}} be a placeholder for
+\tcode{add}, \tcode{sub}, \tcode{mul}, \tcode{div}, \tcode{fma}, or \tcode{sqrt}.
+
+\effects
+Each of the functions
+\tcode{f\placeholder{op}} and \tcode{d\placeholder{op}}
+has the same behavior as the functions
+\tcode{f\placeholder{op}l} and \tcode{d\placeholder{op}l},
+respectively.
+}
+
+\itemdecl{
+template<class T, class F> constexpr T fadd(F x, F y) noexcept;
+template<class T, class F> constexpr T fsub(F x, F y) noexcept;
+template<class T, class F> constexpr T fmul(F x, F y) noexcept;
+template<class T, class F> constexpr T fdiv(F x, F y) noexcept;
+template<class T, class F> constexpr T ffma(F x, F y, F z) noexcept;
+template<class T, class F> constexpr T fsqrt(F x) noexcept;
+}
+
+\itemdescr{
+\constraints
+\ul{
+  \li{\tcode{T} has lower conversion rank than \tcode{F}.}
+  \li{Both or neither \tcode{T} and \tcode{F} are standard floating-point types.}
+  \li{
+    If both \tcode{T} and \tcode{F} are extended floating-point types,
+    the constraints are implementation-defined,
+    while respecting the previous rules.
+  }
+}
+
+\effects
+Each of the function templates has the same behavior as the corresponding
+non-template overload with the same name,
+except for the difference in return type and parameter types.
 }
 }
 
