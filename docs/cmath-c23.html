@@ -1578,7 +1578,7 @@ if (theme !== null) {
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/D3935R0>D3935R0</a></dd>
   <dt>Date:</dt>            <dd><tt->2025-11-25</tt-></dd>
-  <dt>Audience:</dt>        <dd>SG6</dd>
+  <dt>Audience:</dt>        <dd>SG22</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
   <dt>GitHub Issue:</dt>    <dd><a href=https://wg21.link/P3935/github class=sans>wg21.link/P3935/github</a></dd>
@@ -1606,10 +1606,12 @@ if (theme !== null) {
 <div class=toc-num data-level=2>3</div>
 <a href=#wording><h2>Wording</h2></a>
 <div class=toc-num data-level=3>3.1</div>
-<a href=#version%2esyn><h3>[version.syn]</h3></a>
+<a href=#show-numberfalse><h3>show-number=false</h3></a>
 <div class=toc-num data-level=3>3.2</div>
-<a href=#cmath%2esyn><h3>[cmath.syn]</h3></a>
+<a href=#version%2esyn><h3>[version.syn]</h3></a>
 <div class=toc-num data-level=3>3.3</div>
+<a href=#cmath%2esyn><h3>[cmath.syn]</h3></a>
+<div class=toc-num data-level=3>3.4</div>
 <a href=#c%2emath%2enarrow><h3>[c.math.narrow]</h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#references><h2>References</h2></a>
@@ -2076,34 +2078,110 @@ corresponds to one of <tt->FP_INT_*</tt-> rounding direction macros.
 
 <p>The changes are relative to <a href="https://wg21%2elink/n5014">[N5014]</a>.
 </p>
+<h3 id=show-numberfalse><a class=para href=#show-numberfalse></a>3.1. show-number=false</h3><p>{[basic.fundamental]}
+</p>
+<p>Immediately prior to <a href=https://eel.is/c++draft/basic.fundamental#13>[basic.fundamental] paragraph 13</a>,
+insert a new paragraph:
+</p>
+<ins-block>
+<p>An implementation may prefer particular representations of values
+that have multiple representations in a floating-point type.
+The preferred representations of a floating-point type,
+including unique representations of values in the type, are called <dfn>canonical</dfn>.
+A floating-point type may also contain <dfn>non-canonical representations</dfn>,
+for example, redundant representations of some or all its
+values, or representations that are extraneous to the floating-point model.
+Typically, floating-point operations deliver results with canonical representations.
+</p>
+<p>[<i>Note</i>: 
+The functions <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>iscanonical</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>canonicalize</h-></code> distinguish
+canonical (preferred) representations,
+but this distinction alone does not imply that canonical and non-canonical representations
+are of different values.
+ — <i>end note</i>]
+</p></ins-block>
+
+<note-block class=edit><p><intro-></intro-> 
+As a practical example,
+signaling NaN may be considered non-canonical and
+quiet NaN may be considered canonical representations of the same value.
+Also, an implementation may treat subnormal floating-point numbers
+or negative zero as non-canonical representations of zero.
+</p>
+<p>The C23 wording is extremely vague,
+and we can't be precise either if we don't want to risk having diverging
+behavior for <code><h- data-h=id>iscanonical</h-></code>.
+</p>
+<p><code><h- data-h=id>iscanonical</h-></code> and <code><h- data-h=id>canonicalize</h-></code> are primarily motivated by
+ISO/IEC 60559 decimal floating-point representations anyway,
+where it is precisely specified which representations are canonical.
+</p></note-block>
+
 <h3 id=version.syn><a class=para href=#version%2esyn></a>[version.syn]</h3>
 
 <p>Add a feature-test macro to <a href=https://eel.is/c++draft/version.syn>[version.syn]</a> as follows:
 </p>
 <ins-block>
-<code-block class=borderless><h- data-h=mac>#define __cpp_my_new_feature 20XXXXL </h-><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding, also in </h-><tt-><h- data-h=cmt>&lt;header&gt;</h-></tt-></f-serif></code-block>
+<code-block class=borderless><h- data-h=mac>#define __cpp_lib_cmath 20XXXXL </h-><h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> also in </h-><tt-><h- data-h=cmt>&lt;cmath&gt;</h-></tt-><h- data-h=cmt>, </h-><tt-><h- data-h=cmt>&lt;cstdlib&gt;</h-></tt-></f-serif></code-block>
 </ins-block>
+
+<note-block class=edit><p><intro-></intro-> 
+Although the proposal also adds a <code><h- data-h=id>__STDC_VERSION_MATH_H__</h-></code> macro from C23,
+this cannot be reliably used to detect the new functions;
+it could have also been leaked through a <code><h- data-h=str>&lt;math.h&gt;</h-></code> header from somewhere,
+without e.g. <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>roundeven</h-></code> actually existing.
+</p></note-block>
 
 <h3 id=cmath.syn><a class=para href=#cmath%2esyn></a>[cmath.syn]</h3>
 
 
 
 <diff-block>
-<code-block class=borderless><h- data-h=mac>#define HUGE_VAL </h-><i><h- data-h=id>see below</h-></i>
+<code-block class=borderless><ins><h- data-h=mac>#define __STDC_VERSION_MATH_H__ 202311L</h->
+        </ins>
+<h- data-h=mac>#define HUGE_VAL </h-><i><h- data-h=id>see below</h-></i>
 <h- data-h=mac>#define HUGE_VALF </h-><i><h- data-h=id>see below</h-></i>
 <h- data-h=mac>#define HUGE_VALL </h-><i><h- data-h=id>see below</h-></i>
 <h- data-h=mac>#define INFINITY </h-><i><h- data-h=id>see below</h-></i>
 <h- data-h=mac>#define NAN </h-><i><h- data-h=id>see below</h-></i>
+<ins>       </ins>
 <h- data-h=mac>#define FP_INFINITE </h-><i><h- data-h=id>see below</h-></i>
 <h- data-h=mac>#define FP_NAN </h-><i><h- data-h=id>see below</h-></i>
 <h- data-h=mac>#define FP_NORMAL </h-><i><h- data-h=id>see below</h-></i>
 <h- data-h=mac>#define FP_SUBNORMAL </h-><i><h- data-h=id>see below</h-></i>
 <h- data-h=mac>#define FP_ZERO </h-><i><h- data-h=id>see below</h-></i>
+<ins>       
+<h- data-h=mac>#define FP_INT_UPWARD </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_INT_DOWNWARD </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_INT_TOWARDZERO </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_INT_TONEARESTFROMZERO </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_INT_TONEAREST </h-><i><h- data-h=id>see below</h-></i>
+        </ins>
 <h- data-h=mac>#define FP_FAST_FMA </h-><i><h- data-h=id>see below</h-></i>
 <h- data-h=mac>#define FP_FAST_FMAF </h-><i><h- data-h=id>see below</h-></i>
 <h- data-h=mac>#define FP_FAST_FMAL </h-><i><h- data-h=id>see below</h-></i>
+<ins><h- data-h=mac>#define FP_FAST_FADD </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_FAST_FADDL </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_FAST_DADDL </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_FAST_FSUB </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_FAST_FSUBL </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_FAST_DSUBL </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_FAST_FMUL </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_FAST_FMULL </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_FAST_DMULL </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_FAST_FDIV </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_FAST_FDIVL </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_FAST_DDIVL </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_FAST_FSQRT </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_FAST_FSQRTL </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_FAST_DSQRTL </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_FAST_FFMA </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_FAST_FFMAL </h-><i><h- data-h=id>see below</h-></i>
+<h- data-h=mac>#define FP_FAST_DFMAL </h-><i><h- data-h=id>see below</h-></i>
+        </ins>
 <h- data-h=mac>#define FP_ILOGB0 </h-><i><h- data-h=id>see below</h-></i>
 <h- data-h=mac>#define FP_ILOGBNAN </h-><i><h- data-h=id>see below</h-></i>
+<ins>        </ins>
 <h- data-h=mac>#define MATH_ERRNO </h-><i><h- data-h=id>see below</h-></i>
 <h- data-h=mac>#define MATH_ERREXCEPT </h-><i><h- data-h=id>see below</h-></i>
 
@@ -2436,7 +2514,7 @@ corresponds to one of <tt->FP_INT_*</tt-> rounding direction macros.
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h->         <h- data-h=id>nextdownl</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <ins>
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>canonicalize</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>floating-point-type</h-></i><h- data-h=sym_op>*</h-> <h- data-h=id>cx</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <i><h- data-h=id>floating-point-type</h-></i><h- data-h=sym_op>*</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>canonicalizef</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>float</h-> <h- data-h=id>cx</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>float</h-><h- data-h=sym_op>*</h-> <h- data-h=id>f</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>canonicalizef</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>float</h-> <h- data-h=id>cx</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>float</h-><h- data-h=sym_op>*</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=id>canonicalizel</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>cx</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-><h- data-h=sym_op>*</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
 
   <h- data-h=kw>constexpr</h-> <i><h- data-h=id>floating-point-type</h-></i> <h- data-h=id>fdim</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>floating-point-type</h-></i> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=id>floating-point-type</h-></i> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
@@ -2468,43 +2546,37 @@ corresponds to one of <tt->FP_INT_*</tt-> rounding direction macros.
 
 <ins>  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> [c.math.narrow], narrowing operations</h-></f-serif>
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>fadd</h-><h- data-h=sym_par>(</h-><h- data-h=id>F</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fadd</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fadd</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fadd</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>double-type</h-></i> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=id>double-type</h-></i> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>faddl</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>dadd</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>daddl</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>fsub</h-><h- data-h=sym_par>(</h-><h- data-h=id>F</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fsub</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fsub</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fsub</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>double-type</h-></i> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=id>double-type</h-></i> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fsubl</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>dsub</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>dsubl</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>fmul</h-><h- data-h=sym_par>(</h-><h- data-h=id>F</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fmul</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fmul</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fmul</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>double-type</h-></i> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=id>double-type</h-></i> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fmull</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>dmul</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>dmull</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>fdiv</h-><h- data-h=sym_par>(</h-><h- data-h=id>F</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fdiv</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fdiv</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fdiv</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>double-type</h-></i> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=id>double-type</h-></i> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fdivl</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>ddiv</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>ddivl</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>ffma</h-><h- data-h=sym_par>(</h-><h- data-h=id>F</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F</h-> <h- data-h=id>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F</h-> <h- data-h=id>z</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>ffma</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>z</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>ffma</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>z</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>ffma</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>double-type</h-></i> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=id>double-type</h-></i> <h- data-h=id>y</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=id>double-type</h-></i> <h- data-h=id>z</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>ffmal</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>z</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>dfma</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>z</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>dfmal</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>z</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>fsqrt</h-><h- data-h=sym_par>(</h-><h- data-h=id>F</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fsqrt</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fsqrt</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fsqrt</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>double-type</h-></i> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->  <h- data-h=id>fsqrtl</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>dsqrt</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>dsqrtl</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
@@ -2538,7 +2610,63 @@ corresponds to one of <tt->FP_INT_*</tt-> rounding direction macros.
 <h- data-h=sym_brac>}</h-></code-block>
 </diff-block>
 
+<p>Change <a href=https://eel.is/c++draft/cmath.syn#1>[cmath.syn] paragraph 1</a> as follows:
+</p>
+<diff-block>
+<p>The contents and meaning of the header <code><h- data-h=str>&lt;cmath&gt;</h-></code> are a subset of
+the C standard library header <code><h- data-h=str>&lt;math.h&gt;</h-></code>
+and only the declarations shown in the synopsis above are present,
+with the addition of
+a three-dimensional hypotenuse function,
+a linear interpolation function, and
+the mathematical special functions described in <a href=https://eel.is/c++draft/sf.cmath>[sf.cmath]</a>.
+</p></diff-block>
+
+<p>Do <u>not</u> change <a href=https://eel.is/c++draft/cmath.syn#2>[cmath.syn] paragraph 2</a>:
+</p>
+<blockquote>
+<p>For each function with at least one parameter of type <code><i><h- data-h=id>floating-point-type</h-></i></code>,
+the implementation provides an overload
+for each cv-unqualified floating-point type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>)
+where all uses of <code><i><h- data-h=id>floating-point-type</h-></i></code> in the function signature are replaced
+with that floating-point type.
+</p></blockquote>
+
+<p>Insert a new paragraph immediately following <a href=https://eel.is/c++draft/cmath.syn#2>[cmath.syn] paragraph 2</a>:
+</p>
+<ins-block>
+<p>For each function with at least one parameter of type <code><i><h- data-h=id>double-type</h-></i></code>,
+the implementation provides an overload
+for <code><h- data-h=kw_type>double</h-></code> and <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>
+where all uses of <code><i><h- data-h=id>double-type</h-></i></code> in the function signature are replaced
+with that floating-point type.
+</p></ins-block>
+
+<p>Change <a href=https://eel.is/c++draft/cmath.syn#3>[cmath.syn] paragraph 3</a> as follows:
+</p>
+<diff-block>
+<p>For each function with at least one parameter of type
+<code><i><h- data-h=id>floating-point-type</h-></i></code> <ins>or <code><i><h- data-h=id>double-type</h-></i></code></ins>
+other than <code><h- data-h=id>abs</h-></code>,
+the implementation also provides additional overloads sufficient to ensure that,
+if every argument corresponding to a
+<code><i><h- data-h=id>floating-point-type</h-></i></code> <ins>or <code><i><h- data-h=id>double-type</h-></i></code></ins> parameter has arithmetic type,
+then every such argument is effectively cast to the floating-point type
+with the greatest floating-point conversion rank and
+greatest floating-point conversion subrank among the types of all such arguments,
+where arguments of integer type are considered to have
+the same floating-point conversion rank as <code><h- data-h=kw_type>double</h-></code>.
+If no such floating-point type with the greatest rank and subrank exists,
+then overload resolution does not result in a usable candidate (<a href=https://eel.is/c++draft/over.match.general>[over.match.general]</a>)
+from the overloads provided by the implementation.
+</p></diff-block>
+
 <h3 id=c.math.narrow><a class=para href=#c%2emath%2enarrow></a>[c.math.narrow]</h3>
+
+<todo-block><p><intro-></intro-> 
+The constraints here don't allow for the same kind of type mixing 
+that we usually try to have (<a href=https://eel.is/c++draft/cmath.syn#3>[cmath.syn] paragraph 3</a>).
+</p></todo-block>
 
 <p>Add a new subclause as follows:
 </p>
@@ -2560,16 +2688,31 @@ has the same behavior as the functions
 respectively.
 </p></div>
 
-<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>fadd</h-><h- data-h=sym_par>(</h-><h- data-h=id>F</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>fsub</h-><h- data-h=sym_par>(</h-><h- data-h=id>F</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>fmul</h-><h- data-h=sym_par>(</h-><h- data-h=id>F</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>fdiv</h-><h- data-h=sym_par>(</h-><h- data-h=id>F</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>ffma</h-><h- data-h=sym_par>(</h-><h- data-h=id>F</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F</h-> <h- data-h=id>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F</h-> <h- data-h=id>z</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>fsqrt</h-><h- data-h=sym_par>(</h-><h- data-h=id>F</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F1</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F2</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>fadd</h-><h- data-h=sym_par>(</h-><h- data-h=id>F1</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F2</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F1</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F2</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>fsub</h-><h- data-h=sym_par>(</h-><h- data-h=id>F1</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F2</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F1</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F2</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>fmul</h-><h- data-h=sym_par>(</h-><h- data-h=id>F1</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F2</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F1</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>fdiv</h-><h- data-h=sym_par>(</h-><h- data-h=id>F1</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F2</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F1</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F2</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F3</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>ffma</h-><h- data-h=sym_par>(</h-><h- data-h=id>F1</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F2</h-> <h- data-h=id>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>F3</h-> <h- data-h=id>z</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>F1</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>fsqrt</h-><h- data-h=sym_par>(</h-><h- data-h=id>F1</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
+<p>Let <code><h- data-h=id>F</h-></code> be <code><i><h- data-h=id>common-floating-type</h-></i><h- data-h=sym_op>&lt;</h-><h- data-h=id>Fs</h-><h- data-h=sym_op>...</h-><h- data-h=sym_op>&gt;</h-></code>,
+where <code><h- data-h=id>Fs</h-><h- data-h=sym_op>...</h-></code> is a pack containing all
+template type parameters following <code><h- data-h=id>T</h-></code>.
+</p>
+<todo-block><p><intro-></intro-> 
+Figure this out ...
+</p></todo-block>
+
 <p><i>Constraints</i>:
 </p><ul>
+  <li><code><h- data-h=id>T</h-></code> is a cv-unqualified floating-point type.</li>
   <li><code><h- data-h=id>T</h-></code> has lower conversion rank than <code><h- data-h=id>F</h-></code>.</li>
   <li>Both or neither <code><h- data-h=id>T</h-></code> and <code><h- data-h=id>F</h-></code> are standard floating-point types.</li>
   <li>
@@ -2583,6 +2726,13 @@ respectively.
 Each of the function templates has the same behavior as the corresponding
 non-template overload with the same name,
 except for the difference in return type and parameter types.
+</p>
+
+<p><i>Remarks</i>:
+The <code><h- data-h=id>FP_FAST</h-></code> macros also relate to specializations of these function templates.
+<br/>[<i>Example</i>: 
+<code><h- data-h=id>FP_FAST_DADDL</h-></code> relates to <code><h- data-h=id>daddl</h-></code> and <code><h- data-h=id>fadd</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>double</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-><h- data-h=sym_op>&gt;</h-></code>.
+ — <i>end example</i>]
 </p></div>
 </ins-block>
 

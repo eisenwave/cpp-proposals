@@ -6,7 +6,7 @@
 \dl{
   \dt{Document number:} \dd{\docnum{D3935R0}}
   \dt{Date:}            \dd{\tt{2025-11-25}}
-  \dt{Audience:}        \dd{SG6}
+  \dt{Audience:}        \dd{SG22}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3935/github)}
@@ -488,14 +488,60 @@ FP_FAST_DFMAL
 
 The changes are relative to \ref(N5014).
 
+\h3{show-number=false}{[basic.fundamental]}
+
+Immediately prior to \eelis{basic.fundamental#13},
+insert a new paragraph:
+
+\Bins{
+An implementation may prefer particular representations of values
+that have multiple representations in a floating-point type.
+The preferred representations of a floating-point type,
+including unique representations of values in the type, are called \dfn{canonical}.
+A floating-point type may also contain \dfn{non-canonical representations},
+for example, redundant representations of some or all its
+values, or representations that are extraneous to the floating-point model.
+Typically, floating-point operations deliver results with canonical representations.
+
+\note{
+The functions \tcode{std::iscanonical} and \tcode{std::canonicalize} distinguish
+canonical (preferred) representations,
+but this distinction alone does not imply that canonical and non-canonical representations
+are of different values.
+}
+}
+
+\editnote{
+As a practical example,
+signaling NaN may be considered non-canonical and
+quiet NaN may be considered canonical representations of the same value.
+Also, an implementation may treat subnormal floating-point numbers
+or negative zero as non-canonical representations of zero.
+
+The C23 wording is extremely vague,
+and we can't be precise either if we don't want to risk having diverging
+behavior for \tcode{iscanonical}.
+
+\tcode{iscanonical} and \tcode{canonicalize} are primarily motivated by
+ISO/IEC 60559 decimal floating-point representations anyway,
+where it is precisely specified which representations are canonical.
+}
+
 \h3(show-number=false){[version.syn]}
 
 Add a feature-test macro to \eelis{version.syn} as follows:
 
 \Bins{
 \itemdecl{
-#define __cpp_my_new_feature 20XXXXL // \serif{freestanding, also in \tt{<header>}}
+#define __cpp_lib_cmath 20XXXXL //\serif{ also in \tt{<cmath>}, \tt{<cstdlib>}}
 }
+}
+
+\editnote{
+Although the proposal also adds a \tcode{__STDC_VERSION_MATH_H__} macro from C23,
+this cannot be reliably used to detect the new functions;
+it could have also been leaked through a \header{math.h} header from somewhere,
+without e.g. \tcode{std::roundeven} actually existing.
 }
 
 \h3(show-number=false){[cmath.syn]}
@@ -504,21 +550,51 @@ Add a feature-test macro to \eelis{version.syn} as follows:
 
 \Bdiff{
 \itemdecl{
+\ins{#define __STDC_VERSION_MATH_H__ 202311L
+        }
 #define HUGE_VAL \seebelow
 #define HUGE_VALF \seebelow
 #define HUGE_VALL \seebelow
 #define INFINITY \seebelow
 #define NAN \seebelow
+\ins{       }
 #define FP_INFINITE \seebelow
 #define FP_NAN \seebelow
 #define FP_NORMAL \seebelow
 #define FP_SUBNORMAL \seebelow
 #define FP_ZERO \seebelow
+\ins{       
+#define FP_INT_UPWARD \seebelow
+#define FP_INT_DOWNWARD \seebelow
+#define FP_INT_TOWARDZERO \seebelow
+#define FP_INT_TONEARESTFROMZERO \seebelow
+#define FP_INT_TONEAREST \seebelow
+        }
 #define FP_FAST_FMA \seebelow
 #define FP_FAST_FMAF \seebelow
 #define FP_FAST_FMAL \seebelow
+\ins{#define FP_FAST_FADD \seebelow
+#define FP_FAST_FADDL \seebelow
+#define FP_FAST_DADDL \seebelow
+#define FP_FAST_FSUB \seebelow
+#define FP_FAST_FSUBL \seebelow
+#define FP_FAST_DSUBL \seebelow
+#define FP_FAST_FMUL \seebelow
+#define FP_FAST_FMULL \seebelow
+#define FP_FAST_DMULL \seebelow
+#define FP_FAST_FDIV \seebelow
+#define FP_FAST_FDIVL \seebelow
+#define FP_FAST_DDIVL \seebelow
+#define FP_FAST_FSQRT \seebelow
+#define FP_FAST_FSQRTL \seebelow
+#define FP_FAST_DSQRTL \seebelow
+#define FP_FAST_FFMA \seebelow
+#define FP_FAST_FFMAL \seebelow
+#define FP_FAST_DFMAL \seebelow
+        }
 #define FP_ILOGB0 \seebelow
 #define FP_ILOGBNAN \seebelow
+\ins{        }
 #define MATH_ERRNO \seebelow
 #define MATH_ERREXCEPT \seebelow
 
@@ -851,7 +927,7 @@ namespace std {
   constexpr long double         nextdownl(long double x);
 \ins{
   constexpr bool canonicalize(\floating_point_typ* cx, const \floating_point_typ* x);
-  constexpr bool canonicalizef(float cx, const float* f);
+  constexpr bool canonicalizef(float cx, const float* x);
   constexpr bool canonicalizel(long double cx, const long double* x);}
 
   constexpr \floating_point_typ fdim(\floating_point_typ x, \floating_point_typ y);
@@ -883,43 +959,37 @@ namespace std {
 
 \ins{  //\serif{ [c.math.narrow], narrowing operations}
   template<class T, class F> constexpr T fadd(F x, F y) noexcept;
-  constexpr float  fadd(double x, double y);
-  constexpr float  fadd(long double x, long double y);
+  constexpr float  fadd(\exposid{double-type} x, \exposid{double-type} y);
   constexpr float  faddl(long double x, long double y);
   constexpr double dadd(long double x, long double y);
   constexpr double daddl(long double x, long double y);
 
   template<class T, class F> constexpr T fsub(F x, F y) noexcept;
-  constexpr float  fsub(double x, double y);
-  constexpr float  fsub(long double x, long double y);
+  constexpr float  fsub(\exposid{double-type} x, \exposid{double-type} y);
   constexpr float  fsubl(long double x, long double y);
   constexpr double dsub(long double x, long double y);
   constexpr double dsubl(long double x, long double y);
 
   template<class T, class F> constexpr T fmul(F x, F y) noexcept;
-  constexpr float  fmul(double x, double y);
-  constexpr float  fmul(long double x, long double y);
+  constexpr float  fmul(\exposid{double-type} x, \exposid{double-type} y);
   constexpr float  fmull(long double x, long double y);
   constexpr double dmul(long double x, long double y);
   constexpr double dmull(long double x, long double y);
 
   template<class T, class F> constexpr T fdiv(F x, F y) noexcept;
-  constexpr float  fdiv(double x, double y);
-  constexpr float  fdiv(long double x, long double y);
+  constexpr float  fdiv(\exposid{double-type} x, \exposid{double-type} y);
   constexpr float  fdivl(long double x, long double y);
   constexpr double ddiv(long double x, long double y);
   constexpr double ddivl(long double x, long double y);
 
   template<class T, class F> constexpr T ffma(F x, F y, F z) noexcept;
-  constexpr float  ffma(double x, double y, double z);
-  constexpr float  ffma(long double x, long double y, long double z);
+  constexpr float  ffma(\exposid{double-type} x, \exposid{double-type} y, \exposid{double-type} z);
   constexpr float  ffmal(long double x, long double y, long double z);
   constexpr double dfma(long double x, long double y, long double z);
   constexpr double dfmal(long double x, long double y, long double z);
 
   template<class T, class F> constexpr T fsqrt(F x) noexcept;
-  constexpr float  fsqrt(double x);
-  constexpr float  fsqrt(long double x);
+  constexpr float  fsqrt(\exposid{double-type} x);
   constexpr float  fsqrtl(long double x);
   constexpr double dsqrt(long double x);
   constexpr double dsqrtl(long double x);}
@@ -954,7 +1024,63 @@ namespace std {
 }
 }
 
+Change \eelis{cmath.syn#1} as follows:
+
+\Bdiff{
+The contents and meaning of the header \header{cmath} are a subset of
+the C standard library header \header{math.h}
+and only the declarations shown in the synopsis above are present,
+with the addition of
+a three-dimensional hypotenuse function,
+a linear interpolation function, and
+the mathematical special functions described in \eelis{sf.cmath}.
+}
+
+Do \u{not} change \eelis{cmath.syn#2}:
+
+\Bquote{
+For each function with at least one parameter of type \tcode{\floating_point_typ},
+the implementation provides an overload
+for each cv-unqualified floating-point type\iref{basic.fundamental}
+where all uses of \tcode{\floating_point_typ} in the function signature are replaced
+with that floating-point type.
+}
+
+Insert a new paragraph immediately following \eelis{cmath.syn#2}:
+
+\Bins{
+For each function with at least one parameter of type \tcode{\exposid{double-type}},
+the implementation provides an overload
+for \tcode{double} and \tcode{long double}
+where all uses of \tcode{\exposid{double-type}} in the function signature are replaced
+with that floating-point type.
+}
+
+Change \eelis{cmath.syn#3} as follows:
+
+\Bdiff{
+For each function with at least one parameter of type
+\tcode{\floating_point_typ} \ins{or \tcode{\exposid{double-type}}}
+other than \tcode{abs},
+the implementation also provides additional overloads sufficient to ensure that,
+if every argument corresponding to a
+\tcode{\floating_point_typ} \ins{or \tcode{\exposid{double-type}}} parameter has arithmetic type,
+then every such argument is effectively cast to the floating-point type
+with the greatest floating-point conversion rank and
+greatest floating-point conversion subrank among the types of all such arguments,
+where arguments of integer type are considered to have
+the same floating-point conversion rank as \tcode{double}.
+If no such floating-point type with the greatest rank and subrank exists,
+then overload resolution does not result in a usable candidate\iref{over.match.general}
+from the overloads provided by the implementation.
+}
+
 \h3(show-number=false){[c.math.narrow]}
+
+\Btodo{
+The constraints here don't allow for the same kind of type mixing 
+that we usually try to have\iref{cmath.syn#3}.
+}
 
 Add a new subclause as follows:
 
@@ -979,17 +1105,32 @@ respectively.
 }
 
 \itemdecl{
-template<class T, class F> constexpr T fadd(F x, F y) noexcept;
-template<class T, class F> constexpr T fsub(F x, F y) noexcept;
-template<class T, class F> constexpr T fmul(F x, F y) noexcept;
-template<class T, class F> constexpr T fdiv(F x, F y) noexcept;
-template<class T, class F> constexpr T ffma(F x, F y, F z) noexcept;
-template<class T, class F> constexpr T fsqrt(F x) noexcept;
+template<class T, class F1, class F2>
+  constexpr T fadd(F1 x, F2 y) noexcept;
+template<class T, class F1, class F2>
+  constexpr T fsub(F1 x, F2 y) noexcept;
+template<class T, class F1, class F2>
+  constexpr T fmul(F1 x, F2 y) noexcept;
+template<class T, class F1>
+  constexpr T fdiv(F1 x, F2 y) noexcept;
+template<class T, class F1, class F2, class F3>
+  constexpr T ffma(F1 x, F2 y, F3 z) noexcept;
+template<class T, class F1>
+  constexpr T fsqrt(F1 x) noexcept;
 }
 
 \itemdescr{
+Let \tcode{F} be \tcode{\exposid{common-floating-type}<Fs...>},
+where \tcode{Fs...} is a pack containing all
+template type parameters following \tcode{T}.
+
+\Btodo{
+Figure this out ...
+}
+
 \constraints
 \ul{
+  \li{\tcode{T} is a cv-unqualified floating-point type.}
   \li{\tcode{T} has lower conversion rank than \tcode{F}.}
   \li{Both or neither \tcode{T} and \tcode{F} are standard floating-point types.}
   \li{
@@ -1003,6 +1144,13 @@ template<class T, class F> constexpr T fsqrt(F x) noexcept;
 Each of the function templates has the same behavior as the corresponding
 non-template overload with the same name,
 except for the difference in return type and parameter types.
+
+
+\remarks
+The \tcode{FP_FAST} macros also relate to specializations of these function templates.
+\br\example{
+\tcode{FP_FAST_DADDL} relates to \tcode{daddl} and \tcode{fadd<double, long double>}.
+}
 }
 }
 
