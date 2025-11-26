@@ -1056,6 +1056,68 @@ where all uses of \tcode{\exposid{double-type}} in the function signature are re
 with that floating-point type.
 }
 
+Insert a new items following that:
+
+\Bins{
+¶
+Let \tcode{\exposid{common-floating-point-type}} and
+\tcode{\exposid{common-double-type}}
+be the following exposition-only alias templates:
+
+\itemdecl{
+template<class... Ts>
+  using \exposid{common-floating-point-type} = \seebelow;
+template<class... Ts>
+  using \exposid{common-double-type} = \seebelow;
+}
+
+\itemdescr{
+¶
+\constraints
+Each type in the pack \tcode{Ts} is a
+cv-unqualified arithmetic type\iref{basic.fundamental}.
+
+¶
+Let \tcode{R} be defined as follows:
+\ul{
+  \li{
+    For \tcode{\exposid{common-floating-point-type}},
+    let \tcode{R} be the floating-point type with the
+    greatest floating-point conversion rank and
+    greatest floating-point conversion subrank among the types in \tcode{Ts},
+    where integer types are considered to have
+    the same floating-point conversion rank as \tcode{double}.
+  }
+  \li{
+    For \tcode{\exposid{common-double-type}},
+    let \tcode{R} be \tcode{long double} if any of the types in \tcode{Ts}
+    is \tcode{long double}, and
+    \tcode{double} otherwise.
+  }
+}
+
+¶
+\mandates
+\tcode{R} is defined.
+
+¶
+\result
+\tcode{R}.
+}
+}
+
+\editnote{
+\tcode{\exposid{common-floating-point-type}} is just following the existing
+semantics of \eelis{cmath.syn#3} in the form of an exposition-only alias template.
+
+\tcode{\exposid{common-double-type}} is meant to emulate
+the behavior of the \header{tgmath.h} macros \tcode{fadd}, \tcode{fsub}, etc.
+
+For \tcode{dadd}, \tcode{dsub}, etc. no such thing is necessary because without
+decimal floating-point types,
+the behavior is always to convert all arguments to \tcode{long double}.
+}
+
 Change \eelis{cmath.syn#3} as follows:
 
 \Bdiff{
@@ -1064,23 +1126,23 @@ For each function with at least one parameter of type
 other than \tcode{abs},
 the implementation also provides additional overloads sufficient to ensure that,
 if every argument corresponding to a
-\tcode{\floating_point_typ} \ins{or \tcode{\exposid{double-type}}} parameter has arithmetic type,
-then every such argument is effectively cast to the floating-point type
+\tcode{\floating_point_typ} \ins{or \tcode{\exposid{double-type}}}
+parameter has arithmetic type,
+then every such argument is effectively cast to
+\del{the floating-point type
 with the greatest floating-point conversion rank and
 greatest floating-point conversion subrank among the types of all such arguments,
 where arguments of integer type are considered to have
-the same floating-point conversion rank as \tcode{double}.
-If no such floating-point type with the greatest rank and subrank exists,
+the same floating-point conversion rank as \tcode{double}}
+\ins{\tcode{\exposid{common-floating-point-type}<Args...>}
+or \tcode{\exposid{common-double-type}<Args...>}}, respectively.
+If \del{no such floating-point type with the greatest rank and subrank exists}
+\ins{that specialization of the alias template is ill-formed},
 then overload resolution does not result in a usable candidate\iref{over.match.general}
 from the overloads provided by the implementation.
 }
 
 \h3(show-number=false){[c.math.narrow]}
-
-\Btodo{
-The constraints here don't allow for the same kind of type mixing 
-that we usually try to have\iref{cmath.syn#3}.
-}
 
 Add a new subclause as follows:
 
@@ -1093,9 +1155,11 @@ constexpr double d\placeholder{op}(long double x, long double y);
 }
 
 \itemdescr{
+¶
 Let \tcode{\placeholder{op}} be a placeholder for
 \tcode{add}, \tcode{sub}, \tcode{mul}, \tcode{div}, \tcode{fma}, or \tcode{sqrt}.
 
+¶
 \effects
 Each of the functions
 \tcode{f\placeholder{op}} and \tcode{d\placeholder{op}}
@@ -1120,32 +1184,51 @@ template<class T, class F1>
 }
 
 \itemdescr{
-Let \tcode{F} be \tcode{\exposid{common-floating-type}<Fs...>},
-where \tcode{Fs...} is a pack containing all
-template type parameters following \tcode{T}.
-
-\Btodo{
-Figure this out ...
-}
-
-\constraints
+¶
+Let \tcode{Fs} be the pack of template type parameters following \tcode{T}.
+Let \tcode{F} be the type determined as follows:
 \ul{
-  \li{\tcode{T} is a cv-unqualified floating-point type.}
-  \li{\tcode{T} has lower conversion rank than \tcode{F}.}
-  \li{Both or neither \tcode{T} and \tcode{F} are standard floating-point types.}
   \li{
-    If both \tcode{T} and \tcode{F} are extended floating-point types,
-    the constraints are implementation-defined,
-    while respecting the previous rules.
+    If \tcode{T} is \tcode{double} or
+    if any type in \tcode{Fs} is \tcode{long double},
+    \tcode{F} is \tcode{long double}.
+  }
+  \li{
+    Otherwise, if \tcode{T} is \tcode{float},
+    \tcode{F} is \tcode{double}.
+  }
+  \li{
+    Otherwise, if \tcode{T} is an extended floating-point type
+    named by the alias \tcode{std::float\placeholder{N}_t},
+    \tcode{F} is the type named by \tcode{std::float\placeholder{M}_t},
+    where \math{\mrow{\mi{M}\mo{=}\mi{N}\mo{×}\mn{2}}},
+    if such a type exists.
+  }
+  \li{
+    Otherwise, \tcode{F} is implementation-defined
+    and may not exist.
   }
 }
 
+¶
+\constraints
+\ul{
+  \li{Each type in \tcode{Fs} is a cv-unqualified arithmetic type.}
+  \li{\tcode{F} exists.}
+  \li{\tcode{T} is a cv-unqualified floating-point type.}
+}
+\example{
+It is implementation-defined whether the constraints
+of \tcode{fadd<bfloat16_t, float32_t>} are satisfied.
+}
+
+¶
 \effects
 Each of the function templates has the same behavior as the corresponding
 non-template overload with the same name,
 except for the difference in return type and parameter types.
 
-
+¶
 \remarks
 The \tcode{FP_FAST} macros also relate to specializations of these function templates.
 \br\example{
@@ -1153,6 +1236,11 @@ The \tcode{FP_FAST} macros also relate to specializations of these function temp
 }
 }
 }
+
+\h2{Acknowledgements}
+
+Thanks to Hubert Tong for reviewing the library wording
+and pointing out asymmetries with the behavior of \header{tgmath.h} macros.
 
 \h2{References}
 

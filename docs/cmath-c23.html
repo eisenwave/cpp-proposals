@@ -1614,6 +1614,8 @@ if (theme !== null) {
 <div class=toc-num data-level=3>3.4</div>
 <a href=#c%2emath%2enarrow><h3>[c.math.narrow]</h3></a>
 <div class=toc-num data-level=2>4</div>
+<a href=#acknowledgements><h2>Acknowledgements</h2></a>
+<div class=toc-num data-level=2>5</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
@@ -2642,6 +2644,66 @@ where all uses of <code><i><h- data-h=id>double-type</h-></i></code> in the func
 with that floating-point type.
 </p></ins-block>
 
+<p>Insert a new items following that:
+</p>
+<ins-block>
+<p>¶
+Let <code><i><h- data-h=id>common-floating-point-type</h-></i></code> and
+<code><i><h- data-h=id>common-double-type</h-></i></code>
+be the following exposition-only alias templates:
+</p>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-><h- data-h=sym_op>...</h-> <h- data-h=id>Ts</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>using</h-> <i><h- data-h=id>common-floating-point-type</h-></i> <h- data-h=sym_op>=</h-> <i><h- data-h=id>see below</h-></i><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-><h- data-h=sym_op>...</h-> <h- data-h=id>Ts</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>using</h-> <i><h- data-h=id>common-double-type</h-></i> <h- data-h=sym_op>=</h-> <i><h- data-h=id>see below</h-></i><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p>¶
+<i>Constraints</i>:
+Each type in the pack <code><h- data-h=id>Ts</h-></code> is a
+cv-unqualified arithmetic type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>).
+</p>
+<p>¶
+Let <code><h- data-h=id>R</h-></code> be defined as follows:
+</p><ul>
+  <li>
+    For <code><i><h- data-h=id>common-floating-point-type</h-></i></code>,
+    let <code><h- data-h=id>R</h-></code> be the floating-point type with the
+    greatest floating-point conversion rank and
+    greatest floating-point conversion subrank among the types in <code><h- data-h=id>Ts</h-></code>,
+    where integer types are considered to have
+    the same floating-point conversion rank as <code><h- data-h=kw_type>double</h-></code>.
+  </li>
+  <li>
+    For <code><i><h- data-h=id>common-double-type</h-></i></code>,
+    let <code><h- data-h=id>R</h-></code> be <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code> if any of the types in <code><h- data-h=id>Ts</h-></code>
+    is <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>, and
+    <code><h- data-h=kw_type>double</h-></code> otherwise.
+  </li>
+</ul>
+
+<p>¶
+<i>Mandates</i>:
+<code><h- data-h=id>R</h-></code> is defined.
+</p>
+<p>¶
+<i>Result</i>:
+<code><h- data-h=id>R</h-></code>.
+</p></div>
+</ins-block>
+
+<note-block class=edit><p><intro-></intro-> 
+<code><i><h- data-h=id>common-floating-point-type</h-></i></code> is just following the existing
+semantics of <a href=https://eel.is/c++draft/cmath.syn#3>[cmath.syn] paragraph 3</a> in the form of an exposition-only alias template.
+</p>
+<p><code><i><h- data-h=id>common-double-type</h-></i></code> is meant to emulate
+the behavior of the <code><h- data-h=str>&lt;tgmath.h&gt;</h-></code> macros <code><h- data-h=id>fadd</h-></code>, <code><h- data-h=id>fsub</h-></code>, etc.
+</p>
+<p>For <code><h- data-h=id>dadd</h-></code>, <code><h- data-h=id>dsub</h-></code>, etc. no such thing is necessary because without
+decimal floating-point types,
+the behavior is always to convert all arguments to <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>.
+</p></note-block>
+
 <p>Change <a href=https://eel.is/c++draft/cmath.syn#3>[cmath.syn] paragraph 3</a> as follows:
 </p>
 <diff-block>
@@ -2650,23 +2712,23 @@ with that floating-point type.
 other than <code><h- data-h=id>abs</h-></code>,
 the implementation also provides additional overloads sufficient to ensure that,
 if every argument corresponding to a
-<code><i><h- data-h=id>floating-point-type</h-></i></code> <ins>or <code><i><h- data-h=id>double-type</h-></i></code></ins> parameter has arithmetic type,
-then every such argument is effectively cast to the floating-point type
+<code><i><h- data-h=id>floating-point-type</h-></i></code> <ins>or <code><i><h- data-h=id>double-type</h-></i></code></ins>
+parameter has arithmetic type,
+then every such argument is effectively cast to
+<del>the floating-point type
 with the greatest floating-point conversion rank and
 greatest floating-point conversion subrank among the types of all such arguments,
 where arguments of integer type are considered to have
-the same floating-point conversion rank as <code><h- data-h=kw_type>double</h-></code>.
-If no such floating-point type with the greatest rank and subrank exists,
+the same floating-point conversion rank as <code><h- data-h=kw_type>double</h-></code></del>
+<ins><code><i><h- data-h=id>common-floating-point-type</h-></i><h- data-h=sym_op>&lt;</h-><h- data-h=id>Args</h-><h- data-h=sym_op>...</h-><h- data-h=sym_op>&gt;</h-></code>
+or <code><i><h- data-h=id>common-double-type</h-></i><h- data-h=sym_op>&lt;</h-><h- data-h=id>Args</h-><h- data-h=sym_op>...</h-><h- data-h=sym_op>&gt;</h-></code></ins>, respectively.
+If <del>no such floating-point type with the greatest rank and subrank exists</del>
+<ins>that specialization of the alias template is ill-formed</ins>,
 then overload resolution does not result in a usable candidate (<a href=https://eel.is/c++draft/over.match.general>[over.match.general]</a>)
 from the overloads provided by the implementation.
 </p></diff-block>
 
 <h3 id=c.math.narrow><a class=para href=#c%2emath%2enarrow></a>[c.math.narrow]</h3>
-
-<todo-block><p><intro-></intro-> 
-The constraints here don't allow for the same kind of type mixing 
-that we usually try to have (<a href=https://eel.is/c++draft/cmath.syn#3>[cmath.syn] paragraph 3</a>).
-</p></todo-block>
 
 <p>Add a new subclause as follows:
 </p>
@@ -2677,10 +2739,12 @@ that we usually try to have (<a href=https://eel.is/c++draft/cmath.syn#3>[cmath.
 <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>d</h-><tt-><i><h- data-h=id>op</h-></i></tt-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
-<p>Let <code><tt-><i><h- data-h=id>op</h-></i></tt-></code> be a placeholder for
+<p>¶
+Let <code><tt-><i><h- data-h=id>op</h-></i></tt-></code> be a placeholder for
 <code><h- data-h=id>add</h-></code>, <code><h- data-h=id>sub</h-></code>, <code><h- data-h=id>mul</h-></code>, <code><h- data-h=id>div</h-></code>, <code><h- data-h=id>fma</h-></code>, or <code><h- data-h=id>sqrt</h-></code>.
 </p>
-<p><i>Effects</i>:
+<p>¶
+<i>Effects</i>:
 Each of the functions
 <code><h- data-h=id>f</h-><tt-><i><h- data-h=id>op</h-></i></tt-></code> and <code><h- data-h=id>d</h-><tt-><i><h- data-h=id>op</h-></i></tt-></code>
 has the same behavior as the functions
@@ -2702,33 +2766,52 @@ respectively.
   <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>fsqrt</h-><h- data-h=sym_par>(</h-><h- data-h=id>F1</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
-<p>Let <code><h- data-h=id>F</h-></code> be <code><i><h- data-h=id>common-floating-type</h-></i><h- data-h=sym_op>&lt;</h-><h- data-h=id>Fs</h-><h- data-h=sym_op>...</h-><h- data-h=sym_op>&gt;</h-></code>,
-where <code><h- data-h=id>Fs</h-><h- data-h=sym_op>...</h-></code> is a pack containing all
-template type parameters following <code><h- data-h=id>T</h-></code>.
-</p>
-<todo-block><p><intro-></intro-> 
-Figure this out ...
-</p></todo-block>
-
-<p><i>Constraints</i>:
+<p>¶
+Let <code><h- data-h=id>Fs</h-></code> be the pack of template type parameters following <code><h- data-h=id>T</h-></code>.
+Let <code><h- data-h=id>F</h-></code> be the type determined as follows:
 </p><ul>
-  <li><code><h- data-h=id>T</h-></code> is a cv-unqualified floating-point type.</li>
-  <li><code><h- data-h=id>T</h-></code> has lower conversion rank than <code><h- data-h=id>F</h-></code>.</li>
-  <li>Both or neither <code><h- data-h=id>T</h-></code> and <code><h- data-h=id>F</h-></code> are standard floating-point types.</li>
   <li>
-    If both <code><h- data-h=id>T</h-></code> and <code><h- data-h=id>F</h-></code> are extended floating-point types,
-    the constraints are implementation-defined,
-    while respecting the previous rules.
+    If <code><h- data-h=id>T</h-></code> is <code><h- data-h=kw_type>double</h-></code> or
+    if any type in <code><h- data-h=id>Fs</h-></code> is <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>,
+    <code><h- data-h=id>F</h-></code> is <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>.
+  </li>
+  <li>
+    Otherwise, if <code><h- data-h=id>T</h-></code> is <code><h- data-h=kw_type>float</h-></code>,
+    <code><h- data-h=id>F</h-></code> is <code><h- data-h=kw_type>double</h-></code>.
+  </li>
+  <li>
+    Otherwise, if <code><h- data-h=id>T</h-></code> is an extended floating-point type
+    named by the alias <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>float</h-><tt-><i><h- data-h=id>N</h-></i></tt-><h- data-h=id_type>_t</h-></code>,
+    <code><h- data-h=id>F</h-></code> is the type named by <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>float</h-><tt-><i><h- data-h=id>M</h-></i></tt-><h- data-h=id_type>_t</h-></code>,
+    where <math display=inline><mrow><mi>M</mi><mo>=</mo><mi>N</mi><mo>×</mo><mn>2</mn></mrow></math>,
+    if such a type exists.
+  </li>
+  <li>
+    Otherwise, <code><h- data-h=id>F</h-></code> is implementation-defined
+    and may not exist.
   </li>
 </ul>
 
-<p><i>Effects</i>:
+<p>¶
+<i>Constraints</i>:
+</p><ul>
+  <li>Each type in <code><h- data-h=id>Fs</h-></code> is a cv-unqualified arithmetic type.</li>
+  <li><code><h- data-h=id>F</h-></code> exists.</li>
+  <li><code><h- data-h=id>T</h-></code> is a cv-unqualified floating-point type.</li>
+</ul>
+<p>[<i>Example</i>: 
+It is implementation-defined whether the constraints
+of <code><h- data-h=id>fadd</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>bfloat16_t</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_type>float32_t</h-><h- data-h=sym_op>&gt;</h-></code> are satisfied.
+ — <i>end example</i>]</p>
+
+<p>¶
+<i>Effects</i>:
 Each of the function templates has the same behavior as the corresponding
 non-template overload with the same name,
 except for the difference in return type and parameter types.
 </p>
-
-<p><i>Remarks</i>:
+<p>¶
+<i>Remarks</i>:
 The <code><h- data-h=id>FP_FAST</h-></code> macros also relate to specializations of these function templates.
 <br/>[<i>Example</i>: 
 <code><h- data-h=id>FP_FAST_DADDL</h-></code> relates to <code><h- data-h=id>daddl</h-></code> and <code><h- data-h=id>fadd</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>double</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-><h- data-h=sym_op>&gt;</h-></code>.
@@ -2736,7 +2819,12 @@ The <code><h- data-h=id>FP_FAST</h-></code> macros also relate to specialization
 </p></div>
 </ins-block>
 
-<h2 id=references><a class=para href=#references></a>4. References</h2>
+<h2 id=acknowledgements><a class=para href=#acknowledgements></a>4. Acknowledgements</h2>
+
+<p>Thanks to Hubert Tong for reviewing the library wording
+and pointing out asymmetries with the behavior of <code><h- data-h=str>&lt;tgmath.h&gt;</h-></code> macros.
+</p>
+<h2 id=references><a class=para href=#references></a>5. References</h2>
 
 
 <div class=bib><div id=bib-item-N5014 class=bib-item>
