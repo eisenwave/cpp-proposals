@@ -436,12 +436,18 @@ To solve this, we can do something novel:
 add function templates for these rounding functions:
 
 \cppblock{
-template<class T, class F> constexpr T fadd(F x, F y) noexcept;
-template<class T, class F> constexpr T fsub(F x, F y) noexcept;
-template<class T, class F> constexpr T fmul(F x, F y) noexcept;
-template<class T, class F> constexpr T fdiv(F x, F y) noexcept;
-template<class T, class F> constexpr T ffma(F x, F y, F z) noexcept;
-template<class T, class F> constexpr T fsqrt(F x) noexcept;
+template<class T, class F1, class F2>
+  constexpr T fadd(F1 x, F2 y) noexcept;
+template<class T, class F1, class F2>
+  constexpr T fsub(F1 x, F2 y) noexcept;
+template<class T, class F1, class F2>
+  constexpr T fmul(F1 x, F2 y) noexcept;
+template<class T, class F1, class F2>
+  constexpr T fdiv(F1 x, F2 y) noexcept;
+template<class T, class F1, class F2, class F3>
+  constexpr T ffma(F1 x, F2 y, F3 z) noexcept;
+template<class T, class F1>
+  constexpr T fsqrt(F1 x) noexcept;
 }
 
 While the prefix \q{\tt{f}} is a bit inappropriate
@@ -450,10 +456,20 @@ there is no obvious alternative prefix,
 \q{\tt{f}} definitely won't clash with future \header{math.h} functions,
 and having no prefix at all would create undesirable overload sets with other functions.
 
-These templates are constrained so that \tcode{F}
-has to be of greater conversion rank than \tcode{T},
-which matches the C23 restrictions.
-Furthermore, mixing standard and extended floating-point types is not supported.
+The design goal for these functions is for the user to be able to write:
+\cppblock{
+#ifdef __cplusplus
+  #define f32add(...) \cowel_highlight(cpp){::std::fadd<std::float32_t>(__VA_ARGS__)}
+  // ...
+#else
+  #include <tgmath.h>
+#endif
+}
+
+There is also a non-template \tcode{std::fadd} function
+which is meant to emulate the behavior of the \header{tgmath.h} macro
+by selecting between the \tcode{long double}→\tcode{float} and \tcode{double}→\tcode{float}
+overloads.
 
 \h3{New macros}
 
@@ -500,7 +516,7 @@ FP_FAST_DFMAL
 
 The changes are relative to \ref(N5014).
 
-\h3{show-number=false}{[basic.fundamental]}
+\h3(show-number=false){[basic.fundamental]}
 
 Immediately prior to \eelis{basic.fundamental#13},
 insert a new paragraph:
@@ -1152,6 +1168,35 @@ If \del{no such floating-point type with the greatest rank and subrank exists}
 \ins{that specialization of the alias template is ill-formed},
 then overload resolution does not result in a usable candidate\iref{over.match.general}
 from the overloads provided by the implementation.
+}
+
+Add a new paragraph immediately following \eelis{cmath.syn#3}:
+
+\Bins{
+The implementation may provide additional overloads of
+\tcode{\placeholder{p}add},
+\tcode{\placeholder{p}sub},
+\tcode{\placeholder{p}mul},
+\tcode{\placeholder{p}div},
+\tcode{\placeholder{p}fma}, and
+\tcode{\placeholder{p}sqrt},
+for any prefix \tcode{\placeholder{p}},
+with parameters of cv-unqualified arithmetic types
+to ensure consistent behavior with the corresponding macro
+in C header \header{tgmath.h}.
+}
+
+\editnote{
+While the implementation is generally free to provide additional overloads,
+this is not allowed to alter the behavior of a conforming program.
+If an implementation provided an extended floating-point type \tcode{_Decimal128},
+\tcode{dadd} would need to convert arguments of type \tcode{_Decimal128}
+to \tcode{long double},
+but the C23 behavior is to call \tcode{daddd128}.
+
+This would not be the case if \tcode{_Decimal128} was a compiler extension,
+in which case the program isn't standard C++ anyway,
+and the implementation can do whatever it wants.
 }
 
 \h3(show-number=false){[c.math.narrow]}
