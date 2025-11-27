@@ -1601,21 +1601,25 @@ if (theme !== null) {
 <a href=#new-functions><h3>New functions</h3></a>
 <div class=toc-num data-level=4>2.1.1</div>
 <a href=#narrow-rounding-functions><h4>Narrow rounding functions</h4></a>
+<div class=toc-num data-level=4>2.1.2</div>
+<a href=#canonical-floating-point-representations-and-canonicalization><h4>Canonical floating-point representations and canonicalization</h4></a>
 <div class=toc-num data-level=3>2.2</div>
 <a href=#new-macros><h3>New macros</h3></a>
 <div class=toc-num data-level=2>3</div>
-<a href=#wording><h2>Wording</h2></a>
-<div class=toc-num data-level=3>3.1</div>
-<a href=#basic%2efundamental><h3>[basic.fundamental]</h3></a>
-<div class=toc-num data-level=3>3.2</div>
-<a href=#version%2esyn><h3>[version.syn]</h3></a>
-<div class=toc-num data-level=3>3.3</div>
-<a href=#cmath%2esyn><h3>[cmath.syn]</h3></a>
-<div class=toc-num data-level=3>3.4</div>
-<a href=#c%2emath%2enarrow><h3>[c.math.narrow]</h3></a>
+<a href=#implementation-experience><h2>Implementation experience</h2></a>
 <div class=toc-num data-level=2>4</div>
-<a href=#acknowledgements><h2>Acknowledgements</h2></a>
+<a href=#wording><h2>Wording</h2></a>
+<div class=toc-num data-level=3>4.1</div>
+<a href=#basic%2efundamental><h3>[basic.fundamental]</h3></a>
+<div class=toc-num data-level=3>4.2</div>
+<a href=#version%2esyn><h3>[version.syn]</h3></a>
+<div class=toc-num data-level=3>4.3</div>
+<a href=#cmath%2esyn><h3>[cmath.syn]</h3></a>
+<div class=toc-num data-level=3>4.4</div>
+<a href=#c%2emath%2enarrow><h3>[c.math.narrow]</h3></a>
 <div class=toc-num data-level=2>5</div>
+<a href=#acknowledgements><h2>Acknowledgements</h2></a>
+<div class=toc-num data-level=2>6</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
@@ -1640,7 +1644,7 @@ The placeholder <code><i><h- data-h=id>F</h-></i></code> is a shorthand for the
 In addition to the functions using an <code><i><h- data-h=id>F</h-></i></code> placeholder,
 single-type functions such as <code><h- data-h=kw_type>float</h-> <h- data-h=id>acospif</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>float</h-><h- data-h=sym_par>)</h-></code> are proposed,
 but are not listed in the table for the sake of brevity;
-refer to <a href=#wording>§3. Wording</a> for the complete list.
+refer to <a href=#wording>§4. Wording</a> for the complete list.
 </p>
 <style>
   #new-functions {
@@ -2063,6 +2067,37 @@ which is meant to emulate the behavior of the <code><h- data-h=str>&lt;tgmath.h&
 by selecting between the <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>→<code><h- data-h=kw_type>float</h-></code> and <code><h- data-h=kw_type>double</h-></code>→<code><h- data-h=kw_type>float</h-></code>
 overloads.
 </p>
+<h4 id=canonical-floating-point-representations-and-canonicalization><a class=para href=#canonical-floating-point-representations-and-canonicalization></a>2.1.2. Canonical floating-point representations and canonicalization</h4>
+
+<p>C23 introduced the concept of "canonical representations"
+identified by <code><h- data-h=id>iscanonical</h-></code>,
+and a function <code><h- data-h=id>canonicalize</h-></code>
+to convert to canonical representations of the same value.
+</p>
+<example-block><p><intro-></intro-> 
+Examples of canonical/non-canonical representations include:
+</p><ul>
+  <li>
+    Representations for decimal floating-point types are specified
+    to be canonical or non-canonical by ISO/IEC 60559.
+  </li>
+  <li>Signaling NaN may be non-canonical, whereas quiet NaN may be canonical.</li>
+  <li>
+    An implementation that flushes subnormals to zero
+    may consider all subnormal normals to be non-canonical representations of zero.
+  </li>
+  <li>
+    Negative zero may be considered a non-canonical representation
+    of positive zero, which is canonical.
+  </li>
+</ul>
+</example-block>
+
+<p>Unless working with decimal floating-point types,
+the classification of representations as "canonical"
+is largely based on the subjective preferences of the implementation;
+there are no hard rules other than a canonical representation being unique.
+</p>
 <h3 id=new-macros><a class=para href=#new-macros></a>2.2. New macros</h3>
 
 <p>Besides the new functions,
@@ -2102,7 +2137,15 @@ corresponds to one of <tt->FP_INT_*</tt-> rounding direction macros.
 <h- data-h=id>FP_FAST_FFMAL</h->
 <h- data-h=id>FP_FAST_DFMAL</h-></code-block>
 
-<h2 id=wording><a class=para href=#wording></a>3. Wording</h2>
+<h2 id=implementation-experience><a class=para href=#implementation-experience></a>3. Implementation experience</h2>
+
+<p>All non-template additions are taken from C23,
+and most have been implemented in gnulibc.
+</p>
+<p>The new narrow rounding function templates simply dispatch to some
+non-template overload based on the template argument <code><h- data-h=id>T</h-></code>.
+</p>
+<h2 id=wording><a class=para href=#wording></a>4. Wording</h2>
 
 <p>The changes are relative to <a href="https://wg21%2elink/n5014">[N5014]</a>.
 </p>
@@ -2130,13 +2173,7 @@ are of different values.
 </p></ins-block>
 
 <note-block class=edit><p><intro-></intro-> 
-As a practical example,
-signaling NaN may be considered non-canonical and
-quiet NaN may be considered canonical representations of the same value.
-Also, an implementation may treat subnormal floating-point numbers
-or negative zero as non-canonical representations of zero.
-</p>
-<p>The C23 wording is extremely vague,
+The C23 wording is extremely vague,
 and we can't be precise either if we don't want to risk having diverging
 behavior for <code><h- data-h=id>iscanonical</h-></code>.
 </p>
@@ -2852,7 +2889,7 @@ Let <code><h- data-h=id>F</h-></code> be the type determined as follows:
 </p><ul>
   <li>Each type in <code><h- data-h=id>Fs</h-></code> is a cv-unqualified arithmetic type.</li>
   <li><code><h- data-h=id>F</h-></code> exists.</li>
-  <li><code><h- data-h=id>T</h-></code> is a cv-unqualified floating-point type.</li>
+  <li><code><h- data-h=id>T</h-></code> is a cv-unqualified floating-point type other than <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>.</li>
 </ul>
 <p>[<i>Example</i>: 
 It is implementation-defined whether the constraints
@@ -2875,12 +2912,12 @@ The <code><h- data-h=id>FP_FAST</h-></code> macros also relate to specialization
 </p></div>
 </ins-block>
 
-<h2 id=acknowledgements><a class=para href=#acknowledgements></a>4. Acknowledgements</h2>
+<h2 id=acknowledgements><a class=para href=#acknowledgements></a>5. Acknowledgements</h2>
 
 <p>Thanks to Hubert Tong for reviewing the library wording
 and pointing out asymmetries with the behavior of <code><h- data-h=str>&lt;tgmath.h&gt;</h-></code> macros.
 </p>
-<h2 id=references><a class=para href=#references></a>5. References</h2>
+<h2 id=references><a class=para href=#references></a>6. References</h2>
 
 
 <div class=bib><div id=bib-item-N5014 class=bib-item>

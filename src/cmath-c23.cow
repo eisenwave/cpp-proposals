@@ -471,6 +471,37 @@ which is meant to emulate the behavior of the \header{tgmath.h} macro
 by selecting between the \tcode{long double}→\tcode{float} and \tcode{double}→\tcode{float}
 overloads.
 
+\h4{Canonical floating-point representations and canonicalization}
+
+C23 introduced the concept of "canonical representations"
+identified by \tcode{iscanonical},
+and a function \tcode{canonicalize}
+to convert to canonical representations of the same value.
+
+\Bex{
+Examples of canonical/non-canonical representations include:
+\ul{
+  \li{
+    Representations for decimal floating-point types are specified
+    to be canonical or non-canonical by ISO/IEC 60559.
+  }
+  \li{Signaling NaN may be non-canonical, whereas quiet NaN may be canonical.}
+  \li{
+    An implementation that flushes subnormals to zero
+    may consider all subnormal normals to be non-canonical representations of zero.
+  }
+  \li{
+    Negative zero may be considered a non-canonical representation
+    of positive zero, which is canonical.
+  }
+}
+}
+
+Unless working with decimal floating-point types,
+the classification of representations as "canonical"
+is largely based on the subjective preferences of the implementation;
+there are no hard rules other than a canonical representation being unique.
+
 \h3{New macros}
 
 Besides the new functions,
@@ -512,6 +543,14 @@ FP_FAST_FFMAL
 FP_FAST_DFMAL
 }
 
+\h2{Implementation experience}
+
+All non-template additions are taken from C23,
+and most have been implemented in gnulibc.
+
+The new narrow rounding function templates simply dispatch to some
+non-template overload based on the template argument \tcode{T}.
+
 \h2{Wording}
 
 The changes are relative to \ref(N5014).
@@ -540,12 +579,6 @@ are of different values.
 }
 
 \editnote{
-As a practical example,
-signaling NaN may be considered non-canonical and
-quiet NaN may be considered canonical representations of the same value.
-Also, an implementation may treat subnormal floating-point numbers
-or negative zero as non-canonical representations of zero.
-
 The C23 wording is extremely vague,
 and we can't be precise either if we don't want to risk having diverging
 behavior for \tcode{iscanonical}.
@@ -1272,7 +1305,7 @@ Let \tcode{F} be the type determined as follows:
 \ul{
   \li{Each type in \tcode{Fs} is a cv-unqualified arithmetic type.}
   \li{\tcode{F} exists.}
-  \li{\tcode{T} is a cv-unqualified floating-point type.}
+  \li{\tcode{T} is a cv-unqualified floating-point type other than \tcode{long double}.}
 }
 \example{
 It is implementation-defined whether the constraints
