@@ -1,0 +1,499 @@
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+  title = Values of floating-point types
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D3938R0}}
+  \dt{Date:}            \dd{\tt{2025-11-30}}
+  \dt{Audience:}        \dd{SG6, EWG, CWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3938/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/floating-point-values.cow)}
+}
+\hr
+}
+
+\Babstract{
+It is not specified what values a floating-point type may represent in C++,
+leading to an unclear model for floating-point types.
+This paper introduces the necessary wording to specify what may be found between the lines
+of the standard.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+The core language wording in the C++ standard does not specify
+what values a floating-point type may represent.
+There are a few questions that have no obvious answer:
+
+\ul{
+  \li{
+    Do infinity and NaN exist from a core language perspective?
+  }
+  \li{
+    Can there be an unsigned zero, infinity, or NaN value,
+    or are all floating-point values signed?
+  }
+  \li{
+    Conversely, can there be a signed zero, infinity, or NaN value?
+  }
+  \li{
+    Can there be a negative zero and an unsigned infinity,
+    or is the "signedness requirement" all-or-none?
+  }
+  \li{
+    Are negative zero and positive zero distinct values?
+    That is, do they compare equal, and if so,
+    is there an observable difference (beyond looking at the sign bit) between them?
+  }
+  \li{
+    Is negative zero negative?
+    That is, when a \i{Preconditions} element requires a "non-negative" value,
+    is the behavior undefined when negative zero is provided?
+  }
+  \li{
+    Similarly, are negative infinity and negative NaN negative?
+  }
+  \li{
+    Is "negative NaN" distinct from "positive NaN",
+    or are these effectively the same NaN values with different "payloads"?
+  }
+  \li{
+    Can an extended floating-point type be so imprecise
+    that it is incapable of representing any number?
+    That is, could an \tcode{\exposid{infinity-t}}  type in the style of \tcode{nullptr_t}
+    be considered a floating-point type?
+  }
+  \li{
+    Does the core language need to distinguish between normal and subnormal numbers?
+  }
+  \li{
+    Are there any other possible categories of values beyond finite values, infinity, and NaN?
+  }
+  \li{
+    Are different NaN payloads distinct values?
+    If so, does that imply \tcode{std::has_unique_object_representations_v<std::float32_t>}
+    is \tcode{true}?
+  }
+  \li{
+    What does it mean for a type to \q{adhere to ISO/IEC 60559},
+    as mentioned in \tcode{std::numeric_limits::is_iec559}?
+  }
+  \li{Is \tcode{0.0} positive or negative zero, or is it implementation-defined/unspecified?}
+  \li{Are arithmetic operations required to preserve the sign of zero?}
+}
+
+
+Bits of information may be found in various parts of the standard,
+such as in the concept of "adhering to ISO/IEC 60559",
+\tcode{numeric_limits} requirements,
+the inheritance of C features such as \tcode{std::fpclassify}, etc.
+However, some of these questions are so deeply unclear that a core issue
+alone wouldn't be sufficient to solve the problem.
+
+The goal of this paper is to answer these questions,
+not by making any evolutionary changes to the language,
+but by investigating what the status quo is and turning that into wording.
+
+\h2{Q&A}
+
+In the following subsections,
+the paper tries to find a good answer to the questions above.
+These answers are primarily based on the existing wording
+and on existing implementation practice.
+
+\h3{What values can a floating-point type have?}
+
+At the very least,
+floating-point types may represent
+
+\ul{
+  \li{zero, for zero-initialization to make sense,}
+  \li{\q{negative zero}, since both C and C++ already mention this term many times, and}
+  \li{
+    infinity, qNaN, and sNan, \eelis{numeric.limits} to make sense and to have types
+    that adhere to ISO/IEC 60559.
+  }
+}
+
+The exotic and surprising part is that floating-point types may represent
+additional implementation-defined values beyond finite values, infinity, and NaN.
+This is backed by
+\ul{
+  \li{C23 §5.2.5.3.3 [Characteristics of floating types <float.h>] paragraph 8, and}
+  \li{C23 §7.12 [Mathematics <math.h>] paragraph 12.}
+}
+
+These paragraphs support the existence of such additional implementation-defined
+classifications.
+C++ inherits the behavior of \tcode{fpclassify} from \header{math.h},
+so it must support the same classifications to be compatible.
+
+\Bex{
+\ref(NetBSD-fpclassify) documents that the \tcode{fpclassify} macro for
+\ref(https://en.wikipedia.org/wiki/VAX){VAX floating-point numbers}
+may yield \tcode{FP_ROP} (reserved operand),
+which raises a reserved operand fault,
+i.e. a CPU exception when processed,
+similar to integer division by zero.
+
+This is different from signaling NaN in that by default,
+signaling NaN only raises a floating-point exception but doesn't trap.
+}
+
+While neither the C23 wording nor the C++ wording handles these
+extra implementation-defined classifications well,
+they nonetheless exist,
+and it seems like an unmotivated breaking change to drop support for them.
+
+\h2{Wording}
+
+The changes are relative to \ref(N5014).
+
+\h3(show-number=false){[lex]}
+
+Change \eelis{lex.fcon#3} as follows:
+
+\Bdiff{
+If the scaled value is not in the range of representable values for its type,
+the program is ill-formed.
+Otherwise, the value of a \grammarterm{floating-point-literal} is
+the scaled value if representable,
+else the larger or smaller representable value nearest the scaled value,
+chosen in an implementation-defined manner.
+\ins{The value of the \grammarterm{floating-point-literal} shall not be negative zero.}
+
+\ins{\example{
+\tcode{-0.0} is negative zero if \tcode{double} is able to represent
+negative zero (\eelis{basic.fundamental}, \eelis{expr.unary.op}).
+}}
+}
+
+\h3(show-number=false){[basic]}
+
+Immediately preceding \eelis{basic.fundamental#13},
+insert two new paragraphs:
+
+\Bins{
+A floating-point type \dfn{adheres to ISO/IEC 60559}
+if its value representation is one of the binary or decimal interchange formats
+specified in ISO/IEC 60559 and can represent the sets of floating-point values
+listed in ISO/IEC 60559.
+
+\note{
+Adherence to ISO/IEC 60559 does not imply that operations on floating-point types
+behave exactly as specified in that standard.
+For example, the behavior of addition in C++\iref{expr.add}
+can differ from the \q{addition} operation in ISO/IEC 60559.
+}
+}
+
+\editnote{
+The following change resolves
+\ref(https://github.com/cplusplus/CWG/issues/819){CWG submission #819}.
+}
+
+\Bins{
+A floating-point type shall at least represent a subset of rational numbers.
+Depending on the implementation-defined value representation for the type,
+it may additionally represent the non-finite values
+\ul{
+  \li{infinity,}
+  \li{quiet \q{Not a Number} value,}
+  \li{signaling \q{Not a Number} value, and}
+  \li{further implementation-defined values.}
+}
+
+For any of the above (including zero),
+a floating-point type may represent either a single unsigned value or
+two distinct values with negative and positive sign.
+
+\note{
+A floating-point type which adheres to ISO/IEC 60559 is capable of representing
+a negative and positive variant of finite values and infinity,
+an unsigned quiet NaN, and
+an unsigned signaling NaN.
+Such a type has multiple object representations for quiet NaN and signaling NaN.
+}
+}
+
+\editnote{
+The following change resolves
+\ref(https://github.com/cplusplus/CWG/issues/817){CWG submission #817}.
+}
+
+Immediately preceding \eelis{basic.fundamental#14},
+insert a new paragraph:
+
+\Bins{
+A value is \dfn{negative} if and only if it compares less than 0\iref{expr.rel}.
+
+\note{
+Thus, negative zeros and NaNs are not negative values.
+}
+}
+
+\h3(show-number=false){[expr]}
+
+At the end of \eelis{expr.pre},
+insert a new paragraph:
+
+\Bins{
+Unless otherwise stated,
+it is unspecified which of the alternative representations for a value
+is chosen as the result of an expression.
+Furthermore,
+if the result is of a floating-point type that can represent negative and positive zero,
+it is implementation-defined which zero is chosen as the result of the expression.
+}
+
+Change \eelis{conv.fpint#2} as follows:
+
+\Bdiff{
+A prvalue of an integer type or of an unscoped enumeration type
+can be converted to a prvalue of a floating-point type.
+The result is exact if possible.
+\ins{If the value being converted is zero,
+the result is positive or unsigned zero.}
+If the value being converted is in the range of values that can be represented
+but the value cannot be represented exactly,
+it is an implementation-defined choice of either the next lower or higher representable value.
+
+\note{
+Loss of precision occurs if the integral value cannot be represented exactly
+as a value of the floating-point type.
+}
+
+If the value being converted is outside the range of values that can be represented,
+the behavior is undefined.
+If the source type is \tcode{bool}, the value false is converted to zero and
+the value \tcode{true} is converted to one.
+}
+
+Change \eelis{expr.unary.op#8} as follows:
+
+\Bdiff{
+The operand of the unary \tcode{-} operator shall be a prvalue of
+arithmetic or unscoped enumeration type
+and the result is the negative of its operand.
+Integral promotion is performed on integral or enumeration operands.
+The negative of an unsigned quantity is computed by subtracting its value from
+\math{\msup{\mn{2}\mi{n}}},
+where \math{\mi{n}} is the number of bits in the promoted operand.
+\ins{For floating-point types that may represent negative and positive zero,
+the unary \tcode{-} operator results in the zero with opposite sign.}
+The type of the result is the type of the promoted operand.
+}
+
+\editnote{
+The following changes resolve
+\ref(https://github.com/cplusplus/CWG/issues/814){CWG submission #814}.
+}
+
+Change \eelis{expr.spaceship#4} as follows:
+
+\Bdiff{
+If both operands have arithmetic types,
+or one operand has integral type and the other operand has unscoped enumeration type,
+the usual arithmetic conversions are applied to the operands.
+Then:
+\ul{
+  \li{
+    If a narrowing conversion\iref{cl.init.list} is required,
+    other than from an integral type to a floating-point type,
+    the program is ill-formed.
+  }
+  \li{
+    Otherwise, if the operands have integral type, \etc{}.
+  }
+  \li{
+    Otherwise, the operands have floating-point type,
+    and the result is of type \tcode{std::partial_ordering}.
+    The expression \tcode{a <=> b} yields
+    \tcode{std::partial_ordering::less} if a is less than b,
+    \tcode{std::partial_ordering::greater} if a is greater than b,
+    \tcode{std::partial_ordering::equivalent} if a is equivalent to b, and
+    \tcode{std::partial_ordering::unordered} otherwise.
+    \ins{Positive zeros are equivalent to negative zeros.}
+  }
+}
+}
+
+Change \eelis{expr.rel#6} as follows:
+
+\Bdiff{
+If both operands (after conversions) are of arithmetic or enumeration type,
+each of the operators shall yield
+\tcode{true} if the specified relationship is \tcode{true} and
+\tcode{false} if it is \tcode{false}.
+\ins{Positive zeros compare equal to negative zeros.}
+}
+
+Change \eelis{expr.eq#8} as follows:
+
+\Bdiff{
+If both operands are of arithmetic or enumeration type,
+the usual arithmetic conversions\iref{expr.arith.conv} are performed on both operands;
+each of the operators shall yield
+\tcode{true} if the specified relationship is \tcode{true} and
+\tcode{false} if it is \tcode{false}.
+\ins{Positive zeros compare equal to negative zeros.}
+}
+
+\h3(show-number=false){[temp]}
+
+\editnote{
+The following changes resolve
+\ref(https://github.com/cplusplus/draft/pull/8573){Editorial PR #8375}.
+}
+
+Immediately preceding \eelis{temp.type#2},
+insert a new paragraph:
+
+\Bins{
+Two values \math{\mi{x}} and \math{\mi{y}} of a type \tcode{T}
+are \dfn{bitwise identical} if
+\tcode{std::bit_cast<U>(\math{\mi{x}}) == std::bit_cast<U>(\math{\mi{y}})}\iref{bit.cast}
+is \tcode{true},
+where \tcode{U} is a hypothetical unsigned integer type with the same size as \tcode{T} and
+the same amount and positioning of padding bits in its object representation as \tcode{T}.
+
+\note{
+It is possible that two values are the same but not bitwise identical.
+For example, a floating-point type \tcode{T} can have multiple representations
+of zero,
+of any other finite number,
+of the same NaN value,
+and more,
+even if the object representation of \tcode{T} has no padding bits.
+}
+}
+
+Change \eelis{temp.type#2} as follows:
+
+\Bdiff{
+Two values are \dfn{template-argument-equivalent} if they are of the same type and
+\ul{
+  \li{they are of integral type and their values are the same, or}
+  \li{
+    they are of floating-point type and their values are \ins{bitwise} identical, or
+  }
+  \li{they are of type \tcode{std::nullptr_t}, or}
+  \li{\etc}
+}
+}
+
+\editnote{
+We cannot simply say that the value representations of the template arguments is equal
+because we are talking about values, not objects,
+so a value and object representation isn't available in the first place.
+
+While it would be possible to define \q{bitwise identical}
+without the use of \tcode{std::bit_cast},
+the use of \tcode{std::bit_cast} makes the intent obvious at first glance.
+The use of \q{unsigned} may seem unnecessary,
+but it makes the wording more obvious,
+and there exist integer types such as \tcode{bool} which don't behave
+like the hypothetical type we want here.
+}
+
+\editnote{
+This wording approach implies that template arguments
+have a value representation that can be used to distinguish different
+template specializations all using the same qNaN argument with different payloads.
+The rest of the wording may not actually support this,
+but that is how every implementation works.
+}
+
+\h3(show-number=false){[support]}
+
+Change \eelis{cmp.alg#2} as follows:
+
+\Bdiff{
+The name weak_order denotes a customization point object\iref{customization.point.object}.
+Given subexpressions \tcode{E} and \tcode{F},
+the expression \tcode{weak_order(E, F)} is expression-equivalent\iref{defns.expression.equivalent}
+to the following:
+\ul{
+  \li{\etc}
+  \li{
+    Otherwise, if the decayed type \tcode{T} of \tcode{E} is a floating-point type,
+    yields a value of type \tcode{weak_ordering}
+    that is consistent with the ordering observed by \tcode{T}'s comparison operators
+    and \tcode{strong_order},
+    and if \tcode{numeric_limits<T>::is_iec559} is \tcode{true},
+    is additionally consistent with the following equivalence classes,
+    ordered from lesser to greater:\ul{
+      \li{together, all \del{negative} NaN values \ins{with negative sign bit};}
+      \li{negative infinity;}
+      \li{each normal negative value;}
+      \li{each subnormal negative value;}
+      \li{together, both zero values;}
+      \li{each subnormal positive value;}
+      \li{each normal positive value;}
+      \li{positive infinity;}
+      \li{together, all \del{positive} NaN values \ins{with positive sign bit}.}
+    }
+  }
+  \li{\etc}
+}
+}
+
+\editnote{
+ISO/IEC 60559 floating-point types have no \q{negative NaN} or \q{positive NaN},
+so the existing wording makes no sense,
+especially not with the new definition of \q{negative}.
+}
+
+\h3(show-number=false){[meta]}
+
+Change \eelis{meta.unary.prop#10} as follows:
+
+\Bdiff{
+The predicate condition for a template specialization
+\tcode{has_unique_object_representations<T>} shall be satisfied if and only if
+\ul{
+  \li{\tcode{T} is trivially copyable, and}
+  \li{any two objects of type T with the same value have the same object representation, where\ul{
+    \li{
+      two objects of array or non-union class type \etc
+    }
+    \li{
+      two objects of union type \etc
+    }
+  }}
+}
+The set of scalar types\ins{\iref{basic.fundamental}}
+for which this condition holds is implementation-defined.
+
+\ins{\example{
+The condition does not hold for floating-point types that adhere to ISO/IEC 60559
+because there are multiple representations of the same NaN value.
+The condition also does not hold for any type
+whose object representation contains padding bits.
+}} 
+}
+
+\h2{References}
+
+\bib(
+  id = N5014,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-08-05,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+)\
+\bib(
+  id = NetBSD-fpclassify,
+  title = fpclassify(3) - NetBSD Manual Pages,
+  link = https://man.netbsd.org/NetBSD-10.1/fpclassify.3,
+)\
+
+\make_bib
