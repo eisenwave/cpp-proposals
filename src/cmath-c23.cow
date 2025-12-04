@@ -5,7 +5,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{D3935R0}}
-  \dt{Date:}            \dd{\tt{2025-12-03}}
+  \dt{Date:}            \dd{\tt{2025-12-04}}
   \dt{Audience:}        \dd{SG22}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -711,6 +711,18 @@ it could have also been leaked through a \header{math.h} header from somewhere,
 without e.g. \tcode{std::roundeven} actually existing.
 }
 
+Bump the feature-test macro for mathematical special functions:
+
+\Bdiff{
+\itemdecl{
+#define __cpp_lib_math_special_functions \del{201603L} \ins{20XXXXL} //\serif{ also in \tt{<cmath>}}
+}
+}
+
+\editnote{
+This queries existence of new overloads such as \tcode{ellint_3f32}.
+}
+
 \h3(show-number=false){[cmath.syn]}
 
 \cowel_macro(floating_point_typ){\exposid{floating-point-type}}
@@ -1025,8 +1037,8 @@ namespace std {
 
   constexpr \floating_point_typ pown(\floating_point_typ x, long long int n);
   constexpr float               pownf(float x, long long int n);
-  constexpr long double         pownl(long double x, long long long int n);
-  constexpr float\placeholder{N}_t            pownf\placeholder{N}(float\placeholder{N}_t x);
+  constexpr long double         pownl(long double x, long long int n);
+  constexpr float\placeholder{N}_t            pownf\placeholder{N}(float\placeholder{N}_t x, long long int n);
 
   constexpr \floating_point_typ powr(\floating_point_typ x, \floating_point_typ y);
   constexpr float               powrf(float x, float y);
@@ -1036,7 +1048,7 @@ namespace std {
   constexpr \floating_point_typ rootn(\floating_point_typ x, long long int n);
   constexpr float               rootnf(float x, long long int n);
   constexpr long double         rootnl(long double x, long long int n);
-  constexpr float\placeholder{N}_t            rootf\placeholder{N}(float\placeholder{N}_t x, long long int n);
+  constexpr float\placeholder{N}_t            rootnf\placeholder{N}(float\placeholder{N}_t x, long long int n);
 
   constexpr \floating_point_typ rsqrt(\floating_point_typ x);
   constexpr float               rsqrtf(float x);
@@ -1261,6 +1273,7 @@ namespace std {
   constexpr double     dadd(long double x, long double y);
   constexpr double     daddl(long double x, long double y);
   constexpr float\placeholder{N}_t   f\placeholder{N}add(\seebelow x, \seebelow y);
+  constexpr float\placeholder{N}_t   f\placeholder{N}addf\placeholder{M}(float\placeholder{M}_t x, float\placeholder{M}_t y);
 
   template<class T, class F> constexpr T fsub(F x, F y) noexcept;
   constexpr float      fsub(\exposid{double-type} x, \exposid{double-type} y);
@@ -1268,6 +1281,7 @@ namespace std {
   constexpr double     dsub(long double x, long double y);
   constexpr double     dsubl(long double x, long double y);
   constexpr float\placeholder{N}_t   f\placeholder{N}sub(\seebelow x, \seebelow y);
+  constexpr float\placeholder{N}_t   f\placeholder{N}subf\placeholder{M}(float\placeholder{M}_t x, float\placeholder{M}_t y);
 
   template<class T, class F> constexpr T fmul(F x, F y) noexcept;
   constexpr float      fmul(\exposid{double-type} x, \exposid{double-type} y);
@@ -1275,6 +1289,7 @@ namespace std {
   constexpr double     dmul(long double x, long double y);
   constexpr double     dmull(long double x, long double y);
   constexpr float\placeholder{N}_t   f\placeholder{N}mul(\seebelow x, \seebelow y);
+  constexpr float\placeholder{N}_t   f\placeholder{N}mulf\placeholder{M}(float\placeholder{M}_t x, float\placeholder{M}_t y);
 
   template<class T, class F> constexpr T fdiv(F x, F y) noexcept;
   constexpr float      fdiv(\exposid{double-type} x, \exposid{double-type} y);
@@ -1282,6 +1297,7 @@ namespace std {
   constexpr double     ddiv(long double x, long double y);
   constexpr double     ddivl(long double x, long double y);
   constexpr float\placeholder{N}_t   f\placeholder{N}div(\seebelow x, \seebelow y);
+  constexpr float\placeholder{N}_t   f\placeholder{N}divf\placeholder{M}(float\placeholder{M}_t x, float\placeholder{M}_t y);
 
   template<class T, class F> constexpr T ffma(F x, F y, F z) noexcept;
   constexpr float      ffma(\exposid{double-type} x, \exposid{double-type} y, \exposid{double-type} z);
@@ -1289,13 +1305,15 @@ namespace std {
   constexpr double     dfma(long double x, long double y, long double z);
   constexpr double     dfmal(long double x, long double y, long double z);
   constexpr float\placeholder{N}_t   f\placeholder{N}fma(\seebelow x, \seebelow y, \seebelow z);
+  constexpr float\placeholder{N}_t   f\placeholder{N}fmaf\placeholder{M}(float\placeholder{M}_t x, float\placeholder{M}_t y, float\placeholder{M}_t z);
 
   template<class T, class F> constexpr T fsqrt(F x) noexcept;
   constexpr float      fsqrt(\exposid{double-type} x);
   constexpr float      fsqrtl(long double x);
   constexpr double     dsqrt(long double x);
   constexpr double     dsqrtl(long double x);
-  constexpr float\placeholder{N}_t   f\placeholder{N}sqrt(\seebelow x);}
+  constexpr float\placeholder{N}_t   f\placeholder{N}sqrt(\seebelow x);
+  constexpr float\placeholder{N}_t   f\placeholder{N}sqrtf\placeholder{M}(float\placeholder{M}_t x);}
 
   //\serif{ [c.math.lerp], linear interpolation}
   constexpr \floating_point_typ lerp(\floating_point_typ a, \floating_point_typ b,
@@ -1321,25 +1339,27 @@ namespace std {
 \ins{  constexpr bool iseqsig(\floating_point_typ x, \floating_point_typ y);
 
   //\serif{ ISO/IEC 60559 specific functions}
-  constexpr bool totalorder(const \floating_point_typ* x, const \floating_point_typ* y);
-  constexpr bool totalorderf(const float* x, const float* y);
-  constexpr bool totalorderl(const long double* x, const long double* y);
-  constexpr bool totalorderf\placeholder{N}(const float\placeholder{N}_t* x, float\placeholder{N}_t* y);
+  constexpr bool totalorder(const \floating_point_typ* x,                       \optional
+                            const \floating_point_typ* y);
+  constexpr bool totalorderf(const float* x, const float* y);                   \optional
+  constexpr bool totalorderl(const long double* x, const long double* y);       \optional
+  constexpr bool totalorderf\placeholder{N}(const float\placeholder{N}_t* x, float\placeholder{N}_t* y);                  \optional
 
-  constexpr bool totalordermag(const \floating_point_typ* x, const \floating_point_typ* y);
-  constexpr bool totalordermagf(const float* x, const float* y);
-  constexpr bool totalordermagl(const long double* x, const long double* y);
-  constexpr bool totalordermagf\placeholder{N}(const float\placeholder{N}_t* x, float\placeholder{N}_t* y);
+  constexpr bool totalordermag(const \floating_point_typ* x,                    \optional
+                               const \floating_point_typ* y);
+  constexpr bool totalordermagf(const float* x, const float* y);                \optional
+  constexpr bool totalordermagl(const long double* x, const long double* y);    \optional
+  constexpr bool totalordermagf\placeholder{N}(const float\placeholder{N}_t* x, float\placeholder{N}_t* y);               \optional
 
-  constexpr \floating_point_typ getpayload(const \floating_point_typ* x);
-  constexpr float               getpayloadf(const float* x);
-  constexpr long double         getpayloadl(const long double* x);
-  constexpr float\placeholder{N}_t            getpayloadf\placeholder{N}(const float\placeholder{N}_t* x);
+  constexpr \floating_point_typ getpayload(const \floating_point_typ* x);       \optional
+  constexpr float               getpayloadf(const float* x);                    \optional
+  constexpr long double         getpayloadl(const long double* x);              \optional
+  constexpr float\placeholder{N}_t            getpayloadf\placeholder{N}(const float\placeholder{N}_t* x);                \optional
 
-  constexpr int setpayload(\floating_point_typ* res, \floating_point_typ pl);
-  constexpr int setpayloadf(float* res, float pl);
-  constexpr int setpayloadl(long double* res, long double pl);
-  constexpr int setpayloadf\placeholder{N}(float\placeholder{N}_t* res, float\placeholder{N}_t pl);}
+  constexpr int setpayload(\floating_point_typ* res, \floating_point_typ pl);   \optional
+  constexpr int setpayloadf(float* res, float pl);                              \optional
+  constexpr int setpayloadl(long double* res, long double pl);                  \optional
+  constexpr int setpayloadf\placeholder{N}(float\placeholder{N}_t* res, float\placeholder{N}_t pl);                       \optional}
 
   //\serif{ [sf.cmath], mathematical special functions}
 
@@ -1487,27 +1507,36 @@ a linear interpolation function, and
 the mathematical special functions described in \eelis{sf.cmath}.
 }
 
-Do \u{not} change \eelis{cmath.syn#2}:
+Change \eelis{cmath.syn#2} as follows:
 
-\Bquote{
-For each function with at least one parameter of type \tcode{\floating_point_typ},
+\Bdiff{
+\del{For each function with at least one parameter of type \tcode{\floating_point_typ},
 the implementation provides an overload
-for each cv-unqualified floating-point type\iref{basic.fundamental}
-where all uses of \tcode{\floating_point_typ} in the function signature are replaced
-with that floating-point type.
+for each cv-unqualified floating-point type\iref{basic.fundamental}}
+\ins{Multiple functions above are specified using a type placeholder,
+for which the implementation providese an overload for each type in a set,}
+where all uses of \del{\tcode{\floating_point_typ}} \ins{the type placeholder}
+in the function signature
+are replaced with that floating-point type.
+\ul{
+  \li{\ins{
+    For the type placeholder \tcode{\floating_point_typ},
+    the set of types is all cv-unqualified floating-point types.
+  }}
+  \li{\ins{
+    For the type placeholder \tcode{\exposid{double-type}},
+    the set of types is \tcode{double} and \tcode{long double}.
+  }}
+  \li{\ins{
+    For the type placeholder \tcode{float\placeholder{N}_t},
+    the set of types is
+    \tcode{float16_t}, \tcode{float32_t}, \tcode{float64_t}, and \tcode{float128_t},
+    if defined.
+  }}
+}
 }
 
-Insert a new paragraph immediately following \eelis{cmath.syn#2}:
-
-\Bins{
-For each function with at least one parameter of type \tcode{\exposid{double-type}},
-the implementation provides an overload
-for \tcode{double} and \tcode{long double}
-where all uses of \tcode{\exposid{double-type}} in the function signature are replaced
-with that floating-point type.
-}
-
-Insert a new items following that:
+Insert a new item immediately following \eelis{cmath.syn#2}:
 
 \Bins{
 ¶
@@ -1593,7 +1622,7 @@ then overload resolution does not result in a usable candidate\iref{over.match.g
 from the overloads provided by the implementation.
 }
 
-Add a new paragraph immediately following \eelis{cmath.syn#3}:
+Add a new paragraphs immediately following \eelis{cmath.syn#3}:
 
 \Bins{
 The implementation may provide additional overloads of
@@ -1622,6 +1651,14 @@ in which case the program isn't standard C++ anyway,
 and the implementation can do whatever it wants.
 }
 
+\Bins{
+The functions whose names begin with
+\tcode{totalorder}, \tcode{totalordermag}, \tcode{getpayload}, or \tcode{setpayload}
+are only provided if \tcode{numeric_limits<T>::is_iec559} is \tcode{true}
+for the floating-point type \tcode{T} in the function signature
+(possibly following the placeholder substitution described above).
+}
+
 \h3(show-number=false){[c.math.narrow]}
 
 Add a new subclause as follows:
@@ -1630,8 +1667,10 @@ Add a new subclause as follows:
 \cowel_html_element(h3){Narrowing operations \stable_ref{c.math.narrow}}
 
 \itemdecl{
-constexpr float  f\placeholder{op}(long double x, long double y);
-constexpr double d\placeholder{op}(long double x, long double y);
+constexpr float    f\placeholder{op}(long double x /* ... */);
+constexpr double   d\placeholder{op}(long double x /* ... */);
+constexpr float\placeholder{N}_t f\placeholder{N}\placeholder{op}(\seebelow x /* ... */);
+constexpr float\placeholder{N}_t f\placeholder{N}\placeholder{op}f\placeholder{M}(float\placeholder{M}_t x /* ... */);
 }
 
 \itemdescr{
@@ -1640,12 +1679,43 @@ Let \tcode{\placeholder{op}} be a placeholder for
 \tcode{add}, \tcode{sub}, \tcode{mul}, \tcode{div}, \tcode{fma}, or \tcode{sqrt}.
 
 ¶
+For each of the functions
+\tcode{f\placeholder{N}\placeholder{op}} and
+\tcode{f\placeholder{N}\placeholder{op}f\placeholder{M}},
+the implementation provides an overload for every
+pair \tcode{\placeholder{N}} and \tcode{\placeholder{M}}
+if \tcode{\placeholder{N}} < \tcode{\placeholder{M}} and the aliases
+\tcode{float\placeholder{N}_t} and \tcode{float\placeholder{M}_t} are defined,
+where every placeholder \tcode{\placeholder{N}} and \tcode{\placeholder{M}}
+in the function signature is replaced with the corresponding number.
+For each such pair \tcode{\placeholder{N}} and \tcode{\placeholder{M}}.
+
+¶
 \effects
-Each of the functions
+Each of the overloads
 \tcode{f\placeholder{op}} and \tcode{d\placeholder{op}}
-has the same behavior as the functions
+has the same behavior as the function
 \tcode{f\placeholder{op}l} and \tcode{d\placeholder{op}l},
 respectively.
+Each of the overloads \tcode{f\placeholder{N}\placeholder{op}}
+has the same behavior as the corresponding function
+\tcode{f\placeholder{N}\placeholder{op}f\placeholder{M}}
+with the same parameter types.
+
+¶
+\example{
+If only \tcode{float32_t}, \tcode{float64_t}, and \tcode{float128_t} are defined,
+the implementation provides the overloads
+\itemdecl{
+constexpr float32_t f32sqrt(float64_t x);
+constexpr float32_t f32sqrt(float128_t x);
+constexpr float64_t f64sqrt(float128_t x);
+constexpr float32_t f32sqrtf64(float64_t x);
+constexpr float32_t f32sqrtf128(float128_t x);
+constexpr float64_t f64sqrtf128(float128_t x);
+}
+where \tcode{\placeholder{op}} is \tcode{sqrt}.
+}
 }
 
 \itemdecl{
@@ -1714,6 +1784,23 @@ if that overload had return type \tcode{T} and parameters all of type \tcode{F}.
 The \tcode{FP_FAST} macros also relate to specializations of these function templates.
 \br\example{
 \tcode{FP_FAST_DSQRTL} relates to \tcode{dsqrtl} and \tcode{fsqrt<double, long double>}.
+}
+}
+}
+
+\h3(show-number=false){[sf.cmath]}
+
+For every overload set in this subclause,
+add the same overload as shown in the synopsis changes above:
+
+\Bex{
+Change the declaration in \eelis{sf.cmath.assoc.laguerre} as follows:
+\Bdiff{
+\itemdecl{
+\floating_point_typ assoc_laguerre(unsigned n, unsigned m, \floating_point_typ x);
+float               assoc_laguerref(unsigned n, unsigned m, float x);
+long double         assoc_laguerrel(unsigned n, unsigned m, long double x);
+\ins{float\placeholder{N}_t            assoc_laguerref\placeholder{N}(unsigned n, unsigned m, float\placeholder{N}_t x);}
 }
 }
 }
