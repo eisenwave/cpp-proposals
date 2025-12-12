@@ -1,0 +1,485 @@
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+  title = Provide a better replacement for \tt{std::to_chars} and \tt{std::from_chars}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D3944R0}}
+  \dt{Date:}            \dd{\tt{2025-12-12}}
+  \dt{Audience:}        \dd{LEWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3688/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/replace-charconv.cow)}
+}
+\hr
+}
+
+\Babstract{
+The API of \tcode{std::to_chars} and \tcode{std::from_chars} is a dead end.
+Providing improved replacements is better than maintaining the existing overloads.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Problem}
+
+In recent history,
+there have been at least five papers proposing changes
+to the \header{charconv} API:
+
+\ol{
+  \li{
+    \ref(P2584R0) points out that \tcode{std::from_chars} isn't composable.
+    The APIs neither return a range in the result
+    nor do they take a range, but a pair of pointers.
+    The paper proposes new overloads that accept \tcode{std::string_view}
+    and return a different result type.
+  }
+  \li{
+    \ref(P3666R2) wants to add \tcode{std::from_chars} and \tcode{std::to_chars}
+    support for the new bit-precise integers.
+    However, the current interface has an overload
+    for each \tcode{\placeholder{integer-type}} placeholder,
+    and doing so for bit-precise integers would require millions of overloads.
+    The paper proposes a new template overload instead.
+  }
+  \li{
+    \ref(P3876R0) wants to add \tcode{std::from_chars} and \tcode{std::to_chars}
+    for character types other than \tcode{char}.
+    Since the functions aren't templates and \tcode{std::to_chars_result}
+    isn't a template either, this is quite difficult to do.
+    The paper also proposes function templates to avoid a huge overload set.
+  }
+  \li{
+    \ref(P2827R1) points out that there is no way to detect floating-point
+    overflow and underflow in \tcode{std::from_chars}.
+    In fact, the wording for \tcode{std::from_chars} always relied on the term
+    \q{range of representable values} which didn't have a definition in the C++ standard
+    at the time \header{charconv} was added.
+    The error handling design for floating-point overload has always been unclear,
+    and none of libstdc++, libc++, and MSVC STL implement what the wording currently says.
+    \q{Fixing} the API is not possible without breaking some user code.
+  }
+  \li{
+    \ref(P3652R1) wants the floating-point overloads to be \tcode{constexpr}.
+  }
+}
+
+\h3{Too many overloads}
+
+Additionally, it is worth noting that the overload set for \tcode{std::to_chars}
+is absurdly large.
+An implementation that provides all standardized floating point types
+(\tcode{float}, \tcode{double}, \tcode{long double},
+\tcode{std::float16_t}, \tcode{std::bfloat}, \tcode{std::float32_t},
+\tcode{std::float64_t}, and \tcode{std::float128_t})
+needs to be provide 4 × 8 = 32 floating-point overloads, as well as 10 integer overloads.
+There are 42 candidates participating in overload resolution.
+
+For \tcode{std::from_chars},
+there are \q{only} 26 candidates in that scenario.
+
+\h3{Output parameters}
+
+The practice of using output parameters like in \tcode{std::from_chars}
+is widely regarded as bad practice.
+It invites bugs such as reading from an uninitialized variable,
+prevents the user from making their variables \tcode{const},
+among other issues.
+
+\h3{Problems with floating-point \tcode{std::from_chars}}
+
+The specification of \tcode{std::from_chars} for floating-point overloads
+is currently in a broken state.
+To provide some more context beyond \ref(P2827R1),
+here is a list of issues:
+
+\ol{
+  \li{
+    \tcode{from_chars} is required to set \tcode{from_chars_result::ec}
+    to \tcode{errc::result_out_of_range} if
+    \q{the parsed value is not in the range representable by the type of \tcode{value}}\iref{charconv}.
+    This wording existed since its introduction by \ref(P0067R5),
+    but it was never clear what it meant because there existed no definition of
+    \q{range of representable value} for floating-point types at the time,
+    at least not in the C++ standard.
+    The design discussion and recorded minutes for the paper offer no clarification.
+  }
+  \li{
+    \ref(CWG2723) added a definition of
+    \q{range of representable values},
+    which created the current error handling design,
+    but neither LEWG nor LWG polled that design.
+    At best, the current design is a \q{happy accident}.
+  }
+  \li{
+    Since the \q{range of representable values} for ISO/IEC 60559 types includes
+    all real numbers,
+    the wording mandates that overflow such as when parsing \tcode{"1e10000"} and
+    underflow such as when parsing \tcode{"1e-10000"} result in \tcode{ec = std::errc{}}
+    (i.e. no error status),
+    and the result being set to infinity and zero, respectively.
+    Making both overflow and underflow undetectable may not be desirable.
+  }
+  \li{
+    While libstdc++, libc++, and MSVC STL have an implementation,
+    none of these comply with the current wording;
+    they set \tcode{ec = errc::result_out_of_range} when they are mandated not to.
+  }
+  \li{
+    While \tcode{from_chars} is required to parse strings such as \tcode{"INFINITY"}
+    or \tcode{"NaN"},
+    by definition, these are not in the range of representable values
+    (because infinity and NaN are not real numbers).
+    This means that \tcode{ec = errc::result_out_of_range} has to be set
+    and the \tcode{value} has to stay unmodified,
+    making this functionality nonsensical and unusable.
+    No implementation complies with the wording.
+  }
+  \li{
+    The wording does not explicitly handle floating-point types
+    that have no representation of infinity or NaN,
+    but the C++ standard permits such floating-point types,
+    as evidenced by \tcode{numeric_limits::has_infinity}.
+    The wording currently mandates that \tcode{errc::result_out_of_range} is set
+    in both the \tcode{"INFINITY"} case and the overflow case,
+    which may be what we want.
+    As stated above, the current wording is a \q{happy accident} at best,
+    not deliberate design.
+  }
+}
+
+\h3{No path forward for \tcode{std::from_chars}}
+
+There are too many problems with the old API,
+and the problems are too severe as that the issue could be fixed
+by simply adding an overload here and making am minor adjustment there.
+Any new overloads would compete with a large amount of candidates
+(\ref(#too-many-overloads)).
+There already exists user code that relies on the implemented behavior,
+whether it complies or not.
+
+There is no clear path to getting the floating-point overloads into a desirable state.
+Users already rely on one specific error code \tcode{errc::result_out_of_range}
+signaling different failures:
+\ul{
+  \li{Floating-point overflow.}
+  \li{Floating-point underflow.}
+  \li{Value too large for integers.}
+  \li{Infinity not representable in the resulting floating-point type (?)}
+}
+
+Even if the wording (which mandates that the first two are entirely undetectable)
+was aligned with implementations,
+there are clearly too many distinct errors crammed into one error code.
+In the \q{too large for the integer} case,
+there is no meaningful value that could be written,
+unlike for floating-point numbers,
+where zero or infinity could be written,
+and the user likely wants to access these values.
+These are differently shaped pegs that shouldn't be fit through the same hole.
+
+Creating new error codes would break existing user code
+that checks for \tcode{errc::result_out_of_range}.
+
+\h2{Solution}
+
+\h3{What to do with \tcode{std::to_chars} and \tcode{std::from_chars}}
+
+To state the obvious:
+the functionality provided by \tcode{std::to_chars} and \tcode{std::from_chars}
+is immensely useful,
+even if the API is in a bad state.
+The user should be given an easy upgrade path,
+and deprecation is not desirable,
+especially not without a replacement.
+At least the integer overload of \tcode{std::to_chars} and \tcode{std::from_chars}
+are not defective,
+so it would create pointless code churn if those
+need to be ported over to a different API.
+
+However, starting with C++29,
+committee work on \tcode{std::to_chars} and \tcode{std::from_chars}
+should be largely abandoned.
+These functions could live in the standard without deprecation,
+as largely obsolete features, similar to \tcode{std::strtod}.
+
+\h3{A better alternative API}
+
+Rather than continuing work on \tcode{std::to_chars} and \tcode{std::from_chars},
+a better API should be provided that combines all the desired changes
+listed in the papers above.
+The implementation would be relatively trivial because all the hard work
+has already been done when \tcode{std::to_chars} and \tcode{std::from_chars}
+were implemented.
+
+A rough draft of a new API looks as follows.
+
+\h4{\tcode{std::to_characters}}
+
+\cppblock{
+template<class T>
+  concept \exposid{signed-or-unsigned} = \exposid{any signed or unsigned integer type};
+template<class T>
+  concept \exposid{cv-unqualified-floating-point}
+    = std::same_as<T, const volatile T> && std::floating_point<T>;
+
+template<\exposid{signed-or-unsigned} T>
+  constexpr ptrdiff_t to_characters(span<char> out, T value, int base = 10);
+
+template<\exposid{cv-unqualified-floating-point} T>
+  constexpr ptrdiff_t to_characters(span<char> out, T value);
+template<\exposid{cv-unqualified-floating-point} T>
+  constexpr ptrdiff_t to_characters(span<char> out, T value,
+                                    chars_format fmt);
+template<\exposid{cv-unqualified-floating-point} T>
+  constexpr ptrdiff_t to_characters(span<char> out, T value,
+                                    chars_format fmt, int precision);
+}
+
+\tcode{std::to_chars} can only signal one possible failure,
+namely \tcode{std::errc::value_too_large}.
+On success, \tcode{std::to_chars_result::ptr} can be used to detect how many characters
+were written.
+
+It is actually possible to have all that functionality by simply returning \tcode{ptrdiff_t}.
+On success, the amount of written characters is returned;
+on failure, zero is returned, which also happens to be the amount of (usable) characters written.
+A \tcode{ptrdiff_t} result completely eliminates the need for a dedicated result type,
+while conveying the same amount of information.
+
+The \tcode{out} parameter is deliberately not dependent;
+template argument deduction does not consider implicit conversions,
+so the API would not be ergonomic.
+The \tcode{span<char>} parameter lets the user store the result in an
+\tcode{array<char, N>}, a \tcode{char[N]}, etc.
+
+\h4{\tcode{std::from_characters}}
+
+\cppblock{
+enum class from_characters_status {
+  // Success.
+  ok = 0,
+  // A value could be parsed, but is infinity after rounding.
+  // For example, "1e999999999999".
+  floating_overflow = 1,
+  // A value could be parsed, but is zero after rounding,
+  // and not exactly zero.
+  // For example, "1e-999999999999".
+  floating_underflow = 2,
+  // The input is is not valid, such as "@#&*".
+  invalid_string = -1,
+  // A value could be parsed, but is not representable in the type.
+  // For example, if "INFINITY" is parsed,
+  // but the floating-point type cannot represent infinity.
+  // This also includes integers which are too large.
+  unrepresentable = -2,
+};
+
+template<class T>
+struct from_characters_result {
+  T value;
+  ptrdiff_t matched;
+  from_characters_status status;
+  friend constexpr bool operator==(from_characters_result,
+                                   from_characters_result) = default;
+  constexpr explicit operator bool() const { return status == ok; }
+};
+
+template<\exposid{signed-or-unsigned} T>
+  constexpr from_characters_result<T>
+    from_characters(span<const char> in, int base = 10);
+template<\exposid{cv-unqualified-floating-point} T, class charT>
+  constexpr from_characters_result<T>
+    from_characters(span<const char> in, chars_format fmt = chars_format::general);
+}
+
+Error handling works as follows:
+\ul{
+  \li{
+    For status \tcode{ok},
+    \tcode{matched} is the amount of matched characters,
+    and the parsed and rounded value is stored in \tcode{value}.
+  }
+  \li{
+    For status \tcode{floating_overflow},
+    \tcode{matched} is the amount of matched characters,
+    and positive or negative infinity is stored in \tcode{value},
+    or greatest or lowest finite value if infinity is not representable.
+    This does not apply when parsing an exact infinity or NaN,
+    like \tcode{"inf"} or \tcode{"NaN"}.
+  }
+  \li{
+    For status \tcode{floating_underflow},
+    \tcode{matched} is the amount of matched characters,
+    and positive or negative zero is stored in \tcode{value}.
+    This does not apply when parsing an exact zero,
+    like \tcode{"0.0"} or \tcode{"0.00000000000000e1000000}.
+  }
+  \li{
+    For status \tcode{invalid_string} or \tcode{unrepresentable},
+    \tcode{matched} is zero,
+    and \tcode{value} is value-initialized.
+  }
+}
+
+The status \tcode{floating_overflow} and \tcode{floating_underflow}
+are only returned for floating-point types,
+whereas integers which are too large are signaled by \tcode{unrepresentable}.
+If the user doesn't want to handle overflow or underflow
+but is fine with obtaining infinity or zero in that case,
+they can check for \tcode{status >= from_characters_status::ok}.
+This is the behavior of the Python and C++ floating-point literals,
+for example.
+
+\Bnote{
+According to the current wording for floating-point \tcode{std::from_chars},
+overflow and underflow are undetectable and simply result
+in zero or infinity being stored.
+
+However, there exists no implementation that complies with the wording.
+Overflow and underflow are both signaled by \tcode{errc::result_out_of_range}
+and thus indistinguishable,
+and only some implementations set \tcode{value}.
+
+The case signaled by \tcode{from_characters_status::not_representable}
+is a hole in the wording and was likely never even considered in the original design,
+or perhaps it was the only case that should be signaled by \tcode{errc::result_out_of_range}.
+Nobody knows.
+}
+
+\h4{Integrating other proposal into this design}
+
+\ul{
+  \li{
+    \ref(P2584R0) wants an API that works with \tcode{std::span},
+    and the API above provides that.
+    There are no more raw pointers in the API.
+  }
+  \li{
+    \ref(P3666R2) wants to provide additional overloads for bit-precise integers,
+    which becomes a no-op if the functions are already templates
+    that support all integer types.
+  }
+  \li{
+    \ref(P3876R0) wants to provide additional overloads
+    for character types other than \tcode{char}.
+    Since the base set of overloads is manageable (4×\tcode{std::to_characters},
+    2×\tcode{std::from_characters}),
+    it is not unreasonable to multiply its size by five,
+    for each character type.
+    Note that having a non-template \tcode{span<const char>} parameter
+    is important for being able to pass \tcode{std::string_view}
+    and other contiguous containers.
+    However, 20 overloads of \tcode{std::to_characters} is still quite a lot,
+    so perhaps a \tcode{std::contiguous_range auto&} parameter would be better.
+    Furthermore,
+    the use of \tcode{std::ptrdiff_t} instead of a pointer in the result
+    works for any character type.
+  }
+  \li{
+    \ref(P2827R1) wants to detect underflow and overflow,
+    which is implemented by the more granular \tcode{from_characters_status}.
+  }
+  \li{
+    \ref(P3652R1) wants the floating-point overloads to be \tcode{constexpr},
+    which is done for the API above.
+  }
+}
+
+\h2{Implementation}
+
+The new API is obviously implementable because it is functionally almost identical
+to \tcode{std::to_chars} and \tcode{std::from_chars};
+it just takes \tcode{std::span} instead of pointer pairs,
+and uses more distinct error codes for the failures already signaled by implementations.
+
+\h2{Wording}
+
+It doesn't make sense to provide wording
+until a general design direction has been given by LEWG.
+
+There are two questions that need to be answered:
+\ul{
+  \li{Do we want the changes proposed by the various other papers listed above?}
+  \li{
+    If so, do we really want them in the \tcode{std::to_chars} and \tcode{std::from_chars}
+    overload set,
+    or do we create a new API,
+    similar to what is shown above?
+  }
+}
+
+\h2{References}
+
+\bib(
+  id = N5014,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-08-05,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5014,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+)\
+\bib(
+  id = P0067R5,
+  title = Elementary string conversions\, revision 5,
+  date =  2016-11-11,
+  author = Jens Maurer,
+  link = https://wg21.link/p0067r5,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0067r5.html,
+)\
+\bib(
+  id = P2584R0,
+  title = A More Composable from_chars,
+  date = 2022-05-12,
+  author = Corentin Jabot,
+  link = https://wg21.link/p2584r0,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2584r0.pdf,
+)\
+\bib(
+  id = P3666R2,
+  title = Bit-precise integers,
+  author = Jan Schultke,
+  link = https://isocpp.org/files/papers/P3666R2.html,
+)\
+\bib(
+  id = P3876R0,
+  title = Extending <charconv> support to more character types,
+  author = Jan Schultke\, Peter Bindels,
+  link = https://isocpp.org/files/papers/P3876R0.html,
+)\
+\bib(
+  id = P2827R1,
+  title = Floating-point overflow and underflow in from_chars (LWG 3081),
+  date = 2023-11-20,
+  author = Zhihao Yan,
+  link = https://wg21.link/p2827r1,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2827r1.html,
+)\
+\bib(
+  id = P3652R1,
+  title = Constexpr floating-point <charconv> functions,
+  date = 2025-04-16,
+  author = Lénárd Szolnoki,
+  link = https://wg21.link/p3652r1,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3652r1.html,
+)\
+\bib(
+  id = CWG2723,
+  title = Range of representable values for floating-point types,
+  date = 2023-04-21,
+  author = Jiang An,
+  link = https://wg21.link/CWG2723,
+)\
+\bib(
+  id = LWG3081,
+  title = Floating point \tcode{from_chars} API does not distinguish between overflow and underflow,
+  date = 2018-03-12,
+  author = Jiang An,
+  link = https://wg21.link/LWG3081,
+)\
+
+\make_bib
