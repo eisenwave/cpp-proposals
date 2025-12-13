@@ -1524,7 +1524,7 @@ if (theme !== null) {
   }
 
   note-block.edit intro-::before {
-    content: "Editor's note:";
+    content: "Drafting note:";
     color: var(--edit-note-block-border-color);
   }
 
@@ -1577,7 +1577,7 @@ if (theme !== null) {
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/P3724R2>P3724R2</a></dd>
-  <dt>Date:</dt>            <dd><tt->2025-10-21</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2025-12-13</tt-></dd>
   <dt>Audience:</dt>        <dd>LEWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-To:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1626,7 +1626,7 @@ with other rounding modes.
 <div class=toc-num data-level=4>4.2.2</div>
 <a href=#should-it-be-std::div_floor-and-std::div_ceil><h4>Should it be <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_floor</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_ceil</h-></code>?</h4></a>
 <div class=toc-num data-level=4>4.2.3</div>
-<a href=#should-it-be-std::div_to_pos_inf><h4>Should it be <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_to_pos_inf</h-></code>?</h4></a>
+<a href=#div-to-inf><h4>Should it be <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_to_inf</h-></code>?</h4></a>
 <div class=toc-num data-level=4>4.2.4</div>
 <a href=#naming-mod><h4>Why is it <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>mod</h-></code>?</h4></a>
 <div class=toc-num data-level=3>4.3</div>
@@ -1710,6 +1710,13 @@ Several polls were taken, with one consensus for change:
     <code><h- data-h=id>div_rem_to_even</h-></code>, and <code><h- data-h=id>div_rem_to_odd</h-></code>
   </li>
   <li>added <a href=#iso-iec-60559-rounding-modes>§4.4.4. ISO/IEC 60559 Rounding modes</a></li>
+</ul>
+
+<p>Irrespective of SG6 feedback, the following changes were made:
+</p>
+<ul>
+  <li>renamed <code><h- data-h=id>div_to_inf</h-></code> to <code><h- data-h=id>div_to_pos_inf</h-></code> (<a href=#div-to-inf>§4.2.3. Should it be <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_to_inf</h-></code>?</a>)</li>
+  <li>fixed <code><h- data-h=id>div_neg_inf</h-></code> (wrong name) in <a href=#wording>§7. Wording</a></li>
 </ul>
 
 <h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.2. Changes since R0</h3>
@@ -2105,7 +2112,7 @@ which involves a division which rounds towards <math display=inline><mrow><mo>+<
 <h- data-h=kw_type>int</h-> <h- data-h=id>elements</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>100</h-><h- data-h=sym_punc>;</h->
 
 <h- data-h=kw_type>int</h-> <h- data-h=id>buckets_required</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>elements</h-> <h- data-h=sym_op>/</h-> <h- data-h=id>bucket_size</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> WRONG, zero</h->
-<h- data-h=kw_type>int</h-> <h- data-h=id>buckets_required</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_to_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>elements</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>bucket_size</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, one bucket</h-></code-block>
+<h- data-h=kw_type>int</h-> <h- data-h=id>buckets_required</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_to_pos_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>elements</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>bucket_size</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, one bucket</h-></code-block>
 </example-block>
 
 <example-block><p><intro-></intro-> 
@@ -2235,7 +2242,7 @@ and use of floating-point numbers is unnecessary for this task.
 <p>There exist various use cases (modular arithmetic, integer-to-string conversion, etc.)
 where we need both the quotient and remainder at the same time.
 The naive approach to computing the remainder
-using an integer division function <tt-><i><h- data-h=id>divide</h-></i></tt-> looks something like:
+using an integer division function <i>divide</i> looks something like:
 </p>
 <code-block><h- data-h=kw_type>int</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>=</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-><h- data-h=sym_punc>;</h->
 <h- data-h=kw_type>int</h-> <h- data-h=id>quotient</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=id>divide</h-></i><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
@@ -2363,14 +2370,17 @@ I do not believe we should perpetuate this design because:
 or <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_to_neg_inf</h-></code>, the names should remain somewhat brief so they take up
 a reasonable amount of space in C++ expressions.
 </p>
-<h4 id=should-it-be-std::div_to_pos_inf><a class=para href=#should-it-be-std::div_to_pos_inf></a>4.2.3. Should it be <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_to_pos_inf</h-></code>?</h4>
+<h4 id=div-to-inf><a class=para href=#div-to-inf></a>4.2.3. Should it be <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_to_inf</h-></code>?</h4>
 
-<p>While it looks nicer on paper if <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_to_pos_inf</h-></code>
-and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_to_neg_inf</h-></code> have symmetrical names,
-this does not have any clear technical benefit to the user.
-<code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_to_inf</h-></code> is sufficiently clear,
-and adding <code><h- data-h=id>pos</h-></code> would merely make the function name longer.
-</p>
+<p>Earlier revisions of this paper used the name <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_to_inf</h-></code>,
+which is slightly shorter than <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_to_pos_inf</h-></code>,
+and therefore more ergonomic.
+However, the name is ambiguous between
+</p><ul>
+  <li>rounding toward <math display=inline><mrow><mo>+</mo><mi>∞</mi></mrow></math>, and</li>
+  <li>rounding toward <math display=inline><mo>±</mo><mi>∞</mi></math>, i.e. away from zero.</li>
+</ul>
+
 <h4 id=naming-mod><a class=para href=#naming-mod></a>4.2.4. Why is it <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>mod</h-></code>?</h4>
 
 <note-block><p><intro-></intro-> 
@@ -2606,13 +2616,47 @@ which is what this proposal offers.
 the following match a rounding mode that is standardized in ISO/IEC 60559
 for floating-point numbers:
 </p>
-<ul>
-  <li><code><h- data-h=id>div_to_zero</h-></code></li>
-  <li><code><h- data-h=id>div_to_inf</h-></code></li>
-  <li><code><h- data-h=id>div_to_neg_inf</h-></code></li>
-  <li><code><h- data-h=id>div_to_ties_away_zero</h-></code></li>
-  <li><code><h- data-h=id>div_to_ties_to_even</h-></code></li>
-</ul>
+<table class=center>
+  <tr>
+    <th>Function</th>
+    <th>Rounding operation</th>
+    <th>Rounding-direction attribute</th>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>div_to_zero</h-></code></td>
+    <td>roundToIntegralTowardZero</td>
+    <td>roundTowardZero</td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>div_to_pos_inf</h-></code></td>
+    <td>roundToIntegralTowardPositive</td>
+    <td>roundTowardPositive</td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>div_to_neg_inf</h-></code></td>
+    <td>roundToIntegralTowardNegative</td>
+    <td>roundTowardNegative</td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>div_ties_away_zero</h-></code></td>
+    <td>roundToIntegralTiesToAway</td>
+    <td>roundTiesToAway</td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>div_ties_to_even</h-></code></td>
+    <td>roundToIntegralTiesToEven</td>
+    <td>roundTiesToEven</td>
+  </tr>
+</table>
+
+<note-block><p><intro-></intro-> 
+The rounding operations are implemented by C functions
+such as <code><h- data-h=id>floor</h-></code> and <code><h- data-h=id>ceil</h-></code>.
+</p>
+<p>The rounding-direction attribute is a property of the floating-point environment,
+which is sometimes configurable,
+and where roundTiesToEven (i.e. "Banker's Rounding") is the default.
+</p></note-block>
 
 <p>Some software uses fixed-point numbers instead of floating-point numbers
 (possibly due to lack of floating-point hardware support).
@@ -2696,7 +2740,7 @@ consider how one would round towards <math display=inline><mrow><mo>+</mo><mi>�
 </p><code-block><h- data-h=kw_type>unsigned</h-> <h- data-h=id>div_to_zero</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> for reference</h->
     <h- data-h=kw_ctrl>return</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=id>y</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h->
-<h- data-h=kw_type>unsigned</h-> <h- data-h=id>div_to_inf</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+<h- data-h=kw_type>unsigned</h-> <h- data-h=id>div_to_pos_inf</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
     <h- data-h=kw_ctrl>return</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>+</h-> <h- data-h=sym_par>(</h-><h- data-h=id>x</h-> <h- data-h=sym_op>%</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>!=</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> + 1 if the remainder is nonzero</h->
 <h- data-h=sym_brac>}</h-></code-block>
 <p>On x86_64, Clang compiles this as follows:
@@ -2706,7 +2750,7 @@ consider how one would round towards <math display=inline><mrow><mo>+</mo><mi>�
         <h- data-h=asm_ins>div</h->     <h- data-h=id_var>esi</h->        <h- data-h=cmt_dlim>;</h-><h- data-h=cmt> eax = eax / esi, edx = eax % esi</h->
         <h- data-h=asm_ins>ret</h->                <h- data-h=cmt_dlim>;</h-><h- data-h=cmt> return eax</h->
 
-<h- data-h=id_labl_decl>div_to_inf:</h->                <h- data-h=cmt_dlim>;</h-><h- data-h=cmt> edi = x, esi = y</h->
+<h- data-h=id_labl_decl>div_to_pos_inf:</h->            <h- data-h=cmt_dlim>;</h-><h- data-h=cmt> edi = x, esi = y</h->
         <h- data-h=asm_ins>mov</h->     <h- data-h=id_var>eax</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_var>edi</h->   <h- data-h=cmt_dlim>;</h-><h- data-h=cmt> eax = edi</h->
         <h- data-h=asm_ins>xor</h->     <h- data-h=id_var>edx</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_var>edx</h->   <h- data-h=cmt_dlim>;</h-><h- data-h=cmt> edx = 0 (clear upper 32 bits of divided)</h->
         <h- data-h=asm_ins>div</h->     <h- data-h=id_var>esi</h->        <h- data-h=cmt_dlim>;</h-><h- data-h=cmt> eax = eax / esi, edx = eax % esi</h->
@@ -2753,7 +2797,7 @@ you can play around with the following code block.
 
 <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_to_zero</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h->          →  <h- data-h=num><span id=quo-trunc>-2</span></h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> x / y</h->
 <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_away_zero</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h->        →  <h- data-h=num><span id=quo-mag>-3</span></h->
-<h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_to_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h->           →  <h- data-h=num><span id=quo-ceil>-2</span></h->
+<h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_to_pos_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h->       →  <h- data-h=num><span id=quo-ceil>-2</span></h->
 <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h->       →  <h- data-h=num><span id=quo-floor>-3</span></h->
 
 <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>div_ties_to_zero</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h->     →  <h- data-h=num><span id=quo-ties-trunc>-2</span></h->
@@ -2790,7 +2834,7 @@ const rem_trunc = document.getElementById("rem-trunc");
 const rem_floor = document.getElementById("rem-floor");
 
 const outputs = [
-    quo_trunc, quo_mag, quo_floor, quo_ceil, quo_odd, quo_even,
+    quo_trunc, quo_mag, quo_floor, quo_ceil,
     quo_ties_trunc, quo_ties_mag, quo_ties_floor, quo_ties_ceil, quo_ties_odd, quo_ties_even,
     rem_trunc, rem_floor
 ];
@@ -2819,16 +2863,12 @@ function compute_outputs() {
         const mag = trunc + BigInt(x % y !== 0n) * quotient_sign;
         const floor = trunc - BigInt(x % y !== 0n && quotient_negative);
         const ceil = trunc + BigInt(x % y !== 0n && !quotient_negative);
-        const odd = trunc + BigInt(x % y !== 0n && trunc % 2n === 0n) * quotient_sign;
-        const even = trunc + BigInt(x % y !== 0n && trunc % 2n !== 0n) * quotient_sign;
 
         quo_double.innerText = String(double);
         quo_trunc.innerText = String(trunc);
         quo_mag.innerText = String(mag);
         quo_floor.innerText = String(floor);
         quo_ceil.innerText = String(ceil);
-        quo_odd.innerText = String(odd);
-        quo_even.innerText = String(even);
 
         const abs_rem2 = (2n * x % (2n * y)) * sgn(x);
         const abs_y = y * sgn(y);
@@ -2997,7 +3037,7 @@ is not a core constant expression (<a href=https://eel.is/c++draft/expr.const>[e
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
     <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>div_away_zero</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>div_to_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>div_to_pos_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
     <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>div_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
@@ -3018,7 +3058,7 @@ is not a core constant expression (<a href=https://eel.is/c++draft/expr.const>[e
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
     <h- data-h=kw>constexpr</h-> <h- data-h=id>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>div_rem_away_zero</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=id>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>div_rem_to_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw>constexpr</h-> <h- data-h=id>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>div_rem_to_pos_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
     <h- data-h=kw>constexpr</h-> <h- data-h=id>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>div_rem_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
@@ -3105,7 +3145,7 @@ The result equals <code><h- data-h=id>x</h-> <h- data-h=sym_op>/</h-> <h- data-h
 </p></div>
 
 <code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>div_to_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+  <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>div_to_pos_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>7
@@ -3121,7 +3161,7 @@ The result equals <code><h- data-h=id>x</h-> <h- data-h=sym_op>/</h-> <h- data-h
 </p></div>
 
 <code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>div_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+  <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h-> <h- data-h=id>div_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>10
@@ -3284,9 +3324,9 @@ to have well-defined behavior even when
 <code><h- data-h=id>x</h-> <h- data-h=sym_op>-</h-> <h- data-h=id>quotient</h-> <h- data-h=sym_op>*</h-> <h- data-h=id>y</h-></code> has undefined behavior.
 <br/>[<i>Example</i>: 
 Assume that <code><h- data-h=mac>INT_MAX</h-></code> equals <code><h- data-h=num>2</h-><h- data-h=num_dlim>'</h-><h- data-h=num>147</h-><h- data-h=num_dlim>'</h-><h- data-h=num>483</h-><h- data-h=num_dlim>'</h-><h- data-h=num>647</h-></code>.
-</p><code-block class=borderless><h- data-h=kw>const</h-> <h- data-h=kw>auto</h-> <h- data-h=id>q_to_zero</h-> <h- data-h=sym_op>=</h-> <h- data-h=mac>INT_MAX</h-> <h- data-h=sym_op>/</h-> <h- data-h=num>2</h-><h- data-h=sym_punc>;</h->              <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><code><h- data-h=id>q_to_zero</h-></code><h- data-h=cmt> is </h-><code><h- data-h=num>1</h-><h- data-h=num_dlim>'</h-><h- data-h=num>073</h-><h- data-h=num_dlim>'</h-><h- data-h=num>741</h-><h- data-h=num_dlim>'</h-><h- data-h=num>823</h-></code><h- data-h=cmt>.</h-></f-serif>
-<h- data-h=kw>const</h-> <h- data-h=kw>auto</h-> <h- data-h=sym_sqr>[</h-><h- data-h=id>q</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>r</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>div_rem_to_inf</h-><h- data-h=sym_par>(</h-><h- data-h=mac>INT_MAX</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>2</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><code><h- data-h=id>q</h-></code><h- data-h=cmt> is </h-><code><h- data-h=num>1</h-><h- data-h=num_dlim>'</h-><h- data-h=num>073</h-><h- data-h=num_dlim>'</h-><h- data-h=num>741</h-><h- data-h=num_dlim>'</h-><h- data-h=num>824</h-></code><h- data-h=cmt> and </h-><code><h- data-h=id>r</h-></code><h- data-h=cmt> is </h-><code><h- data-h=sym_op>-</h-><h- data-h=num>1</h-></code><h- data-h=cmt>.</h-></f-serif>
-<h- data-h=kw_type>int</h-> <h- data-h=id>r2</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>-</h-> <h- data-h=id>q</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>2</h-><h- data-h=sym_punc>;</h->                              <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>This multiplication has undefined behavior.</h-></f-serif></code-block>
+</p><code-block class=borderless><h- data-h=kw>const</h-> <h- data-h=kw>auto</h-> <h- data-h=id>q_to_zero</h-> <h- data-h=sym_op>=</h-> <h- data-h=mac>INT_MAX</h-> <h- data-h=sym_op>/</h-> <h- data-h=num>2</h-><h- data-h=sym_punc>;</h->                  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><code><h- data-h=id>q_to_zero</h-></code><h- data-h=cmt> is </h-><code><h- data-h=num>1</h-><h- data-h=num_dlim>'</h-><h- data-h=num>073</h-><h- data-h=num_dlim>'</h-><h- data-h=num>741</h-><h- data-h=num_dlim>'</h-><h- data-h=num>823</h-></code><h- data-h=cmt>.</h-></f-serif>
+<h- data-h=kw>const</h-> <h- data-h=kw>auto</h-> <h- data-h=sym_sqr>[</h-><h- data-h=id>q</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>r</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>div_rem_to_pos_inf</h-><h- data-h=sym_par>(</h-><h- data-h=mac>INT_MAX</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>2</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><code><h- data-h=id>q</h-></code><h- data-h=cmt> is </h-><code><h- data-h=num>1</h-><h- data-h=num_dlim>'</h-><h- data-h=num>073</h-><h- data-h=num_dlim>'</h-><h- data-h=num>741</h-><h- data-h=num_dlim>'</h-><h- data-h=num>824</h-></code><h- data-h=cmt> and </h-><code><h- data-h=id>r</h-></code><h- data-h=cmt> is </h-><code><h- data-h=sym_op>-</h-><h- data-h=num>1</h-></code><h- data-h=cmt>.</h-></f-serif>
+<h- data-h=kw_type>int</h-> <h- data-h=id>r2</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>-</h-> <h- data-h=id>q</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>2</h-><h- data-h=sym_punc>;</h->                                  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>This multiplication has undefined behavior.</h-></f-serif></code-block>
 <p> — <i>end example</i>] — <i>end note</i>]
 </p></div>
 
@@ -3450,7 +3490,7 @@ See <a href="https://github%2ecom/Eisenwave/integer-division">[GitHub]</a> for t
 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Idea: since '/' truncates,</h->
 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       the result is one greater than what we want</h->
 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       for negative quotients, unless the remainder is zero.</h->
-<h- data-h=kw>constexpr</h-> <h- data-h=id>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>div_rem_to_inf</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=id>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>div_rem_to_pos_inf</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
     <h- data-h=kw_type>bool</h-> <h- data-h=id>quotient_positive</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_par>(</h-><h- data-h=id>x</h-> <h- data-h=sym_op>^</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
     <h- data-h=kw_type>bool</h-> <h- data-h=id>adjust</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>%</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>!=</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=id>quotient_positive</h-><h- data-h=sym_punc>;</h->
     <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_brac>{</h->
@@ -3459,8 +3499,8 @@ See <a href="https://github%2ecom/Eisenwave/integer-division">[GitHub]</a> for t
     <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h->
 
-<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>div_to_inf</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=kw_ctrl>return</h-> <h- data-h=id>div_rem_to_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>.</h-><h- data-h=id>quotient</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>div_to_pos_inf</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=id>div_rem_to_pos_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>.</h-><h- data-h=id>quotient</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h->
 
 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Idea: since '/' truncates,</h->
@@ -3477,32 +3517,6 @@ See <a href="https://github%2ecom/Eisenwave/integer-division">[GitHub]</a> for t
 
 <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>div_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
     <h- data-h=kw_ctrl>return</h-> <h- data-h=id>div_rem_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>.</h-><h- data-h=id>quotient</h-><h- data-h=sym_punc>;</h->
-<h- data-h=sym_brac>}</h->
-
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Idea: same as div_away_zero,</h->
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       but we only magnify when this gets us away</h->
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       from an even integer.</h->
-<h- data-h=kw>constexpr</h-> <h- data-h=id>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>div_rem_to_odd</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=kw_type>int</h-> <h- data-h=id>quotient_sign</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>__sgn2</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=id>__sgn2</h-><h- data-h=sym_par>(</h-><h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw_type>bool</h-> <h- data-h=id>increment</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>%</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>!=</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>%</h-> <h- data-h=num>2</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw_ctrl>return</h-> <h- data-h=id>__div_rem_offset_quotient</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-><h- data-h=sym_par>(</h-><h- data-h=id>increment</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=id>quotient_sign</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<h- data-h=sym_brac>}</h->
-
-<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>div_to_odd</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=kw_ctrl>return</h-> <h- data-h=id>div_rem_to_odd</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>.</h-><h- data-h=id>quotient</h-><h- data-h=sym_punc>;</h->
-<h- data-h=sym_brac>}</h->
-
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Idea: same as div_away_zero,</h->
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       but we only magnify when this gets us away</h->
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       from an odd integer.</h->
-<h- data-h=kw>constexpr</h-> <h- data-h=id>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>div_rem_to_even</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=kw_type>int</h-> <h- data-h=id>quotient_sign</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>__sgn2</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=id>__sgn2</h-><h- data-h=sym_par>(</h-><h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw_type>bool</h-> <h- data-h=id>increment</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>%</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>!=</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>%</h-> <h- data-h=num>2</h-> <h- data-h=sym_op>!=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw_ctrl>return</h-> <h- data-h=id>__div_rem_offset_quotient</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-><h- data-h=sym_par>(</h-><h- data-h=id>increment</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=id>quotient_sign</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<h- data-h=sym_brac>}</h->
-
-<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>div_to_even</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=kw_ctrl>return</h-> <h- data-h=id>div_rem_to_even</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>.</h-><h- data-h=id>quotient</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h->
 
 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Idea: same as div_away_zero,</h->

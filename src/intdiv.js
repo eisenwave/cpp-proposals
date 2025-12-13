@@ -17,7 +17,7 @@ const rem_trunc = document.getElementById("rem-trunc");
 const rem_floor = document.getElementById("rem-floor");
 
 const outputs = [
-    quo_trunc, quo_mag, quo_floor, quo_ceil, quo_odd, quo_even,
+    quo_trunc, quo_mag, quo_floor, quo_ceil,
     quo_ties_trunc, quo_ties_mag, quo_ties_floor, quo_ties_ceil, quo_ties_odd, quo_ties_even,
     rem_trunc, rem_floor
 ];
@@ -46,16 +46,12 @@ function compute_outputs() {
         const mag = trunc + BigInt(x % y !== 0n) * quotient_sign;
         const floor = trunc - BigInt(x % y !== 0n && quotient_negative);
         const ceil = trunc + BigInt(x % y !== 0n && !quotient_negative);
-        const odd = trunc + BigInt(x % y !== 0n && trunc % 2n === 0n) * quotient_sign;
-        const even = trunc + BigInt(x % y !== 0n && trunc % 2n !== 0n) * quotient_sign;
 
         quo_double.innerText = String(double);
         quo_trunc.innerText = String(trunc);
         quo_mag.innerText = String(mag);
         quo_floor.innerText = String(floor);
         quo_ceil.innerText = String(ceil);
-        quo_odd.innerText = String(odd);
-        quo_even.innerText = String(even);
 
         const abs_rem2 = (2n * x % (2n * y)) * sgn(x);
         const abs_y = y * sgn(y);

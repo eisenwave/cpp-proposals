@@ -68,7 +68,7 @@ constexpr int div_away_zero(int x, int y) {
 // Idea: since '/' truncates,
 //       the result is one greater than what we want
 //       for negative quotients, unless the remainder is zero.
-constexpr div_result<int> div_rem_to_inf(int x, int y) {
+constexpr div_result<int> div_rem_to_pos_inf(int x, int y) {
     bool quotient_positive = (x ^ y) >= 0;
     bool adjust = x % y != 0 && quotient_positive;
     return {
@@ -77,8 +77,8 @@ constexpr div_result<int> div_rem_to_inf(int x, int y) {
     };
 }
 
-constexpr int div_to_inf(int x, int y) {
-    return div_rem_to_inf(x, y).quotient;
+constexpr int div_to_pos_inf(int x, int y) {
+    return div_rem_to_pos_inf(x, y).quotient;
 }
 
 // Idea: since '/' truncates,
@@ -95,32 +95,6 @@ constexpr div_result<int> div_rem_to_neg_inf(int x, int y) {
 
 constexpr int div_to_neg_inf(int x, int y) {
     return div_rem_to_neg_inf(x, y).quotient;
-}
-
-// Idea: same as div_away_zero,
-//       but we only magnify when this gets us away
-//       from an even integer.
-constexpr div_result<int> div_rem_to_odd(int x, int y) {
-    int quotient_sign = __sgn2(x) * __sgn2(y);
-    bool increment = x % y != 0 && x / y % 2 == 0;
-    return __div_rem_offset_quotient(x, y, int(increment) * quotient_sign);
-}
-
-constexpr int div_to_odd(int x, int y) {
-    return div_rem_to_odd(x, y).quotient;
-}
-
-// Idea: same as div_away_zero,
-//       but we only magnify when this gets us away
-//       from an odd integer.
-constexpr div_result<int> div_rem_to_even(int x, int y) {
-    int quotient_sign = __sgn2(x) * __sgn2(y);
-    bool increment = x % y != 0 && x / y % 2 != 0;
-    return __div_rem_offset_quotient(x, y, int(increment) * quotient_sign);
-}
-
-constexpr int div_to_even(int x, int y) {
-    return div_rem_to_even(x, y).quotient;
 }
 
 // Idea: same as div_away_zero,

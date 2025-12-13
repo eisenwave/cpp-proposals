@@ -5,7 +5,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{P3724R2}}
-  \dt{Date:}            \dd{\tt{2025-10-21}}
+  \dt{Date:}            \dd{\tt{2025-12-13}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-To:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -51,6 +51,13 @@ Consequently, the following changes were made:
     \tcode{div_rem_to_even}, and \tcode{div_rem_to_odd}
   }
   \li{added \ref(#iso-iec-60559-rounding-modes)}
+}
+
+Irrespective of SG6 feedback, the following changes were made:
+
+\ul{
+  \li{renamed \tcode{div_to_inf} to \tcode{div_to_pos_inf} (\ref(#div-to-inf))}
+  \li{fixed \tcode{div_neg_inf} (wrong name) in \ref(#wording)}
 }
 
 \h3{Changes since R0}
@@ -447,7 +454,7 @@ const int bucket_size = 1000;
 int elements = 100;
 
 int buckets_required = elements / bucket_size; // WRONG, zero
-int buckets_required = std::div_to_inf(elements, bucket_size); // OK, one bucket
+int buckets_required = std::div_to_pos_inf(elements, bucket_size); // OK, one bucket
 }
 }
 
@@ -718,13 +725,16 @@ Regardless whether the functions end up called \tcode{std::div_floor}
 or \tcode{std::div_to_neg_inf}, the names should remain somewhat brief so they take up
 a reasonable amount of space in C++ expressions.
 
-\h4{Should it be \tcode{std::div_to_pos_inf}?}
+\h4(id=div-to-inf){Should it be \tcode{std::div_to_inf}?}
 
-While it looks nicer on paper if \tcode{std::div_to_pos_inf}
-and \tcode{std::div_to_neg_inf} have symmetrical names,
-this does not have any clear technical benefit to the user.
-\tcode{std::div_to_inf} is sufficiently clear,
-and adding \tcode{pos} would merely make the function name longer.
+Earlier revisions of this paper used the name \tcode{std::div_to_inf},
+which is slightly shorter than \tcode{std::div_to_pos_inf},
+and therefore more ergonomic.
+However, the name is ambiguous between
+\ul{
+  \li{rounding toward \pos_inf, and}
+  \li{rounding toward \math{\mo{±}\mi{∞}}, i.e. away from zero.}
+}
 
 \h4(id=naming-mod){Why is it \tcode{std::mod}?}
 
@@ -969,12 +979,46 @@ Of the proposed functions,
 the following match a rounding mode that is standardized in ISO/IEC 60559
 for floating-point numbers:
 
-\ul{
-  \li{\tcode{div_to_zero}}
-  \li{\tcode{div_to_inf}}
-  \li{\tcode{div_to_neg_inf}}
-  \li{\tcode{div_to_ties_away_zero}}
-  \li{\tcode{div_to_ties_to_even}}
+\table(class=center){
+  \tr{
+    \th{Function}
+    \th{Rounding operation}
+    \th{Rounding-direction attribute}
+  }
+  \tr{
+    \td{\tcode{div_to_zero}}
+    \td{roundToIntegralTowardZero}
+    \td{roundTowardZero}
+  }
+  \tr{
+    \td{\tcode{div_to_pos_inf}}
+    \td{roundToIntegralTowardPositive}
+    \td{roundTowardPositive}
+  }
+  \tr{
+    \td{\tcode{div_to_neg_inf}}
+    \td{roundToIntegralTowardNegative}
+    \td{roundTowardNegative}
+  }
+  \tr{
+    \td{\tcode{div_ties_away_zero}}
+    \td{roundToIntegralTiesToAway}
+    \td{roundTiesToAway}
+  }
+  \tr{
+    \td{\tcode{div_ties_to_even}}
+    \td{roundToIntegralTiesToEven}
+    \td{roundTiesToEven}
+  }
+}
+
+\Bnote{
+The rounding operations are implemented by C functions
+such as \tcode{floor} and \tcode{ceil}.
+
+The rounding-direction attribute is a property of the floating-point environment,
+which is sometimes configurable,
+and where roundTiesToEven (i.e. "Banker's Rounding") is the default.
 }
 
 Some software uses fixed-point numbers instead of floating-point numbers
@@ -1060,7 +1104,7 @@ consider how one would round towards \pos_inf with unsigned operands:
 unsigned div_to_zero(unsigned x, unsigned y) { // for reference
     return x / y;
 }
-unsigned div_to_inf(unsigned x, unsigned y) {
+unsigned div_to_pos_inf(unsigned x, unsigned y) {
     return x / y + (x \N{PERCENT SIGN} y != 0); // + 1 if the remainder is nonzero
 }
 }
@@ -1072,7 +1116,7 @@ div_to_zero:               ; edi = x, esi = y
         div     esi        ; eax = eax / esi, edx = eax % esi
         ret                ; return eax
 
-div_to_inf:                ; edi = x, esi = y
+div_to_pos_inf:            ; edi = x, esi = y
         mov     eax, edi   ; eax = edi
         xor     edx, edx   ; edx = 0 (clear upper 32 bits of divided)
         div     esi        ; eax = eax / esi, edx = eax % esi
@@ -1121,7 +1165,7 @@ double(x) / double(y)           \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-d
 
 std::div_to_zero(x, y)          \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-trunc){-2}} // x / y
 std::div_away_zero(x, y)        \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-mag){-3}}
-std::div_to_inf(x, y)           \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-ceil){-2}}
+std::div_to_pos_inf(x, y)       \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-ceil){-2}}
 std::div_to_neg_inf(x, y)       \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-floor){-3}}
 
 std::div_ties_to_zero(x, y)     \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-ties-trunc){-2}}
@@ -1265,7 +1309,7 @@ namespace std {
   template<class T>
     constexpr T div_away_zero(T x, T y);
   template<class T>
-    constexpr T div_to_inf(T x, T y);
+    constexpr T div_to_pos_inf(T x, T y);
   template<class T>
     constexpr T div_to_neg_inf(T x, T y);
   template<class T>
@@ -1286,7 +1330,7 @@ namespace std {
   template<class T>
     constexpr div_result<T> div_rem_away_zero(T x, T y);
   template<class T>
-    constexpr div_result<T> div_rem_to_inf(T x, T y);
+    constexpr div_result<T> div_rem_to_pos_inf(T x, T y);
   template<class T>
     constexpr div_result<T> div_rem_to_neg_inf(T x, T y);
   template<class T>
@@ -1381,7 +1425,7 @@ template<class T>
 
 \itemdecl{
 template<class T>
-  constexpr T div_to_inf(T x, T y);
+  constexpr T div_to_pos_inf(T x, T y);
 }
 
 \itemdescr{
@@ -1398,7 +1442,7 @@ template<class T>
 
 \itemdecl{
 template<class T>
-  constexpr T div_neg_inf(T x, T y);
+  constexpr T div_to_neg_inf(T x, T y);
 }
 
 \itemdescr{
@@ -1551,9 +1595,9 @@ to have well-defined behavior even when
 \br\example{
 Assume that \tcode{\hl(macro){INT_MAX}} equals \tcode{2'147'483'647}.
 \itemdecl{
-const auto q_to_zero = \hl(macro){INT_MAX} / 2;              // \serif{\tcode{q_to_zero} is \tcode{1'073'741'823}.}
-const auto [q, r] = div_rem_to_inf(\hl(macro){INT_MAX}, 2);  // \serif{\tcode{q} is \tcode{1'073'741'824} and \tcode{r} is \tcode{-1}.}
-int r2 = x - q * 2;                              // \serif{This multiplication has undefined behavior.}
+const auto q_to_zero = \hl(macro){INT_MAX} / 2;                  // \serif{\tcode{q_to_zero} is \tcode{1'073'741'823}.}
+const auto [q, r] = div_rem_to_pos_inf(\hl(macro){INT_MAX}, 2);  // \serif{\tcode{q} is \tcode{1'073'741'824} and \tcode{r} is \tcode{-1}.}
+int r2 = x - q * 2;                                  // \serif{This multiplication has undefined behavior.}
 }
 }}
 }
