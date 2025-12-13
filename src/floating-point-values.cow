@@ -4,8 +4,8 @@
   title = Values of floating-point types
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{D3938R0}}
-  \dt{Date:}            \dd{\tt{2025-11-30}}
+  \dt{Document number:} \dd{\docnum{P3938R0}}
+  \dt{Date:}            \dd{\tt{2025-12-13}}
   \dt{Audience:}        \dd{SG6, EWG, CWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -108,7 +108,12 @@ the paper tries to find a good answer to the questions above.
 These answers are primarily based on the existing wording
 and on existing implementation practice.
 
-\h3{What values can a floating-point type have?}
+\h3{Do infinity and NaN exist from a core language perspective?}
+
+Yes.
+\eelis{basic.fundamental} mentions infinity.
+While NaN is not mentioned explicitly,
+\tcode{numeric_limits::quiet_NaN()} implies it.
 
 At the very least,
 floating-point types may represent
@@ -121,6 +126,70 @@ floating-point types may represent
     that adhere to ISO/IEC 60559.
   }
 }
+
+\h3{Can there be an unsigned zero, infinity, or NaN value, or are all floating-point values signed?}
+
+There can be fully unsigned floating-point numbers.
+The C standard explicitly mentions unsigned infinity and unsigned zero,
+and different NaN signs are typically not distinct values.
+The C++ standard presumably inherits the C model because all of the
+\header{cmath} functions are stated to work like C23's \header{math.h}.
+There is no C++ restriction on \tcode{fpclassify}.
+
+Furthermore, \eelis{numeric.limits.members}
+states that \tcode{numeric_limits::is_signed} is meaningful for all specializations,
+so there is presumably no requirement that a floating-point type
+or any of its values are signed.
+
+\h3{Conversely, can there be a signed zero, infinity, or NaN value?}
+
+Presumably.
+The C++ standard mentions negative zero and negative infinity in a number of places.
+NaN with negative sign bit and NaN with positive sign bit are usually
+not considered distinct values (e.g. ISO/IEC 60559),
+but the C++ standard has no wording that would prohibit that distinction.
+
+\h3{Can there be a negative zero and an unsigned infinity, or is the "signedness requirement" all-or-none?}
+
+It's not all-or-none.
+There are floating-point types that adhere to ISO/IEC 60559,
+and these do not have a distinct negative and positive NaN,
+so it cannot be all-or-none.
+
+\h3{Is negative zero negative? What about infinity and NaN?}
+
+No.
+The wording uses \q{negative} in the \q{less than zero}
+sense\iref{complex.numbers#lib:polar,complex}.
+The C23 standard defines a \q{negative value} to values which are less than zero,
+so negative zero and \q{negative NaN} (NaN with negative sign bit) are not negative.
+
+Negative infinity is negative because it compares less than zero.
+
+\h3{Is \q{negative NaN} distinct from \q{positive NaN}?}
+
+Presumably.
+While ISO/IEC 60559 does not consider NaNs with different sign bit
+to be distinct values,
+the C++ standard does not prohibit such a model.
+
+\h3{Can an extended floating-point type have no finite values?}
+
+No.
+This would make zero-initialization unimplementable,
+and would make \tcode{numeric_limits} members such as \tcode{epsilon()}
+worded in a nonsensical way.
+
+\h3{Does the core language need to distinguish between normal/subnormal numbers?}
+
+No.
+Subnormals either get \q{flushed} to zero,
+meaning that they are alternative representations of zero, numerically,
+or they are simply finite numbers like any other.
+The classification of \q{normal} and \q{subnormal}
+is an implementation detail of the floating-point format.
+
+\h3{Are there values beyond finite values, infinity, and NaN?}
 
 The exotic and surprising part is that floating-point types may represent
 additional implementation-defined values beyond finite values, infinity, and NaN.
@@ -152,6 +221,81 @@ extra implementation-defined classifications well,
 they nonetheless exist,
 and it seems like an unmotivated breaking change to drop support for them.
 
+\h3{Are different NaN payloads distinct values?}
+
+Sometimes.
+\tcode{numeric_limits::quiet_NaN()} and
+\tcode{numeric_limits::signaling_NaN()} are two NaNs distinguished only by payload.
+However, not every implementation treats these distinctly.
+For example, when compiling to WASM,
+none of the \tcode{f32} or \tcode{f64} instructions handle signaling NaNs.
+
+\h3{What does it mean for a type to \q{adhere to ISO/IEC 60559}?}
+
+It just means that the value representation is one of
+binary16, binary32, binary64, binary128,
+or some extended or decimal floating-point format specified
+in ISO/IEC 60559.
+
+When it comes to operations,
+the C++ standard specifies no mapping between expressions (e.g. \tcode{/})
+and the ISO/IEC 60559 operations (e.g. \q{division}).
+In fact, it seems to deliberately deviate from the ISO/IEC 60559 operations
+by declaring division by zero to be undefined behavior,
+even for floating-point types\iref{expr.mul}.
+
+\Bex{
+This implies that e.g. \tcode{numeric_limits<float>::infinity() + 0} is not infinity,
+but \q{UB by omission} or \q{UB by wording hole},
+even if \tcode{float} \q{adheres to ISO/IEC 60559}.
+}
+
+While it would be desirable to align the C++ operations with ISO/IEC 60559 operations,
+this would require significant wording effort.
+There exists no core wording that even attempts at doing so.
+Note that implementations don't always compute results correctly rounded
+(with the greatest available precision),
+while the ISO/IEC 60559 operations are usually correctly rounded.
+Therefore, aligning the C++ expressions with ISO/IEC 60559 may break most implementations.
+
+\h3{Is \tcode{0.0} positive or negative zero?}
+
+Presumably positive.
+The C++ standard does not mandate a specific sign for \gterm{floating-point-literal}s,
+but no implementation makes them negative,
+nor does it make practical sense to do so.
+We should mandate that literals have no negative sign.
+
+\h3{Are arithmetic operations required to preserve the sign of zero?}
+
+Presumably no.
+While the ISO/IEC 60559 multiplication operation
+preserves the sign bit when multiplying with 1,
+the C++ standard does not clearly mandate such behavior.
+
+Especially considering that not every type adheres to ISO/IEC 60559,
+we should require a specific handling of sign bits, explicitly.
+For example, the unary \tcode{-} operator should be required to flip the sign bit
+even for zero,
+otherwise \tcode{-0.0} may not be a spelling of negative zero,
+as users rely on.
+
+\h2{Impact on the standard}
+
+The clarify the floating-point specification,
+a bit of additional wording is required.
+
+This paper only \q{picks the low-hanging fruits},
+so to speak.
+In the long run, specifying the handling of NaNs and infinities by C++ expressions,
+documenting ISO/IEC 60559 conformance,
+and other large changes may be desirable.
+However, those would require much greater changes.
+
+\h2{Impact on implementations}
+
+All proposed wording changes document the current behavior of major implementations.
+
 \h2{Wording}
 
 The changes are relative to \ref(N5014).
@@ -167,24 +311,29 @@ Otherwise, the value of a \grammarterm{floating-point-literal} is
 the scaled value if representable,
 else the larger or smaller representable value nearest the scaled value,
 chosen in an implementation-defined manner.
-\ins{The value of the \grammarterm{floating-point-literal} shall not be negative zero.}
+\ins{The value of a \grammarterm{floating-point-literal} is non-negative.}
 
 \ins{\example{
-\tcode{-0.0} is negative zero if \tcode{double} is able to represent
-negative zero (\eelis{basic.fundamental}, \eelis{expr.unary.op}).
+\tcode{0.0} is positive zero, and
+\tcode{-0.0} is negative zero if \tcode{double}
+has a signed zero (\eelis{basic.fundamental}, \eelis{expr.unary.op}).
 }}
 }
 
 \h3(show-number=false){[basic]}
 
 Immediately preceding \eelis{basic.fundamental#13},
-insert two new paragraphs:
+insert three new paragraphs:
 
 \Bins{
 A floating-point type \dfn{adheres to ISO/IEC 60559}
-if its value representation is one of the binary or decimal interchange formats
+if its value representation is one of the floating-point formats
 specified in ISO/IEC 60559 and can represent the sets of floating-point values
 listed in ISO/IEC 60559.
+For a floating-point type
+whose value representation is in a binary format that adheres to ISO/IEC 60559,
+it is implementation-defined which (if any)
+representations of NaN are quiet or signaling.
 
 \note{
 Adherence to ISO/IEC 60559 does not imply that operations on floating-point types
@@ -375,6 +524,10 @@ even if the object representation of \tcode{T} has no padding bits.
 }
 }
 
+\editnote{
+The ISO/IEC 60559 standard also uses the term \q{bitwise identical}.
+}
+
 Change \eelis{temp.type#2} as follows:
 
 \Bdiff{
@@ -412,6 +565,59 @@ but that is how every implementation works.
 }
 
 \h3(show-number=false){[support]}
+
+Change \eelis{numeric.limits.members} as follows:
+
+\Bdiff{
+\etc
+
+\itemdecl{
+static constexpr bool has_signaling_NaN;
+}
+
+\itemdescr{
+\tcode{true} if the type has a representation for a signaling \q{Not a Number}.
+
+Meaningful for all floating-point types.
+
+Shall be \tcode{true} for all specializations in which
+\tcode{is_iec559 \del{!= false} \ins{&& \tcode{radix == 10}}} \ins{is \tcode{true}}.
+}
+}
+
+\editnote{
+ISO/IEC 60559 does not require that for its binary format,
+any specific representation in a binary format is a signaling NaN.
+In fact, implementations (e.g. GCC by default, Clang by default for WASM target)
+report \tcode{is_iec559} for \tcode{float},
+despite there not existing a signaling NaN.
+Implementations want to signal \tcode{is_iec559} for a type,
+even when none of the representations are signaling.
+
+Doing so seemingly complies with ISO/IEC 60559 because it is not mandated
+that at least one signaling NaN representation exists.
+Even the specification of the setPayloadSignaling operation
+does not clearly prohibit an implementation that has no permissible payloads.
+
+On the other hand, ISO/IEC 60559 defines which of the decimal floating-point
+NaNs are quiet and signaling.
+}
+
+Change \eelis{numeric.limits.members} as follows:
+
+\Bdiff{
+\itemdecl{
+static constexpr T signaling_NaN() noexcept;
+}
+
+\itemdescr{
+Representation of a signaling \q{Not a Number}, if available.
+
+Meaningful for all specializations for which \tcode{has_signaling_NaN != false}.
+Required in specializations for which \tcode{is_iec559 \del{!= false}}
+\ins{\tcode{&& radix == 10} is \tcode{true}}.
+}
+}
 
 Change \eelis{cmp.alg#2} as follows:
 
