@@ -4,8 +4,8 @@
   title = Rebasing \tt{<cmath>} on C23
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{D3935R0}}
-  \dt{Date:}            \dd{\tt{2025-12-04}}
+  \dt{Document number:} \dd{\docnum{P3935R0}}
+  \dt{Date:}            \dd{\tt{2025-12-13}}
   \dt{Audience:}        \dd{SG22}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -527,6 +527,21 @@ double dsqrt(\exposid{F} x);}
   }
 }
 
+As can be seen, all of these implement an ISO/IEC 60559 operation,
+and even if they didn't,
+they would be useful solely for the purpose of C compatibility.
+
+All functions below \tcode{iseqsig} are specific to ISO/IEC 60559,
+and are only provided by C23 for types that adhere to ISO/IEC 60559.
+The same restriction should be inherited by C++;
+otherwise e.g. \tcode{totalorder} would require us to define a total order
+for every possible format of floating-point type,
+which seems unreasonable.
+
+All new functions should be \tcode{constexpr} because
+none of them have a strong dependence on the current rounding mode
+or floating-point environment.
+
 \h4{Narrow rounding functions}
 
 The narrow rounding functions (such as \tcode{fadd})
@@ -618,7 +633,8 @@ The \tcode{int rnd} parameter in functions such as \tcode{fromfp}
 corresponds to one of \tt{FP_INT_*} rounding direction macros.
 }
 
-The block below lists all new macros:
+The block below lists all new macros
+(not yet including the \tcode{float\placeholder{N}_t} placeholder versions):
 
 \cppblock{
 // rounding direction macros
@@ -648,6 +664,37 @@ FP_FAST_FFMA
 FP_FAST_FFMAL
 FP_FAST_DFMAL
 }
+
+\h3{New declarations for \tcode{float\placeholder{N}_t}}
+
+C23 also provides a suffixed version of all the common common mathematical
+functions with \tcode{f\placeholder{N}} suffix and with
+\tcode{float\placeholder{N}_t} parameters.
+While these are not particularly useful considering that the user can (and probably should)
+call the overloaded functions,
+the current design direction is for C++ to inherit suffixed functions;
+we already do so for \tcode{sqrtf} and \tcode{sqrtl}.
+It would make porting C code to C++ and vice versa needlessly difficult
+if the suffixed functions only existed in one standard,
+for seemingly no technical reason.
+
+\Bnote{
+In the case of the narrow rounding functions,
+C23 also has
+\ul{
+  \li{prefixed generic functions such as \tcode{f32add}, and}
+  \li{prefixed concrete functions such as \tcode{f32addf64},}
+}
+as explained above.
+}
+
+The pattern of always providing the suffixed versions is only broken by
+\tcode{fminimum}, \tcode{fminimum_num}, \tcode{fmaximum}, and \tcode{fmaximum_num}.
+These functions were added to C++26 by \ref(P3008R6),
+mostly to specify the behavior of atomic floating-point minimum/maximum
+in terms of the C23 functions.
+There is no technical reason why the suffixed versions shouldn't also be provided,
+and the paper does not discuss this option.
 
 \h2{Implementation experience}
 
@@ -818,7 +865,7 @@ namespace std {
   constexpr \floating_point_typ atan2(\floating_point_typ y, \floating_point_typ x);
   constexpr float               atan2f(float y, float x);
   constexpr long double         atan2l(long double y, long double x);
-\ins{  constexpr float\placeholder{N}_t            atan2f\placeholder{N}(float\placeholder{N}_t x);}
+\ins{  constexpr float\placeholder{N}_t            atan2f\placeholder{N}(float\placeholder{N}_t y, float\placeholder{N}_t x);}
 
   constexpr \floating_point_typ cos(\floating_point_typ x);
   constexpr float               cosf(float x);
@@ -1183,12 +1230,12 @@ namespace std {
   constexpr \floating_point_typ nextafter(\floating_point_typ x, \floating_point_typ y);
   constexpr float               nextafterf(float x, float y);
   constexpr long double         nextafterl(long double x, long double y);
-\ins{  constexpr float\placeholder{N}_t            nextafterf\placeholder{N}(float\placeholder{N}_t x);}
+\ins{  constexpr float\placeholder{N}_t            nextafterf\placeholder{N}(float\placeholder{N}_t x, float\placeholder{N}_t y);}
 
   constexpr \floating_point_typ nexttoward(\floating_point_typ x, long double y);
   constexpr float               nexttowardf(float x, long double y);
   constexpr long double         nexttowardl(long double x, long double y);
-\ins{  constexpr float\placeholder{N}_t            nexttowardf\placeholder{N}(float\placeholder{N}_t x);}
+\ins{  constexpr float\placeholder{N}_t            nexttowardf\placeholder{N}(float\placeholder{N}_t x, float\placeholder{N}_t y);}
 
   constexpr \floating_point_typ nextup(\floating_point_typ x);
   constexpr float               nextupf(float x);
@@ -1532,6 +1579,8 @@ are replaced with that floating-point type.
     the set of types is
     \tcode{float16_t}, \tcode{float32_t}, \tcode{float64_t}, and \tcode{float128_t},
     if defined.
+    The \tcode{\placeholder{N}} placeholder in the function name is replaced
+    with the corresponding width in the type name.
   }}
 }
 }
@@ -1601,12 +1650,13 @@ the behavior is always to convert all arguments to \tcode{long double}.
 Change \eelis{cmath.syn#3} as follows:
 
 \Bdiff{
-For each function with at least one parameter of type
-\tcode{\floating_point_typ} \ins{or \tcode{\exposid{double-type}}}
+For each function with at least one parameter
+\del{of type \tcode{\floating_point_typ}}
+\ins{declared with a type placeholder,}
 other than \tcode{abs},
 the implementation also provides additional overloads sufficient to ensure that,
 if every argument corresponding to a
-\tcode{\floating_point_typ} \ins{or \tcode{\exposid{double-type}}}
+\del{\tcode{\floating_point_typ}} \ins{type placeholder}
 parameter has arithmetic type,
 then every such argument is effectively cast to
 \del{the floating-point type
@@ -1614,8 +1664,15 @@ with the greatest floating-point conversion rank and
 greatest floating-point conversion subrank among the types of all such arguments,
 where arguments of integer type are considered to have
 the same floating-point conversion rank as \tcode{double}}
-\ins{\tcode{\exposid{common-floating-point-type}<Args...>}
-or \tcode{\exposid{common-double-type}<Args...>}}, respectively.
+\ul{
+  \li{
+    \ins{\tcode{\exposid{common-double-type}<Args...>} if the type placeholder is
+    \tcode{\exposid{double-type}}, and}
+  }
+  \li{
+    \ins{\tcode{\exposid{common-floating-point-type}<Args...>} otherwise.}
+  }
+}
 If \del{no such floating-point type with the greatest rank and subrank exists}
 \ins{that specialization of the alias template is ill-formed},
 then overload resolution does not result in a usable candidate\iref{over.match.general}
@@ -1687,12 +1744,17 @@ pair \tcode{\placeholder{N}} and \tcode{\placeholder{M}}
 if \tcode{\placeholder{N}} < \tcode{\placeholder{M}} and the aliases
 \tcode{float\placeholder{N}_t} and \tcode{float\placeholder{M}_t} are defined,
 where every placeholder \tcode{\placeholder{N}} and \tcode{\placeholder{M}}
-in the function signature is replaced with the corresponding number.
-For each such pair \tcode{\placeholder{N}} and \tcode{\placeholder{M}}.
+in the function signature is replaced with the corresponding integers.
+
+¶
+For each function \tcode{\placeholder{f\placeholder{M}\placeholder{op}f\placeholder{N}}},
+the implementation also defines a macro
+\tcode{FP_FAST_F\placeholder{M}\placeholder{up}F\placeholder{N}},
+where \tcode{\placeholder{up}} is \tcode{\placeholder{op}} in uppercase.
 
 ¶
 \effects
-Each of the overloads
+Each of the macros and overloads
 \tcode{f\placeholder{op}} and \tcode{d\placeholder{op}}
 has the same behavior as the function
 \tcode{f\placeholder{op}l} and \tcode{d\placeholder{op}l},
@@ -1707,6 +1769,10 @@ with the same parameter types.
 If only \tcode{float32_t}, \tcode{float64_t}, and \tcode{float128_t} are defined,
 the implementation provides the overloads
 \itemdecl{
+#define FP_FAST_F32SQRTF64 \exposid{see above}
+#define FP_FAST_F32SQRTF128 \exposid{see above}
+#define FP_FAST_F64SQRTF128 \exposid{see above}
+
 constexpr float32_t f32sqrt(float64_t x);
 constexpr float32_t f32sqrt(float128_t x);
 constexpr float64_t f64sqrt(float128_t x);
@@ -1765,6 +1831,7 @@ Let \tcode{F} be the type determined as follows:
 \ul{
   \li{Each type in \tcode{Fs} is a cv-unqualified arithmetic type.}
   \li{\tcode{F} exists.}
+  \li{\tcode{((numeric_limimts<Fs>::radix == numeric_limits<F>::radix) && ...)} is \tcode{true}.}
   \li{\tcode{T} is a cv-unqualified floating-point type other than \tcode{long double}.}
 }
 \example{
@@ -1827,6 +1894,14 @@ and pointing out asymmetries with the behavior of \header{tgmath.h} macros.
   author = Jonathan Wakely,
   link = https://wg21.link/p3348r4,
   long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3348r4.pdf,
+)\
+\bib(
+  id = P3008R6,
+  title = Atomic floating-point min/max,
+  date = 2025-06-19,
+  author = Gonzalo Brito Gadeschi\, David Sankel,
+  link = https://wg21.link/p3008r6,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3008r6.html,
 )\
 
 \make_bib

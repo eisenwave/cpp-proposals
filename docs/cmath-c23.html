@@ -1576,8 +1576,8 @@ if (theme !== null) {
 <div class=wg21-head><h1>Rebasing <tt->&lt;cmath&gt;</tt-> on C23</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/D3935R0>D3935R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2025-12-04</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3935R0>P3935R0</a></dd>
+  <dt>Date:</dt>            <dd><tt->2025-12-13</tt-></dd>
   <dt>Audience:</dt>        <dd>SG22</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1607,6 +1607,8 @@ There are many useful C23 <code><h- data-h=str>&lt;math.h&gt;</h-></code> featur
 <a href=#canonical-floating-point-representations-and-canonicalization><h4>Canonical floating-point representations and canonicalization</h4></a>
 <div class=toc-num data-level=3>2.2</div>
 <a href=#new-macros><h3>New macros</h3></a>
+<div class=toc-num data-level=3>2.3</div>
+<a href=#new-declarations-for-floatn_t><h3>New declarations for <code><h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h-></code></h3></a>
 <div class=toc-num data-level=2>3</div>
 <a href=#implementation-experience><h2>Implementation experience</h2></a>
 <div class=toc-num data-level=2>4</div>
@@ -2129,6 +2131,21 @@ refer to <a href=#wording>§4. Wording</a> for the complete list.
   </tr>
 </table>
 
+<p>As can be seen, all of these implement an ISO/IEC 60559 operation,
+and even if they didn't,
+they would be useful solely for the purpose of C compatibility.
+</p>
+<p>All functions below <code><h- data-h=id>iseqsig</h-></code> are specific to ISO/IEC 60559,
+and are only provided by C23 for types that adhere to ISO/IEC 60559.
+The same restriction should be inherited by C++;
+otherwise e.g. <code><h- data-h=id>totalorder</h-></code> would require us to define a total order
+for every possible format of floating-point type,
+which seems unreasonable.
+</p>
+<p>All new functions should be <code><h- data-h=kw>constexpr</h-></code> because
+none of them have a strong dependence on the current rounding mode
+or floating-point environment.
+</p>
 <h4 id=narrow-rounding-functions><a class=para href=#narrow-rounding-functions></a>2.1.1. Narrow rounding functions</h4>
 
 <p>The narrow rounding functions (such as <code><h- data-h=id>fadd</h-></code>)
@@ -2216,7 +2233,8 @@ The <code><h- data-h=kw_type>int</h-> <h- data-h=id>rnd</h-></code> parameter in
 corresponds to one of <tt->FP_INT_*</tt-> rounding direction macros.
 </p></note-block>
 
-<p>The block below lists all new macros:
+<p>The block below lists all new macros
+(not yet including the <code><h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h-></code> placeholder versions):
 </p>
 <code-block><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> rounding direction macros</h->
 <h- data-h=id>FP_INT_UPWARD</h->
@@ -2245,6 +2263,37 @@ corresponds to one of <tt->FP_INT_*</tt-> rounding direction macros.
 <h- data-h=id>FP_FAST_FFMAL</h->
 <h- data-h=id>FP_FAST_DFMAL</h-></code-block>
 
+<h3 id=new-declarations-for-floatn_t><a class=para href=#new-declarations-for-floatn_t></a>2.3. New declarations for <code><h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h-></code></h3>
+
+<p>C23 also provides a suffixed version of all the common common mathematical
+functions with <code><h- data-h=id>f</h-><i><h- data-h=id>N</h-></i></code> suffix and with
+<code><h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h-></code> parameters.
+While these are not particularly useful considering that the user can (and probably should)
+call the overloaded functions,
+the current design direction is for C++ to inherit suffixed functions;
+we already do so for <code><h- data-h=id>sqrtf</h-></code> and <code><h- data-h=id>sqrtl</h-></code>.
+It would make porting C code to C++ and vice versa needlessly difficult
+if the suffixed functions only existed in one standard,
+for seemingly no technical reason.
+</p>
+<note-block><p><intro-></intro-> 
+In the case of the narrow rounding functions,
+C23 also has
+</p><ul>
+  <li>prefixed generic functions such as <code><h- data-h=id>f32add</h-></code>, and</li>
+  <li>prefixed concrete functions such as <code><h- data-h=id>f32addf64</h-></code>,</li>
+</ul>
+<p>as explained above.
+</p></note-block>
+
+<p>The pattern of always providing the suffixed versions is only broken by
+<code><h- data-h=id>fminimum</h-></code>, <code><h- data-h=id>fminimum_num</h-></code>, <code><h- data-h=id>fmaximum</h-></code>, and <code><h- data-h=id>fmaximum_num</h-></code>.
+These functions were added to C++26 by <a href="https://wg21%2elink/p3008r6">[P3008R6]</a>,
+mostly to specify the behavior of atomic floating-point minimum/maximum
+in terms of the C23 functions.
+There is no technical reason why the suffixed versions shouldn't also be provided,
+and the paper does not discuss this option.
+</p>
 <h2 id=implementation-experience><a class=para href=#implementation-experience></a>3. Implementation experience</h2>
 
 <p>All non-template additions are taken from C23,
@@ -2409,7 +2458,7 @@ h- {
   <h- data-h=kw>constexpr</h-> <i><h- data-h=id>floating-point-type</h-></i> <h- data-h=id>atan2</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>floating-point-type</h-></i> <h- data-h=id>y</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=id>floating-point-type</h-></i> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->               <h- data-h=id>atan2f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>float</h-> <h- data-h=id>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>float</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h->         <h- data-h=id>atan2l</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<ins>  <h- data-h=kw>constexpr</h-> <h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h->            <h- data-h=id>atan2f</h-><i><h- data-h=id>N</h-></i><h- data-h=sym_par>(</h-><h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
+<ins>  <h- data-h=kw>constexpr</h-> <h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h->            <h- data-h=id>atan2f</h-><i><h- data-h=id>N</h-></i><h- data-h=sym_par>(</h-><h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h-> <h- data-h=id>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
 
   <h- data-h=kw>constexpr</h-> <i><h- data-h=id>floating-point-type</h-></i> <h- data-h=id>cos</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>floating-point-type</h-></i> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->               <h- data-h=id>cosf</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>float</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
@@ -2774,12 +2823,12 @@ h- {
   <h- data-h=kw>constexpr</h-> <i><h- data-h=id>floating-point-type</h-></i> <h- data-h=id>nextafter</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>floating-point-type</h-></i> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=id>floating-point-type</h-></i> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->               <h- data-h=id>nextafterf</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>float</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>float</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h->         <h- data-h=id>nextafterl</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<ins>  <h- data-h=kw>constexpr</h-> <h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h->            <h- data-h=id>nextafterf</h-><i><h- data-h=id>N</h-></i><h- data-h=sym_par>(</h-><h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
+<ins>  <h- data-h=kw>constexpr</h-> <h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h->            <h- data-h=id>nextafterf</h-><i><h- data-h=id>N</h-></i><h- data-h=sym_par>(</h-><h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
 
   <h- data-h=kw>constexpr</h-> <i><h- data-h=id>floating-point-type</h-></i> <h- data-h=id>nexttoward</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>floating-point-type</h-></i> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->               <h- data-h=id>nexttowardf</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>float</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h->         <h- data-h=id>nexttowardl</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<ins>  <h- data-h=kw>constexpr</h-> <h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h->            <h- data-h=id>nexttowardf</h-><i><h- data-h=id>N</h-></i><h- data-h=sym_par>(</h-><h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
+<ins>  <h- data-h=kw>constexpr</h-> <h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h->            <h- data-h=id>nexttowardf</h-><i><h- data-h=id>N</h-></i><h- data-h=sym_par>(</h-><h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
 
   <h- data-h=kw>constexpr</h-> <i><h- data-h=id>floating-point-type</h-></i> <h- data-h=id>nextup</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>floating-point-type</h-></i> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h->               <h- data-h=id>nextupf</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>float</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
@@ -3122,6 +3171,8 @@ are replaced with that floating-point type.
     the set of types is
     <code><h- data-h=id_type>float16_t</h-></code>, <code><h- data-h=id_type>float32_t</h-></code>, <code><h- data-h=id_type>float64_t</h-></code>, and <code><h- data-h=id_type>float128_t</h-></code>,
     if defined.
+    The <code><i><h- data-h=id>N</h-></i></code> placeholder in the function name is replaced
+    with the corresponding width in the type name.
   </ins></li>
 </ul>
 </diff-block>
@@ -3189,12 +3240,13 @@ the behavior is always to convert all arguments to <code><h- data-h=kw_type>long
 <p>Change <a href=https://eel.is/c++draft/cmath.syn#3>[cmath.syn] paragraph 3</a> as follows:
 </p>
 <diff-block>
-<p>For each function with at least one parameter of type
-<code><i><h- data-h=id>floating-point-type</h-></i></code> <ins>or <code><i><h- data-h=id>double-type</h-></i></code></ins>
+<p>For each function with at least one parameter
+<del>of type <code><i><h- data-h=id>floating-point-type</h-></i></code></del>
+<ins>declared with a type placeholder,</ins>
 other than <code><h- data-h=id>abs</h-></code>,
 the implementation also provides additional overloads sufficient to ensure that,
 if every argument corresponding to a
-<code><i><h- data-h=id>floating-point-type</h-></i></code> <ins>or <code><i><h- data-h=id>double-type</h-></i></code></ins>
+<del><code><i><h- data-h=id>floating-point-type</h-></i></code></del> <ins>type placeholder</ins>
 parameter has arithmetic type,
 then every such argument is effectively cast to
 <del>the floating-point type
@@ -3202,9 +3254,16 @@ with the greatest floating-point conversion rank and
 greatest floating-point conversion subrank among the types of all such arguments,
 where arguments of integer type are considered to have
 the same floating-point conversion rank as <code><h- data-h=kw_type>double</h-></code></del>
-<ins><code><i><h- data-h=id>common-floating-point-type</h-></i><h- data-h=sym_op>&lt;</h-><h- data-h=id>Args</h-><h- data-h=sym_op>...</h-><h- data-h=sym_op>&gt;</h-></code>
-or <code><i><h- data-h=id>common-double-type</h-></i><h- data-h=sym_op>&lt;</h-><h- data-h=id>Args</h-><h- data-h=sym_op>...</h-><h- data-h=sym_op>&gt;</h-></code></ins>, respectively.
-If <del>no such floating-point type with the greatest rank and subrank exists</del>
+</p><ul>
+  <li>
+    <ins><code><i><h- data-h=id>common-double-type</h-></i><h- data-h=sym_op>&lt;</h-><h- data-h=id>Args</h-><h- data-h=sym_op>...</h-><h- data-h=sym_op>&gt;</h-></code> if the type placeholder is
+    <code><i><h- data-h=id>double-type</h-></i></code>, and</ins>
+  </li>
+  <li>
+    <ins><code><i><h- data-h=id>common-floating-point-type</h-></i><h- data-h=sym_op>&lt;</h-><h- data-h=id>Args</h-><h- data-h=sym_op>...</h-><h- data-h=sym_op>&gt;</h-></code> otherwise.</ins>
+  </li>
+</ul>
+<p>If <del>no such floating-point type with the greatest rank and subrank exists</del>
 <ins>that specialization of the alias template is ill-formed</ins>,
 then overload resolution does not result in a usable candidate (<a href=https://eel.is/c++draft/over.match.general>[over.match.general]</a>)
 from the overloads provided by the implementation.
@@ -3273,12 +3332,17 @@ pair <code><i><h- data-h=id>N</h-></i></code> and <code><i><h- data-h=id>M</h-><
 if <code><i><h- data-h=id>N</h-></i></code> &lt; <code><i><h- data-h=id>M</h-></i></code> and the aliases
 <code><h- data-h=id_type>float</h-><i><h- data-h=id_type>N</h-></i><h- data-h=id_type>_t</h-></code> and <code><h- data-h=id_type>float</h-><i><h- data-h=id_type>M</h-></i><h- data-h=id_type>_t</h-></code> are defined,
 where every placeholder <code><i><h- data-h=id>N</h-></i></code> and <code><i><h- data-h=id>M</h-></i></code>
-in the function signature is replaced with the corresponding number.
-For each such pair <code><i><h- data-h=id>N</h-></i></code> and <code><i><h- data-h=id>M</h-></i></code>.
+in the function signature is replaced with the corresponding integers.
+</p>
+<p>¶
+For each function <code><i><h- data-h=id>f</h-><i><h- data-h=id>M</h-></i><i><h- data-h=id>op</h-></i><h- data-h=id>f</h-><i><h- data-h=id>N</h-></i></i></code>,
+the implementation also defines a macro
+<code><h- data-h=id>FP_FAST_F</h-><i><h- data-h=id>M</h-></i><i><h- data-h=id>up</h-></i><h- data-h=id>F</h-><i><h- data-h=id>N</h-></i></code>,
+where <code><i><h- data-h=id>up</h-></i></code> is <code><i><h- data-h=id>op</h-></i></code> in uppercase.
 </p>
 <p>¶
 <i>Effects</i>:
-Each of the overloads
+Each of the macros and overloads
 <code><h- data-h=id>f</h-><i><h- data-h=id>op</h-></i></code> and <code><h- data-h=id>d</h-><i><h- data-h=id>op</h-></i></code>
 has the same behavior as the function
 <code><h- data-h=id>f</h-><i><h- data-h=id>op</h-></i><h- data-h=id>l</h-></code> and <code><h- data-h=id>d</h-><i><h- data-h=id>op</h-></i><h- data-h=id>l</h-></code>,
@@ -3292,7 +3356,11 @@ with the same parameter types.
 [<i>Example</i>: 
 If only <code><h- data-h=id_type>float32_t</h-></code>, <code><h- data-h=id_type>float64_t</h-></code>, and <code><h- data-h=id_type>float128_t</h-></code> are defined,
 the implementation provides the overloads
-</p><code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=id_type>float32_t</h-> <h- data-h=id>f32sqrt</h-><h- data-h=sym_par>(</h-><h- data-h=id_type>float64_t</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+</p><code-block class=borderless><h- data-h=mac>#define FP_FAST_F32SQRTF64 </h-><i><h- data-h=id>see above</h-></i>
+<h- data-h=mac>#define FP_FAST_F32SQRTF128 </h-><i><h- data-h=id>see above</h-></i>
+<h- data-h=mac>#define FP_FAST_F64SQRTF128 </h-><i><h- data-h=id>see above</h-></i>
+
+<h- data-h=kw>constexpr</h-> <h- data-h=id_type>float32_t</h-> <h- data-h=id>f32sqrt</h-><h- data-h=sym_par>(</h-><h- data-h=id_type>float64_t</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <h- data-h=kw>constexpr</h-> <h- data-h=id_type>float32_t</h-> <h- data-h=id>f32sqrt</h-><h- data-h=sym_par>(</h-><h- data-h=id_type>float128_t</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <h- data-h=kw>constexpr</h-> <h- data-h=id_type>float64_t</h-> <h- data-h=id>f64sqrt</h-><h- data-h=sym_par>(</h-><h- data-h=id_type>float128_t</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <h- data-h=kw>constexpr</h-> <h- data-h=id_type>float32_t</h-> <h- data-h=id>f32sqrtf64</h-><h- data-h=sym_par>(</h-><h- data-h=id_type>float64_t</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
@@ -3347,6 +3415,7 @@ Let <code><h- data-h=id>F</h-></code> be the type determined as follows:
 </p><ul>
   <li>Each type in <code><h- data-h=id>Fs</h-></code> is a cv-unqualified arithmetic type.</li>
   <li><code><h- data-h=id>F</h-></code> exists.</li>
+  <li><code><h- data-h=sym_par>(</h-><h- data-h=sym_par>(</h-><h- data-h=id>numeric_limimts</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>Fs</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=id>radix</h-> <h- data-h=sym_op>==</h-> <h- data-h=id>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>F</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=id>radix</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=sym_op>...</h-><h- data-h=sym_par>)</h-></code> is <code><h- data-h=bool>true</h-></code>.</li>
   <li><code><h- data-h=id>T</h-></code> is a cv-unqualified floating-point type other than <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>.</li>
 </ul>
 <p>[<i>Example</i>: 
@@ -3403,6 +3472,11 @@ and pointing out asymmetries with the behavior of <code><h- data-h=str>&lt;tgmat
 <span class=bib-author>Jonathan Wakely.</span>
 <span class=bib-title>C++26 should refer to C23 not C17</span>
 <span class=bib-date>2025-06-19</span>
-<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/p3348r4%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3348r4.pdf</a></div></div>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/p3348r4%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3348r4.pdf</a></div><div id=bib-item-P3008R6 class=bib-item>
+<a href="https://wg21%2elink/p3008r6">[P3008R6]</a>
+<span class=bib-author>Gonzalo Brito Gadeschi, David Sankel.</span>
+<span class=bib-title>Atomic floating-point min/max</span>
+<span class=bib-date>2025-06-19</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/p3008r6%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3008r6.html</a></div></div>
 </main></body>
 </html>
