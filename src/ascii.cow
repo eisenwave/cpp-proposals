@@ -8,7 +8,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\ref(https://wg21.link/P3688){P3688R5}}
-  \dt{Date:}            \dd{\tt{2025-11-20}}
+  \dt{Date:}            \dd{\tt{2025-12-13}}
   \dt{Audience:}        \dd{SG16}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-To:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -35,14 +35,31 @@ We propose lightweight, locale-independent alternatives.
 
 \h3{Changes since R4}
 
+\Bnote{
+Since R4, the paper was seen during two SG16 telecons in Q4 2025.
+The changes below incorporate the feedback given during these telecons.
+}
+
 \ul{
   \li{
     Rename \tt{is_ascii_*} functions to \tt{ascii_is_*}
     to increase consensus in SG16
   }
-  \li{Replace incorrect \q{\tcode{"C"} locale} with \q{C locale} in \ref(#introduction)}
   \li{Add \ref(#naming)}
+  \li{
+    Change the \ref(#design) of multiple overloads to a single function template
+    for all functions
+  }
+  \li{
+    In \ref(#case-insensitive-comparison), elaborate why mixing different character types
+    is not supported
+  }
+  \li{Replace incorrect \q{\tcode{"C"} locale} with \q{C locale} in \ref(#introduction)}
+  \li{Fix an \q{\tcode{asci}} typo}
   \li{Remove stray default argument for \tcode{ascii_is_digit} in \header{ascii} synopsis}
+  \li{Rename \tcode{is_ascii_printable} to \tcode{ascii_is_printing} to match C terminology}
+  \li{Rename \tcode{is_ascii_graphical} to \tcode{ascii_is_graphic} to match C terminology}
+  \li{Properly define \q{ASCII-compatible} in \ref(#wording)}
 }
 
 \h3{Changes since R3}
@@ -190,16 +207,30 @@ but \tcode{ascii_is_upper(U'Ä')} to be \tcode{false}.
 \Bex{
 The counterpart to \tcode{std::isalpha} is declared follows:
 \cppblock{
-constexpr bool ascii_is_alpha(\ctype c) noexcept;
+template<\ctype T>
+  constexpr bool ascii_is_alpha(T c) noexcept;
 }
 }
 
-\tcode{\ctype} means that there exists an overload set where
-this placeholder is replaced with each of the character types.
-This design is more consistent with \tcode{std::from_chars} and \header{cmath} functions
-than say, \tcode{template<class Char>}.
-Equivalent functions could also be added to C, if there is interest.
-This signature also allows the use with types that are convertible to a specific character type.
+\tcode{\ctype} is an exposition-only concept
+that is modeled by any of the five character types\iref{basic.fundamental}.
+There is nothing unusual noteworthy about this signature;
+similar function templates (with an extra \tcode{const locale&} parameter)
+can be found in \header{locale}.
+
+\Bnote{
+While previous revisions of this paper had several overloads instead of function templates,
+there was little to no motivation for this.
+\header{cmath} functions are arguably the only example in the C++ standard
+where this design makes sense;
+namely because it permits pulling in C header functions into \tcode{namespace std}
+via \tcode{using}.
+
+Furthermore, it is obvious that a function template requires less work to implement
+for one-liner functions (such as many of the proposed functions),
+compared to writing the same function five times.
+That is, unless macros are used.
+}
 
 \h3{List of proposed functions}
 
@@ -274,7 +305,7 @@ Note that the character set notation \tt{[}...\tt{]} is taken from RegEx.
 \tr{
   \td{\tcode{isalnum}}
   \td{\tcode{ascii_is_alphanumeric}}
-  \td{\tcode{ascii_is_alpha(c) || is_asci_digit(c)}}
+  \td{\tcode{ascii_is_alpha(c) || is_ascii_digit(c)}}
 }
 \tr{
   \td{\tcode{ispunct}}
@@ -283,13 +314,13 @@ Note that the character set notation \tt{[}...\tt{]} is taken from RegEx.
 }
 \tr{
   \td{\tcode{isgraph}}
-  \td{\tcode{ascii_is_graphical}}
+  \td{\tcode{ascii_is_graphic}}
   \td{\tcode{ascii_is_alphanumeric(c) || ascii_is_punctuation(c)}}
 }
 \tr{
   \td{\tcode{isprint}}
-  \td{\tcode{ascii_is_printable}}
-  \td{\tcode{ascii_is_graphical(c) || c == ' '}}
+  \td{\tcode{ascii_is_printing}}
+  \td{\tcode{ascii_is_graphic(c) || c == ' '}}
 }
 \tr{
   \td{\tcode{isblank}}
@@ -368,7 +399,7 @@ int get_hex_digit_value(char8_t c) {
 }
 
 int get_hex_digit_value(char32_t c) {
-    return std::ascii_is(c) ? get_hex_digit_value(char8_t(c)) : -1;
+    return std::ascii_is_any(c) ? get_hex_digit_value(char8_t(c)) : -1;
 }
 }
 }
@@ -380,8 +411,10 @@ Similar to \tcode{std::to_chars},
 There are two overloads:
 
 \cppblock{
-constexpr bool ascii_is_digit(\ctype c, int base) /* not noexcept */;
-constexpr bool ascii_is_digit(\ctype c) noexcept;
+template<\ctype T>
+  constexpr bool ascii_is_digit(T c, int base) /* not noexcept */;
+template<\ctype T>
+  constexpr bool ascii_is_digit(T c) noexcept;
 }
 
 If \tcode{base} ≤ \tcode{10},
@@ -427,20 +460,29 @@ As shown in the table above,
 we also propose the case-insensitive comparison functions.
 
 \cppblock{
+template<\ctype T>
 constexpr strong_ordering ascii_case_insensitive_compare(
-    \ctype a,
-    \ctype b
+    T a,
+    T b
 ) {
     return ascii_to_upper(a) <=> ascii_to_upper(b);
 }
 
+template<\ctype T>
 constexpr strong_ordering ascii_case_insensitive_equals(
-    \ctype a,
-    \ctype b
+    T a,
+    T b
 ) {
     return ascii_to_upper(a) == ascii_to_upper(b);
 }
 }
+
+Note that these deliberately have only one template type parameter.
+Comparing code units of different encodings is typically meaningless,
+and \tcode{ascii_to_upper} only has an effect if \tcode{ascii_is_lower} returns \tcode{true};
+therefore, a comparison such as
+\tcode{ascii_case_insensitive_equals(c, U'\\N{NO-BREAK SPACE}')}
+could yield false positives for some UTF-8 code unit \tcode{c} with value \tcode{0xA0}.
 
 \h3(id=why-no-function-objects){Why no function objects?}
 
@@ -487,7 +529,7 @@ Perhaps one will emerge via C++26 reflection with further C++29 additions.
 \h3(id=encoding){What to do for ASCII-incompatible \tcode{char} and \tcode{wchar_t}}
 
 Not every ordinary and wide character encoding is ASCII-compatible,
-such as EBCDIC, Shift-JIS, and (defunct) ISO-646,
+such as EBCDIC, Shift JIS, and (defunct) ISO-646,
 i.e. code units ≤ \tcode{0x7f} do not represent the same characters as ASCII.
 
 This begs the question:
@@ -507,7 +549,7 @@ unlike that for \tcode{char} and \tcode{wchar_t}.
 We could mandate that the ordinary literal encoding is an ASCII superset
 for the \tcode{char} overload to exist.
 This would force a cast (to \tcode{char8_t}) to use the functions on EBCDIC platforms.
-It is not clear how implementations would treat Shift-JIS;
+It is not clear how implementations would treat Shift JIS;
 GCC assumes \tcode{'\\\\' == '¥'} to be \tcode{true},
 so this option may not be enough to alleviate
 the awkwardness of \tcode{ascii_is_punctuation('¥')}.
@@ -597,8 +639,8 @@ in all cases because:
     assume a domain of ASCII, as an encoding assumption.
   }
   \li{
-    The \tt{is_ascii_*} scheme can be applied consistently to all functions,
-    including \tcode{ascii_case_insensitive_equal}.
+    The \tt{ascii_*} scheme can be applied consistently to all functions,
+    including \tcode{ascii_case_insensitive_compare}.
   }
 }
 
@@ -780,13 +822,21 @@ append a new subclause:
 \Bins{
 \h2(listed=false){ASCII utilities \stable_ref{ascii}}
 
-Subclause [ascii] describes components for dealing with characters that are encoded using ASCII
-or encodings that are ASCII-compatible, such as UTF-8.
+Subclause [ascii] describes components for dealing with characters
+that are encoded using ASCII
+or encodings that are \dfn{ASCII-compatible},
+which are encodings where given any code unit \math{\mi{c}},
+if and only if \tcode{ascii_is_any(\math{\mi{c}})} is \tcode{true},
+\math{\mi{c}} by itself encodes a Unicode code point in the Basic Latin block,
+with the same numeric value as \math{\mi{c}}.
+\br
+\example{ASCII, UTF-8, UTF-16, and UTF-32 are ASCII-compatible.
+EBCDIC and Shift JIS are not ASCII-compatible.}
 
 \recommended
 Implementations should emit a warning when a function in this subclause is invoked
 using a value produced by a \grammarterm{string-literal}
-or \grammarterm{character-literal} whose encoding is ASCII-incompatible.\br
+or \grammarterm{character-literal} whose encoding is not ASCII-compatible.\br
 \example{
 \tcode{ascii_is_digit('0')} is \tcode{false} if the
 ordinary literal encoding\iref{lex.charset} is EBCDIC
@@ -798,53 +848,53 @@ is \tcode{true} regardless of ordinary literal encoding.
 
 \h3(listed=false){Header \tt{<ascii>} synopsis \stable_ref{ascii.syn}}
 
-When a function is specified with a type placeholder of
-\tcode{\ctype},
-the implementation provides overloads for all character types (\eelis{basic.fundamental})
-in lieu of \tcode{\ctype}.
-
 \codeblock(cpp, borders=false){
 // \serif{all freestanding}
 namespace std {
+  // \serif{exposition-only helpers}
+  template<class T>
+    concept \ctype = same_as<T, char> || same_as<T, wchar_t>          // \serif{exposition only}
+      || same_as<T, char8_t> || same_as<T, char16_t> || same_as<T, char32_t>;
+
   // \serif{[ascii.chars.test], ASCII character testing}
-  constexpr bool ascii_is_any(\ctype c) noexcept;
+  template<\ctype T> constexpr bool ascii_is_any(T c) noexcept;
 
-  constexpr bool ascii_is_digit(\ctype c, int base);
-  constexpr bool ascii_is_digit(\ctype c) noexcept;
-  constexpr bool ascii_is_bit(\ctype c) noexcept;
-  constexpr bool ascii_is_octal_digit(\ctype c) noexcept;
-  constexpr bool ascii_is_hex_digit(\ctype c) noexcept;
+  template<\ctype T> constexpr bool ascii_is_digit(T c, int base);
+  template<\ctype T> constexpr bool ascii_is_digit(T c) noexcept;
+  template<\ctype T> constexpr bool ascii_is_bit(T c) noexcept;
+  template<\ctype T> constexpr bool ascii_is_octal_digit(T c) noexcept;
+  template<\ctype T> constexpr bool ascii_is_hex_digit(T c) noexcept;
 
-  constexpr bool ascii_is_lower(\ctype c) noexcept;
-  constexpr bool ascii_is_upper(\ctype c) noexcept;
-  constexpr bool ascii_is_alpha(\ctype c) noexcept;
-  constexpr bool ascii_is_alphanumeric(\ctype c) noexcept;
+  template<\ctype T> constexpr bool ascii_is_lower(T c) noexcept;
+  template<\ctype T> constexpr bool ascii_is_upper(T c) noexcept;
+  template<\ctype T> constexpr bool ascii_is_alpha(T c) noexcept;
+  template<\ctype T> constexpr bool ascii_is_alphanumeric(T c) noexcept;
 
-  constexpr bool ascii_is_punctuation(\ctype c) noexcept;
-  constexpr bool ascii_is_graphical(\ctype c) noexcept;
-  constexpr bool ascii_is_printable(\ctype c) noexcept;
+  template<\ctype T> constexpr bool ascii_is_punctuation(T c) noexcept;
+  template<\ctype T> constexpr bool ascii_is_graphic(T c) noexcept;
+  template<\ctype T> constexpr bool ascii_is_printing(T c) noexcept;
 
-  constexpr bool ascii_is_horizontal_whitespace(\ctype c) noexcept;
-  constexpr bool ascii_is_whitespace(\ctype c) noexcept;
+  template<\ctype T> constexpr bool ascii_is_horizontal_whitespace(T c) noexcept;
+  template<\ctype T> constexpr bool ascii_is_whitespace(T c) noexcept;
 
-  constexpr bool ascii_is_control(\ctype c) noexcept;
+  template<\ctype T> constexpr bool ascii_is_control(T c) noexcept;
 
   // \serif{[ascii.chars.transform], ASCII character transformation}
-  constexpr \ctype ascii_to_lower(\ctype c) noexcept;
-  constexpr \ctype ascii_to_upper(\ctype c) noexcept;
+  template<\ctype T> constexpr T ascii_to_lower(T c) noexcept;
+  template<\ctype T> constexpr T ascii_to_upper(T c) noexcept;
 
   // \serif{[ascii.chars.case.compare], ASCII case-insensitive character comparison}
-  constexpr strong_ordering ascii_case_insensitive_compare(\ctype a
-                                                           \ctype b) noexcept;
-  constexpr bool ascii_case_insensitive_equals(\ctype a
-                                               \ctype b) noexcept;
+  template<\ctype T>
+    constexpr strong_ordering ascii_case_insensitive_compare(T a, T b) noexcept;
+  template<\ctype T>
+    constexpr bool ascii_case_insensitive_equals(T a, T b) noexcept;
 }
 }
 
 \h3(listed=false){ASCII character testing \stable_ref{ascii.chars.test}}
 
 \itemdecl{
-constexpr bool ascii_is_any(\ctype c) noexcept;
+template<\ctype T> constexpr bool ascii_is_any(T c) noexcept;
 }
 \itemdescr{
 \returns
@@ -852,7 +902,7 @@ constexpr bool ascii_is_any(\ctype c) noexcept;
 }
 
 \itemdecl{
-constexpr bool ascii_is_digit(\ctype c, int base);
+template<\ctype T> constexpr bool ascii_is_digit(T c, int base);
 }
 \itemdescr{
 \expects
@@ -873,7 +923,7 @@ is not a core constant expression.
 }
 
 \itemdecl{
-constexpr bool ascii_is_digit(\ctype c) noexcept;
+template<\ctype T> constexpr bool ascii_is_digit(T c) noexcept;
 }
 \itemdescr{
 \returns
@@ -881,7 +931,7 @@ constexpr bool ascii_is_digit(\ctype c) noexcept;
 }
 
 \itemdecl{
-constexpr bool ascii_is_bit(\ctype c) noexcept;
+template<\ctype T> constexpr bool ascii_is_bit(T c) noexcept;
 }
 \itemdescr{
 \returns
@@ -889,7 +939,7 @@ constexpr bool ascii_is_bit(\ctype c) noexcept;
 }
 
 \itemdecl{
-constexpr bool ascii_is_octal_digit(\ctype c) noexcept;
+template<\ctype T> constexpr bool ascii_is_octal_digit(T c) noexcept;
 }
 \itemdescr{
 \returns
@@ -897,7 +947,7 @@ constexpr bool ascii_is_octal_digit(\ctype c) noexcept;
 }
 
 \itemdecl{
-constexpr bool ascii_is_hex_digit(\ctype c) noexcept;
+template<\ctype T> constexpr bool ascii_is_hex_digit(T c) noexcept;
 }
 \itemdescr{
 \returns
@@ -905,7 +955,7 @@ constexpr bool ascii_is_hex_digit(\ctype c) noexcept;
 }
 
 \itemdecl{
-constexpr bool ascii_is_lower(\ctype c) noexcept;
+template<\ctype T> constexpr bool ascii_is_lower(T c) noexcept;
 }
 \itemdescr{
 \returns
@@ -913,7 +963,7 @@ constexpr bool ascii_is_lower(\ctype c) noexcept;
 }
 
 \itemdecl{
-constexpr bool ascii_is_upper(\ctype c) noexcept;
+template<\ctype T> constexpr bool ascii_is_upper(T c) noexcept;
 }
 \itemdescr{
 \returns
@@ -921,7 +971,7 @@ constexpr bool ascii_is_upper(\ctype c) noexcept;
 }
 
 \itemdecl{
-constexpr bool ascii_is_alpha(\ctype c) noexcept;
+template<\ctype T> constexpr bool ascii_is_alpha(T c) noexcept;
 }
 \itemdescr{
 \returns
@@ -929,7 +979,7 @@ constexpr bool ascii_is_alpha(\ctype c) noexcept;
 }
 
 \itemdecl{
-constexpr bool ascii_is_alphanumeric(\ctype c) noexcept;
+template<\ctype T> constexpr bool ascii_is_alphanumeric(T c) noexcept;
 }
 \itemdescr{
 \returns
@@ -937,7 +987,7 @@ constexpr bool ascii_is_alphanumeric(\ctype c) noexcept;
 }
 
 \itemdecl{
-constexpr bool ascii_is_punctuation(\ctype c) noexcept;
+template<\ctype T> constexpr bool ascii_is_punctuation(T c) noexcept;
 }
 \itemdescr{
 \p(style=text-align:left){
@@ -947,7 +997,7 @@ constexpr bool ascii_is_punctuation(\ctype c) noexcept;
 }
 
 \itemdecl{
-constexpr bool ascii_is_graphical(\ctype c) noexcept;
+template<\ctype T> constexpr bool ascii_is_graphic(T c) noexcept;
 }
 \itemdescr{
 \returns
@@ -955,15 +1005,15 @@ constexpr bool ascii_is_graphical(\ctype c) noexcept;
 }
 
 \itemdecl{
-constexpr bool ascii_is_printable(\ctype c) noexcept;
+template<\ctype T> constexpr bool ascii_is_printing(T c) noexcept;
 }
 \itemdescr{
 \returns
-\tcode{ascii_is_graphical(c) || static_cast<char32_t>(c) == U' '}.
+\tcode{ascii_is_graphic(c) || static_cast<char32_t>(c) == U' '}.
 }
 
 \itemdecl{
-constexpr bool ascii_is_horizontal_whitespace(\ctype c) noexcept;
+template<\ctype T> constexpr bool ascii_is_horizontal_whitespace(T c) noexcept;
 }
 \itemdescr{
 \returns
@@ -971,7 +1021,7 @@ constexpr bool ascii_is_horizontal_whitespace(\ctype c) noexcept;
 }
 
 \itemdecl{
-constexpr bool ascii_is_whitespace(\ctype c) noexcept;
+template<\ctype T> constexpr bool ascii_is_whitespace(T c) noexcept;
 }
 \itemdescr{
 \returns
@@ -979,7 +1029,7 @@ constexpr bool ascii_is_whitespace(\ctype c) noexcept;
 }
 
 \itemdecl{
-constexpr bool ascii_is_control(\ctype c) noexcept;
+template<\ctype T> constexpr bool ascii_is_control(T c) noexcept;
 }
 \itemdescr{
 \returns
@@ -989,26 +1039,26 @@ constexpr bool ascii_is_control(\ctype c) noexcept;
 \h3(listed=false){ASCII character transformation \stable_ref{ascii.chars.transform}}
 
 \itemdecl{
-constexpr \ctype ascii_to_lower(\ctype c) noexcept;
+template<\ctype T> constexpr T ascii_to_lower(T c) noexcept;
 }
 \itemdescr{
 \returns
-\tcode{ascii_is_upper(c) ? static_cast<\ctype>(static_cast<char32_t>(c) - U'A' + U'a') : c}.
+\tcode{ascii_is_upper(c) ? static_cast<T>(static_cast<char32_t>(c) - U'A' + U'a') : c}.
 }
 
 \itemdecl{
-constexpr \ctype ascii_to_upper(\ctype c) noexcept;
+template<\ctype T> constexpr T ascii_to_upper(T c) noexcept;
 }
 \itemdescr{
 \returns
-\tcode{ascii_is_lower(c) ? static_cast<\ctype>(static_cast<char32_t>(c) - U'a' + U'A') : c}.
+\tcode{ascii_is_lower(c) ? static_cast<T>(static_cast<char32_t>(c) - U'a' + U'A') : c}.
 }
 
 \h3(listed=false){ASCII case-insensitive character comparison \stable_ref{ascii.chars.case.compare}}
 
 \itemdecl{
-constexpr strong_ordering ascii_case_insensitive_compare(\ctype a,
-                                                         \ctype b) noexcept;
+template<\ctype T>
+  constexpr strong_ordering ascii_case_insensitive_compare(T a, T b) noexcept;
 }
 \itemdescr{
 \returns
@@ -1016,8 +1066,8 @@ constexpr strong_ordering ascii_case_insensitive_compare(\ctype a,
 }
 
 \itemdecl{
-constexpr bool ascii_case_insensitive_equals(\ctype a,
-                                             \ctype b) noexcept;
+template<\ctype T>
+  constexpr bool ascii_case_insensitive_equals(T a, T b) noexcept;
 }
 \itemdescr{
 \returns
