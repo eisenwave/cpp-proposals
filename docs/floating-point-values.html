@@ -1577,7 +1577,7 @@ if (theme !== null) {
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/P3938R0>P3938R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2025-12-13</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2025-12-14</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6, EWG, CWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1613,19 +1613,21 @@ of the standard.
 <div class=toc-num data-level=3>2.6</div>
 <a href=#is-negative-nan-distinct-from-positive-nan><h3>Is <q>negative NaN</q> distinct from <q>positive NaN</q>?</h3></a>
 <div class=toc-num data-level=3>2.7</div>
-<a href=#can-an-extended-floating-point-type-have-no-finite-values><h3>Can an extended floating-point type have no finite values?</h3></a>
-<div class=toc-num data-level=3>2.8</div>
-<a href=#does-the-core-language-need-to-distinguish-between-normalsubnormal-numbers><h3>Does the core language need to distinguish between normal/subnormal numbers?</h3></a>
-<div class=toc-num data-level=3>2.9</div>
-<a href=#are-there-values-beyond-finite-values-infinity-and-nan><h3>Are there values beyond finite values, infinity, and NaN?</h3></a>
-<div class=toc-num data-level=3>2.10</div>
 <a href=#are-different-nan-payloads-distinct-values><h3>Are different NaN payloads distinct values?</h3></a>
+<div class=toc-num data-level=3>2.8</div>
+<a href=#can-an-extended-floating-point-type-have-no-finite-values><h3>Can an extended floating-point type have no finite values?</h3></a>
+<div class=toc-num data-level=3>2.9</div>
+<a href=#does-the-core-language-need-to-distinguish-between-normalsubnormal-numbers><h3>Does the core language need to distinguish between normal/subnormal numbers?</h3></a>
+<div class=toc-num data-level=3>2.10</div>
+<a href=#are-there-values-beyond-finite-values-infinity-and-nan><h3>Are there values beyond finite values, infinity, and NaN?</h3></a>
 <div class=toc-num data-level=3>2.11</div>
 <a href=#what-does-it-mean-for-a-type-to-adhere-to-isoiec-60559><h3>What does it mean for a type to <q>adhere to ISO/IEC 60559</q>?</h3></a>
 <div class=toc-num data-level=3>2.12</div>
 <a href=#is-0%2e0-positive-or-negative-zero><h3>Is <code><h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num>0</h-></code> positive or negative zero?</h3></a>
 <div class=toc-num data-level=3>2.13</div>
 <a href=#are-arithmetic-operations-required-to-preserve-the-sign-of-zero><h3>Are arithmetic operations required to preserve the sign of zero?</h3></a>
+<div class=toc-num data-level=3>2.14</div>
+<a href=#how-does-template-argument-equivalence-work-for-floating-point-types><h3>How does template argument equivalence work for floating-point types?</h3></a>
 <div class=toc-num data-level=2>3</div>
 <a href=#impact-on-the-standard><h2>Impact on the standard</h2></a>
 <div class=toc-num data-level=2>4</div>
@@ -1687,6 +1689,11 @@ There are a few questions that have no obvious answer:
     or are these effectively the same NaN values with different "payloads"?
   </li>
   <li>
+    Are different NaN payloads distinct values?
+    If so, does that imply <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>has_unique_object_representations_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>float32_t</h-><h- data-h=sym_op>&gt;</h-></code>
+    is <code><h- data-h=bool>true</h-></code>?
+  </li>
+  <li>
     Can an extended floating-point type be so imprecise
     that it is incapable of representing any number?
     That is, could an <code><i><h- data-h=id>infinity-t</h-></i></code>  type in the style of <code><h- data-h=id_type>nullptr_t</h-></code>
@@ -1699,16 +1706,12 @@ There are a few questions that have no obvious answer:
     Are there any other possible categories of values beyond finite values, infinity, and NaN?
   </li>
   <li>
-    Are different NaN payloads distinct values?
-    If so, does that imply <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>has_unique_object_representations_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>float32_t</h-><h- data-h=sym_op>&gt;</h-></code>
-    is <code><h- data-h=bool>true</h-></code>?
-  </li>
-  <li>
     What does it mean for a type to <q>adhere to ISO/IEC 60559</q>,
     as mentioned in <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>numeric_limits</h-><h- data-h=sym_op>::</h-><h- data-h=id>is_iec559</h-></code>?
   </li>
   <li>Is <code><h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num>0</h-></code> positive or negative zero, or is it implementation-defined/unspecified?</li>
   <li>Are arithmetic operations required to preserve the sign of zero?</li>
+  <li>How does template argument equivalence work for floating-point types?</li>
 </ul>
 
 
@@ -1795,14 +1798,23 @@ While ISO/IEC 60559 does not consider NaNs with different sign bit
 to be distinct values,
 the C++ standard does not prohibit such a model.
 </p>
-<h3 id=can-an-extended-floating-point-type-have-no-finite-values><a class=para href=#can-an-extended-floating-point-type-have-no-finite-values></a>2.7. Can an extended floating-point type have no finite values?</h3>
+<h3 id=are-different-nan-payloads-distinct-values><a class=para href=#are-different-nan-payloads-distinct-values></a>2.7. Are different NaN payloads distinct values?</h3>
+
+<p>Sometimes.
+<code><h- data-h=id>numeric_limits</h-><h- data-h=sym_op>::</h-><h- data-h=id>quiet_NaN</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> and
+<code><h- data-h=id>numeric_limits</h-><h- data-h=sym_op>::</h-><h- data-h=id>signaling_NaN</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> are two NaNs distinguished only by payload.
+However, not every implementation treats these distinctly.
+For example, when compiling to WASM,
+none of the <code><h- data-h=id>f32</h-></code> or <code><h- data-h=id>f64</h-></code> instructions handle signaling NaNs.
+</p>
+<h3 id=can-an-extended-floating-point-type-have-no-finite-values><a class=para href=#can-an-extended-floating-point-type-have-no-finite-values></a>2.8. Can an extended floating-point type have no finite values?</h3>
 
 <p>No.
 This would make zero-initialization unimplementable,
 and would make <code><h- data-h=id>numeric_limits</h-></code> members such as <code><h- data-h=id>epsilon</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>
 worded in a nonsensical way.
 </p>
-<h3 id=does-the-core-language-need-to-distinguish-between-normalsubnormal-numbers><a class=para href=#does-the-core-language-need-to-distinguish-between-normalsubnormal-numbers></a>2.8. Does the core language need to distinguish between normal/subnormal numbers?</h3>
+<h3 id=does-the-core-language-need-to-distinguish-between-normalsubnormal-numbers><a class=para href=#does-the-core-language-need-to-distinguish-between-normalsubnormal-numbers></a>2.9. Does the core language need to distinguish between normal/subnormal numbers?</h3>
 
 <p>No.
 Subnormals either get <q>flushed</q> to zero,
@@ -1811,7 +1823,7 @@ or they are simply finite numbers like any other.
 The classification of <q>normal</q> and <q>subnormal</q>
 is an implementation detail of the floating-point format.
 </p>
-<h3 id=are-there-values-beyond-finite-values-infinity-and-nan><a class=para href=#are-there-values-beyond-finite-values-infinity-and-nan></a>2.9. Are there values beyond finite values, infinity, and NaN?</h3>
+<h3 id=are-there-values-beyond-finite-values-infinity-and-nan><a class=para href=#are-there-values-beyond-finite-values-infinity-and-nan></a>2.10. Are there values beyond finite values, infinity, and NaN?</h3>
 
 <p>The exotic and surprising part is that floating-point types may represent
 additional implementation-defined values beyond finite values, infinity, and NaN.
@@ -1842,15 +1854,6 @@ signaling NaN only raises a floating-point exception but doesn't trap.
 extra implementation-defined classifications well,
 they nonetheless exist,
 and it seems like an unmotivated breaking change to drop support for them.
-</p>
-<h3 id=are-different-nan-payloads-distinct-values><a class=para href=#are-different-nan-payloads-distinct-values></a>2.10. Are different NaN payloads distinct values?</h3>
-
-<p>Sometimes.
-<code><h- data-h=id>numeric_limits</h-><h- data-h=sym_op>::</h-><h- data-h=id>quiet_NaN</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> and
-<code><h- data-h=id>numeric_limits</h-><h- data-h=sym_op>::</h-><h- data-h=id>signaling_NaN</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> are two NaNs distinguished only by payload.
-However, not every implementation treats these distinctly.
-For example, when compiling to WASM,
-none of the <code><h- data-h=id>f32</h-></code> or <code><h- data-h=id>f64</h-></code> instructions handle signaling NaNs.
 </p>
 <h3 id=what-does-it-mean-for-a-type-to-adhere-to-isoiec-60559><a class=para href=#what-does-it-mean-for-a-type-to-adhere-to-isoiec-60559></a>2.11. What does it mean for a type to <q>adhere to ISO/IEC 60559</q>?</h3>
 
@@ -1901,6 +1904,56 @@ For example, the unary <code><h- data-h=sym_op>-</h-></code> operator should be 
 even for zero,
 otherwise <code><h- data-h=sym_op>-</h-><h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num>0</h-></code> may not be a spelling of negative zero,
 as users rely on.
+</p>
+<h3 id=how-does-template-argument-equivalence-work-for-floating-point-types><a class=para href=#how-does-template-argument-equivalence-work-for-floating-point-types></a>2.14. How does template argument equivalence work for floating-point types?</h3>
+
+<p>In practice, it is based on bitwise identical values.
+<a href=https://eel.is/c++draft/temp.type>[temp.type]</a> states that
+</p><blockquote>
+<p>Two values are template-argument-equivalent if they are of the same type and
+</p><ul>
+  <li>they are of integral type and their values are the same, or</li>
+  <li>they are of floating-point type and their values are identical, or</li>
+  <li>[…]</li>
+</ul>
+</blockquote>
+<p>The distinction between <q>same</q> and <q>identical</q> is not obvious.
+It was added during C++20 NB comment resolution by <a href="https://wg21%2elink/p1907r1">[P1907R1]</a>,
+after <a href="https://wg21%2elink/p1714r1">[P1714R1]</a>
+(the paper which originally added support for floating-point template parameters)
+was rejected.
+The original paper used the terminology <q>identical value representations</q>,
+which makes the intent obvious,
+unlike the current wording.
+</p>
+<p>GCC, Clang, and MSVC implement the design of the original paper
+by mangling the bit-casting to an integer and mangling it into the name.
+</p><example-block><p><intro-></intro-> 
+Instantiating <code><h- data-h=id>f</h-></code> with two different qNaNs payloads results in two distinct
+instantiations, despite there only being only one distinct qNaN value,
+at least from an ISO/IEC 60559 perspective.
+</p><code-block><h- data-h=kw>template</h-> <h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>float</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h->
+
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> "default" qNaN:</h->
+<h- data-h=kw>template</h-> <h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>float</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=num_deco>0x</h-><h- data-h=num>7fc00000</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> also qNaN (same value, different bit pattern):</h->
+<h- data-h=kw>template</h-> <h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>float</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=num_deco>0x</h-><h- data-h=num>7fc00001</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>Both GCC and Clang emit the assembly:
+</p><pre>
+_Z1fILf<mark>7fc00000</mark>EEvv:
+        ret
+_Z1fILf<mark>7fc00001</mark>EEvv:
+        ret
+</pre>
+</example-block>
+
+<p>The wording should be clarified to match the design of the original paper
+and to match what implementations actually do.
+Creating a distinct instantiation for every bit pattern is the most useful behavior anyway;
+it would be impossible to deliberately wrap a NaN payload of choice
+in <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>constant_wrapper</h-></code> otherwise, for example.
 </p>
 <h2 id=impact-on-the-standard><a class=para href=#impact-on-the-standard></a>3. Impact on the standard</h2>
 
@@ -2312,7 +2365,17 @@ whose object representation contains padding bits.
 <span class=bib-author>Thomas Köppe.</span>
 <span class=bib-title>Working Draft, Programming Languages — C++</span>
 <span class=bib-date>2025-08-05</span>
-<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/n5014%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf</a></div><div id=bib-item-NetBSD-fpclassify class=bib-item>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/n5014%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf</a></div><div id=bib-item-P1714R1 class=bib-item>
+<a href="https://wg21%2elink/p1714r1">[P1714R1]</a>
+<span class=bib-author>Jorg Brown.</span>
+<span class=bib-title>NTTP are incomplete without float, double, and long double! (Revision 1)</span>
+<span class=bib-date>2019-07-19</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2019/p1714r1%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1714r1.html</a></div><div id=bib-item-P1907R1 class=bib-item>
+<a href="https://wg21%2elink/p1907r1">[P1907R1]</a>
+<span class=bib-author>Jens Maurer.</span>
+<span class=bib-title>Inconsistencies with non-type template parameters</span>
+<span class=bib-date>2019-11-08</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2019/p1907r1%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1907r1.html</a></div><div id=bib-item-NetBSD-fpclassify class=bib-item>
 <a href="https://man%2enetbsd%2eorg/NetBSD-10%2e1/fpclassify%2e3">[NetBSD-fpclassify]</a>
 <span class=bib-title>fpclassify(3) - NetBSD Manual Pages</span>
 <a href="https://man%2enetbsd%2eorg/NetBSD-10%2e1/fpclassify%2e3" class=bib-link>https://man.netbsd.org/NetBSD-10.1/fpclassify.3</a></div></div>

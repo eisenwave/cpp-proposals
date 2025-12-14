@@ -5,7 +5,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{P3938R0}}
-  \dt{Date:}            \dd{\tt{2025-12-13}}
+  \dt{Date:}            \dd{\tt{2025-12-14}}
   \dt{Audience:}        \dd{SG6, EWG, CWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -65,6 +65,11 @@ There are a few questions that have no obvious answer:
     or are these effectively the same NaN values with different "payloads"?
   }
   \li{
+    Are different NaN payloads distinct values?
+    If so, does that imply \tcode{std::has_unique_object_representations_v<std::float32_t>}
+    is \tcode{true}?
+  }
+  \li{
     Can an extended floating-point type be so imprecise
     that it is incapable of representing any number?
     That is, could an \tcode{\exposid{infinity-t}}  type in the style of \tcode{nullptr_t}
@@ -77,16 +82,12 @@ There are a few questions that have no obvious answer:
     Are there any other possible categories of values beyond finite values, infinity, and NaN?
   }
   \li{
-    Are different NaN payloads distinct values?
-    If so, does that imply \tcode{std::has_unique_object_representations_v<std::float32_t>}
-    is \tcode{true}?
-  }
-  \li{
     What does it mean for a type to \q{adhere to ISO/IEC 60559},
     as mentioned in \tcode{std::numeric_limits::is_iec559}?
   }
   \li{Is \tcode{0.0} positive or negative zero, or is it implementation-defined/unspecified?}
   \li{Are arithmetic operations required to preserve the sign of zero?}
+  \li{How does template argument equivalence work for floating-point types?}
 }
 
 
@@ -173,6 +174,15 @@ While ISO/IEC 60559 does not consider NaNs with different sign bit
 to be distinct values,
 the C++ standard does not prohibit such a model.
 
+\h3{Are different NaN payloads distinct values?}
+
+Sometimes.
+\tcode{numeric_limits::quiet_NaN()} and
+\tcode{numeric_limits::signaling_NaN()} are two NaNs distinguished only by payload.
+However, not every implementation treats these distinctly.
+For example, when compiling to WASM,
+none of the \tcode{f32} or \tcode{f64} instructions handle signaling NaNs.
+
 \h3{Can an extended floating-point type have no finite values?}
 
 No.
@@ -220,15 +230,6 @@ While neither the C23 wording nor the C++ wording handles these
 extra implementation-defined classifications well,
 they nonetheless exist,
 and it seems like an unmotivated breaking change to drop support for them.
-
-\h3{Are different NaN payloads distinct values?}
-
-Sometimes.
-\tcode{numeric_limits::quiet_NaN()} and
-\tcode{numeric_limits::signaling_NaN()} are two NaNs distinguished only by payload.
-However, not every implementation treats these distinctly.
-For example, when compiling to WASM,
-none of the \tcode{f32} or \tcode{f64} instructions handle signaling NaNs.
 
 \h3{What does it mean for a type to \q{adhere to ISO/IEC 60559}?}
 
@@ -279,6 +280,58 @@ For example, the unary \tcode{-} operator should be required to flip the sign bi
 even for zero,
 otherwise \tcode{-0.0} may not be a spelling of negative zero,
 as users rely on.
+
+\h3{How does template argument equivalence work for floating-point types?}
+
+In practice, it is based on bitwise identical values.
+\eelis{temp.type} states that
+\Bquote{
+Two values are template-argument-equivalent if they are of the same type and
+\ul{
+  \li{they are of integral type and their values are the same, or}
+  \li{they are of floating-point type and their values are identical, or}
+  \li{\etc}
+}
+}
+The distinction between \q{same} and \q{identical} is not obvious.
+It was added during C++20 NB comment resolution by \ref(P1907R1),
+after \ref(P1714R1)
+(the paper which originally added support for floating-point template parameters)
+was rejected.
+The original paper used the terminology \q{identical value representations},
+which makes the intent obvious,
+unlike the current wording.
+
+GCC, Clang, and MSVC implement the design of the original paper
+by mangling the bit-casting to an integer and mangling it into the name.
+\Bex{
+Instantiating \tcode{f} with two different qNaNs payloads results in two distinct
+instantiations, despite there only being only one distinct qNaN value,
+at least from an ISO/IEC 60559 perspective.
+\cppblock{
+template <float>
+void f() {}
+
+// "default" qNaN:
+template void f<std::bit_cast<float>(0x7fc00000)>();
+// also qNaN (same value, different bit pattern):
+template void f<std::bit_cast<float>(0x7fc00001)>();
+}
+
+Both GCC and Clang emit the assembly:
+\pre{
+_Z1fILf\mark{7fc00000}EEvv:
+        ret
+_Z1fILf\mark{7fc00001}EEvv:
+        ret
+}
+}
+
+The wording should be clarified to match the design of the original paper
+and to match what implementations actually do.
+Creating a distinct instantiation for every bit pattern is the most useful behavior anyway;
+it would be impossible to deliberately wrap a NaN payload of choice
+in \tcode{std::constant_wrapper} otherwise, for example.
 
 \h2{Impact on the standard}
 
@@ -695,6 +748,22 @@ whose object representation contains padding bits.
   author = Thomas Köppe,
   link = https://wg21.link/n5014,
   long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+)\
+\bib(
+  id = P1714R1,
+  title = NTTP are incomplete without float\, double\, and long double! (Revision 1),
+  date = 2019-07-19,
+  author = Jorg Brown,
+  link = https://wg21.link/p1714r1,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1714r1.html,
+)\
+\bib(
+  id = P1907R1,
+  title = Inconsistencies with non-type template parameters,
+  date = 2019-11-08,
+  author = Jens Maurer,
+  link = https://wg21.link/p1907r1,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1907r1.html,
 )\
 \bib(
   id = NetBSD-fpclassify,
