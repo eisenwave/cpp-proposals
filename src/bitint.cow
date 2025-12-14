@@ -5,7 +5,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{P3666R2}}
-  \dt{Date:}            \dd{\tt{2025-11-13}}
+  \dt{Date:}            \dd{\tt{2025-12-14}}
   \dt{Audience:}        \dd{EWG, LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -45,6 +45,13 @@ this proposal introduces a new set of fundamental types to C++.
   \li{
     added \ref(#library-policy-for-templates) and applied the proposed policy
     to \ref(#bitint-abs)
+  }
+  \li{updated reference from \ref(N3699) to \ref(N3747)}
+  \li{also added \tcode{abs} overloads to \header{cstdlib}, instead of just \header{cmath}}
+  \li{
+    added \ref(#utility.intcmp)
+    (adding support to \tcode{cmp_less} was already intended, but potentially requires
+    wording due to weird choice of constraints)
   }
 }
 
@@ -980,7 +987,7 @@ mostly for historical reasons
 This is an irregularity that could make generic programming harder in C++.
 
 However, there are already plans to lift the restriction for C2y;
-see \ref(N3699) "Integer Sets, v3".
+see \ref(N3747) "Integer Sets, v5".
 That proposal makes \tcode{_BitInt(1)} a valid type,
 and \tcode{0wb} is changed to be of type \tcode{_BitInt(1)} rather than \tcode{_BitInt(2)}.
 That proposal also contains some practical motivation for why
@@ -2284,6 +2291,12 @@ the possible changes to container \tcode{size_type}s are not listed.
     \td{\ref(#broadening-type-traits)}
   }
   \tr{
+    \td{\header{cstdlib}}
+    \td{Add \tcode{abs} overload.}
+    \td{\ref(#cstdlib.syn)}
+    \td{\ref(#bitint-abs)}
+  }
+  \tr{
     \td{\header{format}}
     \td{Expand blanket support for integers.}
     \td{None required}
@@ -2381,8 +2394,8 @@ the possible changes to container \tcode{size_type}s are not listed.
   }
   \tr{
     \td{\header{utility}}
-    \td{Expand blanket support for integers (e.g. \tcode{to_integer}).}
-    \td{None required}
+    \td{Expand blanket support for integers (e.g. \tcode{to_integer}, \tcode{cmp_less}).}
+    \td{\ref(#utility.intcmp)}
     \td{\ref(#misc-support)}
   }
   \tr{
@@ -3460,6 +3473,28 @@ Add the following feature-test macro to \eelis{version.syn}:
 }
 }
 
+\h4(show-number=false){[cstdlib.syn]}
+
+\editnote{
+See \ref(#bitint-abs).
+The definitions are in \ref(#c.math.abs).
+}
+
+In \eelis{cmath.syn}, change the synopsis as follows:
+
+\Bdiff{
+\itemdecl{
+constexpr int abs(int j);                                         // \serif{freestanding}
+constexpr long int abs(long int j);                               // \serif{freestanding}
+constexpr long long int abs(long long int j);                     // \serif{freestanding}
+\ins{template<class T> constexpr T abs(T j);                           // \serif{freestanding}}
+constexpr \exposid{floating-point-type} abs(\exposid{floating-point-type} j);         // \serif{freestanding}
+
+constexpr long int labs(long int j);                              // \serif{freestanding}
+constexpr long long int llabs(long long int j);                   // \serif{freestanding}
+}
+}
+
 \h4(show-number=false){[cstdint.syn]}
 
 In \eelis{cstdint.syn},
@@ -3656,6 +3691,19 @@ struct make_unsigned;
     }
   }
 }
+}
+
+\h4(show-number=false){[utility.intcmp]}
+
+Merge
+\ref(https://github.com/cplusplus/draft/pull/8616){editorial pull request #8616}
+if it has not yet been merged.
+
+\editnote{
+Rephrasing the constraint of "standard or extended" as "signed or unsigned"
+has no normative effect on the current wording,
+and silently adds support for bit-precise integers
+once added to the language.
 }
 
 \h4(show-number=false){[stdbit.h.syn]}
@@ -4431,6 +4479,13 @@ of messages worth of valuable feedback.
   date = 2025-09-05,
   author = Phillip Klaus Krause,
   link = https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3705.htm,
+)\
+\bib(
+  id = N3747,
+  title = Integer Sets\, v5,
+  date = 2025-12-02,
+  author = Robert C. Seacord,
+  link = https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3747.pdf,
 )\
 
 \make_bib
