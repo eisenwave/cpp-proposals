@@ -136,7 +136,7 @@ constexpr int div_ties_away_zero(int x, int y) {
 
 // Idea: same as div_ties_away_zero,
 //       but we only magnify on ties when the quotient is positive.
-constexpr div_result<int> div_rem_ties_to_inf(int x, int y) {
+constexpr div_result<int> div_rem_ties_to_pos_inf(int x, int y) {
     int quotient_sign = __sgn2(x) * __sgn2(y);
     int abs_rem = x % y * __sgn2(x);
     int abs_half_y = y / 2 * __sgn2(y);
@@ -144,8 +144,8 @@ constexpr div_result<int> div_rem_ties_to_inf(int x, int y) {
     return __div_rem_offset_quotient(x, y, int(increment) * quotient_sign);
 }
 
-constexpr int div_ties_to_inf(int x, int y) {
-    return div_rem_ties_to_inf(x, y).quotient;
+constexpr int div_ties_to_pos_inf(int x, int y) {
+    return div_rem_ties_to_pos_inf(x, y).quotient;
 }
 
 // Idea: same as div_ties_away_zero,
