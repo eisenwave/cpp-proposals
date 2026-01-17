@@ -16,7 +16,8 @@
 }
 
 \Babstract{
-The API of \tcode{std::to_chars} and \tcode{std::from_chars} is a dead end.
+The API of \tcode{std::to_chars} and \tcode{std::from_chars} is a dead end
+for future standardization.
 Providing improved replacements is better than maintaining the existing overloads.
 }
 
@@ -76,11 +77,11 @@ An implementation that provides all standardized floating point types
 (\tcode{float}, \tcode{double}, \tcode{long double},
 \tcode{std::float16_t}, \tcode{std::bfloat}, \tcode{std::float32_t},
 \tcode{std::float64_t}, and \tcode{std::float128_t})
-needs to be provide 4 × 8 = 32 floating-point overloads, as well as 10 integer overloads.
-There are 42 candidates participating in overload resolution.
+needs to be provide 4 × 8 = 32 floating-point overloads, as well as 11 integer overloads.
+There are 43 candidates participating in overload resolution.
 
 For \tcode{std::from_chars},
-there are \q{only} 26 candidates in that scenario.
+there are \q{only} 27 candidates in that scenario.
 
 \h3{Output parameters}
 
@@ -185,6 +186,93 @@ These are differently shaped pegs that shouldn't be fit through the same hole.
 Creating new error codes would break existing user code
 that checks for \tcode{errc::result_out_of_range}.
 
+\h3{\tcode{std::from_chars} cannot parse digit separators}
+
+Neither the integer nor the floating-point overloads of \tcode{std::from_chars}
+can parse digit separators.
+This is quite annoying because floating-point numbers in config formats,
+scripting languages, etc.
+may have digit separators.
+It also means that \tcode{std::from_chars} isn't capable of parsing
+a C++ \gterm{integer-literal} or \gterm{floating-point-literal} in the general case
+(even after removing the prefix),
+which is the bare minimum functionality a user is entitled to.
+
+Removing the base prefix (e.g. \tt{0x}) is fairly easy and requires no extra allocations,
+but removing digit separators from the middle of the string requires a separate buffer
+and non-trivial effort from the user.
+
+\h3{\tcode{std::to_chars} output isn't customizable enough}
+
+\tcode{std::to_chars} makes some arbitrary, opinionated choices
+that the user may not like:
+\ul{
+  \li{
+    The integer overload outputs lowercase characters for digits beyond base 10.
+  }
+  \li{
+    The floating-point overload outputs lowercase \tcode{e} or \tcode{p}
+    exponent separators.
+  }
+  \li{
+    The floating-point overload always outputs exponents zero-padded by one,
+    such as \tcode{e+09}.
+    This doesn't make parsing any easier since \tcode{std::from_chars} should still
+    accept exponents with only a single digit;
+    it merely bloats the output with redundant information.
+  }
+  \li{
+    The minimum and maximum exponent for exponential notation cannot be customized.
+  }
+}
+
+The first two points are somewhat inconsequential;
+the user can simply convert each character to uppercase after running \tcode{std::to_chars}.
+
+The zero-padding of the exponent is quite problematic though;
+if the user wants the \em{truly} shortest representation,
+without \q{unfairly handicapping} the exponential notation with zero-padding,
+they need to run \tcode{std::to_chars} two times in certain cases.
+If the goal is to optimize for space by outputting the shortest representation
+(even if it's less readable),
+why would the user want to waste space with this zero?
+
+Last but not least,
+if the goal is to maximize human-readability,
+the user often wants to constrain the exponent instead of going with the shortest representation.
+
+\Bex{
+For a floating-point number \tt{1.0e} with some exponent,
+\ul{
+  \li{
+    JS consoles in web browsers output in fixed format
+    for exponents in the range [-6, 20].
+  }
+  \li{
+    Python consoles output in fixed format
+    for exponents in the range [-4, 15].
+  }
+  \li{
+    Kotlin's \tcode{println} outputs in fixed format
+    for exponents in the range [-3, 6].
+  }
+  \li{
+    \tcode{std::to_chars} with \tcode{chars_format::general} outputs in fixed format
+    for exponents in the range [-4, 5].
+  }
+}
+}
+
+\tcode{chars_format::general} is better than no choice,
+but only provides the user with one completely arbitrary alternative to the default behavior.
+Clearly, every other software has a different opinion on when to choose
+fixed notation over exponential notation.
+Unfortunately, \tcode{std::to_chars} makes it very difficult to implement that opinion.
+The default behavior of choosing the shortest representation is not very common
+for user-facing output,
+and \tcode{std::to_chars} doesn't even implement that properly due to zero-padding
+the exponent.
+
 \h2{Solution}
 
 \h3{What to do with \tcode{std::to_chars} and \tcode{std::from_chars}}
@@ -207,6 +295,57 @@ should be largely abandoned.
 These functions could live in the standard without deprecation,
 as largely obsolete features, similar to \tcode{std::strtod}.
 
+\h3{The issue of floating-point underflow}
+
+To ensure round-tripping, \tcode{std::to_chars} needs to produce
+output that is always accepted by \tcode{std::from_chars}
+and results in the same floating-point value.
+There are three distinct problematic scenarios:
+\ol{
+  \li{
+    Parsing an inexact representation of a subnormal number, such as
+    \tcode{"1e-45"}.
+  }
+  \li{
+    Parsing an exact representation of a subnormal number, such as
+    \tcode{"0.00000000000000000000000000000000000000000000" "14012984643248170709237295832899161312802619418765157" "7175706828388979108268586060148663818836212158203125"}.
+  }
+  \li{
+    Parsing a nonzero number that is zero after rounding, such as
+    \tcode{"1e-100000000000"}.
+  }
+}
+
+\Bnote{
+When parsing a \tcode{std::float32_t} with the input from the first or second bullet,
+the same floating-point value is produced.
+However, only the input in the second bullet matches the exact decimal value
+of the floating-point number without any rounding.
+}
+
+All existing implementations work by extracting the significant digits
+(17 in the case of \tcode{std::float64_t})
+and multiplying this mantissa with the exponent part,
+adjusted based on the position of the radix point.
+This makes it impossible to distinguish between the first and second scenario,
+and distinguishing between them would require unreasonable effort because all digits
+(possibly over 100) contribute
+to whether the string is an exact or inexact representation of a floating-point number.
+
+Therefore, the only detectable scenario should be the last case,
+i.e. parsing an \q{inexact zero}.
+Neither the first nor second case should result in an error because that would make
+parsing subnormal numbers impossible and would violate the round-tripping guarantee.
+
+\Bnote{
+Distinguishing between the exact and inexact case is not impossible,
+just difficult and expensive.
+A possible implementation could parse and round,
+then feed the rounded value into \tcode{std::to_chars} with a high
+precision value to produce as many significant digits as necessary,
+then compare those digits to the original input string.
+}
+
 \h3{A better alternative API}
 
 Rather than continuing work on \tcode{std::to_chars} and \tcode{std::from_chars},
@@ -221,23 +360,73 @@ A rough draft of a new API looks as follows.
 \h4{\tcode{std::to_characters}}
 
 \cppblock{
+enum class characters_notation {
+  // Only fixed notation permitted.
+  fixed = \exposid{unspecified},
+  // Only scientific notation permitted.
+  scientific = \exposid{unspecified},
+  // Either notation permitted.
+  any = fixed | scientific,
+};
+
+struct to_characters_options {
+  // For integers, in range [2, 36].
+  // For floating-point, either 10 or 16.
+  int base = 10;
+  // Output uppercase characters such as 1E+3 or FF00
+  bool uppercase = false,
+
+  // Permitted notations.
+  characters_notation notation = characters_notation::any,
+  // If positive, specifies the precision.
+  // Otherwise ignored.
+  int precision = -1;
+  // Zero-padding of the exponent.
+  int exponent_zero_pad = 0;
+  // Force fixed notation if an exponent in scientific notation is in the range
+  // [fixed_min_exponent, fixed_max_exponent),
+  // even if scientific notation would yield shorter output.
+  int fixed_min_exponent = 0;
+  int fixed_max_exponent = 0;
+};
+
+// Same options as to_chars without any std::chars_format.
+inline constexpr to_characters_options \exposid{to-chars-default-options} {
+  .exponent_zero_pad = 2,
+};
+// Same options as chars_format::general.
+inline constexpr to_characters_options \exposid{to-chars-general-options} {
+  .exponent_zero_pad = 2,
+  .fixed_min_exponent = -4,
+  .fixed_max_exponent = 6,
+};
+// Same options as with chars_format::fixed.
+inline constexpr to_characters_options \exposid{to-chars-fixed-options} {
+  .exponent_zero_pad = 2,
+  .notation = characters_notation::fixed,
+};
+// Same options as with chars_format::scientific.
+inline constexpr to_characters_options \exposid{to-chars-scientific-options} {
+  .exponent_zero_pad = 2,
+  .notation = characters_notation::scientific,
+};
+// Same options as with chars_format::hex.
+inline constexpr to_characters_options \exposid{to-chars-hex-options} {
+  .base = 16,
+  .exponent_zero_pad = 2,
+};
+
 template<class T>
   concept \exposid{signed-or-unsigned} = \exposid{any signed or unsigned integer type};
 template<class T>
   concept \exposid{cv-unqualified-floating-point}
-    = std::same_as<T, const volatile T> && std::floating_point<T>;
+    = !is_const_v<T> && !is_volatile_v<T> && floating_point<T>;
 
-template<\exposid{signed-or-unsigned} T>
-  constexpr ptrdiff_t to_characters(span<char> out, T value, int base = 10);
-
-template<\exposid{cv-unqualified-floating-point} T>
-  constexpr ptrdiff_t to_characters(span<char> out, T value);
-template<\exposid{cv-unqualified-floating-point} T>
-  constexpr ptrdiff_t to_characters(span<char> out, T value,
-                                    chars_format fmt);
-template<\exposid{cv-unqualified-floating-point} T>
-  constexpr ptrdiff_t to_characters(span<char> out, T value,
-                                    chars_format fmt, int precision);
+template<class T>
+  requires \exposid{signed-or-unsigned}<T>
+        || \exposid{cv-unqualified-floating-point}<T>
+  constexpr size_t to_characters(span<char> out, T value,
+                                 const to_characters_options& options = {});
 }
 
 \tcode{std::to_chars} can only signal one possible failure,
@@ -245,10 +434,10 @@ namely \tcode{std::errc::value_too_large}.
 On success, \tcode{std::to_chars_result::ptr} can be used to detect how many characters
 were written.
 
-It is actually possible to have all that functionality by simply returning \tcode{ptrdiff_t}.
+It is actually possible to have all that functionality by simply returning \tcode{size_t}.
 On success, the amount of written characters is returned;
 on failure, zero is returned, which also happens to be the amount of (usable) characters written.
-A \tcode{ptrdiff_t} result completely eliminates the need for a dedicated result type,
+A \tcode{size_t} result completely eliminates the need for a dedicated result type,
 while conveying the same amount of information.
 
 The \tcode{out} parameter is deliberately not dependent;

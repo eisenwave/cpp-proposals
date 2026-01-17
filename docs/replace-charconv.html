@@ -1588,7 +1588,8 @@ if (theme !== null) {
 </div>
 
 <abstract-block><p><intro-></intro-> 
-The API of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code> is a dead end.
+The API of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code> is a dead end
+for future standardization.
 Providing improved replacements is better than maintaining the existing overloads.
 </p></abstract-block>
 
@@ -1604,17 +1605,23 @@ Providing improved replacements is better than maintaining the existing overload
 <a href=#problems-with-floating-point-std::from_chars><h3>Problems with floating-point <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code></h3></a>
 <div class=toc-num data-level=3>1.4</div>
 <a href=#no-path-forward-for-std::from_chars><h3>No path forward for <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code></h3></a>
+<div class=toc-num data-level=3>1.5</div>
+<a href=#std::from_chars-cannot-parse-digit-separators><h3><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code> cannot parse digit separators</h3></a>
+<div class=toc-num data-level=3>1.6</div>
+<a href=#std::to_chars-output-isnt-customizable-enough><h3><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> output isn't customizable enough</h3></a>
 <div class=toc-num data-level=2>2</div>
 <a href=#solution><h2>Solution</h2></a>
 <div class=toc-num data-level=3>2.1</div>
 <a href=#what-to-do-with-std::to_chars-and-std::from_chars><h3>What to do with <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code></h3></a>
 <div class=toc-num data-level=3>2.2</div>
+<a href=#the-issue-of-floating-point-underflow><h3>The issue of floating-point underflow</h3></a>
+<div class=toc-num data-level=3>2.3</div>
 <a href=#a-better-alternative-api><h3>A better alternative API</h3></a>
-<div class=toc-num data-level=4>2.2.1</div>
+<div class=toc-num data-level=4>2.3.1</div>
 <a href=#std::to_characters><h4><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_characters</h-></code></h4></a>
-<div class=toc-num data-level=4>2.2.2</div>
+<div class=toc-num data-level=4>2.3.2</div>
 <a href=#std::from_characters><h4><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_characters</h-></code></h4></a>
-<div class=toc-num data-level=4>2.2.3</div>
+<div class=toc-num data-level=4>2.3.3</div>
 <a href=#integrating-other-proposal-into-this-design><h4>Integrating other proposal into this design</h4></a>
 <div class=toc-num data-level=2>3</div>
 <a href=#implementation><h2>Implementation</h2></a>
@@ -1676,11 +1683,11 @@ An implementation that provides all standardized floating point types
 (<code><h- data-h=kw_type>float</h-></code>, <code><h- data-h=kw_type>double</h-></code>, <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>,
 <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>float16_t</h-></code>, <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bfloat</h-></code>, <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>float32_t</h-></code>,
 <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>float64_t</h-></code>, and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>float128_t</h-></code>)
-needs to be provide 4 × 8 = 32 floating-point overloads, as well as 10 integer overloads.
-There are 42 candidates participating in overload resolution.
+needs to be provide 4 × 8 = 32 floating-point overloads, as well as 11 integer overloads.
+There are 43 candidates participating in overload resolution.
 </p>
 <p>For <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code>,
-there are <q>only</q> 26 candidates in that scenario.
+there are <q>only</q> 27 candidates in that scenario.
 </p>
 <h3 id=output-parameters><a class=para href=#output-parameters></a>1.2. Output parameters</h3>
 
@@ -1785,6 +1792,93 @@ These are differently shaped pegs that shouldn't be fit through the same hole.
 <p>Creating new error codes would break existing user code
 that checks for <code><h- data-h=id>errc</h-><h- data-h=sym_op>::</h-><h- data-h=id>result_out_of_range</h-></code>.
 </p>
+<h3 id=std::from_chars-cannot-parse-digit-separators><a class=para href=#std::from_chars-cannot-parse-digit-separators></a>1.5. <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code> cannot parse digit separators</h3>
+
+<p>Neither the integer nor the floating-point overloads of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code>
+can parse digit separators.
+This is quite annoying because floating-point numbers in config formats,
+scripting languages, etc.
+may have digit separators.
+It also means that <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code> isn't capable of parsing
+a C++ <g-term>integer-literal</g-term> or <g-term>floating-point-literal</g-term> in the general case
+(even after removing the prefix),
+which is the bare minimum functionality a user is entitled to.
+</p>
+<p>Removing the base prefix (e.g. <tt->0x</tt->) is fairly easy and requires no extra allocations,
+but removing digit separators from the middle of the string requires a separate buffer
+and non-trivial effort from the user.
+</p>
+<h3 id=std::to_chars-output-isnt-customizable-enough><a class=para href=#std::to_chars-output-isnt-customizable-enough></a>1.6. <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> output isn't customizable enough</h3>
+
+<p><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> makes some arbitrary, opinionated choices
+that the user may not like:
+</p><ul>
+  <li>
+    The integer overload outputs lowercase characters for digits beyond base 10.
+  </li>
+  <li>
+    The floating-point overload outputs lowercase <code><h- data-h=id>e</h-></code> or <code><h- data-h=id>p</h-></code>
+    exponent separators.
+  </li>
+  <li>
+    The floating-point overload always outputs exponents zero-padded by one,
+    such as <code><h- data-h=id>e</h-><h- data-h=sym_op>+</h-><h- data-h=num>09</h-></code>.
+    This doesn't make parsing any easier since <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code> should still
+    accept exponents with only a single digit;
+    it merely bloats the output with redundant information.
+  </li>
+  <li>
+    The minimum and maximum exponent for exponential notation cannot be customized.
+  </li>
+</ul>
+
+<p>The first two points are somewhat inconsequential;
+the user can simply convert each character to uppercase after running <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code>.
+</p>
+<p>The zero-padding of the exponent is quite problematic though;
+if the user wants the <em>truly</em> shortest representation,
+without <q>unfairly handicapping</q> the exponential notation with zero-padding,
+they need to run <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> two times in certain cases.
+If the goal is to optimize for space by outputting the shortest representation
+(even if it's less readable),
+why would the user want to waste space with this zero?
+</p>
+<p>Last but not least,
+if the goal is to maximize human-readability,
+the user often wants to constrain the exponent instead of going with the shortest representation.
+</p>
+<example-block><p><intro-></intro-> 
+For a floating-point number <tt->1.0e</tt-> with some exponent,
+</p><ul>
+  <li>
+    JS consoles in web browsers output in fixed format
+    for exponents in the range [-6, 20].
+  </li>
+  <li>
+    Python consoles output in fixed format
+    for exponents in the range [-4, 15].
+  </li>
+  <li>
+    Kotlin's <code><h- data-h=id>println</h-></code> outputs in fixed format
+    for exponents in the range [-3, 6].
+  </li>
+  <li>
+    <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> with <code><h- data-h=id>chars_format</h-><h- data-h=sym_op>::</h-><h- data-h=id>general</h-></code> outputs in fixed format
+    for exponents in the range [-4, 5].
+  </li>
+</ul>
+</example-block>
+
+<p><code><h- data-h=id>chars_format</h-><h- data-h=sym_op>::</h-><h- data-h=id>general</h-></code> is better than no choice,
+but only provides the user with one completely arbitrary alternative to the default behavior.
+Clearly, every other software has a different opinion on when to choose
+fixed notation over exponential notation.
+Unfortunately, <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> makes it very difficult to implement that opinion.
+The default behavior of choosing the shortest representation is not very common
+for user-facing output,
+and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> doesn't even implement that properly due to zero-padding
+the exponent.
+</p>
 <h2 id=solution><a class=para href=#solution></a>2. Solution</h2>
 
 <h3 id=what-to-do-with-std::to_chars-and-std::from_chars><a class=para href=#what-to-do-with-std::to_chars-and-std::from_chars></a>2.1. What to do with <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code></h3>
@@ -1807,7 +1901,58 @@ should be largely abandoned.
 These functions could live in the standard without deprecation,
 as largely obsolete features, similar to <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>strtod</h-></code>.
 </p>
-<h3 id=a-better-alternative-api><a class=para href=#a-better-alternative-api></a>2.2. A better alternative API</h3>
+<h3 id=the-issue-of-floating-point-underflow><a class=para href=#the-issue-of-floating-point-underflow></a>2.2. The issue of floating-point underflow</h3>
+
+<p>To ensure round-tripping, <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> needs to produce
+output that is always accepted by <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code>
+and results in the same floating-point value.
+There are three distinct problematic scenarios:
+</p><ol>
+  <li>
+    Parsing an inexact representation of a subnormal number, such as
+    <code><h- data-h=str_dlim>"</h-><h- data-h=str>1e-45</h-><h- data-h=str_dlim>"</h-></code>.
+  </li>
+  <li>
+    Parsing an exact representation of a subnormal number, such as
+    <code><h- data-h=str_dlim>"</h-><h- data-h=str>0.00000000000000000000000000000000000000000000</h-><h- data-h=str_dlim>"</h-> <h- data-h=str_dlim>"</h-><h- data-h=str>14012984643248170709237295832899161312802619418765157</h-><h- data-h=str_dlim>"</h-> <h- data-h=str_dlim>"</h-><h- data-h=str>7175706828388979108268586060148663818836212158203125</h-><h- data-h=str_dlim>"</h-></code>.
+  </li>
+  <li>
+    Parsing a nonzero number that is zero after rounding, such as
+    <code><h- data-h=str_dlim>"</h-><h- data-h=str>1e-100000000000</h-><h- data-h=str_dlim>"</h-></code>.
+  </li>
+</ol>
+
+<note-block><p><intro-></intro-> 
+When parsing a <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>float32_t</h-></code> with the input from the first or second bullet,
+the same floating-point value is produced.
+However, only the input in the second bullet matches the exact decimal value
+of the floating-point number without any rounding.
+</p></note-block>
+
+<p>All existing implementations work by extracting the significant digits
+(17 in the case of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>float64_t</h-></code>)
+and multiplying this mantissa with the exponent part,
+adjusted based on the position of the radix point.
+This makes it impossible to distinguish between the first and second scenario,
+and distinguishing between them would require unreasonable effort because all digits
+(possibly over 100) contribute
+to whether the string is an exact or inexact representation of a floating-point number.
+</p>
+<p>Therefore, the only detectable scenario should be the last case,
+i.e. parsing an <q>inexact zero</q>.
+Neither the first nor second case should result in an error because that would make
+parsing subnormal numbers impossible and would violate the round-tripping guarantee.
+</p>
+<note-block><p><intro-></intro-> 
+Distinguishing between the exact and inexact case is not impossible,
+just difficult and expensive.
+A possible implementation could parse and round,
+then feed the rounded value into <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> with a high
+precision value to produce as many significant digits as necessary,
+then compare those digits to the original input string.
+</p></note-block>
+
+<h3 id=a-better-alternative-api><a class=para href=#a-better-alternative-api></a>2.3. A better alternative API</h3>
 
 <p>Rather than continuing work on <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code>,
 a better API should be provided that combines all the desired changes
@@ -1818,35 +1963,85 @@ were implemented.
 </p>
 <p>A rough draft of a new API looks as follows.
 </p>
-<h4 id=std::to_characters><a class=para href=#std::to_characters></a>2.2.1. <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_characters</h-></code></h4>
+<h4 id=std::to_characters><a class=para href=#std::to_characters></a>2.3.1. <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_characters</h-></code></h4>
 
-<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
+<code-block><h- data-h=kw>enum</h-> <h- data-h=kw>class</h-> <h- data-h=id>characters_notation</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Only fixed notation permitted.</h->
+  <h- data-h=id>fixed</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=id>unspecified</h-></i><h- data-h=sym_punc>,</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Only scientific notation permitted.</h->
+  <h- data-h=id>scientific</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=id>unspecified</h-></i><h- data-h=sym_punc>,</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Either notation permitted.</h->
+  <h- data-h=id>any</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>fixed</h-> <h- data-h=sym_op>|</h-> <h- data-h=id>scientific</h-><h- data-h=sym_punc>,</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=kw>struct</h-> <h- data-h=id>to_characters_options</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> For integers, in range [2, 36].</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> For floating-point, either 10 or 16.</h->
+  <h- data-h=kw_type>int</h-> <h- data-h=id>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Output uppercase characters such as 1E+3 or FF00</h->
+  <h- data-h=kw_type>bool</h-> <h- data-h=id>uppercase</h-> <h- data-h=sym_op>=</h-> <h- data-h=bool>false</h-><h- data-h=sym_punc>,</h->
+
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Permitted notations.</h->
+  <h- data-h=id>characters_notation</h-> <h- data-h=id>notation</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>characters_notation</h-><h- data-h=sym_op>::</h-><h- data-h=id>any</h-><h- data-h=sym_punc>,</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> If positive, specifies the precision.</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Otherwise ignored.</h->
+  <h- data-h=kw_type>int</h-> <h- data-h=id>precision</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Zero-padding of the exponent.</h->
+  <h- data-h=kw_type>int</h-> <h- data-h=id>exponent_zero_pad</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Force fixed notation if an exponent in scientific notation is in the range</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> [fixed_min_exponent, fixed_max_exponent),</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> even if scientific notation would yield shorter output.</h->
+  <h- data-h=kw_type>int</h-> <h- data-h=id>fixed_min_exponent</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_type>int</h-> <h- data-h=id>fixed_max_exponent</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Same options as to_chars without any std::chars_format.</h->
+<h- data-h=kw>inline</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>to_characters_options</h-> <i><h- data-h=id>to-chars-default-options</h-></i> <h- data-h=sym_brac>{</h->
+  <h- data-h=sym_op>.</h-><h- data-h=id>exponent_zero_pad</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>2</h-><h- data-h=sym_punc>,</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Same options as chars_format::general.</h->
+<h- data-h=kw>inline</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>to_characters_options</h-> <i><h- data-h=id>to-chars-general-options</h-></i> <h- data-h=sym_brac>{</h->
+  <h- data-h=sym_op>.</h-><h- data-h=id>exponent_zero_pad</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>2</h-><h- data-h=sym_punc>,</h->
+  <h- data-h=sym_op>.</h-><h- data-h=id>fixed_min_exponent</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_op>-</h-><h- data-h=num>4</h-><h- data-h=sym_punc>,</h->
+  <h- data-h=sym_op>.</h-><h- data-h=id>fixed_max_exponent</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>6</h-><h- data-h=sym_punc>,</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Same options as with chars_format::fixed.</h->
+<h- data-h=kw>inline</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>to_characters_options</h-> <i><h- data-h=id>to-chars-fixed-options</h-></i> <h- data-h=sym_brac>{</h->
+  <h- data-h=sym_op>.</h-><h- data-h=id>exponent_zero_pad</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>2</h-><h- data-h=sym_punc>,</h->
+  <h- data-h=sym_op>.</h-><h- data-h=id>notation</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>characters_notation</h-><h- data-h=sym_op>::</h-><h- data-h=id>fixed</h-><h- data-h=sym_punc>,</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Same options as with chars_format::scientific.</h->
+<h- data-h=kw>inline</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>to_characters_options</h-> <i><h- data-h=id>to-chars-scientific-options</h-></i> <h- data-h=sym_brac>{</h->
+  <h- data-h=sym_op>.</h-><h- data-h=id>exponent_zero_pad</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>2</h-><h- data-h=sym_punc>,</h->
+  <h- data-h=sym_op>.</h-><h- data-h=id>notation</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>characters_notation</h-><h- data-h=sym_op>::</h-><h- data-h=id>scientific</h-><h- data-h=sym_punc>,</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Same options as with chars_format::hex.</h->
+<h- data-h=kw>inline</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>to_characters_options</h-> <i><h- data-h=id>to-chars-hex-options</h-></i> <h- data-h=sym_brac>{</h->
+  <h- data-h=sym_op>.</h-><h- data-h=id>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>16</h-><h- data-h=sym_punc>,</h->
+  <h- data-h=sym_op>.</h-><h- data-h=id>exponent_zero_pad</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>2</h-><h- data-h=sym_punc>,</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>concept</h-> <i><h- data-h=id>signed-or-unsigned</h-></i> <h- data-h=sym_op>=</h-> <i><h- data-h=id>any signed or unsigned integer type</h-></i><h- data-h=sym_punc>;</h->
 <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>concept</h-> <i><h- data-h=id>cv-unqualified-floating-point</h-></i>
-    <h- data-h=sym_op>=</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>same_as</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw>volatile</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>floating_point</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=sym_op>=</h-> <h- data-h=sym_op>!</h-><h- data-h=id>is_const_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=sym_op>!</h-><h- data-h=id>is_volatile_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=id>floating_point</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>;</h->
 
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=id>signed-or-unsigned</h-></i> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=id_type>ptrdiff_t</h-> <h- data-h=id>to_characters</h-><h- data-h=sym_par>(</h-><h- data-h=id>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>out</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=id>cv-unqualified-floating-point</h-></i> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=id_type>ptrdiff_t</h-> <h- data-h=id>to_characters</h-><h- data-h=sym_par>(</h-><h- data-h=id>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>out</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=id>cv-unqualified-floating-point</h-></i> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=id_type>ptrdiff_t</h-> <h- data-h=id>to_characters</h-><h- data-h=sym_par>(</h-><h- data-h=id>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>out</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>value</h-><h- data-h=sym_punc>,</h->
-                                    <h- data-h=id>chars_format</h-> <h- data-h=id>fmt</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=id>cv-unqualified-floating-point</h-></i> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=id_type>ptrdiff_t</h-> <h- data-h=id>to_characters</h-><h- data-h=sym_par>(</h-><h- data-h=id>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>out</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>value</h-><h- data-h=sym_punc>,</h->
-                                    <h- data-h=id>chars_format</h-> <h- data-h=id>fmt</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>precision</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>requires</h-> <i><h- data-h=id>signed-or-unsigned</h-></i><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
+        <h- data-h=sym_op>||</h-> <i><h- data-h=id>cv-unqualified-floating-point</h-></i><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=id_type>size_t</h-> <h- data-h=id>to_characters</h-><h- data-h=sym_par>(</h-><h- data-h=id>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>out</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>value</h-><h- data-h=sym_punc>,</h->
+                                 <h- data-h=kw>const</h-> <h- data-h=id>to_characters_options</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>options</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <p><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> can only signal one possible failure,
 namely <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>errc</h-><h- data-h=sym_op>::</h-><h- data-h=id>value_too_large</h-></code>.
 On success, <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars_result</h-><h- data-h=sym_op>::</h-><h- data-h=id>ptr</h-></code> can be used to detect how many characters
 were written.
 </p>
-<p>It is actually possible to have all that functionality by simply returning <code><h- data-h=id_type>ptrdiff_t</h-></code>.
+<p>It is actually possible to have all that functionality by simply returning <code><h- data-h=id_type>size_t</h-></code>.
 On success, the amount of written characters is returned;
 on failure, zero is returned, which also happens to be the amount of (usable) characters written.
-A <code><h- data-h=id_type>ptrdiff_t</h-></code> result completely eliminates the need for a dedicated result type,
+A <code><h- data-h=id_type>size_t</h-></code> result completely eliminates the need for a dedicated result type,
 while conveying the same amount of information.
 </p>
 <p>The <code><h- data-h=id>out</h-></code> parameter is deliberately not dependent;
@@ -1855,7 +2050,7 @@ so the API would not be ergonomic.
 The <code><h- data-h=id>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>&gt;</h-></code> parameter lets the user store the result in an
 <code><h- data-h=id>array</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>N</h-><h- data-h=sym_op>&gt;</h-></code>, a <code><h- data-h=kw_type>char</h-><h- data-h=sym_sqr>[</h-><h- data-h=id>N</h-><h- data-h=sym_sqr>]</h-></code>, etc.
 </p>
-<h4 id=std::from_characters><a class=para href=#std::from_characters></a>2.2.2. <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_characters</h-></code></h4>
+<h4 id=std::from_characters><a class=para href=#std::from_characters></a>2.3.2. <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_characters</h-></code></h4>
 
 <code-block><h- data-h=kw>enum</h-> <h- data-h=kw>class</h-> <h- data-h=id>from_characters_status</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Success.</h->
@@ -1947,7 +2142,7 @@ or perhaps it was the only case that should be signaled by <code><h- data-h=id>e
 Nobody knows.
 </p></note-block>
 
-<h4 id=integrating-other-proposal-into-this-design><a class=para href=#integrating-other-proposal-into-this-design></a>2.2.3. Integrating other proposal into this design</h4>
+<h4 id=integrating-other-proposal-into-this-design><a class=para href=#integrating-other-proposal-into-this-design></a>2.3.3. Integrating other proposal into this design</h4>
 
 <ul>
   <li>
