@@ -1434,7 +1434,7 @@ if (theme !== null) {
     document.documentElement.className = theme;
 }
   </script>
-<title>Clarify the behavior of floating-point overflow and underflow</title></head>
+<title>Clarify the behavior of floating-point overflow</title></head>
 <body>
 <div id=settings tabindex=0>
     <div id=theme-icon></div>
@@ -1573,11 +1573,11 @@ if (theme !== null) {
   }
 </style>
 
-<div class=wg21-head><h1>Clarify the behavior of floating-point overflow and underflow</h1>
+<div class=wg21-head><h1>Clarify the behavior of floating-point overflow</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3899R1>P3899R1</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-02-17</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3899R0>P3899R0</a></dd>
+  <dt>Date:</dt>            <dd><tt->2025-12-13</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6, EWG, CWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>
@@ -1591,84 +1591,57 @@ if (theme !== null) {
 </div>
 
 <abstract-block><p><intro-></intro-> 
-The current specification of floating-point overflow and underflow is unclear.
+The current specification of floating-point overflow is unclear.
 This paper fixes it.
 </p></abstract-block>
 
 <h2 id=contents><a class=para href=#contents></a>Contents</h2>
 
 <div class=toc><div class=toc-num data-level=2>1</div>
-<a href=#revision-history><h2>Revision history</h2></a>
-<div class=toc-num data-level=3>1.1</div>
-<a href=#changes-since-r0><h3>Changes since R0</h3></a>
-<div class=toc-num data-level=2>2</div>
 <a href=#introduction><h2>Introduction</h2></a>
-<div class=toc-num data-level=3>2.1</div>
+<div class=toc-num data-level=3>1.1</div>
 <a href=#wording-disputes><h3>Wording disputes</h3></a>
-<div class=toc-num data-level=4>2.1.1</div>
+<div class=toc-num data-level=4>1.1.1</div>
 <a href=#undefined-behavior-on-floating-point-overflow><h4>Undefined behavior on floating-point overflow</h4></a>
-<div class=toc-num data-level=4>2.1.2</div>
+<div class=toc-num data-level=4>1.1.2</div>
 <a href=#undefined-behavior-on-infinity-propagation><h4>Undefined behavior on infinity propagation</h4></a>
-<div class=toc-num data-level=4>2.1.3</div>
+<div class=toc-num data-level=4>1.1.3</div>
 <a href=#undefined-behavior-on-yielding-infinity><h4>Undefined behavior on yielding infinity</h4></a>
-<div class=toc-num data-level=4>2.1.4</div>
+<div class=toc-num data-level=4>1.1.4</div>
 <a href=#conclusion><h4>Conclusion</h4></a>
-<div class=toc-num data-level=3>2.2</div>
+<div class=toc-num data-level=3>1.2</div>
 <a href=#constant-expressions-in-c><h3>Constant expressions in C</h3></a>
-<div class=toc-num data-level=3>2.3</div>
+<div class=toc-num data-level=3>1.3</div>
 <a href=#implementation-divergence><h3>Implementation divergence</h3></a>
-<div class=toc-num data-level=2>3</div>
+<div class=toc-num data-level=2>2</div>
 <a href=#design><h2>Design</h2></a>
-<div class=toc-num data-level=3>3.1</div>
+<div class=toc-num data-level=3>2.1</div>
 <a href=#floating-point-overflow-without-infinity><h3>Floating-point overflow without infinity</h3></a>
-<div class=toc-num data-level=3>3.2</div>
+<div class=toc-num data-level=3>2.2</div>
 <a href=#floating-point-overflow-with-infinity><h3>Floating-point overflow with infinity</h3></a>
-<div class=toc-num data-level=3>3.3</div>
-<a href=#floating-point-underflow><h3>Floating-point underflow</h3></a>
-<div class=toc-num data-level=3>3.4</div>
+<div class=toc-num data-level=3>2.3</div>
 <a href=#infinity-propagation><h3>Infinity propagation</h3></a>
-<div class=toc-num data-level=3>3.5</div>
+<div class=toc-num data-level=3>2.4</div>
 <a href=#division-by-zero><h3>Division by zero</h3></a>
-<div class=toc-num data-level=3>3.6</div>
+<div class=toc-num data-level=3>2.5</div>
 <a href=#nan><h3>NaN</h3></a>
-<div class=toc-num data-level=2>4</div>
+<div class=toc-num data-level=2>3</div>
 <a href=#impact-on-existing-code><h2>Impact on existing code</h2></a>
-<div class=toc-num data-level=2>5</div>
+<div class=toc-num data-level=2>4</div>
 <a href=#implementation-experience><h2>Implementation experience</h2></a>
-<div class=toc-num data-level=2>6</div>
+<div class=toc-num data-level=2>5</div>
 <a href=#wording><h2>Wording</h2></a>
-<div class=toc-num data-level=3>6.1</div>
+<div class=toc-num data-level=3>5.1</div>
 <a href=#basic%2efundamental><h3>[basic.fundamental]</h3></a>
-<div class=toc-num data-level=3>6.2</div>
+<div class=toc-num data-level=3>5.2</div>
 <a href=#expr%2epre><h3>[expr.pre]</h3></a>
-<div class=toc-num data-level=3>6.3</div>
+<div class=toc-num data-level=3>5.3</div>
 <a href=#expr%2econst><h3>[expr.const]</h3></a>
-<div class=toc-num data-level=2>7</div>
+<div class=toc-num data-level=2>6</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
-<h2 id=revision-history><a class=para href=#revision-history></a>1. Revision history</h2>
-
-<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.1. Changes since R0</h3>
-
-<ul>
-  <li>
-    Reworded <a href=#undefined-behavior-on-yielding-infinity>§2.1.3. Undefined behavior on yielding infinity</a>
-  </li>
-  <li>
-    Investigated floating-point underflow in <a href=#implementation-divergence>§2.3. Implementation divergence</a>
-  </li>
-  <li>
-    Decided to allow underflow in constant expressions;
-    see <a href=#floating-point-underflow>§3.3. Floating-point underflow</a>
-  </li>
-  <li>
-    Introduced the phrase "mathematically defined in the domain of real number arithmetic"
-    in <a href=#wording>§6. Wording</a>
-  </li>
-</ul>
-
-<h2 id=introduction><a class=para href=#introduction></a>2. Introduction</h2>
+<h2 id=introduction><a class=para href=#introduction></a>1. Introduction</h2>
 
 <p>The current specification of floating-point overflow is unclear.
 Floating-point overflow occurs when finite operands are used as operands,
@@ -1676,7 +1649,7 @@ and the result cannot be represented as a finite value.
 For <a href="https://www%2eiso%2eorg/standard/80985%2ehtml">[ISO/IEC 60559:2020]</a> floating-point numbers,
 this results in infinity.
 </p>
-<h3 id=wording-disputes><a class=para href=#wording-disputes></a>2.1. Wording disputes</h3>
+<h3 id=wording-disputes><a class=para href=#wording-disputes></a>1.1. Wording disputes</h3>
 
 <p>Extensive discussion in CWG has shown that we cannot find consensus
 on what the current behavior is:
@@ -1692,7 +1665,7 @@ on what the current behavior is:
 
 <p>See below a summary of each wording dispute.
 </p>
-<h4 id=undefined-behavior-on-floating-point-overflow><a class=para href=#undefined-behavior-on-floating-point-overflow></a>2.1.1. Undefined behavior on floating-point overflow</h4>
+<h4 id=undefined-behavior-on-floating-point-overflow><a class=para href=#undefined-behavior-on-floating-point-overflow></a>1.1.1. Undefined behavior on floating-point overflow</h4>
 
 <p>The source of undefined behavior is located in <a href=https://eel.is/c++draft/expr.pre#4>[expr.pre] paragraph 4</a>:
 </p>
@@ -1806,7 +1779,7 @@ because a fully well-defined floating-point overflow is a constant expression.
 It also seemingly contradicts the design rationale in the note attached to
 <a href=https://eel.is/c++draft/expr.pre#4>[expr.pre] paragraph 4</a>.
 </p>
-<h4 id=undefined-behavior-on-infinity-propagation><a class=para href=#undefined-behavior-on-infinity-propagation></a>2.1.2. Undefined behavior on infinity propagation</h4>
+<h4 id=undefined-behavior-on-infinity-propagation><a class=para href=#undefined-behavior-on-infinity-propagation></a>1.1.2. Undefined behavior on infinity propagation</h4>
 
 <p>In the case of <code><h- data-h=id>infinity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>+</h-> <h- data-h=num>1</h-></code>,
 the result is not mathematically a real number,
@@ -1834,14 +1807,13 @@ has undefined behavior:
   </li>
 </ul>
 
-<h4 id=undefined-behavior-on-yielding-infinity><a class=para href=#undefined-behavior-on-yielding-infinity></a>2.1.3. Undefined behavior on yielding infinity</h4>
+<h4 id=undefined-behavior-on-yielding-infinity><a class=para href=#undefined-behavior-on-yielding-infinity></a>1.1.3. Undefined behavior on yielding infinity</h4>
 
-<p>As stated above,
-if we read the wording so that infinity is not in the range of representable values
-for a floating-point type,
-then <code><h- data-h=id>infinity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>+</h-> <h- data-h=num>1</h-></code> has undefined behavior.
-Furthermore, <code><h- data-h=id>infinity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> is also an expression: a function call expression.
-This means that merely returning infinity from a function
+<p>As stated above, <code><h- data-h=id>infinity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>+</h-> <h- data-h=num>1</h-></code>
+may have undefined behavior because the result of the expression is infinity,
+and infinity is arguably not in the range of representable values.
+However, <code><h- data-h=id>infinity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> is also an expression: a function call expression.
+This means that merely returning infinity from a function,
 or copying it by referencing a variable also has undefined behavior.
 </p>
 <note-block><p><intro-></intro-> 
@@ -1854,7 +1826,7 @@ and <code><h- data-h=null>nullptr</h-></code> and <code><h- data-h=str_dlim>"</h
 Virtually every C++ expression has undefined behavior according to this logic.
 </p></note-block>
 
-<h4 id=conclusion><a class=para href=#conclusion></a>2.1.4. Conclusion</h4>
+<h4 id=conclusion><a class=para href=#conclusion></a>1.1.4. Conclusion</h4>
 
 <p>Some definitions such as "mathematically defined" or "overflow" for floating-point numbers
 do not exist,
@@ -1866,7 +1838,7 @@ do not align with the direction taken in <a href="https://cplusplus%2egithub%2ei
 Rather, we should ask what the design should be and then overhaul the wording
 with clear design guidance.
 </p>
-<h3 id=constant-expressions-in-c><a class=para href=#constant-expressions-in-c></a>2.2. Constant expressions in C</h3>
+<h3 id=constant-expressions-in-c><a class=para href=#constant-expressions-in-c></a>1.2. Constant expressions in C</h3>
 
 <p>Unfortunately, C provides little guidance because it has the same crucial wording
 defects as C++:
@@ -1881,7 +1853,7 @@ What makes C even less suitable as guidance is that the implementation may accep
 so-called "extended constant expression",
 meaning that basically any expression could be constant.
 </p>
-<h3 id=implementation-divergence><a class=para href=#implementation-divergence></a>2.3. Implementation divergence</h3>
+<h3 id=implementation-divergence><a class=para href=#implementation-divergence></a>1.3. Implementation divergence</h3>
 
 <style>
   #compiler-comparison {
@@ -1961,15 +1933,6 @@ The results can be seen in the table below.
     <td class=pass>OK</td>
     <td class=fail>error</td>
     <td class=pass>OK</td>
-  </tr>
-  <tr>
-    <td><code><h- data-h=id>min</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=id>min</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code></td>
-    <td class=except><tt->FE_UNDERFLOW</tt-></td>
-    <td class=pass>OK</td>
-    <td class=pass>OK</td>
-    <td class=pass>OK</td>
-    <td class=fail>error</td>
-    <td class=fail>error</td>
   </tr>
   <tr>
     <td><code><h- data-h=id>infinity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>2</h-></code></td>
@@ -2071,7 +2034,7 @@ Signaling NaN information for EDG could not be obtained
 due to Compiler Explorer limitations.
 </p></note-block>
 
-<h2 id=design><a class=para href=#design></a>3. Design</h2>
+<h2 id=design><a class=para href=#design></a>2. Design</h2>
 
 <p>The goal of this paper is to make minimal changes
 that may find consensus,
@@ -2103,10 +2066,10 @@ if <code><h- data-h=id>errno</h-></code> is set when <code><h- data-h=id>math_er
 </p></blockquote>
 
 <p>In short, the GCC 15 behavior is proposed.
-As can be seen in <a href=#implementation-divergence>§2.3. Implementation divergence</a>,
+As can be seen in <a href=#implementation-divergence>§1.3. Implementation divergence</a>,
 GCC 15 considers an expression to be constant if and only if no floating-point exception is raised
-(ignoring <code><h- data-h=id>FE_INEXACT</h-></code> and <code><h- data-h=id>FE_UNDERFLOW</h-></code>),
-making GCC 15 relatively consistent with <code><h- data-h=str>&lt;cmath&gt;</h-></code> already.
+(ignoring <code><h- data-h=id>FE_INEXACT</h-></code>),
+making GCC 15 consistent with <code><h- data-h=str>&lt;cmath&gt;</h-></code> already.
 </p>
 <tip-block><p><intro-></intro-> 
 A rule of thumb for the proposed behavior is that
@@ -2125,7 +2088,7 @@ A rule of thumb for the proposed behavior is that
 </ul>
 </tip-block>
 
-<h3 id=floating-point-overflow-without-infinity><a class=para href=#floating-point-overflow-without-infinity></a>3.1. Floating-point overflow without infinity</h3>
+<h3 id=floating-point-overflow-without-infinity><a class=para href=#floating-point-overflow-without-infinity></a>2.1. Floating-point overflow without infinity</h3>
 
 <p>The current wording may be unclear when infinity is representable,
 but when it isn't,
@@ -2143,7 +2106,7 @@ otherwise, <code><h- data-h=id>x</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>2<
 does not yield <code><h- data-h=id>x</h-></code>.
 </p></example-block>
 
-<h3 id=floating-point-overflow-with-infinity><a class=para href=#floating-point-overflow-with-infinity></a>3.2. Floating-point overflow with infinity</h3>
+<h3 id=floating-point-overflow-with-infinity><a class=para href=#floating-point-overflow-with-infinity></a>2.2. Floating-point overflow with infinity</h3>
 
 <p>Floating-point overflow should be well-defined and produce infinity when possible.
 However, as requested by SG6 in <a href="https://cplusplus%2egithub%2eio/CWG/issues/2168%2ehtml">[CWG2168]</a> in 2016,
@@ -2159,30 +2122,7 @@ and turn into infinity,
 but is that a useful outcome for constant evaluation?
 Likely not.
 </p>
-<h3 id=floating-point-underflow><a class=para href=#floating-point-underflow></a>3.3. Floating-point underflow</h3>
-
-<p>Floating-point underflow
-(that is, producing zero or a denormalized number, except for exact results)
-should be a well-defined and should be a constant expression.
-This is inconsistent with the rest of the design,
-which requires constant expressions not to raise floating-point exceptions.
-However, the same could be said about ignoring <tt->FE_INEXACT</tt->;
-<tt->FE_UNDERFLOW</tt-> is just one more exception that is not relevant
-(though it is relevant in the standard library).
-</p>
-<p>Also, none of the wording suggests that underflow is
-or that it wouldn't be a constant expression.
-The wording is also clear for exotic floating-point types that don't support infinity or NaN.
-Floating-point underflow results in denormalized values or in zero,
-which doesn't require any such "symbolic values".
-</p>
-<p>The key point is that none of the three major compilers
-diagnose floating-point underflow in constant expressions;
-only EDG takes issue.
-It would be unreasonable to break user code when there is seemingly no problem
-and no divergence.
-</p>
-<h3 id=infinity-propagation><a class=para href=#infinity-propagation></a>3.4. Infinity propagation</h3>
+<h3 id=infinity-propagation><a class=para href=#infinity-propagation></a>2.3. Infinity propagation</h3>
 
 <p>Infinity propagation should be well-defined and should be a constant expression.
 This means that <code><h- data-h=id>infinity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>+</h-> <h- data-h=num>1</h-></code> is a constant expression.
@@ -2211,7 +2151,7 @@ The approach to permit infinity propagation in constant expressions
 is not in line with aforementioned SG6 guidance on <a href="https://cplusplus%2egithub%2eio/CWG/issues/2168%2ehtml">[CWG2168]</a>.
 </p></note-block>
 
-<h3 id=division-by-zero><a class=para href=#division-by-zero></a>3.5. Division by zero</h3>
+<h3 id=division-by-zero><a class=para href=#division-by-zero></a>2.4. Division by zero</h3>
 
 <p>Division by zero has always been undefined behavior,
 and this should remain so.
@@ -2240,7 +2180,7 @@ considering that this proposal aims to achieve consistency.
 Implementations retain the freedom to define division by zero to produce infinity,
 but this should not be mandated by the C++ standard.
 </p>
-<h3 id=nan><a class=para href=#nan></a>3.6. NaN</h3>
+<h3 id=nan><a class=para href=#nan></a>2.5. NaN</h3>
 
 <p>The current wording in <a href=https://eel.is/c++draft/expr.pre#4>[expr.pre] paragraph 4</a>
 is clear that any expression that produces NaN has undefined behavior.
@@ -2264,7 +2204,7 @@ with the behavior of the standard library,
 which is rigorously specified,
 just like for infinity.
 </p>
-<h2 id=impact-on-existing-code><a class=para href=#impact-on-existing-code></a>4. Impact on existing code</h2>
+<h2 id=impact-on-existing-code><a class=para href=#impact-on-existing-code></a>3. Impact on existing code</h2>
 
 <p>The only concrete design change is that floating-point overflow produces infinity
 if infinity is representable,
@@ -2277,12 +2217,12 @@ i.e. for a platform without infinity or NaN.
 The run-time behavior of implementations with infinity/NaN support is consistent
 with the proposed behavior.
 </p>
-<h2 id=implementation-experience><a class=para href=#implementation-experience></a>5. Implementation experience</h2>
+<h2 id=implementation-experience><a class=para href=#implementation-experience></a>4. Implementation experience</h2>
 
 <p>GCC 15 implements the proposed behavior exactly.
 Clang and MSVC compilers deviate only slightly.
 </p>
-<h2 id=wording><a class=para href=#wording></a>6. Wording</h2>
+<h2 id=wording><a class=para href=#wording></a>5. Wording</h2>
 
 <p>The changes are relative to <a href="https://wg21%2elink/n5014">[N5014]</a>.
 </p>
@@ -2334,7 +2274,7 @@ The behavior is undefined if the result
 of evaluating an arithmetic expression
 </p><ul>
   <li>
-    is either not mathematically defined in the domain of real number arithmetic
+    is either not mathematically defined
     or not in the range of representable values for its type, and
   </li>
   <li>
@@ -2423,7 +2363,7 @@ would evaluate one of the following:
 </ul>
 </diff-block>
 
-<h2 id=references><a class=para href=#references></a>7. References</h2>
+<h2 id=references><a class=para href=#references></a>6. References</h2>
 
 
 <div class=bib><div id=bib-item-N5014 class=bib-item>

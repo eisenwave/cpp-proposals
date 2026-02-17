@@ -1,11 +1,12 @@
+\: cowel 0.6.0
 \cowel_include{libwg21.cow}
 
 \wg21_head(
-  title = Clarify the behavior of floating-point overflow
+  title = Clarify the behavior of floating-point overflow and underflow
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3899R0}}
-  \dt{Date:}            \dd{\tt{2025-12-13}}
+  \dt{Document number:} \dd{\docnum{P3899R1}}
+  \dt{Date:}            \dd{\tt{2026-02-17}}
   \dt{Audience:}        \dd{SG6, EWG, CWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{
@@ -19,13 +20,34 @@
 }
 
 \Babstract{
-The current specification of floating-point overflow is unclear.
+The current specification of floating-point overflow and underflow is unclear.
 This paper fixes it.
 }
 
 \h2(listed=false){Contents}
 
 \make_contents
+
+\h2{Revision history}
+
+\h3{Changes since R0}
+
+\ul{
+  \li{
+    Reworded \ref(#undefined-behavior-on-yielding-infinity)
+  }
+  \li{
+    Investigated floating-point underflow in \ref(#implementation-divergence)
+  }
+  \li{
+    Decided to allow underflow in constant expressions;
+    see \ref(#floating-point-underflow)
+  }
+  \li{
+    Introduced the phrase "mathematically defined in the domain of real number arithmetic"
+    in \ref(#wording)
+  }
+}
 
 \h2{Introduction}
 
@@ -195,11 +217,12 @@ has undefined behavior:
 
 \h4{Undefined behavior on yielding infinity}
 
-As stated above, \tcode{infinity() + 1}
-may have undefined behavior because the result of the expression is infinity,
-and infinity is arguably not in the range of representable values.
-However, \tcode{infinity()} is also an expression: a function call expression.
-This means that merely returning infinity from a function,
+As stated above,
+if we read the wording so that infinity is not in the range of representable values
+for a floating-point type,
+then \tcode{infinity() + 1} has undefined behavior.
+Furthermore, \tcode{infinity()} is also an expression: a function call expression.
+This means that merely returning infinity from a function
 or copying it by referencing a variable also has undefined behavior.
 
 \Bnote{
@@ -320,6 +343,15 @@ The results can be seen in the table below.
     \td_pass
     \td_fail
     \td_pass
+  }
+  \tr{
+    \td{\tcode{min() * min()}}
+    \td(class=except){\tt{FE_UNDERFLOW}}
+    \td_pass
+    \td_pass
+    \td_pass
+    \td_fail
+    \td_fail
   }
   \tr{
     \td{\tcode{infinity() * 2}}
@@ -455,8 +487,8 @@ if \tcode{errno} is set when \tcode{math_errhandling & MATH_ERRNO} is \tcode{tru
 In short, the GCC 15 behavior is proposed.
 As can be seen in \ref(#implementation-divergence),
 GCC 15 considers an expression to be constant if and only if no floating-point exception is raised
-(ignoring \tcode{FE_INEXACT}),
-making GCC 15 consistent with \header{cmath} already.
+(ignoring \tcode{FE_INEXACT} and \tcode{FE_UNDERFLOW}),
+making GCC 15 relatively consistent with \header{cmath} already.
 
 \Btip{
 A rule of thumb for the proposed behavior is that
@@ -508,6 +540,29 @@ At best, a user's compile-time floating-point computations would overflow
 and turn into infinity,
 but is that a useful outcome for constant evaluation?
 Likely not.
+
+\h3{Floating-point underflow}
+
+Floating-point underflow
+(that is, producing zero or a denormalized number, except for exact results)
+should be a well-defined and should be a constant expression.
+This is inconsistent with the rest of the design,
+which requires constant expressions not to raise floating-point exceptions.
+However, the same could be said about ignoring \tt{FE_INEXACT};
+\tt{FE_UNDERFLOW} is just one more exception that is not relevant
+(though it is relevant in the standard library).
+
+Also, none of the wording suggests that underflow is
+or that it wouldn't be a constant expression.
+The wording is also clear for exotic floating-point types that don't support infinity or NaN.
+Floating-point underflow results in denormalized values or in zero,
+which doesn't require any such "symbolic values".
+
+The key point is that none of the three major compilers
+diagnose floating-point underflow in constant expressions;
+only EDG takes issue.
+It would be unreasonable to break user code when there is seemingly no problem
+and no divergence.
 
 \h3{Infinity propagation}
 
@@ -663,7 +718,7 @@ The behavior is undefined if the result
 of evaluating an arithmetic expression
 \ul{
   \li{
-    is either not mathematically defined
+    is either not mathematically defined in the domain of real number arithmetic
     or not in the range of representable values for its type, and
   }
   \li{
