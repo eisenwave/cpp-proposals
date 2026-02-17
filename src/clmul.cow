@@ -1,11 +1,12 @@
+\: cowel 0.6.0
 \cowel_include{libwg21.cow}
 
 \wg21_head(
   title = Carry-less product: \tt{std::clmul}
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3642R3}}
-  \dt{Date:}            \dd{\tt{2025-11-14}}
+  \dt{Document number:} \dd{\docnum{P3642R4}}
+  \dt{Date:}            \dd{\tt{2025-02-17}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -24,6 +25,18 @@ Add widening and non-widening carry-less multiplication functions.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R3}
+
+\ul{
+  \li{Reference faster possible implementations in \ref(#possible-implementation)}
+  \li{
+    Add some thoughts on why implementations in the compiler
+    are better than pure library implementations
+  }
+  \li{Mention that \tt{@llvm.clmul} has now been added to LLVM (\ref(LLVMClmul))}
+  \li{Change \tcode{operator<=>} for \tcode{wide_result} to be a hidden friend again}
+}
 
 \h3{Changes since R2}
 
@@ -297,6 +310,30 @@ return simd::reduce(V(x) * (V(y) & powers), bit_xor<T>{});
 }
 }
 
+Such a naive implementation is far from optimal though.
+\ref(QuickBench) shows that a naive \tcode{clmul} implementation
+which computes both the high and the low bits
+performs 9.2× worse than an efficient implementation
+taken from \ref(NTL).
+
+\Bnote{
+The mathematical basis for the \ref(NTL) implementation is described in
+\ref(FasterMultiplicationInGF2).
+}
+
+Since January 2026,
+LLVM also provides a portable \tt{@llvm.clmul} intrinsic function (\ref(LLVMClmul)).
+Ideally, an implementation would simply lower
+\tcode{std::clmul} → \tcode{__builtin_clmul} → \tcode{@llvm.clmul} → \tcode{pclmulqdq}.
+
+The issue with library implementations is that the optimal implementation
+for \tcode{std::clmul} highly depends on the architecture
+and has interesting mathematical properties that become opaque in the library.
+For example, if one factor is known to be a power of two,
+even if the exact value isn't known,
+normal multiplication can be used, which may be faster.
+Also, carry-less multiplication is commutative.
+
 \h3{Hardware support}
 
 The implementation difficulty lies mostly in utilizing available hardware instructions,
@@ -386,9 +423,6 @@ wide_result<uint64_t> clmul_wide(uint64_t x, uint64_t y) noexcept {
 }
 }
 
-There also exists an LLVM pull request (\ref(LLVMClmul))
-which would add an \tt{@llvm.clmul} intrinsic function.
-
 
 \h2{Design considerations}
 
@@ -423,7 +457,7 @@ and because it is widespread:
     The Wikipedia article (\ref(WikipediaClmul)) for this operation is titled "Carry-less product".
   }
   \li{
-    The (proposed) LLVM intrinsic function (\ref(LLVMClmul)) is tentatively named \tt{@llvm.clmul}.
+    The portable LLVM intrinsic function (\ref(LLVMClmul)) is named \tt{@llvm.clmul}.
   }
 }
 
@@ -438,14 +472,10 @@ struct wide_result {
   T low_bits;
   T high_bits;
   friend constexpr bool operator==(const wide_result&, const wide_result&) = default;
-};
-
-template<class T>
-  constexpr auto operator<=>(const wide_result<T>& x, const wide_result<T>& y)
+  friend constexpr auto operator<=>(const wide_result& x, const wide_result& y)
     noexcept(noexcept(x.low_bits <=> y.low_bits))
-    -> decltype(x.low_bits <=> y.low_bits) {
-      return tie(x.high_bits, x.low_bits) <=> tie(y.high_bits, y.low_bits);
-    }
+    -> decltype(x.low_bits <=> y.low_bits);
+};
 
 template<class T>
   constexpr wide_result<T> clmul_wide(T x, T y) noexcept;
@@ -478,16 +508,12 @@ These comparisons exists so that the result can be easily compared
 against expected results in test cases,
 stored in containers like \tcode{std::set},
 used out of the box with \tcode{std::sort}, etc.
+There is an obvious and mathematically meaningful ordering of \tcode{wide_result}s,
+so it would be strange not to add a comparison operator.
 
 Also, \tcode{wide_result} should be a broadly useful vocabulary type
 which may be instantiated with user-defined numeric types,
 simply because that seems like a useful side product of this proposal.
-
-\Bnote{
-\tcode{operator<=>} cannot be a hidden friend because
-\tcode{wide_result} is meant to compile even when given a type
-that has no \tcode{<=>} operator.
-}
 
 \Bnote{
 It would not be possible to simply return an integer with twice the
@@ -569,12 +595,10 @@ struct wide_result {
   T low_bits;
   T high_bits;
   friend constexpr bool operator==(const wide_result&, const wide_result&) = default;
-};
-
-template<class T>
-  constexpr auto operator<=>(const wide_result<T>& x, const wide_result<T>& y)
+  friend constexpr auto operator<=>(const wide_result& x, const wide_result& y)
     noexcept(noexcept(x.low_bits <=> y.low_bits))
     -> decltype(x.low_bits <=> y.low_bits);
+};
 
 template<class T>
   constexpr wide_result<T> clmul_wide(T x, T y) noexcept;
@@ -591,10 +615,9 @@ append a subclause immediately following \eelis{numeric.sat}:
 \Vset(pnum){0}
 
 \itemdecl{
-template<class T>
-  constexpr auto operator<=>(const wide_result<T>& x, const wide_result<T>& y)
-    noexcept(noexcept(x.low_bits <=> y.low_bits))
-    -> decltype(x.low_bits <=> y.low_bits);
+constexpr auto operator<=>(const wide_result& x, const wide_result& y)
+  noexcept(noexcept(x.low_bits <=> y.low_bits))
+  -> decltype(x.low_bits <=> y.low_bits);
 }
 
 \itemdescr{
@@ -869,9 +892,27 @@ for all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}).
 )\
 \bib(
   id = LLVMClmul,
-  author = Oscar Smith,
-  title = [IR] Add llvm clmul intrinsic,
-  link = https://github.com/llvm/llvm-project/pull/140301,
+  title = Documentation for 'llvm.clmul.*' Intrinsic,
+  link = https://llvm.org/docs/LangRef.html#llvm-clmul-intrinsic,
+)\
+\bib(
+  id = QuickBench,
+  title = Benchmark of naive clmul vs. NTL clmul,
+  link = https://quick-bench.com/q/eG4Q5BR_udnfh4V5f-3d3h3fRHY,
+)\
+\bib(
+  id = NTL,
+  author = Victor Shoup,
+  title = NTL GitHub repository,
+  link = https://github.com/libntl/ntl,
+)\
+\bib(
+  id = FasterMultiplicationInGF2,
+  author = Richard P. Brent\, Pierrick Gaudry\, Emmanuel Thomé\, Paul Zimmermann,
+  title = Faster Multiplication in GF(2)[x],
+  date = 2008-11-07,
+  link = https://inria.hal.science/inria-00188261v4/document,
+  publisher = HAL,
 )\
 
 \make_bib
