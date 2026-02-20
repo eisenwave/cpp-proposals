@@ -4,8 +4,8 @@
   title = Values of floating-point types
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3938R0}}
-  \dt{Date:}            \dd{\tt{2025-12-14}}
+  \dt{Document number:} \dd{\docnum{P3938R1}}
+  \dt{Date:}            \dd{\tt{2026-02-20}}
   \dt{Audience:}        \dd{SG6, EWG, CWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -25,6 +25,21 @@ of the standard.
 \h2(listed=false){Contents}
 
 \make_contents
+
+\h2{Revision history}
+
+\h3{Changes since R0}
+
+\ul{
+  \li{Rationalized the status quo in \ref(#is-negative-zero-negative-what-about-infinity-and-nan)}
+  \li{Rebased \ref(#wording) on N5032}
+  \li{In \ref(#wording), fixed improper handling of negative zero \gterm{floating-point-literal}s}
+  \li{In \ref(#wording), referenced \ref(CWG3129)}
+  \li{
+    In \ref(#wording), improved handling of signaling NaNs by relaxing the definition of
+    \q{adheres to ISO/IEC 60559}
+  }
+}
 
 \h2{Introduction}
 
@@ -167,6 +182,20 @@ so negative zero and \q{negative NaN} (NaN with negative sign bit) are not negat
 
 Negative infinity is negative because it compares less than zero.
 
+\Bnote{
+Of course, we could always change our use of the term so that negative zero is negative.
+This may make it easier to word the handling of negative and positive numbers
+in division by zero, if that was ever made well-defined.
+For example, \tcode{-0.0 / numeric_limits::infinity()} should produce negative infinity,
+if well-defined, which it currently isn't.
+
+However, this would be a major deviation from the C wording,
+and we usually try to keep the C++ floating-point wording symmetrical.
+Also, the ISO/IEC 60559 phrase \q{has negative sign bit} includes negative zero as well.
+In most contexts, negative zero is treated the same as positive zero,
+and it would impose a wording burden if one was negative but not the other.
+}
+
 \h3{Is \q{negative NaN} distinct from \q{positive NaN}?}
 
 Presumably.
@@ -257,7 +286,8 @@ There exists no core wording that even attempts at doing so.
 Note that implementations don't always compute results correctly rounded
 (with the greatest available precision),
 while the ISO/IEC 60559 operations are usually correctly rounded.
-Therefore, aligning the C++ expressions with ISO/IEC 60559 may break most implementations.
+Therefore, aligning the C++ expressions with ISO/IEC 60559
+may require changes to most implementations.
 
 \h3{Is \tcode{0.0} positive or negative zero?}
 
@@ -351,7 +381,7 @@ All proposed wording changes document the current behavior of major implementati
 
 \h2{Wording}
 
-The changes are relative to \ref(N5014).
+The changes are relative to \ref(N5032).
 
 \h3(show-number=false){[lex]}
 
@@ -364,13 +394,34 @@ Otherwise, the value of a \grammarterm{floating-point-literal} is
 the scaled value if representable,
 else the larger or smaller representable value nearest the scaled value,
 chosen in an implementation-defined manner.
-\ins{The value of a \grammarterm{floating-point-literal} is non-negative.}
+\ins{The value of a \grammarterm{floating-point-literal} never has negative sign bit.}
+}
 
-\ins{\example{
+If \ref(CWG3129) has not yet been approved at the time of writing,
+add a new example attached to \eelis{lex.fcon#3}:
+
+\Bins{
+\example{
 \tcode{0.0} is positive zero, and
 \tcode{-0.0} is negative zero if \tcode{double}
 has a signed zero (\eelis{basic.fundamental}, \eelis{expr.unary.op}).
-}}
+}
+}
+
+Otherwise, if the proposed resolution of \ref(CWG3129) has been merged,
+change the existing example as follows:
+
+\Bdiff{
+\example{
+The following example assumes that \tcode{std::float32_t} is supported\iref{basic.extended.fp}.
+\itemdecl{
+std::float32_t x = 0.0f32;          //\serif{ \del{value 0} \ins{positive zero} is exactly representable}
+\ins{std::float32_t x = -0.0f32;         //\serif{ negation of positive zero equals negative zero\iref{expr.unary.op}}}
+
+std::float32_t y = 0.1f32;          //\serif{ rounded to one of two values nearest to 0.1}
+std::float32_t z = 1e1000000000f32; //\serif{ either greatest finite value or positive infinity}
+}
+}
 }
 
 \h3(show-number=false){[basic]}
@@ -382,11 +433,9 @@ insert three new paragraphs:
 A floating-point type \dfn{adheres to ISO/IEC 60559}
 if its value representation is one of the floating-point formats
 specified in ISO/IEC 60559 and can represent the sets of floating-point values
-listed in ISO/IEC 60559.
-For a floating-point type
-whose value representation is in a binary format that adheres to ISO/IEC 60559,
-it is implementation-defined which (if any)
-representations of NaN are quiet or signaling.
+listed in ISO/IEC 60559,
+except that it is implementation-defined whether all signaling NaN values
+are treated as a quiet NaN instead.
 
 \note{
 Adherence to ISO/IEC 60559 does not imply that operations on floating-point types
@@ -394,6 +443,10 @@ behave exactly as specified in that standard.
 For example, the behavior of addition in C++\iref{expr.add}
 can differ from the \q{addition} operation in ISO/IEC 60559.
 }
+}
+
+\editnote{
+See \ref(#support) for why signaling NaN is being treated specially.
 }
 
 \editnote{
@@ -622,8 +675,6 @@ but that is how every implementation works.
 Change \eelis{numeric.limits.members} as follows:
 
 \Bdiff{
-\etc
-
 \itemdecl{
 static constexpr bool has_signaling_NaN;
 }
@@ -633,43 +684,39 @@ static constexpr bool has_signaling_NaN;
 
 Meaningful for all floating-point types.
 
-Shall be \tcode{true} for all specializations in which
-\tcode{is_iec559 \del{!= false} \ins{&& \tcode{radix == 10}}} \ins{is \tcode{true}}.
+Shall be \tcode{true} for all specializations in which \tcode{is_iec559 != false}.
+
+\ins{\note{
+An implementation is permitted to treat all signaling NaNs as quiet NaNs,
+even for types that adhere to ISO/IEC 60559\iref{basic.fundamental}.
+In that case, \tcode{has_signaling_NaN} can be \tcode{true}
+despite quiet and signaling NaNs being functionally equivalent.
+}}
 }
 }
 
 \editnote{
-ISO/IEC 60559 does not require that for its binary format,
-any specific representation in a binary format is a signaling NaN.
-In fact, implementations (e.g. GCC by default, Clang by default for WASM target)
+While ISO/IEC 60559 requires a signaling NaN to exist for its interchange formats
+(see ISO/IEC 60559 §6.2 Operations with NaNs),
+this is ignored by implementations in practice.
+For example, GCC by default and Clang by default for WASM targets
 report \tcode{is_iec559} for \tcode{float},
 despite there not existing a signaling NaN.
-Implementations want to signal \tcode{is_iec559} for a type,
-even when none of the representations are signaling.
+Paradoxically, even when there is no signaling NaN,
+GCC and Clang accept the following:
 
-Doing so seemingly complies with ISO/IEC 60559 because it is not mandated
-that at least one signaling NaN representation exists.
-Even the specification of the setPayloadSignaling operation
-does not clearly prohibit an implementation that has no permissible payloads.
-
-On the other hand, ISO/IEC 60559 defines which of the decimal floating-point
-NaNs are quiet and signaling.
+\cppblock{
+#include <limits>
+static_assert(std::numeric_limits<float>::is_iec559); // OK
+static_assert(std::numeric_limits<float>::has_signaling_NaN); // OK even for WASM build?!
 }
 
-Change \eelis{numeric.limits.members} as follows:
-
-\Bdiff{
-\itemdecl{
-static constexpr T signaling_NaN() noexcept;
-}
-
-\itemdescr{
-Representation of a signaling \q{Not a Number}, if available.
-
-Meaningful for all specializations for which \tcode{has_signaling_NaN != false}.
-Required in specializations for which \tcode{is_iec559 \del{!= false}}
-\ins{\tcode{&& radix == 10} is \tcode{true}}.
-}
+The worst possible outcome would be to force implementations to report
+\tcode{iec_iec559} as \tcode{false} on WASM.
+However, since the requirement for \q{adhering to ISO/IEC 60559}
+in \ref(#basic) has been relaxed,
+the implementation is allowed to treat signaling NaNs as quiet NaNs,
+which fixes this contradiction.
 }
 
 Change \eelis{cmp.alg#2} as follows:
@@ -742,12 +789,12 @@ whose object representation contains padding bits.
 \h2{References}
 
 \bib(
-  id = N5014,
+  id = N5032,
   title = Working Draft\, Programming Languages — C++,
-  date = 2025-08-05,
+  date = 2025-12-15,
   author = Thomas Köppe,
-  link = https://wg21.link/n5014,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+  link = https://wg21.link/n5032,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
 )\
 \bib(
   id = P1714R1,
@@ -764,6 +811,14 @@ whose object representation contains padding bits.
   author = Jens Maurer,
   link = https://wg21.link/p1907r1,
   long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1907r1.html,
+)\
+\bib(
+  id = CWG3129,
+  title = Clarify which floating-point-literals are valid,
+  date = 2025-11-10,
+  author = Jan Schultke,
+  link = https://wg21.link/cwg3129,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/cwg_active.html#3129,
 )\
 \bib(
   id = NetBSD-fpclassify,
