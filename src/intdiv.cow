@@ -4,8 +4,8 @@
   title = Integer division
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3724R2}}
-  \dt{Date:}            \dd{\tt{2025-12-14}}
+  \dt{Document number:} \dd{\docnum{P3724R3}}
+  \dt{Date:}            \dd{\tt{2026-02-20}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-To:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -26,6 +26,18 @@ with other rounding modes.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R2}
+
+\ul{
+  \li{added missing Julia rounding modes in \ref(#language-support)}
+  \li{
+    added explanation and motivation for each tie-breaking rounding mode
+    to \ref(#to-nearest-rounding-division-and-tie-breaking)
+  }
+  \li{added roundTiesTowardZero to \ref(#iso-iec-60559-rounding-modes)}
+  \li{rebased \ref(#wording) on \ref(N5032)}
+}
 
 \h3{Changes since R1}
 
@@ -64,7 +76,7 @@ Irrespective of SG6 feedback, the following changes were made:
 
 \ul{
   \li{added discussion \ref(#simd-overloads)}
-  \li{rebased \ref(#wording) on \ref(N5014)}
+  \li{rebased \ref(#wording) on N5014}
 }
 
 \h2{Introduction}
@@ -305,7 +317,9 @@ and hardware.
           \li{to zero (default),}
           \li{away from zero,}
           \li{to \pos_inf or \neg_inf, or}
-          \li{to nearest (ties to even)}
+          \li{to nearest, ties to even}
+          \li{to nearest, ties away from zero}
+          \li{to nearest, ties to \pos_inf}
         }
     }
   }
@@ -973,7 +987,94 @@ Any of the "top-level rounding modes" could plausibly be chosen
 as a "tie-breaking rounding mode" as well,
 which is what this proposal offers.
 
-\h4(id=iso-iec-60559-rounding-modes){ISO/IEC 60559 Rounding modes}
+\style{
+#ties-table td {
+  border-top: 1px solid var(--border-color);
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+}
+}
+
+\table(id=ties-table, class=center){
+  \tr{
+    \th{Function}
+    \th{Tie-breaking}
+    \th{Motivation}
+  }
+  \tr{
+    \td{\tcode{div_ties_to_zero}}
+    \td{
+      to zero
+    }
+    \td{
+      This function is mainly useful because it is that fastest
+      tie-breaking rounding mode in practice.
+      Hardware division rounds to zero,
+      meaning that both the case where the fractional part of the quotient
+      is less than 0.5 and exactly 0.5 are handled by not adjusting
+      the result of hardware division.
+      Not having to distinguish these two cases offers a small simplification.
+    }
+  }
+  \tr{
+    \td{\tcode{div_ties_away_zero}}
+    \td{\nobr{away from zero}}
+    \td{
+      This is \q{high school rounding}.
+      When someone is asked how to round to the nearest number,
+      this is usually what they envision.
+      It is arguably the most human-friendly tie-breaking choice
+      because it matches intuition.
+    }
+  }
+  \tr{
+    \td{\tcode{div_ties_to_neg_inf}}
+    \td{\nobr{toward \neg_inf}}
+    \td{
+      This mode exists for symmetry with \tcode{div_ties_to_neg_inf}.
+    }
+  }
+  \tr{
+    \td{\tcode{div_ties_to_pos_inf}}
+    \td{\nobr{toward \pos_inf}}
+    \td{
+      This mode is a form of \q{high school rounding} similar to \tcode{div_ties_away_zero},
+      except it is biased toward positive numbers instead of being symmetrical.
+      It is also immensely widespread because it used for
+      \tcode{Math.round()} in Java, JavaScript
+      and any adjacent languages, such as TypeScript, Kotlin, etc.
+    }
+  }
+  \tr{
+    \td{\tcode{div_ties_to_even}}
+    \td{to even}
+    \td{
+      This is the default rounding mode in ISO/IEC 60559,
+      and the rounding mode which most floating-point computation uses.
+      It is also referred to as \q{Banker's Rounding}.
+      The key advantage over the rounding modes above is that it is \em{unbiased}.
+      That is, when dividing a set of numbers,
+      the average quotient does not gravitate in any specific direction
+      (such as toward zero),
+      but is the quotient of dividing the average.
+    }
+  }
+  \tr{
+    \td{\tcode{div_ties_to_odd}}
+    \td{to odd}
+    \td{
+      This mode is very similar to \tcode{div_ties_to_even},
+      and has virtually the same use cases, i.e. unbiased rounding.
+      Rounding toward odd numbers can offer slightly better information preservation.
+      For example, for quotients in the range [-0.5, +0.5],
+      \tcode{div_ties_to_even} would never produce ±1 but always zero.
+      It also allegedly enables detecting inexact results in certain fixed-point operations,
+      although I have no concrete example.
+    }
+  }
+}
+
+\h4(id=iso-iec-60559-rounding-modes){ISO/IEC 60559 rounding modes}
 
 Of the proposed functions,
 the following match a rounding mode that is standardized in ISO/IEC 60559
@@ -1011,6 +1112,9 @@ for floating-point numbers:
     \td{roundTiesToEven}
   }
 }
+
+Additionally, there is a roundTiesTowardZero rounding mode
+used in augmented arithmetic operations.
 
 \Bnote{
 The rounding operations are implemented by C functions
@@ -1188,7 +1292,7 @@ Under the hood, calculations are performed using JavaScript's \tt{BigInt}.
 
 \h2{Wording}
 
-All changes are relative to \ref(N5014).
+All changes are relative to \ref(N5032).
 
 \h3(show-number=false){[structure.specifications]}
 
@@ -1652,12 +1756,12 @@ after his feedback.
 \h2{References}
 
 \bib(
-  id = N5014,
+  id = N5032,
   title = Working Draft\, Programming Languages — C++,
-  date = 2025-08-05,
+  date = 2025-12-15,
   author = Thomas Köppe,
-  link = https://wg21.link/n5014,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+  link = https://wg21.link/n5032,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
 )\
 \bib(
   id = P0105R1,
