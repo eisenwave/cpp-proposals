@@ -1576,8 +1576,8 @@ if (theme !== null) {
 <div class=wg21-head><h1>Fixing <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> of types<br/>with padding bits</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/D3969R0>D3969R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-01-17</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3969R0>P3969R0</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-02-20</tt-></dd>
   <dt>Audience:</dt>        <dd>LEWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1591,7 +1591,10 @@ if (theme !== null) {
 When bit-casting a type containing padding bits to a type with no padding bits,
 <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> degenerates into an alternative spelling for <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>unreachable</h-></code>
 (some exceptions apply).
-I propose alternative behavior in the case of padded source types.
+Two viable solutions to the problem are presented:
+diagnosing <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code>
+and adding a <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast_zero_padding</h-></code> function with alternative behavior,
+or simply changing the current behavior of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code>.
 </p></abstract-block>
 
 <h2 id=contents><a class=para href=#contents></a>Contents</h2>
@@ -1601,25 +1604,45 @@ I propose alternative behavior in the case of padded source types.
 <div class=toc-num data-level=2>2</div>
 <a href=#design><h2>Design</h2></a>
 <div class=toc-num data-level=3>2.1</div>
-<a href=#why-not-make-std::bit_cast_zero_padding-the-default-behavior><h3>Why not make <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast_zero_padding</h-></code> the <q>default behavior</q>?</h3></a>
+<a href=#advantages-of-the-two-function-solution><h3>Advantages of the two-function solution</h3></a>
 <div class=toc-num data-level=3>2.2</div>
-<a href=#cant-you-clear-padding-bits-before-bit-casting><h3>Can't you clear padding bits before bit-casting?</h3></a>
+<a href=#advantages-of-the-single-function-solution><h3>Advantages of the single-function solution</h3></a>
 <div class=toc-num data-level=3>2.3</div>
-<a href=#cant-you-make-std::bit_cast-produce-unspecified-or-erroneous-values><h3>Can't you make <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> produce unspecified or erroneous values?</h3></a>
+<a href=#cant-you-clear-padding-bits-before-bit-casting><h3>Can't you clear padding bits before bit-casting?</h3></a>
+<div class=toc-num data-level=4>2.3.1</div>
+<a href=#padding-bits-are-finicky><h4>Padding bits are finicky</h4></a>
+<div class=toc-num data-level=4>2.3.2</div>
+<a href=#no-padding-bits-during-constant-evaluation><h4>No padding bits during constant evaluation</h4></a>
+<div class=toc-num data-level=4>2.3.3</div>
+<a href=#std::clear_padding-is-not-ergonomic-for-bit-casting><h4><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clear_padding</h-></code> is not ergonomic for bit-casting</h4></a>
+<div class=toc-num data-level=4>2.3.4</div>
+<a href=#std::clear_padding-is-less-capable><h4><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clear_padding</h-></code> is less capable</h4></a>
 <div class=toc-num data-level=3>2.4</div>
-<a href=#the-problem-of-bit-casting-union-types><h3>The problem of bit-casting union types</h3></a>
+<a href=#cant-you-make-std::bit_cast-produce-unspecified-or-erroneous-values><h3>Can't you make <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> produce unspecified or erroneous values?</h3></a>
 <div class=toc-num data-level=3>2.5</div>
-<a href=#constraints-vs-mandates><h3><i>Constraints</i> vs <i>Mandates</i></h3></a>
+<a href=#constraints-vs-mandates-for-the-two-function-solution><h3><i>Constraints</i> vs <i>Mandates</i> for the two-function solution</h3></a>
+<div class=toc-num data-level=3>2.6</div>
+<a href=#bit-cast-constant-evaluation-undefined-behavior><h3>Requiring <tt->std::bit_cast</tt-> UB to be diagnosed in constant expressions</h3></a>
+<div class=toc-num data-level=3>2.7</div>
+<a href=#bumping-the-feature-test-macro><h3>Bumping the feature-test macro</h3></a>
 <div class=toc-num data-level=2>3</div>
 <a href=#implementation-experience><h2>Implementation experience</h2></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#wording><h2>Wording</h2></a>
 <div class=toc-num data-level=3>4.1</div>
-<a href=#version%2esyn><h3>[version.syn]</h3></a>
+<a href=#two-function-solution><h3>Two-function solution</h3></a>
+<div class=toc-num data-level=4>4.1.1</div>
+<a href=#version%2esyn><h4>[version.syn]</h4></a>
+<div class=toc-num data-level=4>4.1.2</div>
+<a href=#bit%2esyn><h4>[bit.syn]</h4></a>
+<div class=toc-num data-level=4>4.1.3</div>
+<a href=#bit%2ecast><h4>[bit.cast]</h4></a>
 <div class=toc-num data-level=3>4.2</div>
-<a href=#bit%2esyn><h3>[bit.syn]</h3></a>
-<div class=toc-num data-level=3>4.3</div>
-<a href=#bit%2ecast><h3>[bit.cast]</h3></a>
+<a href=#single-function-solution><h3>Single-function solution</h3></a>
+<div class=toc-num data-level=4>4.2.1</div>
+<a href=#single-functin-version-syn-wording><h4>[version.syn]</h4></a>
+<div class=toc-num data-level=4>4.2.2</div>
+<a href=#single-functin-bit-cast-wording><h4>[bit.cast]</h4></a>
 <div class=toc-num data-level=2>5</div>
 <a href=#references><h2>References</h2></a>
 </div>
@@ -1627,11 +1650,13 @@ I propose alternative behavior in the case of padded source types.
 <h2 id=introduction><a class=para href=#introduction></a>1. Introduction</h2>
 
 <bug-block><p><intro-></intro-> 
-The following use of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> has undefined behavior:
-</p><code-block><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>__int128</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num>0</h-><h- data-h=num_deco>L</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+The following use of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> has undefined behavior at compile time:
+</p><code-block><h- data-h=kw>constexpr</h-> <h- data-h=kw>auto</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>__int128</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num>0</h-><h- data-h=num_deco>L</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> GCC accepts (x = 0), Clang rejects</h-></code-block>
 <p>That is because an 80-bit x87 <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code> has 6 bytes of padding,
 and it is undefined behavior to map those padding bits onto non-padding bits
 in the destination type via <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code>.
+<a href=https://eel.is/c++draft/bit.cast>[bit.cast]</a> does not disqualify this use of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code>
+from being a constant expression.
 </p></bug-block>
 
 <p>Surprisingly, the undefined behavior in such cases does not depend on the argument.
@@ -1651,11 +1676,11 @@ the behavior is well-defined.
 </p></note-block>
 
 <p>This behavior is a footgun, and is not very useful.
-If users want a function that always has UB,
+If users wanted a function that always has UB,
 they should be writing <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>unreachable</h-></code>, not <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code>.
 </p>
 <p>Furthermore, it would be useful if bit-casting between <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>
-and a 128-bit integer type was possible.
+and a 128-bit integer type was easily possible.
 After all, reinterpreting floating-point types and integer types
 is part and parcel of implementing mathematical functions like those in <code><h- data-h=str>&lt;cmath&gt;</h-></code>.
 It would also be useful if this could be done portably in constant expressions.
@@ -1663,32 +1688,69 @@ Another case where the degenerate form may arise frequently is bit-casting <code
 (supported by Clang as an extension and proposed in <a href="https://wg21%2elink/p3666r2">[P3666R2]</a>),
 considering that most <code><h- data-h=kw_type>_BitInt</h-></code> types (at least 7/8) have padding bits.
 </p>
+<note-block><p><intro-></intro-> 
+It is possible to implement a proper conversion from <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>
+to <code><h- data-h=kw_type>__int128</h-></code>, although it requires multiple steps:
+</p><code-block><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK because indeterminate bits go into unsigned char:</h->
+<h- data-h=kw>auto</h-> <h- data-h=id>bytes</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>array</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>16</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num>0</h-><h- data-h=num_deco>L</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw_ctrl>for</h-> <h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>i</h-> <h- data-h=sym_punc>:</h-> <h- data-h=sym_brac>{</h-> <h- data-h=num>10</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>11</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>12</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>13</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>14</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>15</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-> <h- data-h=id>bytes</h-><h- data-h=sym_sqr>[</h-><h- data-h=id>i</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>auto</h-> <h- data-h=id>result</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>__int128</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>bytes</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+<p>Another possible workaround is to use a <code><h- data-h=kw>struct</h-></code>
+containing a <code><h- data-h=kw_type>__int128</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>:</h-><h- data-h=num>80</h-></code> bit-field,
+under the assumption those 80 bits line up with those in <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>.
+</p></note-block>
+
+<note-block><p><intro-></intro-> 
+The GCC behavior in the example above is more accurately explained by <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>
+having no padding bytes.
+From a C++ standard perspective, GCC's <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>
+is a type with no padding bytes, but six upper bytes that are always zero
+(assuming any of this behavior is intentional and not just a compiler bug):
+</p><code-block><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK: uppermost byte is not a padding byte, but is zero</h->
+<h- data-h=kw>static_assert</h-><h- data-h=sym_par>(</h-><h- data-h=id>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>array</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>16</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num>0</h-><h- data-h=num_deco>L</h-><h- data-h=sym_par>)</h-><h- data-h=sym_sqr>[</h-><h- data-h=num>15</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> UB: forms a long double whose value representation is not valid for the type</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw>auto</h-> <h- data-h=id>f</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>__int128</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>-</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Passes on GCC, despite bit_cast having set all bytes of f to -1,</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> and despite long double having no padding bytes judging by the previous assertion:</h->
+<h- data-h=kw>static_assert</h-><h- data-h=sym_par>(</h-><h- data-h=id>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>array</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>16</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>f</h-><h- data-h=sym_par>)</h-><h- data-h=sym_sqr>[</h-><h- data-h=num>15</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+<p>GCC compiles this code;
+Clang already rejects both assertions.
+</p></note-block>
+
 <h2 id=design><a class=para href=#design></a>2. Design</h2>
 
-<p>The paper proposes the following changes:
+<p>To address these issues with <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code>,
+there are two viable approaches:
 </p>
-<ul>
+<ol>
   <li>
-    Make the degenerate form of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> ill-formed
-    by expanding the <i>Constraints</i> element.
-  </li>
-  <li>
-    Add a new <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast_zero_padding</h-></code> function
-    which maps padding bits in the source object
-    onto zero bits in the result.
+    Make the degenerate form of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> ill-formed.
+    Also add a new <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast_zero_padding</h-></code> function
+    which treats padding bits in the source as zero instead of as indeterminate.
     Other than that, this new function has the same behavior as <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code>.
   </li>
-</ul>
+  <li>
+    Make <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> behave like <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast_zero_padding</h-></code>
+    without adding any new function.
+    This should be done as a DR against C++20.
+  </li>
+</ol>
 
-<h3 id=why-not-make-std::bit_cast_zero_padding-the-default-behavior><a class=para href=#why-not-make-std::bit_cast_zero_padding-the-default-behavior></a>2.1. Why not make <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast_zero_padding</h-></code> the <q>default behavior</q>?</h3>
-
-<p>It may also be possible to alter the behavior of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> to clear padding,
-rather than creating a new function.
-However, this would be problematic because <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> can be used
-to convert padded types to a byte array without undefined behavior.
-Wiping padding bits would add more cost to existing code.
+<p>These are referred to as the
+<dfn>two-function solution</dfn> and <dfn>single-function solution</dfn> below, respectively.
 </p>
-<p>Furthermore, if users assumed <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> to wipe padding,
+<h3 id=advantages-of-the-two-function-solution><a class=para href=#advantages-of-the-two-function-solution></a>2.1. Advantages of the two-function solution</h3>
+
+<p>The single-function solution is problematic because <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code>
+can be used to convert padded types to a byte array without undefined behavior
+and with zero overhead.
+Wiping padding bits would add more cost to existing code.
+With only a single function, there is also no way to opt out of that cost
+other than using <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>memcpy</h-></code> instead,
+and that only works outside of constant evaluation.
+</p>
+<p>Furthermore, if users assumed <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> to clear padding,
 they may inadvertently access uninitialized memory on older compiler versions,
 where that behavior is not implemented yet.
 Perfectly well-defined C++29 code with no erroneous behavior
@@ -1699,8 +1761,27 @@ and suddenly obtain undefined behavior.
 users may be surprised by <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> changing the value of any bits.
 Conceptually, it is a reinterpretation of existing bits as a new type,
 and it is desirable to express behavior like zeroing of padding explicitly.
+This surprising behavior may also sweep developer mistakes under the rug;
+bit-casting a padded type to an unpadded type may happen unintentionally,
+and if it was diagnosed, it would inform the user about incorrect assumptions.
+That often seems more desirable than just zeroing the padding bits
+and thus silencing any problems.
 </p>
-<h3 id=cant-you-clear-padding-bits-before-bit-casting><a class=para href=#cant-you-clear-padding-bits-before-bit-casting></a>2.2. Can't you clear padding bits before bit-casting?</h3>
+<h3 id=advantages-of-the-single-function-solution><a class=para href=#advantages-of-the-single-function-solution></a>2.2. Advantages of the single-function solution</h3>
+
+<p>The obvious benefit of changing the behavior of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code>
+is that existing UB in users' code disappears,
+without any refactoring effort.
+This would especially be the case if the proposal is treated as a DR against C++20.
+</p>
+<p>Additionally,
+some may argue that <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast_zero_padding</h-></code> should be the default anyway,
+considering that it's <q>safer</q> to use.
+</p>
+<p>The single-function solution is also easier to implement;
+it only requires a single <code><h- data-h=id>__builtin_bit_cast</h-></code> intrinsic to be maintained.
+</p>
+<h3 id=cant-you-clear-padding-bits-before-bit-casting><a class=para href=#cant-you-clear-padding-bits-before-bit-casting></a>2.3. Can't you clear padding bits before bit-casting?</h3>
 
 <p>In the discussion of this proposal prior to publication,
 it was suggested to clear the padding <em>before</em> bit-casting.
@@ -1712,51 +1793,95 @@ and using an idiom such as:
 <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clear_padding</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>__int128</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
-<p>However, this approach does not make any sense in the C++ object model
-because the state of padding bits is not observable,
-and attempting to modify and later read their value is futile.
+<p>However, there are severe problems with this aproach, explained below.
 </p>
-<p>From a hardware perspective, <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>
-may be stored on the x87 floating-point stack,
-so while it superficially has 6 padding bytes,
-those only exist on paper, not in hardware.
-Similarly, <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>20</h-><h- data-h=sym_par>)</h-></code> may superficially have 4 padding bits,
-but can be stored in a 20-bit register,
-where none of those bits actually exist.
-</p>
-<p>The assumption that padding bits cannot be observed,
-may not even exist,
-and don't have to be preserved
-is crucial for compiler optimization.
-</p>
-<example-block><p><intro-></intro-> 
-Without that assumption, it would not be permitted to
-pass around <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code> via floating-point stack
-because its padding bits are lost in the process, like in:
-</p>
-<code-block><h- data-h=mac>#include &lt;cstring&gt;</h->
-<h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>copy</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>result</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>memcpy</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>&amp;</h-><h- data-h=id>result</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>&amp;</h-><h- data-h=id>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>sizeof</h-><h- data-h=sym_par>(</h-><h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw_ctrl>return</h-> <h- data-h=id>result</h-><h- data-h=sym_punc>;</h->
-<h- data-h=sym_brac>}</h-></code-block>
-<p>Clang on <tt->-O2</tt-> compiles this code to:
-</p><code-block><h- data-h=asm_ins>copy</h-><h- data-h=sym_par>(</h-><h- data-h=id_var>long</h-> <h- data-h=id_var>double</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>:</h->
-        <h- data-h=asm_ins>fld</h->     <h- data-h=id_var>tbyte</h-> <h- data-h=kw_type>ptr</h-> <h- data-h=sym_sqr>[</h-><h- data-h=id_var>rsp</h-> <h- data-h=sym_op>+</h-> <h- data-h=num>8</h-><h- data-h=sym_sqr>]</h->
-        <h- data-h=asm_ins>ret</h-></code-block>
-<p>Even though the code uses <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>memcpy</h-></code>,
-which copies all bytes in the object representation,
-all padding bytes are discarded when loading onto the floating-point stack.
-</p></example-block>
+<h4 id=padding-bits-are-finicky><a class=para href=#padding-bits-are-finicky></a>2.3.1. Padding bits are finicky</h4>
 
-<p>Besides the hardware perspective,
+<p>There are only a few places in the standard where padding bits
+receive a useful value.
+For example, zero-initialization is also stated to result in
+padding bits being zeroed (<a href=https://eel.is/c++draft/dcl.init.general#def:zero-initialization>[dcl.init.general] definition of "zero-initialization"</a>).
+In most scenarios (e.g. local variables),
+the padding bits have erroneous or indeterminate value.
+Even when the padding bits have defined value,
+lvalue-to-rvalue conversion does not propagate padding bits,
+and the assignment operator may render them indeterminate or erroneous.
+</p>
+<p>This makes it highly questionable to access padding bits
+and rely on them having any specific value.
+If the user forgets to write <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clear_padding</h-></code> or falsely assumes
+that padding bits are already cleared,
+they could easily acccess uninitialized memory
+(which may be a security vulnerability).
+</p>
+<h4 id=no-padding-bits-during-constant-evaluation><a class=para href=#no-padding-bits-during-constant-evaluation></a>2.3.2. No padding bits during constant evaluation</h4>
+
+<p>Besides the safety issues,
 the approach of clearing padding bits in the object
 does not make any sense for constant evaluation.
 For instance, Clang does not store an object representation for values
 during constant evaluation.
 When bit-casting, one is generated <q>on the fly</q>.
 </p>
-<h3 id=cant-you-make-std::bit_cast-produce-unspecified-or-erroneous-values><a class=para href=#cant-you-make-std::bit_cast-produce-unspecified-or-erroneous-values></a>2.3. Can't you make <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> produce unspecified or erroneous values?</h3>
+<p>This would likely mean that <code><h- data-h=kw>constexpr</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clear_padding</h-></code> is effectively
+unimplementable in current compilers.
+</p>
+<h4 id=std::clear_padding-is-not-ergonomic-for-bit-casting><a class=para href=#std::clear_padding-is-not-ergonomic-for-bit-casting></a>2.3.3. <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clear_padding</h-></code> is not ergonomic for bit-casting</h4>
+
+<p>We typically pass large types by reference,
+even if they are trivially copyable.
+Assuming we want to cast a type <code><h- data-h=id>BigT</h-></code> to another type <code><h- data-h=id>BigU</h-></code>
+while clearing padding,
+the procedure has a lot of steps:
+</p>
+<code-block><h- data-h=kw_type>__int128</h-> <h- data-h=id>cast</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> 1. Clear padding.</h->
+  <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clear_padding</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> 2. Create a variable for holding the result.</h->
+  <h- data-h=kw_type>__int128</h-> <h- data-h=id>result</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> 3. Use std::memcpy to convert the bits.</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt>    This is necessary because std::bit_cast ignores the values of</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt>    padding bits in the original, so even though we've cleared them,</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt>    they would not be propagated.</h->
+  <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>memcpy</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>&amp;</h-><h- data-h=id>result</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>&amp;</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>sizeof</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>__int128</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> 4. Return the result.</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=id>result</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>This procedure gets even more complicated when we receive a <code><h- data-h=kw>const</h-><h- data-h=sym_op>&amp;</h-></code>
+or operate on a <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>const</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-></code>,
+in which case we need to create a temporary variable that we can mutate
+with <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clear_padding</h-></code>.
+</p>
+<p>Regardless, this procedure is fairly complex compared to using a
+<code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast_zero_padding</h-></code> function that does it all in one go.
+All of that complexity yields no advantage;
+even if <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clear_padding</h-></code> was <code><h- data-h=kw>constexpr</h-></code>,
+<code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>memcpy</h-></code> isn't,
+so <code><h- data-h=id>cast</h-></code> cannot be made <code><h- data-h=kw>constexpr</h-></code>.
+</p>
+<h4 id=std::clear_padding-is-less-capable><a class=para href=#std::clear_padding-is-less-capable></a>2.3.4. <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clear_padding</h-></code> is less capable</h4>
+
+<p>Last but not least, <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clear_padding</h-></code> is strictly less capable
+than <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast_zero_padding</h-></code>
+because <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clear_padding</h-></code> (at least with current compiler technology)
+is not a viable solution during constant evaluation.
+However, <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clear_padding</h-></code> can be implemented
+in terms of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast_zero_padding</h-></code>:
+</p>
+<code-block><h- data-h=kw>template</h-> <h- data-h=sym_op>&lt;</h-><h- data-h=kw>typename</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=kw_type>void</h-> <h- data-h=id>clear_padding</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>object</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> 1. Convert to a byte array.</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt>    All the input padding bits are cleared,</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt>    and there are not padding bits in a byte array.</h->
+  <h- data-h=kw>auto</h-> <h- data-h=id>zeroed</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast_zero_padding</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>array</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>sizeof</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>object</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> 2. Copy the bytes back into the object.</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt>    The bits in the value representation have not been changed,</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt>    so this does not change the value of T, only the values of padding bits.</h->
+  <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>memcpy</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>&amp;</h-><h- data-h=id>object</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>&amp;</h-><h- data-h=id>zeroed</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>sizeof</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<h3 id=cant-you-make-std::bit_cast-produce-unspecified-or-erroneous-values><a class=para href=#cant-you-make-std::bit_cast-produce-unspecified-or-erroneous-values></a>2.4. Can't you make <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> produce unspecified or erroneous values?</h3>
 
 <p>A possible approach would be to make <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> produce
 unspecified bit values instead of indeterminate bit values.
@@ -1794,37 +1919,7 @@ This provides minimal (if any) benefit,
 and could be explored in a separate paper;
 it is a separate issue from the one presented in this paper.
 </p>
-<h3 id=the-problem-of-bit-casting-union-types><a class=para href=#the-problem-of-bit-casting-union-types></a>2.4. The problem of bit-casting union types</h3>
-
-<p>Consider the following code:
-</p>
-<code-block><h- data-h=kw>union</h-> <h- data-h=id>U</h-> <h- data-h=sym_brac>{</h->
-  <h- data-h=kw_type>char</h-> <h- data-h=id>c</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>;</h->
-<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>auto</h-> <h- data-h=id>z</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>U</h-><h- data-h=sym_brac>{</h-> <h- data-h=sym_op>.</h-><h- data-h=id>c</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
-
-<p>There are two possible interpretations of why this code has undefined behavior:
-</p>
-<ul>
-  <li>
-    The set of padding bits changes based on which union alternative is active,
-    and <code><h- data-h=id>U</h-></code> has three padding bytes when <code><h- data-h=id>c</h-></code> is active.
-  </li>
-  <li>
-    Even if <code><h- data-h=id>U</h-></code> has no padding bits,
-    when <code><h- data-h=id>c</h-></code> is active, the following three bytes
-    of the value representation of <code><h- data-h=id>U</h-></code> are indeterminate.
-  </li>
-</ul>
-
-<p>The latter interpretation is more reasonable because padding bytes
-are intuitively a property of the type,
-given that object and value representations are defined as properties of types.
-It would be a surprising wording strategy if we considered the set of padding bits
-to change at run-time.
-</p>
-<h3 id=constraints-vs-mandates><a class=para href=#constraints-vs-mandates></a>2.5. <i>Constraints</i> vs <i>Mandates</i></h3>
+<h3 id=constraints-vs-mandates-for-the-two-function-solution><a class=para href=#constraints-vs-mandates-for-the-two-function-solution></a>2.5. <i>Constraints</i> vs <i>Mandates</i> for the two-function solution</h3>
 
 <p>The degenerate form of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> should be diagnosed using
 a <i>Mandates</i> element (that is, <code><h- data-h=kw>static_assert</h-></code>).
@@ -1842,29 +1937,101 @@ due to sizes matching and types being trivially copyable,
 whereas <i>Mandates</i> should catch misuses such as passing
 consteval-only types or types that result in the degenerate form.
 </p>
+<h3 id=bit-cast-constant-evaluation-undefined-behavior><a class=para href=#bit-cast-constant-evaluation-undefined-behavior></a>2.6. Requiring <tt->std::bit_cast</tt-> UB to be diagnosed in constant expressions</h3>
+
+<p><a href=https://eel.is/c++draft/bit.cast#4.2>[bit.cast] paragraph 4, bullet 2</a> explicitly makes indeterminate result bits undefined behavior
+<em>inside</em> <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code>,
+which arguably makes it <q>library UB</q>,
+which is generally not required to be diagnosed during constant evaluation.
+</p>
+<p>I argue that it should be diagnosed,
+both for the two-function and single-function solution.
+While <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> is <em>technically</em> a library feature,
+it is spiritually a core language feature,
+and just acts as a portable spelling for the underlying
+<code><h- data-h=id>__builtin_bit_cast</h-></code> intrinsic in compilers.
+Core language UB is generally diagnosed as per <a href=https://eel.is/c++draft/expr.const>[expr.const]</a>.
+</p>
+<p>It should be noted that <a href="https://wg21%2elink/p0476r1">[P0476R1]</a> never motivated this lack of diagnostics,
+and it is likely wording defect.
+After all, in the cases where <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> has library UB,
+it also produces an indeterminate result,
+and constant expressions do not allow for indeterminate scalar prvalues
+(<a href=https://eel.is/c++draft/expr.const#def:expression,constant>[expr.const] definition of "expression,constant"</a>).
+However, crucially, the library UB taking place inside <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code>
+precedes the <a href=https://eel.is/c++draft/expr.const>[expr.const]</a> policy on what how indeterminate
+results are treated once a function has returned.
+Once any library UB happens, everything is UB,
+so the policy in <a href=https://eel.is/c++draft/expr.const>[expr.const]</a> arguably does not apply.
+</p>
+<h3 id=bumping-the-feature-test-macro><a class=para href=#bumping-the-feature-test-macro></a>2.7. Bumping the feature-test macro</h3>
+
+<p>For both the two-function and single-function solution,
+the <code><h- data-h=id>__cpp_lib_bit_cast</h-></code> macro should be bumped:
+</p><ul>
+  <li>
+    For the two-function solution,
+    this lets the user detect the presence of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast_zero_padding</h-></code>.
+  </li>
+  <li>
+    For the single-function solution,
+    this lets the user detect whether they can evaluate
+    <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>__int128</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num>0</h-><h- data-h=num_deco>L</h-><h- data-h=sym_par>)</h-></code> without undefined behavior.
+  </li>
+</ul>
+
 <h2 id=implementation-experience><a class=para href=#implementation-experience></a>3. Implementation experience</h2>
 
-<p>None yet.
+<p>First, it should be noted that compilers behave radically differently.
 </p>
-<p>There exists no way to query which bits or bytes of a type are padding bits,
+<example-block><p><intro-></intro-> 
+</p><code-block><h- data-h=mac>#include &lt;bit&gt;</h->
+<h- data-h=kw>struct</h-> <h- data-h=kw>alignas</h-><h- data-h=sym_par>(</h-><h- data-h=num>4</h-><h- data-h=sym_par>)</h-> <h- data-h=id>empty</h-> <h- data-h=sym_brac>{</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw>auto</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>empty</h-><h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>static_assert</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>At the time of writing, GCC and Clang reject the example
+because it is considered access of an uninitialized byte.
+MSVC accepts the example, and the assertion passes.
+</p></example-block>
+
+<p>It appears that the proposed behavior of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast_zero_padding</h-></code>
+(which is the behavior of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code> in the single-function solution)
+is already implemented by MSVC,
+and to a limited extent, by GCC.
+</p>
+<p>There is no implementation experience for the detection of the degenerate form
+in the two-function solution,
+and such detection would require compiler support
+because there exists no way to query which bits or bytes of a type are padding bits,
 or whether a type has padding bits in the first place.
-Therefore, an implementation requires compiler intrinsics,
-both for detecting the degenerate form of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast</h-></code>
-and for <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_cast_zero_padding</h-></code>.
 </p>
+<note-block><p><intro-></intro-> 
+<code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>has_unique_object_representations_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>float</h-><h- data-h=sym_op>&gt;</h-></code> is <code><h- data-h=bool>true</h-></code>
+despite <code><h- data-h=kw_type>float</h-></code> not having padding bits.
+These false positives make it not suitable for detecting the presence of padding bits.
+</p></note-block>
+
 <h2 id=wording><a class=para href=#wording></a>4. Wording</h2>
 
 <p>The changes are relative to <a href="https://wg21%2elink/n5014">[N5014]</a>.
 </p>
-<h3 id=version.syn><a class=para href=#version%2esyn></a>[version.syn]</h3>
+<decision-block><p><intro-></intro-> 
+Based on LEWG feedback,
+one of the following two sections should be chosen.
+</p></decision-block>
 
-<p>Add a feature-test macro to <a href=https://eel.is/c++draft/version.syn>[version.syn]</a> as follows:
+<h3 id=two-function-solution><a class=para href=#two-function-solution></a>4.1. Two-function solution</h3>
+
+<h4 id=version.syn><a class=para href=#version%2esyn></a>[version.syn]</h4>
+
+<p>Bump the feature-test macro in <a href=https://eel.is/c++draft/version.syn>[version.syn]</a> as follows:
 </p>
 <ins-block>
 <code-block class=borderless><h- data-h=mac>#define __cpp_lib_bit_cast </h-><del><h- data-h=mac>201806L</h-></del><h- data-h=mac> </h-><ins><h- data-h=mac>20XXXXL</h-></ins><h- data-h=mac> </h-><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding, also in </h-><tt-><h- data-h=cmt>&lt;bit&gt;</h-></tt-></f-serif></code-block>
 </ins-block>
 
-<h3 id=bit.syn><a class=para href=#bit%2esyn></a>[bit.syn]</h3>
+<h4 id=bit.syn><a class=para href=#bit%2esyn></a>[bit.syn]</h4>
 
 <p>Change <a href=https://eel.is/c++draft/bit.syn>[bit.syn]</a> as follows:
 </p>
@@ -1881,7 +2048,7 @@ and for <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>bit_c
 <h- data-h=sym_brac>}</h-></code-block>
 </diff-block>
 
-<h3 id=bit.cast><a class=para href=#bit%2ecast></a>[bit.cast]</h3>
+<h4 id=bit.cast><a class=para href=#bit%2ecast></a>[bit.cast]</h4>
 
 <p>Change <a href=https://eel.is/c++draft/bit.cast>[bit.cast]</a> as follows:
 </p>
@@ -1958,7 +2125,13 @@ let <math display=inline><mi>u</mi></math> be the smallest object containing tha
     and the result is as specified above.
   </li>
 </ul>
-<p>The result does not otherwise contain any indeterminate or erroneous values. 
+<p>The result does not otherwise contain any indeterminate or erroneous values.
+</p>
+<p><ins>
+<i>Remarks</i>:
+A function call expression whose behavior is undefined as per the <i>Returns</i> element
+is not a core constant expression (<a href=https://eel.is/c++draft/expr.const>[expr.const]</a>).
+</ins>
 </p></div>
 </diff-block>
 
@@ -1988,6 +2161,95 @@ The following example assumes that
 </p></div>
 </ins-block>
 
+<h3 id=single-function-solution><a class=para href=#single-function-solution></a>4.2. Single-function solution</h3>
+
+<h4 id=single-functin-version-syn-wording><a class=para href=#single-functin-version-syn-wording></a>[version.syn]</h4>
+
+<p>Bump the feature-test macro in <a href=https://eel.is/c++draft/version.syn>[version.syn]</a> as follows:
+</p>
+<ins-block>
+<code-block class=borderless><h- data-h=mac>#define __cpp_lib_bit_cast </h-><del><h- data-h=mac>201806L</h-></del><h- data-h=mac> </h-><ins><h- data-h=mac>20XXXXL</h-></ins><h- data-h=mac> </h-><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding, also in </h-><tt-><h- data-h=cmt>&lt;bit&gt;</h-></tt-></f-serif></code-block>
+</ins-block>
+
+<h4 id=single-functin-bit-cast-wording><a class=para href=#single-functin-bit-cast-wording></a>[bit.cast]</h4>
+
+<p>Change <a href=https://eel.is/c++draft/bit.cast>[bit.cast]</a> as follows:
+</p>
+<diff-block>
+<h3>Function template <code><h- data-h=id>bit_cast</h-></code> <span class=stable-ref>[bit.cast]</span></h3>
+
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>To</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>From</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=id>To</h-> <h- data-h=id>bit_cast</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>From</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>from</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p><i>Constraints</i>:
+</p><ul>
+  <li><code><h- data-h=kw>sizeof</h-><h- data-h=sym_par>(</h-><h- data-h=id>To</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>==</h-> <h- data-h=kw>sizeof</h-><h- data-h=sym_par>(</h-><h- data-h=id>From</h-><h- data-h=sym_par>)</h-></code> is <code><h- data-h=bool>true</h-></code>;</li>
+  <li><code><h- data-h=id>is_trivially_copyable_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>To</h-><h- data-h=sym_op>&gt;</h-></code> is <code><h- data-h=bool>true</h-></code>;</li>
+  <li><code><h- data-h=id>is_trivially_copyable_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>From</h-><h- data-h=sym_op>&gt;</h-></code> is <code><h- data-h=bool>true</h-></code>.</li>
+</ul>
+
+<p><i>Mandates</i>:
+Neither <code><h- data-h=id>To</h-></code> nor <code><h- data-h=id>From</h-></code> are consteval-only types (<a href=https://eel.is/c++draft/basic.types.general>[basic.types.general]</a>).
+</p>
+<p><i>Constant When</i>:
+<code><h- data-h=id>To</h-></code>, <code><h- data-h=id>From</h-></code>, and the types of all subobjects of <code><h- data-h=id>To</h-></code> and <code><h- data-h=id>From</h-></code>
+are types <code><h- data-h=id>T</h-></code> such that:
+</p><ul>
+  <li><code><h- data-h=id>is_union_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-></code> is <code><h- data-h=bool>false</h-></code>;</li>
+  <li><code><h- data-h=id>is_pointer_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-></code> is <code><h- data-h=bool>false</h-></code>;</li>
+  <li><code><h- data-h=id>is_member_pointer_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-></code> is <code><h- data-h=bool>false</h-></code>;</li>
+  <li><code><h- data-h=id>is_volatile_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-></code> is <code><h- data-h=bool>false</h-></code>;</li>
+  <li><code><h- data-h=id>T</h-></code> has no non-static data members of reference type.</li>
+</ul>
+
+<p><i>Returns</i>:
+An object of type <code><h- data-h=id>To</h-></code>.
+Implicitly creates objects nested within the result (<a href=https://eel.is/c++draft/intro.object>[intro.object]</a>).
+Each bit of the value representation of the result
+is equal to the corresponding bit in the object representation of <code><h- data-h=id>from</h-></code>.
+Padding bits of the result are unspecified.
+For the result and each object created within it,
+if there is no value of the object's type corresponding to the value representation produced,
+the behavior is undefined.
+If there are multiple such values,
+which value is produced is unspecified.
+A bit in the value representation of the result is <del>indeterminate</del> <ins>zero</ins>
+if it does not correspond to a bit in the value representation of <code><h- data-h=id>from</h-></code>
+<del>or</del><ins>, and is indeterminate if it</ins>
+corresponds to a bit for which the smallest enclosing object
+is not within its lifetime or has an indeterminate value (<a href=https://eel.is/c++draft/basic.indet>[basic.indet]</a>).
+A bit in the value representation of the result is erroneous
+if it corresponds to a bit for which the smallest enclosing object has an erroneous value.
+For each bit <math display=inline><mi>b</mi></math> in the value representation of the result
+that is indeterminate or erroneous,
+let <math display=inline><mi>u</mi></math> be the smallest object containing that bit enclosing <math display=inline><mi>b</mi></math>:
+</p><ul>
+  <li>
+    If <math display=inline><mi>u</mi></math> is of unsigned ordinary character type or <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>byte</h-></code> type,
+    <math display=inline><mi>u</mi></math> has an indeterminate value
+    if any of the bits in its value representation are indeterminate,
+    or otherwise has an erroneous value.
+  </li>
+  <li>
+    Otherwise, if <math display=inline><mi>b</mi></math> is indeterminate,
+    the behavior is undefined.
+  </li>
+  <li>
+    Otherwise, the behavior is erroneous,
+    and the result is as specified above.
+  </li>
+</ul>
+<p>The result does not otherwise contain any indeterminate or erroneous values.
+</p>
+<p><ins>
+<i>Remarks</i>:
+A function call expression whose behavior is undefined as per the <i>Returns</i> element
+is not a core constant expression (<a href=https://eel.is/c++draft/expr.const>[expr.const]</a>).
+</ins>
+</p></div>
+</diff-block>
+
 <h2 id=references><a class=para href=#references></a>5. References</h2>
 
 
@@ -1996,7 +2258,12 @@ The following example assumes that
 <span class=bib-author>Thomas Köppe.</span>
 <span class=bib-title>Working Draft, Programming Languages — C++</span>
 <span class=bib-date>2025-08-05</span>
-<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/n5014%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf</a></div><div id=bib-item-P3666R2 class=bib-item>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/n5014%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf</a></div><div id=bib-item-P0476R1 class=bib-item>
+<a href="https://wg21%2elink/p0476r1">[P0476R1]</a>
+<span class=bib-author>JF Bastien.</span>
+<span class=bib-title>Bit-casting object representations</span>
+<span class=bib-date>2016-11-11</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2016/p0476r1%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0476r1.html</a></div><div id=bib-item-P3666R2 class=bib-item>
 <a href="https://wg21%2elink/p3666r2">[P3666R2]</a>
 <span class=bib-author>Jan Schultke.</span>
 <span class=bib-title>Bit-precise integers</span>
