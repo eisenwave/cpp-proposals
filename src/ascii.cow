@@ -7,14 +7,14 @@
   title = ASCII character utilities
 ){
 \dl{
-  \dt{Document number:} \dd{\ref(https://wg21.link/P3688){P3688R5}}
-  \dt{Date:}            \dd{\tt{2025-12-13}}
-  \dt{Audience:}        \dd{SG16}
+  \dt{Document number:} \dd{\ref(https://wg21.link/P3688){P3688R6}}
+  \dt{Date:}            \dd{\tt{2026-02-20}}
+  \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-To:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{Co-Authors:}      \dd{Corentin Jabot <\mail{corentin.jabot@gmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3688/github)}
-  \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/ascii.cow)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/ascii.cow)}
 }
 \hr
 }
@@ -32,6 +32,16 @@ We propose lightweight, locale-independent alternatives.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R5}
+
+\ul{
+  \li{Expand design discussion in \ref(#case-insensitive-comparison)}
+  \li{Replace a stray use of \tcode{is_ascii} with \tcode{ascii_is}}
+  \li{Remove mention of \tcode{u32string_view} in wording for \tcode{ascii_is_punctuation}}
+  \li{Revise the definition of \q{ASCII-compatible} once more}
+  \li{Rebase wording on \ref(N5032)}
+}
 
 \h3{Changes since R4}
 
@@ -82,7 +92,7 @@ The changes below incorporate the feedback given during these telecons.
     based on feedback from BSI (British Standards Institution);
     no changes to design are made.
   }
-  \li{Rebase \ref(#wording) on \ref(N5014).}
+  \li{Rebase \ref(#wording) on N5014.}
 }
 
 \h3{Changes since R1}
@@ -309,7 +319,7 @@ Note that the character set notation \tt{[}...\tt{]} is taken from RegEx.
 \tr{
   \td{\tcode{isalnum}}
   \td{\tcode{ascii_is_alphanumeric}}
-  \td{\tcode{ascii_is_alphabetic(c) || is_ascii_digit(c)}}
+  \td{\tcode{ascii_is_alphabetic(c) || ascii_is_digit(c)}}
 }
 \tr{
   \td{\tcode{ispunct}}
@@ -481,12 +491,47 @@ constexpr strong_ordering ascii_case_insensitive_equals(
 }
 }
 
-Note that these deliberately have only one template type parameter.
+These functions deliberately have only one template type parameter.
 Comparing code units of different encodings is typically meaningless,
 and \tcode{ascii_to_upper} only has an effect if \tcode{ascii_is_lower} returns \tcode{true};
 therefore, a comparison such as
 \tcode{ascii_case_insensitive_equals(c, U'\\N{NO-BREAK SPACE}')}
 could yield false positives for some UTF-8 code unit \tcode{c} with value \tcode{0xA0}.
+
+Also note that the choice of \tcode{ascii_to_upper} over \tcode{ascii_to_lower} matters:
+\cppblock{
+// OK, passes because U'A' < U'^' is true, whereas U'a' < U'^' is false.
+static_assert(ascii_case_insensitive_compare(U'a', U'^') < 0);
+}
+The choice of \tcode{ascii_to_upper} is arbitrary, and this is fine.
+However, it may be worth pointing out that the ordering here is
+radically different from the case-insensitive string ordering
+using the DUCET (Default Unicode Collation Element Table),
+which reorders the Basic Latin block almost entirely.
+The use of \tcode{ascii_to_upper} deliberately produces different results than Unicode
+comparisons because those would essentially involve a 128-character lookup table,
+whereas \tcode{ascii_case_insensitive_compare} is easily SIMD-parallelizable
+and requires no memory lookup.
+Most users probably don't care whether \tcode{U'a'}
+compares case-insensitively-less than \tcode{U'^'},
+as long as they get a strict weak ordering and the implementation is fast and correct.
+The (possibly non-existent) minority who cares
+should either use the ICU or emulate the DUCET behavior using a lookup table.
+
+\Bnote{
+During the 2026-01-14 SG16 meeting,
+concerns were raised about whether the proposal should include these functions;
+the following poll was taken:
+
+\Bquote{
+\b{Poll 1: P3688R5: Remove the case-insensitive character comparison functions.}
+\ul{
+  \li{Attendees: 9}
+  \li{\five_way_poll(1,0,3,4,1)}
+  \li{Consensus against.}
+}
+}
+}
 
 \h3(id=why-no-function-objects){Why no function objects?}
 
@@ -554,7 +599,8 @@ We could mandate that the ordinary literal encoding is an ASCII superset
 for the \tcode{char} overload to exist.
 This would force a cast (to \tcode{char8_t}) to use the functions on EBCDIC platforms.
 It is not clear how implementations would treat Shift JIS;
-GCC assumes \tcode{'\\\\' == '¥'} to be \tcode{true},
+GCC assumes \tcode{'\\\\' == '¥'} to be \tcode{true}
+(when linked against some \tt{iconv} implementations),
 so this option may not be enough to alleviate
 the awkwardness of \tcode{ascii_is_punctuation('¥')}.
 
@@ -791,7 +837,7 @@ Character tests can be optimized using 128-bit or 256-bit bitsets.
 
 \h2{Wording}
 
-The wording changes are relative to \ref(N5014).
+The wording changes are relative to \ref(N5032).
 
 In \eelis{tab:headers.cpp}, add a new element to C++ library headers table:
 
@@ -826,28 +872,39 @@ append a new subclause:
 \Bins{
 \h2(listed=false){ASCII utilities \stable_ref{ascii}}
 
+¶
 Subclause [ascii] describes components for dealing with characters
 that are encoded using ASCII
 or encodings that are \dfn{ASCII-compatible},
-which are encodings where given any code unit \math{\mi{c}},
-if and only if \tcode{ascii_is_any(\math{\mi{c}})} is \tcode{true},
-\math{\mi{c}} by itself encodes a Unicode code point in the Basic Latin block,
-with the same numeric value as \math{\mi{c}}.
-\br
+which are encodings where
+\ul{
+  \li{
+    any code unit \math{\mi{c}}
+    for which \tcode{ascii_is_any(\math{\mi{c}})} is \tcode{true}
+    by itself encodes exactly one Unicode code point
+    with the same numeric value as \math{\mi{c}}, and
+  }
+  \li{
+    no other sequence of code units
+    encodes a Unicode code points in the Basic Latin block.
+  }
+}
 \example{ASCII, UTF-8, UTF-16, and UTF-32 are ASCII-compatible.
 EBCDIC and Shift JIS are not ASCII-compatible.}
 
+¶
 \recommended
 Implementations should emit a warning when a function in this subclause is invoked
 using a value produced by a \grammarterm{string-literal}
-or \grammarterm{character-literal} whose encoding is not ASCII-compatible.\br
+or \grammarterm{character-literal} whose encoding is not ASCII-compatible.
+\br\br
 \example{
 \tcode{ascii_is_digit('0')} is \tcode{false} if the
 ordinary literal encoding\iref{lex.charset} is EBCDIC
 or some other ASCII-incompatible encoding,
 which can be surprising to the user.
 However, \tcode{ascii_is_digit(char{0x30})}
-is \tcode{true} regardless of ordinary literal encoding.
+is \tcode{true} regardless of the ordinary literal encoding.
 }
 
 \h3(listed=false){Header \tt{<ascii>} synopsis \stable_ref{ascii.syn}}
@@ -996,7 +1053,40 @@ template<\ctype T> constexpr bool ascii_is_punctuation(T c) noexcept;
 \itemdescr{
 \p(style=text-align:left){
 \returns
-\tcode{u32string_view(U"!\\"#\N{DOLLAR SIGN}\N{PERCENT SIGN}&'()*+,-./:;<=>?@[\\\\]^_`{|}~")\wbr{}.contains(static_cast<char32_t>(c))}.
+\tcode{true} if \tcode{static_cast<char32_t>(c)} equals one of
+\tcode{U'!'},
+\tcode{U'"'},
+\tcode{U'#'},
+\tcode{U'$'},
+\tcode{U'%'},
+\tcode{U'&'},
+\tcode{U'\\''},
+\tcode{U'('},
+\tcode{U')'},
+\tcode{U'*'},
+\tcode{U'+'},
+\tcode{U','},
+\tcode{U'-'},
+\tcode{U'.'},
+\tcode{U'/'},
+\tcode{U':'},
+\tcode{U';'},
+\tcode{U'<'},
+\tcode{U'='},
+\tcode{U'>'},
+\tcode{U'?'},
+\tcode{U'@'},
+\tcode{U'['},
+\tcode{U'\\\\'},
+\tcode{U']'},
+\tcode{U'^'},
+\tcode{U'_'},
+\tcode{U'`'},
+\tcode{U'\{'},
+\tcode{U'|'},
+\tcode{U'\}'}, or
+\tcode{U'~'},
+otherwise \tcode{false}.
 }
 }
 
@@ -1082,7 +1172,16 @@ template<\ctype T>
 
 \hr
 
-\Bnote{
+\editnote{
+The wording for \tcode{ascii_is_punctuation} was originally more compact by utilizing
+\tcode{std::u32string_\cowel_to_html{\N{SOFT HYPHEN}}view(U"...").contains(c)},
+but this approach was scrapped because it suggests a dependence between
+\header{ascii} and \header{string_view} which does not exist.
+
+The list of character literals is sorted by their integer values, ascending.
+}
+
+\editnote{
 Some uses of \tcode{static_cast} are unnecessary to describe semantics.
 For example, \tcode{static_cast<char32_t>(c) == U' '}
 is equivalent to \tcode{c == U' '}.
@@ -1098,12 +1197,12 @@ Thanks to Joe Gottman for spotting a mistake in \tcode{get_hex_digit_value}.
 \h2{References}
 
 \bib(
-  id = N5014,
+  id = N5032,
   title = Working Draft\, Programming Languages — C++,
-  date = 2025-08-05,
+  date = 2025-12-15,
   author = Thomas Köppe,
-  link = https://wg21.link/n5014,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+  link = https://wg21.link/n5032,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
 )\
 \bib(
   id = P3312R1,
