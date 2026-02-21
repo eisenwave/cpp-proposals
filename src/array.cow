@@ -1,11 +1,12 @@
+\: cowel 0.6.0
 \cowel_include{libwg21.cow}
 
 \wg21_head(
   title = \tcode{std::array} is a wrapper for an array!
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3737R2}}
-  \dt{Date:}            \dd{\tt{2025-11-20}}
+  \dt{Document number:} \dd{\docnum{P3737R3}}
+  \dt{Date:}            \dd{\tt{2026-02-21}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -27,6 +28,14 @@ and should be simplified.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R2}
+
+\ul{
+  \li{Mentioned \tcode{data()} in \ref(#specification)}
+  \li{Expanded \ref(#motivation) with implicit object creation and providing storage}
+  \li{Rebased \ref(#wording) on \ref(N5032)}
+}
 
 \h3{Changes since R1}
 
@@ -54,7 +63,7 @@ and should be simplified.
     see \ref(#zero-length-trivially-copyable).
   }
   \li{
-    Rebased \ref(#wording) on \ref(N5014) and made minor wording tweaks.
+    Rebased \ref(#wording) on N5014 and made minor wording tweaks.
   }
   \li{
     Minor editorial changes throughout the paper.
@@ -103,6 +112,11 @@ and is a combination of multiple constraints on the implementation:
   \li{
     It is a structural type if \tcode{T} is a structural type\iref{array.overview#4},
     and therefore, also a literal class type in that event.
+  }
+  \li{
+    The \tcode{data()} member function returns a pointer to a range of elements,
+    which implies that an array must be nested somewhere in \tcode{std::array}\iref{array.members},
+    at least when \tcode{size()} is greater than \tcode{1}.
   }
 }
 
@@ -193,6 +207,16 @@ A stricter specification would provide additional useful guarantees
 such as \tcode{std::array<T, N>} being trivially copyable when \tcode{T} is trivially copyable.
 This is relevant to use cases like \tcode{std::bit_cast<std::array<std::byte, sizeof(x)>>(x)},
 which \em{technically} rely on implementation details, not on standard behavior.
+
+Having the certainty that \tcode{std::array} is a wrapper for an array
+also makes it clear how certain language mechanisms interact with it.
+For instance, clarifies that the array within \tcode{std::array<unsigned char, N>}
+provide storage for objects inside,
+and that beginning the lifetime of such a \tcode{std::array}
+implicitly creates objects inside\iref{intro.object}.
+These mechanism are specified only for regular arrays,
+and it's not obvious to users whether \tcode{std::array} supports them,
+and if it does, whether that behavior is portable and intended.
 
 \h3{Isn't this a waste of time?}
 
@@ -410,8 +434,7 @@ the implementation can simply be aligned with what is being proposed here.
 
 \h2{Wording}
 
-The following changes are relative to \ref(N5014)
-with the changes in \ref(LWG4276) applied.
+The following changes are relative to \ref(N5032).
 
 \h3{[array.overview]}
 
@@ -564,12 +587,12 @@ violates a hardened precondition\iref{structure.specifications}.
 \h2{References}
 
 \bib(
-  id = N5014,
+  id = N5032,
   title = Working Draft\, Programming Languages — C++,
-  date = 2025-08-05,
+  date = 2025-12-15,
   author = Thomas Köppe,
-  link = https://wg21.link/n5014,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+  link = https://wg21.link/n5032,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
 )\
 \bib(
   id = LWG2157,
