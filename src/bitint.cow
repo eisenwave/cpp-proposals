@@ -4,8 +4,8 @@
   title = Bit-precise integers
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3666R2}}
-  \dt{Date:}            \dd{\tt{2025-12-14}}
+  \dt{Document number:} \dd{\docnum{P3666R3}}
+  \dt{Date:}            \dd{\tt{2026-02-21}}
   \dt{Audience:}        \dd{EWG, LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -28,6 +28,22 @@ this proposal introduces a new set of fundamental types to C++.
 
 \h2{Revision history}
 
+\h3{Changes since R2}
+
+\ul{
+  \li{mentioned that \ref(N3747) has been approved by WG14 for C2y}
+  \li{removed \tcode{std::simd} support; see \ref(#simd-support)}
+  \li{removed \tcode{std::atomic} support; see \ref(#atomic-support)}
+  \li{removed mentions of P3438R0 because \tcode{to_string} is now \tcode{constexpr}}
+  \li{
+    removed changes to \eelis{utility.intcmp}
+    because these are no longer necessary after
+    \ref(https://github.com/cplusplus/draft/pull/8616){editorial pull request #8616}
+    was merged
+  }
+  \li{rebased \ref(#wording) on \ref(N5032)}
+}
+
 \h3{Changes since R1}
 
 \ul{
@@ -49,7 +65,7 @@ this proposal introduces a new set of fundamental types to C++.
   \li{updated reference from \ref(N3699) to \ref(N3747)}
   \li{also added \tcode{abs} overloads to \header{cstdlib}, instead of just \header{cmath}}
   \li{
-    added \ref(#utility.intcmp)
+    added changes to \eelis{utility.intcmp}
     (adding support to \tcode{cmp_less} was already intended, but potentially requires
     wording due to weird choice of constraints)
   }
@@ -986,11 +1002,12 @@ mostly for historical reasons
 (C did not always requires two's complement representation for signed integers).
 This is an irregularity that could make generic programming harder in C++.
 
-However, there are already plans to lift the restriction for C2y;
+However, this restriction is being lifted in C2y;
 see \ref(N3747) "Integer Sets, v5".
-That proposal makes \tcode{_BitInt(1)} a valid type,
+That proposal has been approved but not yet merged into the C2y draft at the time of writing.
+It makes \tcode{_BitInt(1)} a valid type,
 and \tcode{0wb} is changed to be of type \tcode{_BitInt(1)} rather than \tcode{_BitInt(2)}.
-That proposal also contains some practical motivation for why
+It also contains some practical motivation for why
 a single-bit should be permitted.
 
 \Bnote{
@@ -1648,16 +1665,9 @@ template<class T>
   constexpr from_chars_result from_chars(char* first, char* last, T& value, int base = 10);
 
 template<class T>
-  string to_string(T val);
+  constexpr string to_string(T val);
 template<class T>
-  wstring to_wstring(T val);
-}
-
-\Bnote{
-The \tcode{to_string} and \tcode{to_wstring} overloads for integral types
-are made \tcode{constexpr} by \ref(P3438R0).
-If that paper be accepted,
-the overloads for bit-precise integers should also be made \tcode{constexpr} for consistency.
+  constexpr wstring to_wstring(T val);
 }
 
 \Bnote{
@@ -1808,28 +1818,51 @@ for \tcode{bit_int<BITINT_MAXWIDTH>} is meant to be implemented.
 We obviously can't just use a wider integer type because none exists.
 These and other potential design issues should be explored in a separate paper.
 
-\h3(id=simd-support){\tt{simd} support for bit-precise integers}
+\h3(id=atomic-support){Lack of \tt{atomic} support for bit-precise integers}
+
+While C23 does provide \tcode{_Atomic _BitInt}
+and this is already implemented in GCC,
+exposing that functionality through \tcode{std::atomic} and \tcode{std::atomic_ref}
+is not entirely trivial.
+One major issue is that the wording in \eelis{atomics.types.int}
+states that the implementation provides a number of specializations of the form:
+\cppblock{
+template<> struct atomic<\exposid{integral-type}> { /* ... */ };
+}
+
+However, this wording strategy is not suitable for bit-precise integers
+because providing a full specialization for each type is not feasible.
+Perhaps the solution is to use a partial specialization.
+
+There is also no urgent need to provide support for atomic bit-precise integers in P3666.
+The specializations for integers provide a superset of the functionality of the primary template,
+so support for \tcode{fetch_add} and other functions can be added later
+without breaking existing code.
+
+In conclusion, \tcode{std::atomic} support should be provided in a separate paper.
+
+\h3(id=simd-support){Lack of \tt{simd} support for bit-precise integers}
 
 \header{simd} is one of the few parts in the standard library
 where the implementation is highly specific to integer widths,
 at least if high implementation quality is needed.
-
-\h4{\tt{simd} design problems}
-
 There are many important questions, such as:
 
 \ul{
   \li{
     How do we best optimize \tcode{simd::vec<bit_int<1>>}?
-    that type is effectively a bitset.
+    That type is effectively a bitset.
   }
   \li{
     How do we deal with padding bits?
     Standard integers are typically padding-free, but bit-precise integers are not
     except for specific sizes.
+    The underlying SIMD instructions in hardware do not assume the
+    elements to have a padding.
   }
   \li{
-    What about \tcode{simd::vec<bit_int<512>>} or even greater widths?
+    What about \tcode{simd::vec<bit_int<1024>>} or even greater widths,
+    on hardware that doesn't support 1024-bit SIMD?
     It seems like this case degenerates into a scalar implementation anyway.
   }
 }
@@ -1840,26 +1873,14 @@ Furthermore, adding a naive implementation for e.g. \tcode{bit_int<1>}
 would result in an ABI break when being replaced with a more efficient "bit-packed"
 implementation later.
 
-\h4{\tt{simd} design conclusion}
-
 Due to these design concerns,
-I do not consider \em{full}\tcode{simd} support to be part of the MVP.
-However, \tcode{simd} support for bit-precise integers is clearly useful,
-so a compromise is possible:
-\tcode{simd} support is added only for those bit-precise integers
-whose width matches a standard integer type.
-
-This means that a \tcode{simd::vec<bit_int<32>>} implementation
-"piggy-backs" off of an existing \tcode{simd::vec<int>} implementation,
-assuming \tcode{int} is a 32-bit signed integer.
-Such limited support is easy to provide.
-
-\Bnote{
-This restriction is inspired by the constraints (inherited from C) on
-\tcode{stdc_count_ones} and other \header{stdbit.h} functions.
-Those functions accept standard integers
-as well as bit-precise integers of matching width.
-}
+I do not consider \tcode{simd} support to be part of the MVP.
+While it may be feasible to provide partial support
+such as only for \tcode{bit_int<N>} where \tcode{N} has the width
+of an existing standard integer type,
+it is questionable how much value this half-measure provides.
+There is also no urgent need to provide \tcode{simd} support right away;
+this could be done in a follow-up proposal.
 
 \h3(id=valarray-support){\tt{valarray} support for bit-precise integers}
 
@@ -2212,7 +2233,7 @@ is explicitly added.
 
 Since this proposal does not explicitly remove support for bit-precise integers,
 support "sneaks" its way in, without any explicit wording changes.
-For example, use of bit-precise integers in \header{simd}, \header{bit}, \header{valarray},
+For example, use of bit-precise integers in \header{bit}, \header{valarray},
 and many others is enabled.
 
 The addition of bit-precise integers means that (as in the core language),
@@ -2234,15 +2255,6 @@ the possible changes to container \tcode{size_type}s are not listed.
     \td{\header{algorithm}}
     \td{Relax some \i{Mandates} due to implementability problems.}
     \td{\ref(#alg.foreach)}
-    \td{\ref(#misc-support)}
-  }
-  \tr{
-    \td{\header{atomic}}
-    \td{
-      Add support for bit-precise integers.
-      Partial specializations for integral types also support \tcode{bit_int}.
-    }
-    \td{\ref(#atomics.ref.int),\br\ref(#atomics.types.int)}
     \td{\ref(#misc-support)}
   }
   \tr{
@@ -2308,7 +2320,7 @@ the possible changes to container \tcode{size_type}s are not listed.
       Change "integer-class type" to prevent ABI break
       when integer types are added.
     }
-    \td{\ref(#iterator.concept.winc)}
+    \td{\nobr{\ref(#iterator.concept.winc)}}
     \td{\ref(#preserving-integer-class-types)}
   }
   \tr{
@@ -2357,12 +2369,6 @@ the possible changes to container \tcode{size_type}s are not listed.
     \td{\ref(#preventing-iota-view-abi-break)}
   }
   \tr{
-    \td{\header{simd}}
-    \td{Add limited support for bit-precise integers.}
-    \td{\ref(#simd.general)}
-    \td{\ref(#simd-support)}
-  }
-  \tr{
     \td{\header{stdbit.h}}
     \td{Inherit bit-precise integer support from C.}
     \td{\ref(#stdbit.h.syn)}
@@ -2395,7 +2401,7 @@ the possible changes to container \tcode{size_type}s are not listed.
   \tr{
     \td{\header{utility}}
     \td{Expand blanket support for integers (e.g. \tcode{to_integer}, \tcode{cmp_less}).}
-    \td{\ref(#utility.intcmp)}
+    \td{}
     \td{\ref(#misc-support)}
   }
   \tr{
@@ -2428,7 +2434,7 @@ for a complete list of headers.
 
 \h2{Wording}
 
-The following changes are relative to \ref(N5014).
+The following changes are relative to \ref(N5032).
 
 \:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -3693,19 +3699,6 @@ struct make_unsigned;
 }
 }
 
-\h4(show-number=false){[utility.intcmp]}
-
-Merge
-\ref(https://github.com/cplusplus/draft/pull/8616){editorial pull request #8616}
-if it has not yet been merged.
-
-\editnote{
-Rephrasing the constraint of "standard or extended" as "signed or unsigned"
-has no normative effect on the current wording,
-and silently adds support for bit-precise integers
-once added to the language.
-}
-
 \h4(show-number=false){[stdbit.h.syn]}
 
 Change \eelis{stdbit.h.syn#2} as follows:
@@ -4015,46 +4008,32 @@ Change \eelis{string.syn} as follows:
 namespace std {
   \etc
 
-  string to_string(int val);
-  string to_string(unsigned val);
-  string to_string(long val);
-  string to_string(unsigned long val);
-  string to_string(long long val);
-  string to_string(unsigned long long val);
+  constexpr string to_string(int val);
+  constexpr string to_string(unsigned val);
+  constexpr string to_string(long val);
+  constexpr string to_string(unsigned long val);
+  constexpr string to_string(long long val);
+  constexpr string to_string(unsigned long long val);
   string to_string(float val);
   string to_string(double val);
   string to_string(long double val);
-\ins{  template<class T> string to_string(T val);}
+\ins{  template<class T> constexpr string to_string(T val);}
 
   \etc
 
-  wstring to_wstring(int val);
-  wstring to_wstring(unsigned val);
-  wstring to_wstring(long val);
-  wstring to_wstring(unsigned long val);
-  wstring to_wstring(long long val);
-  wstring to_wstring(unsigned long long val);
+  constexpr wstring to_wstring(int val);
+  constexpr wstring to_wstring(unsigned val);
+  constexpr wstring to_wstring(long val);
+  constexpr wstring to_wstring(unsigned long val);
+  constexpr wstring to_wstring(long long val);
+  constexpr wstring to_wstring(unsigned long long val);
   wstring to_wstring(float val);
   wstring to_wstring(double val);
   wstring to_wstring(long double val);
-\ins{  template<class T> wstring to_wstring(T val);}
+\ins{  template<class T> constexpr wstring to_wstring(T val);}
 
   \etc
 }
-}
-}
-
-If the existing overloads for integral types
-have been made \tcode{constexpr} through \ref(P3438R0) or a subsequent paper,
-additionally make the following changes:
-
-\Bdiff{
-\itemdecl{
-\etc
-template<class T> \ins{constexpr} string to_string(T val);
-\etc
-template<class T> \ins{constexpr} wstring to_wstring(T val);
-\etc
 }
 }
 
@@ -4066,16 +4045,16 @@ Change \eelis{string.conversions} as follows:
 \etc
 
 \itemdecl{
-string to_string(int val);
-string to_string(unsigned val);
-string to_string(long val);
-string to_string(unsigned long val);
-string to_string(long long val);
-string to_string(unsigned long long val);
+constexpr string to_string(int val);
+constexpr string to_string(unsigned val);
+constexpr string to_string(long val);
+constexpr string to_string(unsigned long val);
+constexpr string to_string(long long val);
+constexpr string to_string(unsigned long long val);
 string to_string(float val);
 string to_string(double val);
 string to_string(long double val);
-\ins{template<class T> string to_string(T val);}
+\ins{template<class T> constexpr string to_string(T val);}
 }
 
 \itemdescr{
@@ -4089,16 +4068,16 @@ string to_string(long double val);
 \etc
 
 \itemdecl{
-wstring to_wstring(int val);
-wstring to_wstring(unsigned val);
-wstring to_wstring(long val);
-wstring to_wstring(unsigned long val);
-wstring to_wstring(long long val);
-wstring to_wstring(unsigned long long val);
+constexpr wstring to_wstring(int val);
+constexpr wstring to_wstring(unsigned val);
+constexpr wstring to_wstring(long val);
+constexpr wstring to_wstring(unsigned long val);
+constexpr wstring to_wstring(long long val);
+constexpr wstring to_wstring(unsigned long long val);
 wstring to_wstring(float val);
 wstring to_wstring(double val);
 wstring to_wstring(long double val);
-\ins{template<class T> wstring to_wstring(T val);}
+\ins{template<class T> constexpr wstring to_wstring(T val);}
 }
 
 \itemdescr{
@@ -4110,20 +4089,6 @@ wstring to_wstring(long double val);
 }
 
 \etc
-}
-
-If the existing overloads for integral types
-have been made \tcode{constexpr} through \ref(P3438R0) or a subsequent paper,
-additionally make the following changes:
-
-\Bdiff{
-\itemdecl{
-\etc
-template<class T> \ins{constexpr} string to_string(T val);
-\etc
-template<class T> \ins{constexpr} wstring to_wstring(T val);
-\etc
-}
 }
 
 \h4(show-number=false){[cmath.syn]}
@@ -4226,33 +4191,6 @@ In that event, the program is not ill-formed;
 overload resolution simply doesn't select one of these functions.
 }
 
-\h4(show-number=false){[simd.general]}
-
-Change \eelis{simd.general#2} as follows:
-
-\Bdiff{
-The set of \dfn{vectorizable types} comprises
-
-\ul{
-  \li{
-    all standard integer types,
-    character types,
-    and the types \tcode{float} and \tcode{double}\iref{basic.fundamental};
-  }
-  \li{
-    \ins{any bit-precise integer type
-    whose width matches a standard integer type;}
-  }
-  \li{
-    \tcode{std::float16_t}, \tcode{std::float32_t}, and \tcode{std::float64_t}
-    if defined\iref{basic.extended.fp}; and
-  }
-  \li{
-    \tcode{complex<T>} where \tcode{T} is a vectorizable floating-point type.
-  }
-}
-}
-
 \h4(show-number=false){[numerics.c.ckdint]}
 
 Change \eelis{numerics.c.ckdint} as follows:
@@ -4283,58 +4221,6 @@ specified in \IsoC, 7.20.
 \editnote{
 This matches the restrictions in \ref(N3550), 7.20 "Checked Integer Arithmetic".
 "cv-unqualified" is struck because it is redundant.
-}
-
-\h4(show-number=false){[atomics.ref.int]}
-
-Do \u{not} change \eelis{atomics.ref.int#1};
-it is provided here for reference:
-
-\Bquote{
-There are specializations of the \tcode{atomic_ref} class template
-for all integral types except \cv \tcode{bool}.
-For each such type \tcode{\exposid{integral-type}},
-the specialization \tcode{atomic_ref<\exposid{integral-type}>}
-provides additional atomic operations
-appropriate to integral types.
-}
-
-\h4(show-number=false){[atomics.types.int]}
-
-Change \eelis{atomics.types.int#1} as follows:
-
-\Bdiff{
-There are specializations of the \tcode{atomic} class template for
-\del{the integral types
-\tcode{char},
-\tcode{signed char},
-\tcode{unsigned char},
-\tcode{short},
-\tcode{unsigned short},
-\tcode{int},
-\tcode{unsigned int},
-\tcode{long},
-\tcode{unsigned long},
-\tcode{long long},
-\tcode{unsigned long long},
-\tcode{char8_t},
-\tcode{char16_t},
-\tcode{char32_t},
-\tcode{wchar_t},}
-\ins{standard integer types\iref{basic.fundamental},
-bit-precise integer types,
-character types,}
-and any other types needed by the typedefs
-in the header \tt{<cstdint>}\iref{cstdint.syn}.
-For each such type \tcode{\exposid{integral-type}},
-the specialization \tcode{atomic<\exposid{integral-type}>}
-provides additional atomic operations
-appropriate to integral types.
-
-\note{
-The specialization \tcode{atomic<bool>}
-uses the primary template\iref{atomics.types.generic}.
-}
 }
 
 \h2{Acknowledgements}
@@ -4398,12 +4284,12 @@ of messages worth of valuable feedback.
   long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4038.html,
 )\
 \bib(
-  id = N5014,
+  id = N5032,
   title = Working Draft\, Programming Languages — C++,
-  date = 2025-08-05,
+  date = 2025-12-15,
   author = Thomas Köppe,
-  link = https://wg21.link/n5014,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+  link = https://wg21.link/n5032,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
 )\
 \bib(
   id = P3140R0,
@@ -4436,14 +4322,6 @@ of messages worth of valuable feedback.
   author = Bengt Gustafsson,
   link = https://wg21.link/p3312r1,
   long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3312r1.pdf,
-)\
-\bib(
-  id = P3438R0,
-  title = Make integral overloads of std::to_string constexpr,
-  date = 2024-10-13,
-  author = Andreas Fertig,
-  link = https://wg21.link/p3438r0,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3438r0.pdf,
 )\
 \bib(
   id = N2763,
