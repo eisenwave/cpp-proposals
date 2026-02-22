@@ -1524,7 +1524,7 @@ if (theme !== null) {
   }
 
   note-block.edit intro-::before {
-    content: "Drafting note:";
+    content: "Editor's note:";
     color: var(--edit-note-block-border-color);
   }
 
@@ -1576,8 +1576,8 @@ if (theme !== null) {
 <div class=wg21-head><h1>Extending <code><h- data-h=sym_op>&lt;</h-><h- data-h=id>charconv</h-><h- data-h=sym_op>&gt;</h-></code> support to more character types</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3876R1>P3876R1</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-02-22</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3876R0>P3876R0</a></dd>
+  <dt>Date:</dt>            <dd><tt->2025-11-13</tt-></dd>
   <dt>Audience:</dt>        <dd>SG16</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1589,100 +1589,69 @@ if (theme !== null) {
 </div>
 
 <abstract-block><p><intro-></intro-> 
-<code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code>
-currently only provide support for <code><h- data-h=kw_type>char</h-></code>,
-which causes several usability problems.
-This paper proposes to extend support to all other character types,
-with essentially the same behavior.
+We should add support for character types other than <code><h- data-h=kw_type>char</h-></code>
+in <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code>.
 </p></abstract-block>
 
 <h2 id=contents><a class=para href=#contents></a>Contents</h2>
 
 <div class=toc><div class=toc-num data-level=2>1</div>
-<a href=#revision-history><h2>Revision history</h2></a>
-<div class=toc-num data-level=3>1.1</div>
-<a href=#changes-since-r0><h3>Changes since R0</h3></a>
-<div class=toc-num data-level=2>2</div>
 <a href=#introduction><h2>Introduction</h2></a>
-<div class=toc-num data-level=2>3</div>
+<div class=toc-num data-level=2>2</div>
 <a href=#design><h2>Design</h2></a>
-<div class=toc-num data-level=3>3.1</div>
+<div class=toc-num data-level=3>2.1</div>
 <a href=#which-character-types-to-support><h3>Which character types to support</h3></a>
-<div class=toc-num data-level=4>3.1.1</div>
+<div class=toc-num data-level=4>2.1.1</div>
 <a href=#char8_t><h4><code><h- data-h=kw_type>char8_t</h-></code></h4></a>
-<div class=toc-num data-level=4>3.1.2</div>
+<div class=toc-num data-level=4>2.1.2</div>
 <a href=#char16_t-and-char32_t><h4><code><h- data-h=kw_type>char16_t</h-></code> and <code><h- data-h=kw_type>char32_t</h-></code></h4></a>
-<div class=toc-num data-level=4>3.1.3</div>
+<div class=toc-num data-level=4>2.1.3</div>
 <a href=#wchar_t><h4><code><h- data-h=kw_type>wchar_t</h-></code></h4></a>
-<div class=toc-num data-level=3>3.2</div>
+<div class=toc-num data-level=3>2.2</div>
 <a href=#to_chars><h3><code><h- data-h=id>to_chars</h-></code></h3></a>
-<div class=toc-num data-level=3>3.3</div>
+<div class=toc-num data-level=3>2.3</div>
 <a href=#from_chars><h3><code><h- data-h=id>from_chars</h-></code></h3></a>
-<div class=toc-num data-level=4>3.3.1</div>
+<div class=toc-num data-level=4>2.3.1</div>
 <a href=#unicode-error-handling><h4>Unicode error handling</h4></a>
-<div class=toc-num data-level=3>3.4</div>
+<div class=toc-num data-level=3>2.4</div>
 <a href=#fixing-format-for-wide-strings><h3>"Fixing" <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>wformat_string</h-><h- data-h=sym_par>)</h-></code></h3></a>
-<div class=toc-num data-level=3>3.5</div>
+<div class=toc-num data-level=3>2.5</div>
 <a href=#function-signature-and-result-types><h3>Function signature and result types</h3></a>
-<div class=toc-num data-level=4>3.5.1</div>
+<div class=toc-num data-level=4>2.5.1</div>
 <a href=#result-type><h4>Result type</h4></a>
-<div class=toc-num data-level=4>3.5.2</div>
+<div class=toc-num data-level=4>2.5.2</div>
 <a href=#summary><h4>Summary</h4></a>
-<div class=toc-num data-level=3>3.6</div>
+<div class=toc-num data-level=3>2.6</div>
 <a href=#constexpr-floating-point-overloads><h3><code><h- data-h=kw>constexpr</h-></code> floating-point overloads</h3></a>
-<div class=toc-num data-level=3>3.7</div>
+<div class=toc-num data-level=3>2.7</div>
 <a href=#more-composable-interface-taking-std::span-or-std::string_view><h3>More composable interface taking <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>span</h-></code> or <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>string_view</h-></code></h3></a>
-<div class=toc-num data-level=2>4</div>
+<div class=toc-num data-level=2>3</div>
 <a href=#impact-on-existing-code><h2>Impact on existing code</h2></a>
-<div class=toc-num data-level=2>5</div>
+<div class=toc-num data-level=2>4</div>
 <a href=#implementation-experience><h2>Implementation experience</h2></a>
-<div class=toc-num data-level=3>5.1</div>
+<div class=toc-num data-level=3>4.1</div>
 <a href=#implementation-survey><h3>Implementation survey</h3></a>
-<div class=toc-num data-level=3>5.2</div>
+<div class=toc-num data-level=3>4.2</div>
 <a href=#new-alias-templates><h3>New alias templates</h3></a>
-<div class=toc-num data-level=2>6</div>
+<div class=toc-num data-level=2>5</div>
 <a href=#wording><h2>Wording</h2></a>
-<div class=toc-num data-level=3>6.1</div>
+<div class=toc-num data-level=3>5.1</div>
 <a href=#version%2esyn><h3>[version.syn]</h3></a>
-<div class=toc-num data-level=3>6.2</div>
+<div class=toc-num data-level=3>5.2</div>
 <a href=#charconv%2esyn><h3>[charconv.syn]</h3></a>
-<div class=toc-num data-level=3>6.3</div>
+<div class=toc-num data-level=3>5.3</div>
 <a href=#charconv%2eto%2echars><h3>[charconv.to.chars]</h3></a>
-<div class=toc-num data-level=3>6.4</div>
+<div class=toc-num data-level=3>5.4</div>
 <a href=#charconv%2efrom%2echars><h3>[charconv.from.chars]</h3></a>
-<div class=toc-num data-level=3>6.5</div>
+<div class=toc-num data-level=3>5.5</div>
 <a href=#format%2estring%2estd><h3>[format.string.std]</h3></a>
-<div class=toc-num data-level=2>7</div>
+<div class=toc-num data-level=3>5.6</div>
+<a href=#diff%2ecpp26%2eformat><h3>[diff.cpp26.format]</h3></a>
+<div class=toc-num data-level=2>6</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
-<h2 id=revision-history><a class=para href=#revision-history></a>1. Revision history</h2>
-
-<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.1. Changes since R0</h3>
-
-<p>SG16 reviewed R0 during several meetings in Q1 2026.
-Changes to <code><h- data-h=id>from_chars</h-></code> and <code><h- data-h=id>to_chars</h-></code>,
-as well as support for each character type was polled separately,
-with (sometimes weak) consensus in favor of the paper.
-Consequently, only some minor improvements were made:
-</p>
-<ul>
-  <li>expanded abstract</li>
-  <li>
-    considered floating-point overloads when counting the size of the
-    <code><h- data-h=id>to_chars</h-></code> overload set in <a href=#function-signature-and-result-types>§3.5. Function signature and result types</a>
-  </li>
-  <li>fixed wrong claim that libc++ only supports ASCII</li>
-  <li>fixed hallucinated <code><h- data-h=id>from_string</h-></code> in example (should have been <code><h- data-h=id>from_chars</h-></code>)</li>
-  <li>filed <a href="https://cplusplus%2egithub%2eio/LWG/issue4522">[LWG4522]</a> and removed updates to <a href=https://eel.is/c++draft/diff.cpp26.format>[diff.cpp26.format]</a></li>
-  <li>
-    explained in <a href=#charconv.from.chars>§ [charconv.from.chars]</a> why using "code unit" is correct
-    (and effectively the status quo)
-  </li>
-  <li>rebased <a href=#wording>§6. Wording</a> on <a href="https://wg21%2elink/n5032">[N5032]</a></li>
-</ul>
-
-<h2 id=introduction><a class=para href=#introduction></a>2. Introduction</h2>
+<h2 id=introduction><a class=para href=#introduction></a>1. Introduction</h2>
 
 <p>Support for <code><h- data-h=kw_type>char8_t</h-></code> and other Unicode character types
 in <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code> is clearly useful.
@@ -1735,7 +1704,7 @@ and are part of the basic character set (<a href=https://eel.is/c++draft/lex.cha
 This means that any existing implementation for ASCII-encoded <code><h- data-h=kw_type>char</h-></code> could be made to work
 with Unicode characters trivially.
 </p>
-<h2 id=design><a class=para href=#design></a>3. Design</h2>
+<h2 id=design><a class=para href=#design></a>2. Design</h2>
 
 <p>The design strategy is to prioritize simplicity and performance.
 <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> are meant to be low-level,
@@ -1750,19 +1719,19 @@ which we cannot reasonably perpetuate.
 Most of the difficult design choices revolve around how to add the new overloads
 without breaking changes to code which uses <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code>.
 </p>
-<h3 id=which-character-types-to-support><a class=para href=#which-character-types-to-support></a>3.1. Which character types to support</h3>
+<h3 id=which-character-types-to-support><a class=para href=#which-character-types-to-support></a>2.1. Which character types to support</h3>
 
 <p>All character types should be supported by <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code>.
 Find rationale for each type below.
 </p>
-<h4 id=char8_t><a class=para href=#char8_t></a>3.1.1. <code><h- data-h=kw_type>char8_t</h-></code></h4>
+<h4 id=char8_t><a class=para href=#char8_t></a>2.1.1. <code><h- data-h=kw_type>char8_t</h-></code></h4>
 
 <p>Due to how common UTF-8 is and due to <code><h- data-h=kw_type>char8_t</h-></code> now regularly being used
 to represent UTF-8 text in C++ software,
-the motivation in <a href=#introduction>§2. Introduction</a> mostly refers to <code><h- data-h=kw_type>char8_t</h-></code>.
+the motivation in <a href=#introduction>§1. Introduction</a> mostly refers to <code><h- data-h=kw_type>char8_t</h-></code>.
 In fact, there is a dedicated <a href="https://github%2ecom/sg16-unicode/sg16/issues/38">[SG16-Issue]</a> for <code><h- data-h=kw_type>char8_t</h-></code>.
 </p>
-<h4 id=char16_t-and-char32_t><a class=para href=#char16_t-and-char32_t></a>3.1.2. <code><h- data-h=kw_type>char16_t</h-></code> and <code><h- data-h=kw_type>char32_t</h-></code></h4>
+<h4 id=char16_t-and-char32_t><a class=para href=#char16_t-and-char32_t></a>2.1.2. <code><h- data-h=kw_type>char16_t</h-></code> and <code><h- data-h=kw_type>char32_t</h-></code></h4>
 
 <p>However, other Unicode encodings such as UTF-16 and UTF-32 are regularly used as well,
 and if support for UTF-8 exists,
@@ -1774,7 +1743,7 @@ where code units are interchangeable.
 to emit the same code units/points for any Unicode character type,
 and for <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code> to consume the same code units/points.
 </p>
-<h4 id=wchar_t><a class=para href=#wchar_t></a>3.1.3. <code><h- data-h=kw_type>wchar_t</h-></code></h4>
+<h4 id=wchar_t><a class=para href=#wchar_t></a>2.1.3. <code><h- data-h=kw_type>wchar_t</h-></code></h4>
 
 <p><code><h- data-h=kw_type>wchar_t</h-></code> support is slightly less motivated, and <code><h- data-h=kw_type>wchar_t</h-></code> isn't used much
 outside of Windows environments.
@@ -1783,14 +1752,14 @@ and Windows C++ software may benefit from this support
 (e.g. when feeding the output of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> into Windows API functions
 accepting <code><h- data-h=id>LPCWSTR</h-></code> (<code><h- data-h=kw>const</h-> <h- data-h=kw_type>wchar_t</h-><h- data-h=sym_op>*</h-></code>)).
 </p>
-<h3 id=to_chars><a class=para href=#to_chars></a>3.2. <code><h- data-h=id>to_chars</h-></code></h3>
+<h3 id=to_chars><a class=para href=#to_chars></a>2.2. <code><h- data-h=id>to_chars</h-></code></h3>
 
 <p>The output format of <code><h- data-h=id>to_chars</h-></code> should be identical
 to that for <code><h- data-h=kw_type>char</h-></code>.
 This is easily implementable because all characters produced by <code><h- data-h=id>to_chars</h-></code>
 are Basic Latin characters in the basic character set.
 </p>
-<h3 id=from_chars><a class=para href=#from_chars></a>3.3. <code><h- data-h=id>from_chars</h-></code></h3>
+<h3 id=from_chars><a class=para href=#from_chars></a>2.3. <code><h- data-h=id>from_chars</h-></code></h3>
 
 <p>The formats accepted by <code><h- data-h=id>from_chars</h-></code> should be identical to those for <code><h- data-h=kw_type>char</h-></code>,
 which are specified in terms of functions like <code><h- data-h=id>strtol</h-></code> in the <code><h- data-h=str_dlim>"</h-><h- data-h=str>C</h-><h- data-h=str_dlim>"</h-></code> locale.
@@ -1800,7 +1769,7 @@ such as parsing <code><h- data-h=str_deco>u8</h-><h- data-h=str_dlim>"</h-><h- d
 because this goes against its stated design goal of being a low-level,
 high-performance utility for parsing numbers.
 </p>
-<h4 id=unicode-error-handling><a class=para href=#unicode-error-handling></a>3.3.1. Unicode error handling</h4>
+<h4 id=unicode-error-handling><a class=para href=#unicode-error-handling></a>2.3.1. Unicode error handling</h4>
 
 <p>It is possible that a user attempts to invoke <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code>
 on a malformed Unicode string.
@@ -1815,11 +1784,11 @@ this pattern is made entirely of characters in the Basic Latin block.
 The following code demonstrates the intended behavior:
 </p><code-block><h- data-h=id>string_view</h-> <h- data-h=id>cstr</h-> <h- data-h=sym_op>=</h-> <h- data-h=str_dlim>"</h-><h- data-h=str>123z</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>OK, not malformed</h-></f-serif>
 <h- data-h=kw_type>int</h-> <h- data-h=id>i1</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>const</h-> <h- data-h=kw>auto</h-> <h- data-h=sym_sqr>[</h-><h- data-h=id>p1</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>e1</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=id>cstr</h-><h- data-h=sym_op>.</h-><h- data-h=id>data</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>cstr</h-><h- data-h=sym_op>.</h-><h- data-h=id>data</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>+</h-> <h- data-h=id>cstr</h-><h- data-h=sym_op>.</h-><h- data-h=id>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>i1</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>OK</h-></f-serif>
+<h- data-h=kw>const</h-> <h- data-h=kw>auto</h-> <h- data-h=sym_sqr>[</h-><h- data-h=id>p1</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>e1</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>from_string</h-><h- data-h=sym_par>(</h-><h- data-h=id>cstr</h-><h- data-h=sym_op>.</h-><h- data-h=id>data</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>cstr</h-><h- data-h=sym_op>.</h-><h- data-h=id>data</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>+</h-> <h- data-h=id>cstr</h-><h- data-h=sym_op>.</h-><h- data-h=id>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>i1</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>OK</h-></f-serif>
 
 <h- data-h=id>u8string_view</h-> <h- data-h=id>u8str</h-> <h- data-h=sym_op>=</h-> <h- data-h=str_deco>u8</h-><h- data-h=str_dlim>"</h-><h- data-h=str>123</h-><h- data-h=esc>\</h-><h- data-h=esc>xFF</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>malformed UTF-8</h-></f-serif>
 <h- data-h=kw_type>int</h-> <h- data-h=id>i2</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>const</h-> <h- data-h=kw>auto</h-> <h- data-h=sym_sqr>[</h-><h- data-h=id>p2</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>e2</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=id>u8str</h-><h- data-h=sym_op>.</h-><h- data-h=id>data</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>u8str</h-><h- data-h=sym_op>.</h-><h- data-h=id>data</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>+</h-> <h- data-h=id>u8str</h-><h- data-h=sym_op>.</h-><h- data-h=id>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>i2</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>OK</h-></f-serif>
+<h- data-h=kw>const</h-> <h- data-h=kw>auto</h-> <h- data-h=sym_sqr>[</h-><h- data-h=id>p2</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>e2</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>from_string</h-><h- data-h=sym_par>(</h-><h- data-h=id>u8str</h-><h- data-h=sym_op>.</h-><h- data-h=id>data</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>u8str</h-><h- data-h=sym_op>.</h-><h- data-h=id>data</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>+</h-> <h- data-h=id>u8str</h-><h- data-h=sym_op>.</h-><h- data-h=id>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>i2</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>OK</h-></f-serif>
 
 <h- data-h=id>assert</h-><h- data-h=sym_par>(</h-><h- data-h=id>i1</h-> <h- data-h=sym_op>==</h-> <h- data-h=id>i2</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                              <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>holds, both </h-><code><h- data-h=id>i1</h-></code><h- data-h=cmt> and </h-><code><h- data-h=id>i2</h-></code><h- data-h=cmt> equal </h-><code><h- data-h=num>123</h-></code></f-serif>
 <h- data-h=id>assert</h-><h- data-h=sym_par>(</h-><h- data-h=id>p1</h-> <h- data-h=sym_op>-</h-> <h- data-h=id>cstr</h-><h- data-h=sym_op>.</h-><h- data-h=id>data</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>==</h-> <h- data-h=id>p2</h-> <h- data-h=sym_op>-</h-> <h- data-h=id>u8str</h-><h- data-h=sym_op>.</h-><h- data-h=id>data</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>holds, both patterns are three code units long</h-></f-serif></code-block>
@@ -1831,11 +1800,11 @@ This means that simply treating greater code units as not part of the <code><h- 
 pattern (which any implementation for ASCII-based <code><h- data-h=kw_type>char</h-></code> does already)
 is a proper way of Unicode error handling.
 </p>
-<h3 id=fixing-format-for-wide-strings><a class=para href=#fixing-format-for-wide-strings></a>3.4. "Fixing" <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>wformat_string</h-><h- data-h=sym_par>)</h-></code></h3>
+<h3 id=fixing-format-for-wide-strings><a class=para href=#fixing-format-for-wide-strings></a>2.4. "Fixing" <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>wformat_string</h-><h- data-h=sym_par>)</h-></code></h3>
 
 <p>Since this proposal argues for <code><h- data-h=kw_type>wchar_t</h-></code> support in <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code>,
 it makes sense to re-specify <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-></code> to call <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> "directly".
-The current <a href="https://wg21%2elink/n5032">[N5032]</a> word in <a href=https://eel.is/c++draft/format.string.std#20>[format.string.std] paragraph 20</a> works as follows:
+The current <a href="https://wg21%2elink/n5014">[N5014]</a> word in <a href=https://eel.is/c++draft/format.string.std#20>[format.string.std] paragraph 20</a> works as follows:
 </p>
 <blockquote>
 <p>The meaning of some non-string presentation types
@@ -1862,30 +1831,19 @@ this would be an observable change,
 but would only impact hypothetical implementations where <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-></code>
 is utterly broken anyway.
 </p>
-<h3 id=function-signature-and-result-types><a class=para href=#function-signature-and-result-types></a>3.5. Function signature and result types</h3>
+<h3 id=function-signature-and-result-types><a class=para href=#function-signature-and-result-types></a>2.5. Function signature and result types</h3>
 
 <p><code><h- data-h=id>to_chars</h-></code> and <code><h- data-h=id>from_chars</h-></code>
-are not function templates despite working with a wide variety of arithmetic types.
-At least, there need to be 11 overloads
-for each signed and unsigned integer type and for <code><h- data-h=kw_type>char</h-></code>,
-as well as up to 3×3 overloads for standard floating-point types.
-There are at least 20 <code><h- data-h=id>to_chars</h-></code> overloads mandated by the standard,
-though recently added support for <code><h- data-h=kw_type>__int128</h-></code> and <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>__int128</h-></code>
-pushed that number to 22 for GCC and Clang.
-</p>
-<p>If we also added a non-template overload for each character type,
-this would result in an absurd overload set of 110 functions
-(<code><h- data-h=sym_brac>{</h-><h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>wchar_t</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char8_t</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char16_t</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char32_t</h-><h- data-h=sym_brac>}</h-> × <h- data-h=sym_brac>{</h-><h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>signed</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>...</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-><h- data-h=sym_brac>}</h-></code>).
+are not function templates despite working with a wide variety of integer types
+(at least, there need to be 11 overloads
+for each signed and unsigned integer type and for <code><h- data-h=kw_type>char</h-></code>).
+If we also added a non-template overload for each character type,
+this would result in an absurd overload set of 55 functions
+(<code><h- data-h=sym_brac>{</h-><h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>wchar_t</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char8_t</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char16_t</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char32_t</h-><h- data-h=sym_brac>}</h-> × <h- data-h=sym_brac>{</h-><h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>signed</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>...</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-><h- data-h=sym_brac>}</h-></code>).
 Such a huge overload set is clearly undesirable,
 so function templates are necessary.
 </p>
-<note-block><p><intro-></intro-> 
-110 is also merely a lower bound.
-There could easily be 200 or 300 <code><h- data-h=id>to_chars</h-></code> overloads once <code><h- data-h=str>&lt;stdfloat&gt;</h-></code> types
-and other extended arithmetic types are factored in.
-</p></note-block>
-
-<h4 id=result-type><a class=para href=#result-type></a>3.5.1. Result type</h4>
+<h4 id=result-type><a class=para href=#result-type></a>2.5.1. Result type</h4>
 
 <p>The existing <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars_result</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars_result</h-></code>
 classes cannot be turned into class templates without breaking both API and ABI.
@@ -1916,7 +1874,7 @@ changes aggregate initialization.
 </p>
 <p>Overall, the safest option is to make no changes to the existing result types.
 </p>
-<h4 id=summary><a class=para href=#summary></a>3.5.2. Summary</h4>
+<h4 id=summary><a class=para href=#summary></a>2.5.2. Summary</h4>
 
 <p>In code, the design can be summarized as follows:
 </p>
@@ -1991,7 +1949,7 @@ changes aggregate initialization.
   <h- data-h=id_type>from_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-><h- data-h=sym_op>*</h-> <h- data-h=id>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-><h- data-h=sym_op>*</h-> <h- data-h=id>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>U</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>value</h-><h- data-h=sym_punc>,</h->
                                     <h- data-h=id>chars_format</h-> <h- data-h=id>fmt</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>chars_format</h-><h- data-h=sym_op>::</h-><h- data-h=id>general</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
-<h3 id=constexpr-floating-point-overloads><a class=para href=#constexpr-floating-point-overloads></a>3.6. <code><h- data-h=kw>constexpr</h-></code> floating-point overloads</h3>
+<h3 id=constexpr-floating-point-overloads><a class=para href=#constexpr-floating-point-overloads></a>2.6. <code><h- data-h=kw>constexpr</h-></code> floating-point overloads</h3>
 
 <p>If <a href="https://wg21%2elink/p3652r1">[P3652R1]</a> "Constexpr floating-point &lt;charconv&gt; functions" is accepted,
 all new templated overloads should be made <code><h- data-h=kw>constexpr</h-></code>.
@@ -2002,7 +1960,7 @@ A possible implementation is to call the <code><h- data-h=kw>constexpr</h-> <h- 
 overload and to transcode from the ordinary literal encoding to the desired encoding.
 </p></note-block>
 
-<h3 id=more-composable-interface-taking-std::span-or-std::string_view><a class=para href=#more-composable-interface-taking-std::span-or-std::string_view></a>3.7. More composable interface taking <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>span</h-></code> or <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>string_view</h-></code></h3>
+<h3 id=more-composable-interface-taking-std::span-or-std::string_view><a class=para href=#more-composable-interface-taking-std::span-or-std::string_view></a>2.7. More composable interface taking <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>span</h-></code> or <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>string_view</h-></code></h3>
 
 <p>It is worth noting that there is a stale proposal
 <a href="https://wg21%2elink/p2584r0">[P2584R0]</a> "A More Composable <code><h- data-h=id>from_chars</h-></code>"
@@ -2030,14 +1988,20 @@ resulting in 11 + 4 + 20 = 35 candidates in the <code><h- data-h=id>to_chars</h-
 and take a <code><h- data-h=id>R</h-><h- data-h=sym_op>&amp;&amp;</h-></code> range parameter instead.
 In any case, those changes are not within the scope of this proposal.
 </p>
-<h2 id=impact-on-existing-code><a class=para href=#impact-on-existing-code></a>4. Impact on existing code</h2>
+<h2 id=impact-on-existing-code><a class=para href=#impact-on-existing-code></a>3. Impact on existing code</h2>
 
 <p>The proposal is a pure extension
 of the <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code> overload sets.
 The existing non-template overloads for <code><h- data-h=kw_type>char</h-></code>
 and various arithmetic types are preserved.
 </p>
-<h2 id=implementation-experience><a class=para href=#implementation-experience></a>5. Implementation experience</h2>
+<note-block><p><intro-></intro-> 
+There is a purely theoretical change to the semantics of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-></code>
+with no known impact on existing code.
+See <a href=#fixing-format-for-wide-strings>§2.4. "Fixing" <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>wformat_string</h-><h- data-h=sym_par>)</h-></code></a> and <a href=#diff.cpp26.format>§ [diff.cpp26.format]</a>.
+</p></note-block>
+
+<h2 id=implementation-experience><a class=para href=#implementation-experience></a>4. Implementation experience</h2>
 
 <p>Any existing implementation of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> and <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code>
 for a platform with ASCII-based <code><h- data-h=kw_type>char</h-></code> (Windows, POSIX, etc.)
@@ -2045,7 +2009,7 @@ is <em>numerically</em> implementing what is proposed here.
 That is, the implementation may not use <code><h- data-h=kw_type>char8_t</h-></code>,
 but it produces or consumes <code><h- data-h=kw_type>char</h-></code> values with the same numeric values.
 </p>
-<h3 id=implementation-survey><a class=para href=#implementation-survey></a>5.1. Implementation survey</h3>
+<h3 id=implementation-survey><a class=para href=#implementation-survey></a>4.1. Implementation survey</h3>
 
 <p>Find below a summary of existing implementations of <code><h- data-h=id>to_chars</h-></code>
 in the three major standard libraries.
@@ -2098,17 +2062,20 @@ libc++ contains the following line of code for inserting a plus sign
 into the exponent in <code><h- data-h=id>to_chars</h-></code>:
 </p><code-block><h- data-h=sym_op>*</h-><h- data-h=id>_First</h-><h- data-h=sym_op>++</h-> <h- data-h=sym_op>=</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>+</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>;</h-></code-block>
 <p>This may have to be converted into <code><h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>charT</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>'</h-><h- data-h=str>+</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-></code>
-to avoid implicit conversion warnings,
-but that is only correct in an ASCII-only implementation.
+to avoid implicit conversion warnings.
+A <code><h- data-h=kw>static_cast</h-></code> is correct in this case because libc++ only supports ASCII-encoded
+<code><h- data-h=kw_type>char</h-></code> and <code><h- data-h=kw_type>wchar_t</h-></code>,
+so that all character types are numerically interchangeable for code points
+in the Basic Latin block.
 </p></example-block>
 
-<p>libc++ supports EBCDIC and is used on z/OS (see <a href=https://reviews.llvm.org/D114813 class=sans>https://reviews.llvm.org/D114813</a>).
-Another library with EBCDIC support is the IBM XL C++ for z/OS,
+<p>The only standard library implementation that supports non-ASCII <code><h- data-h=kw_type>char</h-></code>
+is the IBM XL C++ for z/OS,
 but according to
 <a href="https://www.ibm.com/docs/en/zos/3.1.0?topic=files-xl-c-header">IBM's documentation</a>,
 no <code><h- data-h=str>&lt;charconv&gt;</h-></code> implementation exists yet.
 Even if <code><h- data-h=kw_type>char</h-></code> is non-ASCII,
-the "fix" is not much harder than a <code><h- data-h=kw>static_cast</h-></code>:
+the "fix" is usually as simple as a <code><h- data-h=kw>static_cast</h-></code>:
 </p>
 <example-block><p><intro-></intro-> 
 The libc++ snippet could have also been fixed in an EBCDIC-compatible way:
@@ -2126,7 +2093,7 @@ The libc++ snippet could have also been fixed in an EBCDIC-compatible way:
 <h- data-h=sym_op>*</h-><h- data-h=id>_First</h-><h- data-h=sym_op>++</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>_Encode</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>_CharT</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=str_deco>U</h-><h- data-h=str_dlim>'</h-><h- data-h=str>+</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 </example-block>
 
-<h3 id=new-alias-templates><a class=para href=#new-alias-templates></a>5.2. New alias templates</h3>
+<h3 id=new-alias-templates><a class=para href=#new-alias-templates></a>4.2. New alias templates</h3>
 
 <p>The proposed alias templates can be implemented as follows:
 </p>
@@ -2150,9 +2117,9 @@ The implementation doesn't actually require C++26 reflection.
 More traditional alternatives like <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>conditional_t</h-></code> also work.
 </p></note-block>
 
-<h2 id=wording><a class=para href=#wording></a>6. Wording</h2>
+<h2 id=wording><a class=para href=#wording></a>5. Wording</h2>
 
-<p>The following changes are relative to <a href="https://wg21%2elink/n5032">[N5032]</a>.
+<p>The following changes are relative to <a href="https://wg21%2elink/n5014">[N5014]</a>.
 </p>
 <h3 id=version.syn><a class=para href=#version%2esyn></a>[version.syn]</h3>
 
@@ -2517,18 +2484,6 @@ after rounding according to <code><h- data-h=id>round_to_nearest</h-></code> (<a
 and the member <code><h- data-h=id>ec</h-></code> is value-initialized.
 </p></diff-block>
 
-<note-block class=edit><p><intro-></intro-> 
-The current use of "character" in the wording is unclear
-because it could equally mean that the <code><h- data-h=id>from_chars</h-></code>
-operates on the decoded code points or on the code units of the string.
-<code><h- data-h=id>from_chars</h-></code> leans on the "subject sequence" of <code><h- data-h=id>strtol</h-></code> for wording
-(see <a href=https://cigix.me/c23#7.24.1.7>C23 §7.24.1.7</a>),
-which is worded in terms of "characters",
-presumably referring to "character" as in "single-byte character"
-(see <a href=https://cigix.me/c23#3.10.1>C23 §3.10.1</a>).
-This means that <code><h- data-h=id>from_chars</h-></code> is already intended to operate on bytes or code units.
-</p></note-block>
-
 <p>Immediately following <a href=https://eel.is/c++draft/charconv.from.chars#1>[charconv.from.chars] paragraph 1</a>,
 insert a new paragraph:
 </p>
@@ -2663,13 +2618,13 @@ as described for <code><h- data-h=id>strtod</h-></code>, except that
     the otherwise optional exponent part shall appear;
   </li>
   <li>
-    if <code><h- data-h=id>fmt</h-></code> has <code><h- data-h=id>chars_format</h->​::​fixed</code> set but not <code><h- data-h=id>chars_format</h->​::​scientific</code>,
+    if fmt has <code><h- data-h=id>chars_format</h->​::​fixed</code> set but not <code><h- data-h=id>chars_format</h->​::​scientific</code>,
     the optional exponent part shall not appear; and
   </li>
   <li>
-    if <code><h- data-h=id>fmt</h-></code> is <code><h- data-h=id>chars_format</h->​::​hex</code>,
+    if fmt is <code><h- data-h=id>chars_format</h->​::​hex</code>,
     the prefix <del><code><h- data-h=str_dlim>"</h-><h- data-h=str>0x</h-><h- data-h=str_dlim>"</h-></code> or <code><h- data-h=str_dlim>"</h-><h- data-h=str>0X</h-><h- data-h=str_dlim>"</h-></code></del> <ins><tt->0x</tt-></ins> is assumed
-    <ins>to precede the string for the purpose of determining the resulting <code><h- data-h=id>value</h-></code>,
+    <ins>to precede the string,
     but is not part of the pattern</ins>.
   </li>
 </ul>
@@ -2687,11 +2642,6 @@ This change includes a drive-by fix which supersedes <a href="https://github%2ec
 
 <h3 id=format.string.std><a class=para href=#format%2estring%2estd></a>[format.string.std]</h3>
 
-<p>The following change is relative to the proposed resolution of <a href="https://cplusplus%2egithub%2eio/LWG/issue4522">[LWG4522]</a>,
-and reverts that resolution.
-If <a href="https://cplusplus%2egithub%2eio/LWG/issue4522">[LWG4522]</a> has not yet been approved,
-close it.
-</p>
 <p>Modify <a href=https://eel.is/c++draft/format.string.std#20>[format.string.std] paragraph 20</a> as follows:
 </p>
 <diff-block>
@@ -2702,9 +2652,7 @@ In such cases, let
 <ins>of elements of type <code><h- data-h=id>charT</h-></code>,</ins>
 large enough to hold the <code><h- data-h=id>to_chars</h-></code> output<ins>,</ins>
 and <ins>let</ins> <code><h- data-h=id>value</h-></code> be the formatting argument value.
-Formatting is done as if by calling <code><h- data-h=id>to_chars</h-></code> as specified<del>,
-transcoding the <code><h- data-h=id>to_chars</h-></code> output to the wide literal encoding
-if <code><h- data-h=id>charT</h-></code> is <code><h- data-h=kw_type>wchar_t</h-></code>,</del>
+Formatting is done as if by calling <code><h- data-h=id>to_chars</h-></code> as specified
 and copying the output through the output iterator of the format context.
 </p>
 <p>[<i>Note</i>: 
@@ -2714,25 +2662,41 @@ as specified by the format specifiers.
  — <i>end note</i>]
 </p></diff-block>
 
-<note-block class=edit><p><intro-></intro-> 
-The additional transcoding from the ordinary literal encoding
-to the wide literal encoding used to be necessary
-because <code><h- data-h=id>to_chars</h-></code> only supported <code><h- data-h=kw_type>char</h-></code>.
-With the changes in this paper,
-<code><h- data-h=id>to_chars</h-></code> can simply produce output with the same character type
-and encoding as <code><h- data-h=id>format</h-></code>,
-so additional transcoding becomes unnecessary.
-</p></note-block>
+<h3 id=diff.cpp26.format><a class=para href=#diff%2ecpp26%2eformat></a>[diff.cpp26.format]</h3>
 
-<h2 id=references><a class=para href=#references></a>7. References</h2>
+<p>Add a new subclause in <a href=https://eel.is/c++draft/diff.cpp26>[diff.cpp26]</a> as follows:
+</p>
+<ins-block>
+<h3><a href=https://eel.is/c++draft/format>[format]</a> formatting <span class=stable-ref>[diff.cpp26.format]</span></h3>
+
+<p><b>Affected subclause</b>: <a href=https://eel.is/c++draft/format.string.std>[format.string.std]</a><br/>
+<b>Change</b>: Output of <code><h- data-h=id>format</h-></code> and <code><h- data-h=id>format_to</h-></code> given a <code><h- data-h=id>wformat_string</h-></code>.<br/>
+<b>Rationale</b>: Enabling consistent behavior for all character types.<br/>
+<b>Effect on original feature</b>:
+The <code><h- data-h=kw_type>char</h-></code> values produced by <code><h- data-h=id>to_chars</h-></code> when formatting integral
+and floating-point values were previously converted to <code><h- data-h=kw_type>wchar_t</h-></code>
+without transcoding from the ordinary to the wide literal encoding.
+Now, <code><h- data-h=id>to_chars</h-></code> is called directly
+with a buffer whose type depends on the type of format string,
+which may produce different code units given <code><h- data-h=id>format_string</h-></code> and <code><h- data-h=id>wformat_string</h-></code>.
+</p>
+<p>[<i>Example</i>: 
+</p><code-block class=borderless><h- data-h=id>string</h-> <h- data-h=id>c</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>format</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>{}</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=id>wstring</h-> <h- data-h=id>w</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>format</h-><h- data-h=sym_par>(</h-><h- data-h=str_deco>L</h-><h- data-h=str_dlim>"</h-><h- data-h=str>{}</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=id>assert</h-><h- data-h=sym_par>(</h-><h- data-h=id>c</h-><h- data-h=sym_op>.</h-><h- data-h=id>front</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>==</h-> <h- data-h=id>w</h-><h- data-h=sym_op>.</h-><h- data-h=id>front</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>previously always passed, now fails if the ordinary literal encoding is EBCDIC</h-></f-serif>
+                                <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>and the wide literal encoding is UTF-16</h-></f-serif></code-block>
+<p> — <i>end example</i>]
+</p></ins-block>
+
+<h2 id=references><a class=para href=#references></a>6. References</h2>
 
 
-<div class=bib><div id=bib-item-N5032 class=bib-item>
-<a href="https://wg21%2elink/n5032">[N5032]</a>
+<div class=bib><div id=bib-item-N5014 class=bib-item>
+<a href="https://wg21%2elink/n5014">[N5014]</a>
 <span class=bib-author>Thomas Köppe.</span>
 <span class=bib-title>Working Draft, Programming Languages — C++</span>
-<span class=bib-date>2025-12-15</span>
-<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/n5032%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf</a></div><div id=bib-item-P2007R0 class=bib-item>
+<span class=bib-date>2025-08-05</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/n5014%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf</a></div><div id=bib-item-P2007R0 class=bib-item>
 <a href="https://wg21%2elink/p2007r0">[P2007R0]</a>
 <span class=bib-author>Mateusz Pusz.</span>
 <span class=bib-title>std::from_chars should work with std::string_view</span>
@@ -2755,11 +2719,7 @@ so additional transcoding becomes unnecessary.
 <a href="https://cplusplus%2egithub%2eio/LWG/issue4430">[LWG4430]</a>
 <span class=bib-author>Jan Schultke.</span>
 <span class=bib-title>from_chars should not parse "0b" base prefixes</span>
-<a href="https://cplusplus%2egithub%2eio/LWG/issue4430" class=bib-link>https://cplusplus.github.io/LWG/issue4430</a></div><div id=bib-item-LWG4522 class=bib-item>
-<a href="https://cplusplus%2egithub%2eio/LWG/issue4522">[LWG4522]</a>
-<span class=bib-author>Jan Schultke.</span>
-<span class=bib-title>Clarify that std::format transcodes for std::wformat_strings</span>
-<a href="https://cplusplus%2egithub%2eio/LWG/issue4522" class=bib-link>https://cplusplus.github.io/LWG/issue4522</a></div><div id=bib-item-SG16-Issue class=bib-item>
+<a href="https://cplusplus%2egithub%2eio/LWG/issue4430" class=bib-link>https://cplusplus.github.io/LWG/issue4430</a></div><div id=bib-item-SG16-Issue class=bib-item>
 <a href="https://github%2ecom/sg16-unicode/sg16/issues/38">[SG16-Issue]</a>
 <span class=bib-title>std::to_chars/std::from_chars overloads for char8_t (#38)</span>
 <a href="https://github%2ecom/sg16-unicode/sg16/issues/38" class=bib-link>https://github.com/sg16-unicode/sg16/issues/38</a></div><div id=bib-item-EDIT6848 class=bib-item>

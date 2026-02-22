@@ -4,8 +4,8 @@
   title = Extending \tcode{<charconv>} support to more character types
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3876R0}}
-  \dt{Date:}            \dd{\tt{2025-11-13}}
+  \dt{Document number:} \dd{\docnum{P3876R1}}
+  \dt{Date:}            \dd{\tt{2026-02-22}}
   \dt{Audience:}        \dd{SG16}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -17,13 +17,42 @@
 }
 
 \Babstract{
-We should add support for character types other than \tcode{char}
-in \tcode{std::to_chars} and \tcode{std::from_chars}.
+\tcode{std::to_chars} and \tcode{std::from_chars}
+currently only provide support for \tcode{char},
+which causes several usability problems.
+This paper proposes to extend support to all other character types,
+with essentially the same behavior.
 }
 
 \h2(listed=false){Contents}
 
 \make_contents
+
+\h2{Revision history}
+
+\h3{Changes since R0}
+
+SG16 reviewed R0 during several meetings in Q1 2026.
+Changes to \tcode{from_chars} and \tcode{to_chars},
+as well as support for each character type was polled separately,
+with (sometimes weak) consensus in favor of the paper.
+Consequently, only some minor improvements were made:
+
+\ul{
+  \li{expanded abstract}
+  \li{
+    considered floating-point overloads when counting the size of the
+    \tcode{to_chars} overload set in \ref(#function-signature-and-result-types)
+  }
+  \li{fixed wrong claim that libc++ only supports ASCII}
+  \li{fixed hallucinated \tcode{from_string} in example (should have been \tcode{from_chars})}
+  \li{filed \ref(LWG4522) and removed updates to \eelis{diff.cpp26.format}}
+  \li{
+    explained in \ref(#charconv.from.chars) why using "code unit" is correct
+    (and effectively the status quo)
+  }
+  \li{rebased \ref(#wording) on \ref(N5032)}
+}
 
 \h2{Introduction}
 
@@ -161,11 +190,11 @@ The following code demonstrates the intended behavior:
 \cppblock{
 string_view cstr = "123z"; // \serif{OK, not malformed}
 int i1;
-const auto [p1, e1] = from_string(cstr.data(), cstr.data() + cstr.size(), i1); // \serif{OK}
+const auto [p1, e1] = from_chars(cstr.data(), cstr.data() + cstr.size(), i1); // \serif{OK}
 
 u8string_view u8str = u8"123\\xFF"; // \serif{malformed UTF-8}
 int i2;
-const auto [p2, e2] = from_string(u8str.data(), u8str.data() + u8str.size(), i2); // \serif{OK}
+const auto [p2, e2] = from_chars(u8str.data(), u8str.data() + u8str.size(), i2); // \serif{OK}
 
 assert(i1 == i2);                              // \serif{holds, both \tcode{i1} and \tcode{i2} equal \tcode{123}}
 assert(p1 - cstr.data() == p2 - u8str.data()); // \serif{holds, both patterns are three code units long}
@@ -182,7 +211,7 @@ is a proper way of Unicode error handling.
 
 Since this proposal argues for \tcode{wchar_t} support in \tcode{std::to_chars},
 it makes sense to re-specify \tcode{std::format} to call \tcode{std::to_chars} "directly".
-The current \ref(N5014) word in \eelis{format.string.std#20} works as follows:
+The current \ref(N5032) word in \eelis{format.string.std#20} works as follows:
 
 \Bquote{
 The meaning of some non-string presentation types
@@ -212,14 +241,25 @@ is utterly broken anyway.
 \h3{Function signature and result types}
 
 \tcode{to_chars} and \tcode{from_chars}
-are not function templates despite working with a wide variety of integer types
-(at least, there need to be 11 overloads
-for each signed and unsigned integer type and for \tcode{char}).
+are not function templates despite working with a wide variety of arithmetic types.
+At least, there need to be 11 overloads
+for each signed and unsigned integer type and for \tcode{char},
+as well as up to 3×3 overloads for standard floating-point types.
+There are at least 20 \tcode{to_chars} overloads mandated by the standard,
+though recently added support for \tcode{__int128} and \tcode{unsigned __int128}
+pushed that number to 22 for GCC and Clang.
+
 If we also added a non-template overload for each character type,
-this would result in an absurd overload set of 55 functions
-(\tcode{{char, wchar_t, char8_t, char16_t, char32_t} × {char, signed char, ..., unsigned long long}}).
+this would result in an absurd overload set of 110 functions
+(\tcode{{char, wchar_t, char8_t, char16_t, char32_t} × {char, signed char, ..., long double}}).
 Such a huge overload set is clearly undesirable,
 so function templates are necessary.
+
+\Bnote{
+110 is also merely a lower bound.
+There could easily be 200 or 300 \tcode{to_chars} overloads once \header{stdfloat} types
+and other extended arithmetic types are factored in.
+}
 
 \h4{Result type}
 
@@ -381,12 +421,6 @@ of the \tcode{std::to_chars} and \tcode{std::from_chars} overload sets.
 The existing non-template overloads for \tcode{char}
 and various arithmetic types are preserved.
 
-\Bnote{
-There is a purely theoretical change to the semantics of \tcode{std::format}
-with no known impact on existing code.
-See \ref(#fixing-format-for-wide-strings) and \ref(#diff.cpp26.format).
-}
-
 \h2{Implementation experience}
 
 Any existing implementation of \tcode{std::to_chars} and \tcode{std::from_chars}
@@ -450,20 +484,17 @@ into the exponent in \tcode{to_chars}:
 *_First++ = '+';
 }
 This may have to be converted into \tcode{static_cast<charT>('+')}
-to avoid implicit conversion warnings.
-A \tcode{static_cast} is correct in this case because libc++ only supports ASCII-encoded
-\tcode{char} and \tcode{wchar_t},
-so that all character types are numerically interchangeable for code points
-in the Basic Latin block.
+to avoid implicit conversion warnings,
+but that is only correct in an ASCII-only implementation.
 }
 
-The only standard library implementation that supports non-ASCII \tcode{char}
-is the IBM XL C++ for z/OS,
+libc++ supports EBCDIC and is used on z/OS (see \url{https://reviews.llvm.org/D114813}).
+Another library with EBCDIC support is the IBM XL C++ for z/OS,
 but according to
 \ref(https://www.ibm.com/docs/en/zos/3.1.0?topic=files-xl-c-header){IBM's documentation},
 no \header{charconv} implementation exists yet.
 Even if \tcode{char} is non-ASCII,
-the "fix" is usually as simple as a \tcode{static_cast}:
+the "fix" is not much harder than a \tcode{static_cast}:
 
 \Bex{
 The libc++ snippet could have also been fixed in an EBCDIC-compatible way:
@@ -511,7 +542,7 @@ More traditional alternatives like \tcode{std::conditional_t} also work.
 
 \h2{Wording}
 
-The following changes are relative to \ref(N5014).
+The following changes are relative to \ref(N5032).
 
 \h3(show-number=false){[version.syn]}
 
@@ -892,6 +923,18 @@ after rounding according to \tcode{round_to_nearest}\iref{round.style},
 and the member \tcode{ec} is value-initialized.
 }
 
+\editnote{
+The current use of "character" in the wording is unclear
+because it could equally mean that the \tcode{from_chars}
+operates on the decoded code points or on the code units of the string.
+\tcode{from_chars} leans on the "subject sequence" of \tcode{strtol} for wording
+(see \ref(https://cigix.me/c23#7.24.1.7){C23 §7.24.1.7}),
+which is worded in terms of "characters",
+presumably referring to "character" as in "single-byte character"
+(see \ref(https://cigix.me/c23#3.10.1){C23 §3.10.1}).
+This means that \tcode{from_chars} is already intended to operate on bytes or code units.
+}
+
 Immediately following \eelis{charconv.from.chars#1},
 insert a new paragraph:
 
@@ -1034,13 +1077,13 @@ as described for \tcode{strtod}, except that
     the otherwise optional exponent part shall appear;
   }
   \li{
-    if fmt has \tcode{chars_format​::​fixed} set but not \tcode{chars_format​::​scientific},
+    if \tcode{fmt} has \tcode{chars_format​::​fixed} set but not \tcode{chars_format​::​scientific},
     the optional exponent part shall not appear; and
   }
   \li{
-    if fmt is \tcode{chars_format​::​hex},
+    if \tcode{fmt} is \tcode{chars_format​::​hex},
     the prefix \del{\tcode{"0x"} or \tcode{"0X"}} \ins{\tt{0x}} is assumed
-    \ins{to precede the string,
+    \ins{to precede the string for the purpose of determining the resulting \tcode{value},
     but is not part of the pattern}.
   }
 }
@@ -1058,6 +1101,11 @@ This change includes a drive-by fix which supersedes \ref(EDIT6848).
 
 \h3(show-number=false){[format.string.std]}
 
+The following change is relative to the proposed resolution of \ref(LWG4522),
+and reverts that resolution.
+If \ref(LWG4522) has not yet been approved,
+close it.
+
 Modify \eelis{format.string.std#20} as follows:
 
 \Bdiff{
@@ -1068,7 +1116,9 @@ In such cases, let
 \ins{of elements of type \tcode{charT},}
 large enough to hold the \tcode{to_chars} output\ins{,}
 and \ins{let} \tcode{value} be the formatting argument value.
-Formatting is done as if by calling \tcode{to_chars} as specified
+Formatting is done as if by calling \tcode{to_chars} as specified\del{,
+transcoding the \tcode{to_chars} output to the wide literal encoding
+if \tcode{charT} is \tcode{wchar_t},}
 and copying the output through the output iterator of the format context.
 
 \note{
@@ -1078,43 +1128,25 @@ as specified by the format specifiers.
 }
 }
 
-\h3(show-number=false){[diff.cpp26.format]}
-
-Add a new subclause in \eelis{diff.cpp26} as follows:
-
-\Bins{
-\cowel_html_element(h3){\eelis{format} formatting \stable_ref{diff.cpp26.format}}
-
-\b{Affected subclause}: \eelis{format.string.std}\br
-\b{Change}: Output of \tcode{format} and \tcode{format_to} given a \tcode{wformat_string}.\br
-\b{Rationale}: Enabling consistent behavior for all character types.\br
-\b{Effect on original feature}:
-The \tcode{char} values produced by \tcode{to_chars} when formatting integral
-and floating-point values were previously converted to \tcode{wchar_t}
-without transcoding from the ordinary to the wide literal encoding.
-Now, \tcode{to_chars} is called directly
-with a buffer whose type depends on the type of format string,
-which may produce different code units given \tcode{format_string} and \tcode{wformat_string}.
-
-\example{
-\itemdecl{
-string c = format("{}", 0);
-wstring w = format(L"{}", 0);
-assert(c.front() == w.front()); // \serif{previously always passed, now fails if the ordinary literal encoding is EBCDIC}
-                                // \serif{and the wide literal encoding is UTF-16}
-}
-}
+\editnote{
+The additional transcoding from the ordinary literal encoding
+to the wide literal encoding used to be necessary
+because \tcode{to_chars} only supported \tcode{char}.
+With the changes in this paper,
+\tcode{to_chars} can simply produce output with the same character type
+and encoding as \tcode{format},
+so additional transcoding becomes unnecessary.
 }
 
 \h2{References}
 
 \bib(
-  id = N5014,
+  id = N5032,
   title = Working Draft\, Programming Languages — C++,
-  date = 2025-08-05,
+  date = 2025-12-15,
   author = Thomas Köppe,
-  link = https://wg21.link/n5014,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+  link = https://wg21.link/n5032,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
 )\
 \bib(
   id = P2007R0,
@@ -1151,6 +1183,12 @@ assert(c.front() == w.front()); // \serif{previously always passed, now fails if
   title = from_chars should not parse "0b" base prefixes,
   author = Jan Schultke,
   link = https://cplusplus.github.io/LWG/issue4430,
+)\
+\bib(
+  id = LWG4522,
+  title = Clarify that std::format transcodes for std::wformat_strings,
+  author = Jan Schultke,
+  link = https://cplusplus.github.io/LWG/issue4522,
 )\
 \bib(
   id = SG16-Issue,
