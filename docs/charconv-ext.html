@@ -1621,7 +1621,7 @@ with essentially the same behavior.
 <div class=toc-num data-level=4>3.3.1</div>
 <a href=#unicode-error-handling><h4>Unicode error handling</h4></a>
 <div class=toc-num data-level=3>3.4</div>
-<a href=#fixing-format-for-wide-strings><h3>"Fixing" <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>wformat_string</h-><h- data-h=sym_par>)</h-></code></h3></a>
+<a href=#fixing-format-for-wide-strings><h3>Re-specifying <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>wformat_string</h-><h- data-h=sym_par>)</h-></code></h3></a>
 <div class=toc-num data-level=3>3.5</div>
 <a href=#function-signature-and-result-types><h3>Function signature and result types</h3></a>
 <div class=toc-num data-level=4>3.5.1</div>
@@ -1675,6 +1675,10 @@ Consequently, only some minor improvements were made:
   <li>fixed wrong claim that libc++ only supports ASCII</li>
   <li>fixed hallucinated <code><h- data-h=id>from_string</h-></code> in example (should have been <code><h- data-h=id>from_chars</h-></code>)</li>
   <li>filed <a href="https://cplusplus%2egithub%2eio/LWG/issue4522">[LWG4522]</a> and removed updates to <a href=https://eel.is/c++draft/diff.cpp26.format>[diff.cpp26.format]</a></li>
+  <li>
+    changed <a href=#fixing-format-for-wide-strings>§3.4. Re-specifying <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>wformat_string</h-><h- data-h=sym_par>)</h-></code></a> from "fixing" <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-></code>
+    to merely "re-specifying" it
+  </li>
   <li>
     explained in <a href=#charconv.from.chars>§ [charconv.from.chars]</a> why using "code unit" is correct
     (and effectively the status quo)
@@ -1831,36 +1835,18 @@ This means that simply treating greater code units as not part of the <code><h- 
 pattern (which any implementation for ASCII-based <code><h- data-h=kw_type>char</h-></code> does already)
 is a proper way of Unicode error handling.
 </p>
-<h3 id=fixing-format-for-wide-strings><a class=para href=#fixing-format-for-wide-strings></a>3.4. "Fixing" <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>wformat_string</h-><h- data-h=sym_par>)</h-></code></h3>
+<h3 id=fixing-format-for-wide-strings><a class=para href=#fixing-format-for-wide-strings></a>3.4. Re-specifying <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>wformat_string</h-><h- data-h=sym_par>)</h-></code></h3>
 
 <p>Since this proposal argues for <code><h- data-h=kw_type>wchar_t</h-></code> support in <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code>,
 it makes sense to re-specify <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-></code> to call <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> "directly".
-The current <a href="https://wg21%2elink/n5032">[N5032]</a> word in <a href=https://eel.is/c++draft/format.string.std#20>[format.string.std] paragraph 20</a> works as follows:
+The current wording in <a href="https://wg21%2elink/n5032">[N5032]</a> uses the <code><h- data-h=kw_type>char</h-></code> overload,
+and is intended to transcode the output
+(although it arguably doesn't transcode without <a href="https://cplusplus%2egithub%2eio/LWG/issue4522">[LWG4522]</a>).
 </p>
-<blockquote>
-<p>The meaning of some non-string presentation types
-is defined in terms of a call to <code><h- data-h=id>to_chars</h-></code>.
-In such cases, let [<code><h- data-h=id>first</h-></code>, <code><h- data-h=id>last</h-></code>) be a range
-large enough to hold the <code><h- data-h=id>to_chars</h-></code> output
-and <code><h- data-h=id>value</h-></code> be the formatting argument value.
-Formatting is done as if by calling <code><h- data-h=id>to_chars</h-></code> as specified
-and copying the output through the output iterator of the format context.
-</p></blockquote>
-
-<p>For <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>wformat_string</h-></code>,
-this means that the <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> overload for <code><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-></code> is called,
-and the resulting <code><h- data-h=kw_type>char</h-></code> values are copied into the <code><h- data-h=kw_type>wchar_t</h-></code> output.
-This could hypothetically result in nonsensical and malformed output
-if the ordinary literal encoding and wide literal encoding are completely different,
-such as if <code><h- data-h=kw_type>char</h-></code> is EBCDIC and <code><h- data-h=kw_type>wchar_t</h-></code> is UTF-16.
-This is <em>technically</em> allowed by <a href=https://eel.is/c++draft/lex.charset>[lex.charset]</a>,
-although no known implementation exists that makes such an exotic design choice.
-</p>
-<p>If we specified <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-></code> to instead call the <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code>
-overload for the same character type as the format string (as proposed),
-this would be an observable change,
-but would only impact hypothetical implementations where <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-></code>
-is utterly broken anyway.
+<p>Once <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> supports <code><h- data-h=kw_type>wchar_t</h-></code>,
+<code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-></code> should simply call that overload directly, without transcoding.
+Assuming <a href="https://cplusplus%2egithub%2eio/LWG/issue4522">[LWG4522]</a> is accepted and transcoding already happens,
+this results in no change to the current behavior.
 </p>
 <h3 id=function-signature-and-result-types><a class=para href=#function-signature-and-result-types></a>3.5. Function signature and result types</h3>
 

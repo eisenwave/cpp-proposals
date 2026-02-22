@@ -48,6 +48,10 @@ Consequently, only some minor improvements were made:
   \li{fixed hallucinated \tcode{from_string} in example (should have been \tcode{from_chars})}
   \li{filed \ref(LWG4522) and removed updates to \eelis{diff.cpp26.format}}
   \li{
+    changed \ref(#fixing-format-for-wide-strings) from "fixing" \tcode{std::format}
+    to merely "re-specifying" it
+  }
+  \li{
     explained in \ref(#charconv.from.chars) why using "code unit" is correct
     (and effectively the status quo)
   }
@@ -207,36 +211,18 @@ This means that simply treating greater code units as not part of the \tcode{std
 pattern (which any implementation for ASCII-based \tcode{char} does already)
 is a proper way of Unicode error handling.
 
-\h3(id=fixing-format-for-wide-strings){"Fixing" \tcode{std::format(std::wformat_string)}}
+\h3(id=fixing-format-for-wide-strings){Re-specifying \tcode{std::format(std::wformat_string)}}
 
 Since this proposal argues for \tcode{wchar_t} support in \tcode{std::to_chars},
 it makes sense to re-specify \tcode{std::format} to call \tcode{std::to_chars} "directly".
-The current \ref(N5032) word in \eelis{format.string.std#20} works as follows:
+The current wording in \ref(N5032) uses the \tcode{char} overload,
+and is intended to transcode the output
+(although it arguably doesn't transcode without \ref(LWG4522)).
 
-\Bquote{
-The meaning of some non-string presentation types
-is defined in terms of a call to \tcode{to_chars}.
-In such cases, let [\tcode{first}, \tcode{last}) be a range
-large enough to hold the \tcode{to_chars} output
-and \tcode{value} be the formatting argument value.
-Formatting is done as if by calling \tcode{to_chars} as specified
-and copying the output through the output iterator of the format context.
-}
-
-For \tcode{std::wformat_string},
-this means that the \tcode{std::to_chars} overload for \tcode{char*} is called,
-and the resulting \tcode{char} values are copied into the \tcode{wchar_t} output.
-This could hypothetically result in nonsensical and malformed output
-if the ordinary literal encoding and wide literal encoding are completely different,
-such as if \tcode{char} is EBCDIC and \tcode{wchar_t} is UTF-16.
-This is \em{technically} allowed by \eelis{lex.charset},
-although no known implementation exists that makes such an exotic design choice.
-
-If we specified \tcode{std::format} to instead call the \tcode{std::to_chars}
-overload for the same character type as the format string (as proposed),
-this would be an observable change,
-but would only impact hypothetical implementations where \tcode{std::format}
-is utterly broken anyway.
+Once \tcode{std::to_chars} supports \tcode{wchar_t},
+\tcode{std::format} should simply call that overload directly, without transcoding.
+Assuming \ref(LWG4522) is accepted and transcoding already happens,
+this results in no change to the current behavior.
 
 \h3{Function signature and result types}
 
