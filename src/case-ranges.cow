@@ -163,6 +163,40 @@ and having differences in lexing between C and C++ seems undesirable.
 It is strongly recommended to surround the \tcode{...} token with spaces,
 which works around the problem.
 
+\h3{Scoped enumerations}
+
+One feature exclusive to the C++ compiler extension is the support for scoped enumerations,
+such as in:
+
+\cppblock{
+enum class Status {
+  added,
+  removed,
+  error_general,
+  error_invalid_argument,
+};
+
+void handle(Status s) {
+  switch (s) {
+  case Status::added ... Status::removed:
+    break;
+  case Status::error ... Status::error_invalid_argument:
+    print_error(s);
+    break;
+  }
+}
+}
+
+This part should also be standardized because it is useful.
+Many scoped enumerations organize enumerations into \q{blocks},
+such as success statuses and error statuses,
+and case ranges allow for selecting such blocks.
+
+\Bnote{
+The range check does not undergo overload resolution for \tcode{operator<},
+but takes place in terms of the underlying type of the enumeration.
+}
+
 \h3{Why not wait for pattern matching?}
 
 Pattern matching provides very similar functionality:
@@ -428,8 +462,10 @@ selected as follows:}
   \li{\ins{
     If the value of the condition lies in the value range of one of the \tcode{case} labels,
     control is passed to the statement labeled by that label.
-    \br
-    \note{There can be at most one such label.}
+    If the value is of enumeration type \tcode{E},
+    determining whether it lies in the value range takes place
+    by first explicitly converting\iref{expr.type.conv} the value range boundaries
+    and the value of the condition to the underlying type of \tcode{E}.
   }}
   \li{\ins{
     Otherwise, if there is a \tcode{default} label,

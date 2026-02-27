@@ -1605,8 +1605,10 @@ This feature should be standardized for C++.
 <div class=toc-num data-level=3>3.1</div>
 <a href=#design-strategy><h3>Design strategy</h3></a>
 <div class=toc-num data-level=3>3.2</div>
-<a href=#why-not-wait-for-pattern-matching><h3>Why not wait for pattern matching?</h3></a>
+<a href=#scoped-enumerations><h3>Scoped enumerations</h3></a>
 <div class=toc-num data-level=3>3.3</div>
+<a href=#why-not-wait-for-pattern-matching><h3>Why not wait for pattern matching?</h3></a>
+<div class=toc-num data-level=3>3.4</div>
 <a href=#what-about-pack-expansion-case-labels><h3>What about pack expansion <code><h- data-h=kw_ctrl>case</h-></code> labels?</h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#implementation-experience><h2>Implementation experience</h2></a>
@@ -1753,7 +1755,39 @@ and having differences in lexing between C and C++ seems undesirable.
 It is strongly recommended to surround the <code><h- data-h=sym_op>...</h-></code> token with spaces,
 which works around the problem.
 </p>
-<h3 id=why-not-wait-for-pattern-matching><a class=para href=#why-not-wait-for-pattern-matching></a>3.2. Why not wait for pattern matching?</h3>
+<h3 id=scoped-enumerations><a class=para href=#scoped-enumerations></a>3.2. Scoped enumerations</h3>
+
+<p>One feature exclusive to the C++ compiler extension is the support for scoped enumerations,
+such as in:
+</p>
+<code-block><h- data-h=kw>enum</h-> <h- data-h=kw>class</h-> <h- data-h=id>Status</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=id>added</h-><h- data-h=sym_punc>,</h->
+  <h- data-h=id>removed</h-><h- data-h=sym_punc>,</h->
+  <h- data-h=id>error_general</h-><h- data-h=sym_punc>,</h->
+  <h- data-h=id>error_invalid_argument</h-><h- data-h=sym_punc>,</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=kw_type>void</h-> <h- data-h=id>handle</h-><h- data-h=sym_par>(</h-><h- data-h=id>Status</h-> <h- data-h=id>s</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw_ctrl>switch</h-> <h- data-h=sym_par>(</h-><h- data-h=id>s</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw_ctrl>case</h-> <h- data-h=id>Status</h-><h- data-h=sym_op>::</h-><h- data-h=id>added</h-> <h- data-h=sym_op>...</h-> <h- data-h=id>Status</h-><h- data-h=sym_op>::</h-><h- data-h=id>removed</h-><h- data-h=sym_punc>:</h->
+    <h- data-h=kw_ctrl>break</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_ctrl>case</h-> <h- data-h=id>Status</h-><h- data-h=sym_op>::</h-><h- data-h=id>error</h-> <h- data-h=sym_op>...</h-> <h- data-h=id>Status</h-><h- data-h=sym_op>::</h-><h- data-h=id>error_invalid_argument</h-><h- data-h=sym_punc>:</h->
+    <h- data-h=id>print_error</h-><h- data-h=sym_par>(</h-><h- data-h=id>s</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw_ctrl>break</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>This part should also be standardized because it is useful.
+Many scoped enumerations organize enumerations into <q>blocks</q>,
+such as success statuses and error statuses,
+and case ranges allow for selecting such blocks.
+</p>
+<note-block><p><intro-></intro-> 
+The range check does not undergo overload resolution for <code><h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;</h-></code>,
+but takes place in terms of the underlying type of the enumeration.
+</p></note-block>
+
+<h3 id=why-not-wait-for-pattern-matching><a class=para href=#why-not-wait-for-pattern-matching></a>3.3. Why not wait for pattern matching?</h3>
 
 <p>Pattern matching provides very similar functionality:
 </p>
@@ -1807,7 +1841,7 @@ which works around the problem.
   </li>
 </ul>
 
-<h3 id=what-about-pack-expansion-case-labels><a class=para href=#what-about-pack-expansion-case-labels></a>3.3. What about pack expansion <code><h- data-h=kw_ctrl>case</h-></code> labels?</h3>
+<h3 id=what-about-pack-expansion-case-labels><a class=para href=#what-about-pack-expansion-case-labels></a>3.4. What about pack expansion <code><h- data-h=kw_ctrl>case</h-></code> labels?</h3>
 
 <p>It may be worth considering a pack expansion <code><h- data-h=kw_ctrl>case</h-></code> label, like:
 </p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>auto</h-><h- data-h=sym_op>...</h-> <h- data-h=id>Args</h-><h- data-h=sym_op>&gt;</h->
@@ -2006,8 +2040,10 @@ selected as follows:</ins>
   <li><ins>
     If the value of the condition lies in the value range of one of the <code><h- data-h=kw_ctrl>case</h-></code> labels,
     control is passed to the statement labeled by that label.
-    <br/>
-    [<i>Note</i>: There can be at most one such label. — <i>end note</i>]
+    If the value is of enumeration type <code><h- data-h=id>E</h-></code>,
+    determining whether it lies in the value range takes place
+    by first explicitly converting (<a href=https://eel.is/c++draft/expr.type.conv>[expr.type.conv]</a>) the value range boundaries
+    and the value of the condition to the underlying type of <code><h- data-h=id>E</h-></code>.
   </ins></li>
   <li><ins>
     Otherwise, if there is a <code><h- data-h=kw>default</h-></code> label,
