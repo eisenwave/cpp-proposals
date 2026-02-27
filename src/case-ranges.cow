@@ -1,0 +1,425 @@
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+  title = Case ranges
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D4040R0}}
+  \dt{Date:}            \dd{\tt{2026-02-27}}
+  \dt{Audience:}        \dd{SG22}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P4040/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/case-ranges.cow)}
+}
+\hr
+}
+
+\Babstract{
+C2y added ranges in \tcode{case} labels,
+such as \tcode{case 0 ... 9:}.
+Such \q{case ranges} have also been supported as a C++ compiler extension for many years.
+This feature should be standardized for C++.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+\style{
+  .tony-table {
+    margin-left: auto;
+    margin-right: auto;
+    min-width: 80%;
+  }
+  .tony-table td:nth-child(1),
+  .tony-table td:nth-child(2) {
+    background-color: var(--deep-background-color);
+    width: 50%;
+  }
+  .tony-table td {
+    border-top: 1px solid var(--border-color);
+  }
+  .tony-table code-block {
+    margin: 0.25em;
+  }
+}
+
+In 2024, \ref(N3370) added support for \tcode{case} ranges to C2y.
+For example,
+the following two \tcode{switch} statements are equivalent:
+\table(class=tony-table){
+  \tr{
+    \th{C++26}
+    \th{C2y N3370}
+  }
+  \tr{
+    \td{
+\codeblock(cpp,borders=false){
+switch (next_char) {
+  case '0':
+  case '1':
+  case '2':
+  case '3':
+  case '4':
+  case '5':
+  case '6':
+  case '7':
+  case '8':
+  case '9': // ...
+}
+}
+    }
+    \td{
+\codeblock(cpp,borders=false){
+switch (next_char) {
+  case '0' ... '9': // ...
+}
+}
+    }
+  }
+}
+
+The behavior here is obvious;
+\tcode{case '0' ... '9':} specifies ten cases in bulk.
+
+This feature is already implemented in GCC and Clang,
+not just for C but also for C++.
+Since it is useful and widely supported,
+we should standardize existing practice and make it available to users in standard C++.
+
+\h2{Motivation}
+
+The benefit of the range syntax is obvious:
+when there are several contiguous cases,
+it is much more concise than listing each case individually.
+
+While it would also be possible to handle case ranges using an \tcode{if} statement,
+this often requires splitting off some cases from the \tcode{switch}.
+This often results in a pattern like:
+\cppblock{
+switch (c) {
+  case '+': consume_plus(); break;
+  case '=': consume_equals(); break;
+  default: {
+    if (c >= 'a' && c <= 'z')
+      consume_letter();
+  }
+}
+}
+There is an obvious asymmetry here,
+decreasing readability.
+
+In addition to the feature being generally useful in C++,
+as mentioned above,
+it is an existing C2y feature.
+Providing it to users would make it easier to port C code to C++ and vice versa.
+Historically, C++ has always provided the control the control flow constructs of C,
+although \tcode{\keyword{defer}} may likely result in divergence.
+
+\h2{Design}
+
+\h3{Design strategy}
+
+The overall strategy is to copy the semantics of the C2y feature as accurately as possible.
+Among other things, this includes design decisions such as:
+
+\ul{
+  \li{
+    \tcode{case 0 ... 1ll} is permitted.
+    That is, mixing types in case ranges is allowed.
+    However, just like for existing \tcode{case} labels,
+    this does not permit narrowing conversions (to the type of the condition).
+  }
+  \li{
+    Overlapping ranges are disallowed.
+    That is, the \tcode{switch} needs to be able to select one \tcode{case} label
+    unambiguously.
+  }
+  \li{
+    Empty case ranges such as \tcode{case -1 ... 0} are valid,
+    but recommended to be diagnosed.
+  }
+}
+
+There is no obvious reason to deviate from the existing semantics
+of the C2y feature and of the C++ compiler extension;
+all these choices seem adequate.
+
+A noteworthy quirk of the C2y feature is that a \tcode{case 0...9}
+is not valid because \tcode{0.} and \tcode{.9} are parsed
+as \gterm{floating-point-literal}s, with one \q{\tcode{.}} between.
+This problem cannot be fixed without altering the lexer,
+and having differences in lexing between C and C++ seems undesirable.
+It is strongly recommended to surround the \tcode{...} token with spaces,
+which works around the problem.
+
+\h3{Why not wait for pattern matching?}
+
+Pattern matching provides very similar functionality:
+
+\table(class=tony-table){
+  \tr{
+    \th{P2688R4}
+    \th{C2y}
+  }
+  \tr{
+    \td{
+\codeblock(cpp,borders=false){
+next_char \cowel_highlight_as(keyword){match} {
+  'x'                             => f();
+  \cowel_highlight_as(keyword){let} c if (c >= '0' && c <= '9') => g();
+}
+}
+    }
+    \td{
+\codeblock(cpp,borders=false){
+switch (next_char) {
+  case 'x':         f(); break;
+  case '0' ... '9': g(); break;
+}
+}
+    }
+  }
+}
+
+Nonetheless, the case ranges are worth considering for C++29 for a variety of reasons:
+\ul{
+  \li{
+    Case ranges are more concise.
+    To be fair, a similar \tcode{'0' ... '9'} \gterm{match-case-pattern}
+    could also be added to pattern matching,
+    which closes that gap.
+  }
+  \li{
+    \tcode{case} can be used in ways that pattern matching doesn't allow,
+    like being nested inside other statements
+    or with fallthrough into subsequent cases.
+    Such uses are rare, but do exist.
+  }
+  \li{
+    Case ranges can be used in code that is meant to compile in both C and C++,
+    which is unlikely to ever be the case for pattern matching.
+  }
+  \li{
+    Similarly, case ranges make it easier to port from C code that uses them to C++ code,
+    and vice versa.
+  }
+  \li{
+    Standardizing case ranges \q{legitimizes} existing C++ code that relies on the
+    GNU extension for case ranges by giving it behavior specified by the standard.
+    This increases portability of old code bases that won't be modernized to use pattern matching.
+  }
+}
+
+\h2{Implementation experience}
+
+Case ranges have been first implemented in GCC 2.0 (1992) and Clang 1.0 (2007),
+albeit as a GNU extension,
+not as a standard C2y feature.
+Both GCC and Clang currently provide the feature as proposed in both C and C++ mode.
+
+MSVC does not support case ranges.
+
+
+\h2{Wording}
+
+The changes are relative to \ref(N5032).
+
+\h3(show-number=false){[cpp.predefined]}
+
+Add a feature-test macro to the table in \eelis{cpp.predefined} as follows:
+
+\Bins{
+\itemdecl{
+__cpp_case_ranges 20XXXXL
+}
+}
+
+\h3(show-number=false){[stmt.label]}
+
+Change \eelis{stmt.label} as follows:
+
+\Bdiff{
+A label can be added to a statement or used anywhere in a \gterm{compound-statement}.
+
+\dl(class=grammar){
+  \dt{\gterm{label}:}
+  \dd{\opt{attribute-specifier-seq} identifier \tcode{:}}
+  \dd{\opt{attribute-specifier-seq} \tcode{case} constant-expression \tcode{:}}
+  \dd{\ins{\opt{attribute-specifier-seq} \tcode{case} constant-range-expression \tcode{:}}}
+  \dd{\opt{attribute-specifier-seq} \tcode{default} \tcode{:}}
+
+  \dt{\gterm{labeled-statement}:}
+  \dd{label statement}
+
+  \dt{\ins{\gterm{constant-range-expression}:}}
+  \dd{\ins{constant-range-expression \tcode{...} constant-range-expression}}
+}
+
+\etc
+}
+
+\h3(show-number=false){[stmt.switch]}
+
+Change \eelis{stmt.switch#2} as follows:
+
+\Bdiff{
+2 If the \grammarterm{condition} is an \grammarterm{expression},
+the value of the condition is the value of the \grammarterm{expression};
+otherwise, it is the value of the decision variable.
+The value of the condition shall be of integral type, enumeration type, or class
+type.
+If of class type, the
+condition is contextually implicitly converted\iref{conv} to
+an integral or enumeration type.
+If the (possibly converted) type is subject to integral
+promotions\iref{conv.prom},
+the condition is converted to the promoted type.
+
+\ins{3} Any statement within the \tcode{switch} statement can be labeled
+with one or more \del{case} \ins{\tcode{case}} labels \del{as follows}
+\ins{of one of the forms}:
+\dl(class=grammar){
+  \dd{\ins{\opt{attribute-specifier-seq}} \keyword{case} constant-expression \tcode{:}}
+  \dd{\ins{\opt{attribute-specifier-seq} \keyword{case} constant-range-expression \tcode{:}}}
+}
+where the \grammarterm{constant-expression}
+\ins{of the first form
+and each \grammarterm{constant-expression} of the \grammarterm{constant-range-expression}
+of the second form}
+shall be a converted constant expression\iref{expr.const}
+of the adjusted type of the \del{switch} \ins{\tcode{switch}} condition.
+\ins{
+Let the \dfn{value range} of a \tcode{case} label \math{\mi{L}} be:
+\ul{
+  \li{
+    \ins{if \math{\mi{L}} is of the first form,
+    \math{\mrow{\mo(stretchy=false){[}\mi{x}\mo{,}\mi{x}\mo(stretchy=false){]}}},
+    where \math{\mi{x}} is the converted value of the \grammarterm{constant-expression};}
+    
+  }
+  \li{
+    \ins{otherwise,
+    \math{\mrow{\mo(stretchy=false){[}\mi{a}\mo{,}\mi{b}\mo(stretchy=false){]}}},
+    where \math{\mi{a}} and \math{\mi{b}} are the converted values of the
+    first and second \grammarterm{constant-expression}
+    of the \grammarterm{constant-range-expression},
+    respectively.}
+  }
+}
+No two of the
+\del{case constants in the same switch}
+\ins{value ranges of labels associated with the same \tcode{switch} statement}
+shall \del{have the same value after conversion} \ins{overlap}.
+}
+}
+
+Attach an example to the previous paragraph (now paragraph 3):
+
+\Bins{
+\example{
+\itemdecl{
+unsigned int i = 0;
+switch (i) {
+  case -1:          //\serif{ error: narrowing conversion from \tcode{-1} to \tcode{unsigned int}}
+  case 0 ... 10ull: //\serif{ OK}
+  case 2 ... 3:     //\serif{ error: value range overlaps with that of previous label}
+}
+}
+}
+}
+
+Immediately following \eelis{stmt.switch#2} (now split into two paragraphs),
+insert a new paragraph:
+\Bins{
+\recommended
+Implementations should emit a warning
+when the value range of a \tcode{case} label is empty.
+}
+
+\editnote{
+This recommendation also exists in C2y.
+}
+
+Change \eelis{stmt.switch#3} as follows:
+
+\Bdiff{
+There shall be at most one label of the form
+\dl(class=grammar){
+  \dd{\ins{\opt{attribute-specifier-seq}} \tcode{default} \tcode{:}}
+}
+within a \tcode{switch} statement.
+}
+
+Change \eelis{stmt.switch#4} as follows:
+
+\Bdiff{
+Switch statements can be nested;
+a \tcode{case} or \tcode{default} label is \del{associated with} \ins{\dfn{associated with}}
+the smallest \del{switch} \ins{\tcode{switch} statement} enclosing it.
+}
+
+Change \eelis{stmt.switch#5} as follows:
+
+\Bdiff{
+When the \tcode{switch} statement is executed,
+its condition is evaluated\del{.
+If one of the case constants has the same value as the condition,
+control is passed to the statement following the matched \tcode{case} label.
+If no case constant matches the condition,
+and if there is a \tcode{default} label,
+control passes to the statement labeled by the default label.
+If no case matches and if there is no \tcode{default}
+then none of the statements in the switch is executed.
+}
+\ins{, and control may be passed
+to one of the statements labeled by a label associated with the \tcode{switch} statement,
+selected as follows:}
+\ul{
+  \li{\ins{
+    If the value of the condition lies in the value range of one of the \tcode{case} labels,
+    control is passed to the statement labeled by that label.
+    \br
+    \note{There can be at most one such label.}
+  }}
+  \li{\ins{
+    Otherwise, if there is a \tcode{default} label,
+    control is passed to the statement labeled by that label.
+  }}
+  \li{\ins{
+    Otherwise, control is not passed
+    to any of the statements in the \tcode{switch} statement.
+  }}
+}
+}
+
+\h2{References}
+
+\bib(
+  id = N3370,
+  title = Case range expressions\, v3.1,
+  date = 2024-10-01,
+  author = Alex Celeste,
+  link = https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3370.htm,
+)\
+\bib(
+  id = N5032,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-12-15,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5032,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
+)\
+\bib(
+  id = P3312R1,
+  title = Overload Set Types,
+  date = 2025-04-16,
+  author = Bengt Gustafsson,
+  link = https://wg21.link/p3312r1,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3312r1.pdf,
+)\
+
+\make_bib
