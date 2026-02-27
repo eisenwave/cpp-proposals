@@ -1,0 +1,269 @@
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+  title = Allowing \tt{signed char} and \tt{unsigned char} in random number generation
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D4037R0}}
+  \dt{Date:}            \dd{\tt{2026-02-26}}
+  \dt{Audience:}        \dd{LEWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P4037/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/random-chars.cow)}
+}
+\hr
+}
+
+\Babstract{
+Use of \tcode{signed char} or \tcode{unsigned char} in \header{random}
+currently results in undefined behavior.
+Instead, it should be permitted.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+\Bug{
+The following code has compile-time undefined behavior:
+
+\cppblock{
+void generate_random_bytes(std::span<unsigned char> out) {
+    std::default_random_engine rng(12345);
+    std::uniform_int_distribution<unsigned char> distr; // UB
+    for (unsigned char& c : out) {
+      c = distr(rng);
+    }
+}
+}
+}
+
+While it may seem perfectly reasonable to generate random bytes
+in the form of \tcode{unsigned char},
+\eelis{rand.req.genl} requires that where \tcode{IntType}
+appears as a template parameter name (such as in \tcode{uniform_int_distribution}),
+providing \tcode{unsigned char} as an argument causes template instantiation
+to have undefined behavior.
+This is functionally equivalent to making the program ill-formed, no diagnostic required.
+
+In 2013,
+\ref(LWG2326) \q{\tcode{uniform_int_distribution<unsigned char>} should be permitted} stated that
+\q{it's just silly that we have a random number library with no natural way to generate random bytes}.
+As silly as it may be,
+the issue was closed as NAD (not a defect)
+because it was perceived as a feature request rather than the resolution of a defect.
+Some discussion of a writing a paper took place,
+but that paper never manifested.
+
+It is unclear why the restriction exists in the first place;
+I was unable to find any discussion in published papers.
+The restriction dates back at least to \ref(N1932), published 2006.
+One may suspect that it has to do with \tcode{unsigned char}
+and other single-byte types being subject to integer promotion (to \tcode{int}),
+but paradoxically,
+\tcode{unsigned short} and \tcode{short} are supported
+despite undergoing promotion.
+
+In any case, \tcode{signed char} and \tcode{unsigned char} should be supported.
+
+\h2{Motivation}
+
+The ability to generate random bytes or octets is extremely valuable for
+\ref(https://en.wikipedia.org/wiki/Fuzzing){fuzz testing}.
+For example, when testing an implementation of an
+\ref(https://en.wikipedia.org/wiki/LZ77_and_LZ78){LZ77 or LZ78} compression algorithm,
+a user would typically
+\ol{
+  \li{generate a random sequence of bytes,}
+  \li{compress that sequence using their algorithm,}
+  \li{decompress the result, and}
+  \li{compare whether the decompressed bytes are the same as the original bytes.}
+}
+
+It is easy to imagine testing methodology that involves random bytes
+for any kind of codec, network protocol, compiler, syntax highlighter, etc.
+
+\h2{Design}
+
+\h3{Which character types to support}
+
+The current restriction which forbids \tcode{unsigned char} is bad,
+but it's not obvious how much the restriction should be relaxed.
+There are a few plausible options:
+
+\ul{
+  \li{
+    Permit all standard integers.
+    That is, the current restriction, plus \tcode{signed char} and \tcode{unsigned char}.
+  }
+  \li{
+    Permit all standard integers and \tcode{char}.
+  }
+  \li{
+    Permit all integral types.
+  }
+}
+
+Permitting all integral types imposes an unreasonable implementation burden.
+One of the biggest issues is \tcode{linear_congruential_engine<__int128>}
+assuming the implementation provides an extended 128-bit integer type,
+which recent version of GCC and Clang do.
+libstdc++ permits \tcode{__int128} in most of \header{random},
+but rejects
+\tcode{linear_\cowel_to_html{\N{SOFT HYPHEN}}congruential_engine<__int128>} using:
+\cppblock{
+static_assert(__which < 0, /* needs to be dependent */
+		      "sorry, would be too much trouble for a slow result");
+}
+See \url{https://github.com/gcc-mirror/gcc/blob/0635bfb53a145cc005a15657635abf8ea9e6e9ba/libstdc%2B%2B-v3/include/bits/random.h#L521-L522}.
+The difficulty lies in the fact that \tcode{linear_congruential_engine}
+uses modular arithmetic,
+which requires N×2-bit division for N-bit integer types.
+For \tcode{long long},
+the existence of \tcode{__int128} makes this easy,
+but for \tcode{__int128}, 256-bit division would be required.
+
+Permitting only \tcode{char} in addition to standard integer types seems unmotivated,
+although there is precedent for this in \header{charconv}.
+If \tcode{char} is supported, why not character types in general?
+If characters types in general are supported, why not integral types and unscoped enumerations?
+The design becomes somewhat arbitrary.
+
+Overall, permitting only standard integers is an obvious and minimal fix.
+
+\Bnote{
+It is not permitted to define \tcode{std::int8_t} or \tcode{std:uint8_t} as \tcode{char},
+even if \tcode{char} has the correct signedness.
+}
+
+\h3{Whether to diagnose unsupported types}
+
+It may also be desirable to diagnose the use of unsupported types in \header{random},
+rather than treating it as IFNDR.
+However, this would raise warnings in substantial amounts of existing code
+without providing much benefit to users.
+For instance, GCC has supported all integral types in \header{random} for years now,
+and numerous uses of \tcode{uniform_int_distribution<char>}
+and other disallowed types can be found.
+
+Therefore, it may be best to simply perpetuate the status quo
+and leave diagnostics up to implementations.
+This effectively means that \eelis{rand.req.gen}
+provides a minimal list of supported types,
+which the implementation optionally extends.
+
+\h2{Implementation experience}
+
+At the time of writing,
+the MSVC STL has a \tcode{static_assert} which prevents instantiation
+of \tcode{std::uniform_int_distri\cowel_to_html{\N{SOFT HYPHEN}}bution<unsigned char>}; see:
+\br{}\url{https://github.com/microsoft/STL/blob/9b021cf66875d2fbf4627aad8db594595aebb148/stl/inc/random#L43}
+
+libc++ supports \tcode{signed char} and \tcode{unsigned char} as an extension; see:
+\br{}\url{https://github.com/llvm/llvm-project/blob/9d075d271ff15ec153ada3413d294540206a15ed/libcxx/include/__random/is_valid.h#L49}.
+
+libstdc++ supports any integral type as an extension; see:
+\br{}\url{https://github.com/gcc-mirror/gcc/blob/0635bfb53a145cc005a15657635abf8ea9e6e9ba/libstdc%2B%2B-v3/include/bits/uniform_int_dist.h#L90-L91}.
+
+\Bnote{
+libc++ provides the proposed restrictions.
+}
+
+
+\h2{Wording}
+
+The changes are relative to \ref(N5032).
+
+Add a feature-test macro to \eelis{version.syn} as follows:
+
+\Bins{
+\itemdecl{
+#define __cpp_lib_random 20XXXXL // \serif{also in \tt{<random>}}
+}
+}
+
+Change \eelis{rand.req.general#1} as follows:
+
+\Bdiff{
+Throughout \eelis{rand},
+the effect of instantiating a template:
+\ul{
+  \li{
+    that has a template type parameter named \tcode{Sseq}
+    is undefined unless the corresponding template argument is cv-unqualified
+    and meets the requirements of
+    seed sequence\iref{rand.req.seedseq}.
+  }
+  \li{
+    that has a template type parameter named \tcode{URBG}
+    is undefined unless the corresponding template argument is cv-unqualified
+    and meets the requirements of
+    uniform random bit generator\iref{rand.req.urng}.
+  }
+  \li{
+    that has a template type parameter named \tcode{Engine}
+    is undefined unless the corresponding template argument is cv-unqualified
+    and meets the requirements of
+    random number engine\iref{rand.req.eng}.
+  }
+  \li{
+    that has a template type parameter named \tcode{RealType}
+    is undefined unless the corresponding template argument
+    \del{is cv-unqualified and}
+    is one of \tcode{float}, \tcode{double}, or \tcode{long double}.
+  }
+  \li{
+    that has a template type parameter named \tcode{IntType}
+    is undefined unless the corresponding template argument is
+    \del{cv-unqualified and is one of
+    \tcode{short}, \tcode{int}, \tcode{long}, \tcode{long long},
+    \tcode{unsigned short}, \tcode{unsigned int}, \tcode{unsigned long}, or
+    \tcode{unsigned long long}}
+    \ins{a standard integer type\iref{basic.fundamental}}.
+  }
+  \li{
+    that has a template type parameter named \tcode{UIntType}
+    is undefined unless the corresponding template argument is
+    \del{cv-unqualified and is one of
+    \tcode{unsigned short}, \tcode{unsigned int}, \tcode{unsigned long}, or
+    \tcode{unsigned long long}}
+    \ins{a standard unsigned integer type\iref{basic.fundamental}}.
+  }
+}
+}
+
+\editnote{
+Removing the \q{is cv-unqualified} requirements is purely editorial.
+These requirements are redundant for the latter three bullets.
+}
+
+\h2{References}
+
+\bib(
+  id = N1932,
+  title = Random Number Generation in C++0X: A Comprehensive Proposal,
+  author = Walter E. Brown et al.,
+  date = 2006-02-23,
+  link = https://wg21.link/n1932,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2006/n1932.pdf,
+)\
+\bib(
+  id = N5032,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-12-15,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5032,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
+)\
+\bib(
+  id = LWG2326,
+  title = uniform_int_distribution<unsigned char> should be permitted,
+  author = Stephan T. Lavavej,
+  date = 2017-02-02,
+  link = https://cplusplus.github.io/LWG/issue2326,
+)\
+
+\make_bib
