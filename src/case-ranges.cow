@@ -116,7 +116,7 @@ In addition to the feature being generally useful in C++,
 as mentioned above,
 it is an existing C2y feature.
 Providing it to users would make it easier to port C code to C++ and vice versa.
-Historically, C++ has always provided the control the control flow constructs of C,
+Historically, C++ has always provided the control flow constructs of C,
 although \tcode{\keyword{defer}} may likely result in divergence.
 
 \h2{Design}
@@ -132,6 +132,13 @@ Among other things, this includes design decisions such as:
     That is, mixing types in case ranges is allowed.
     However, just like for existing \tcode{case} labels,
     this does not permit narrowing conversions (to the type of the condition).
+    \Bex{
+      A possible motivating example for mixing types in case ranges is:
+      \cppblock{case 0 ... std::numeric_limits<std::uint8_t>::max():}
+      Especially in generic code,
+      it may be annoying if the types of both sides of the \grammarterm{constant-range-expression}
+      have to be of the same type.
+    }
   }
   \li{
     Overlapping ranges are disallowed.
@@ -213,6 +220,45 @@ Nonetheless, the case ranges are worth considering for C++29 for a variety of re
     This increases portability of old code bases that won't be modernized to use pattern matching.
   }
 }
+
+\h3{What about pack expansion \tcode{case} labels?}
+
+It may be worth considering a pack expansion \tcode{case} label, like:
+\cppblock{
+template<auto... Args>
+void f(int i) {
+  switch (i) {
+    case Args ...: break;
+  }
+}
+}
+
+However, this is not proposed, and is an entirely separate feature.
+The only thing it has in common with the proposed syntax is the \q{\tcode{...}}.
+Pack expansion \tcode{case} labels are also not strictly more general;
+this proposal offers \tcode{case 0 ... 1'000'000'000:},
+and doing the same via pack expansion would require a pack
+well past any compiler limits.
+
+Adding case ranges also does not make it impossible to add pack expansion cases later;
+pack expansions use \q{\tcode{...}} as a unary suffix operator,
+not as a binary operator.
+
+\Bex{
+If both features existed,
+the following \tcode{case} would be disambiguated as an unexpanded pack on the left
+side of a \grammarterm{constant-range-expression}:
+\cppblock{
+case Args... end:
+}
+This is fine because interpreting \tcode{Args...} as a pack expansion
+would make the construct as a whole invalid.
+Therefore, no change in meaning takes place,
+there pack expansions are supported or not.
+}
+
+In conclusion, pack expansion \tcode{case} labels are \u{not} proposed,
+and case ranges do not prevent such a feature from being added in the future.
 
 \h2{Implementation experience}
 
@@ -351,7 +397,7 @@ There shall be at most one label of the form
 \dl(class=grammar){
   \dd{\ins{\opt{attribute-specifier-seq}} \tcode{default} \tcode{:}}
 }
-within a \tcode{switch} statement.
+\del{within} \ins{associated with} a \tcode{switch} statement.
 }
 
 Change \eelis{stmt.switch#4} as follows:

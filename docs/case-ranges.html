@@ -1606,6 +1606,8 @@ This feature should be standardized for C++.
 <a href=#design-strategy><h3>Design strategy</h3></a>
 <div class=toc-num data-level=3>3.2</div>
 <a href=#why-not-wait-for-pattern-matching><h3>Why not wait for pattern matching?</h3></a>
+<div class=toc-num data-level=3>3.3</div>
+<a href=#what-about-pack-expansion-case-labels><h3>What about pack expansion <code><h- data-h=kw_ctrl>case</h-></code> labels?</h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#implementation-experience><h2>Implementation experience</h2></a>
 <div class=toc-num data-level=2>5</div>
@@ -1704,7 +1706,7 @@ decreasing readability.
 as mentioned above,
 it is an existing C2y feature.
 Providing it to users would make it easier to port C code to C++ and vice versa.
-Historically, C++ has always provided the control the control flow constructs of C,
+Historically, C++ has always provided the control flow constructs of C,
 although <code><h- data-h=kw>defer</h-></code> may likely result in divergence.
 </p>
 <h2 id=design><a class=para href=#design></a>3. Design</h2>
@@ -1720,6 +1722,13 @@ Among other things, this includes design decisions such as:
     That is, mixing types in case ranges is allowed.
     However, just like for existing <code><h- data-h=kw_ctrl>case</h-></code> labels,
     this does not permit narrowing conversions (to the type of the condition).
+    <example-block><p><intro-></intro-> 
+      A possible motivating example for mixing types in case ranges is:
+      </p><code-block><h- data-h=kw_ctrl>case</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>...</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>uint8_t</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=id>max</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>:</h-></code-block>
+<p>      Especially in generic code,
+      it may be annoying if the types of both sides of the <g-term>constant-range-expression</g-term>
+      have to be of the same type.
+    </p></example-block>
   </li>
   <li>
     Overlapping ranges are disallowed.
@@ -1798,6 +1807,41 @@ which works around the problem.
   </li>
 </ul>
 
+<h3 id=what-about-pack-expansion-case-labels><a class=para href=#what-about-pack-expansion-case-labels></a>3.3. What about pack expansion <code><h- data-h=kw_ctrl>case</h-></code> labels?</h3>
+
+<p>It may be worth considering a pack expansion <code><h- data-h=kw_ctrl>case</h-></code> label, like:
+</p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>auto</h-><h- data-h=sym_op>...</h-> <h- data-h=id>Args</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>i</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw_ctrl>switch</h-> <h- data-h=sym_par>(</h-><h- data-h=id>i</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw_ctrl>case</h-> <h- data-h=id>Args</h-> <h- data-h=sym_op>...</h-><h- data-h=sym_punc>:</h-> <h- data-h=kw_ctrl>break</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>However, this is not proposed, and is an entirely separate feature.
+The only thing it has in common with the proposed syntax is the <q><code><h- data-h=sym_op>...</h-></code></q>.
+Pack expansion <code><h- data-h=kw_ctrl>case</h-></code> labels are also not strictly more general;
+this proposal offers <code><h- data-h=kw_ctrl>case</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>...</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=sym_punc>:</h-></code>,
+and doing the same via pack expansion would require a pack
+well past any compiler limits.
+</p>
+<p>Adding case ranges also does not make it impossible to add pack expansion cases later;
+pack expansions use <q><code><h- data-h=sym_op>...</h-></code></q> as a unary suffix operator,
+not as a binary operator.
+</p>
+<example-block><p><intro-></intro-> 
+If both features existed,
+the following <code><h- data-h=kw_ctrl>case</h-></code> would be disambiguated as an unexpanded pack on the left
+side of a <g-term>constant-range-expression</g-term>:
+</p><code-block><h- data-h=kw_ctrl>case</h-> <h- data-h=id>Args</h-><h- data-h=sym_op>...</h-> <h- data-h=id>end</h-><h- data-h=sym_punc>:</h-></code-block>
+<p>This is fine because interpreting <code><h- data-h=id>Args</h-><h- data-h=sym_op>...</h-></code> as a pack expansion
+would make the construct as a whole invalid.
+Therefore, no change in meaning takes place,
+there pack expansions are supported or not.
+</p></example-block>
+
+<p>In conclusion, pack expansion <code><h- data-h=kw_ctrl>case</h-></code> labels are <u>not</u> proposed,
+and case ranges do not prevent such a feature from being added in the future.
+</p>
 <h2 id=implementation-experience><a class=para href=#implementation-experience></a>4. Implementation experience</h2>
 
 <p>Case ranges have been first implemented in GCC 2.0 (1992) and Clang 1.0 (2007),
@@ -1931,7 +1975,7 @@ This recommendation also exists in C2y.
 </p><dl class=grammar>
   <dd><ins>attribute-specifier-seq<sub class=opt>opt</sub></ins> <code><h- data-h=kw>default</h-></code> <code><h- data-h=sym_punc>:</h-></code></dd>
 </dl>
-<p>within a <code><h- data-h=kw_ctrl>switch</h-></code> statement.
+<p><del>within</del> <ins>associated with</ins> a <code><h- data-h=kw_ctrl>switch</h-></code> statement.
 </p></diff-block>
 
 <p>Change <a href=https://eel.is/c++draft/stmt.switch#4>[stmt.switch] paragraph 4</a> as follows:
