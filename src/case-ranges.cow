@@ -104,8 +104,8 @@ switch (c) {
   case '+': consume_plus(); break;
   case '=': consume_equals(); break;
   default: {
-    if (c >= 'a' && c <= 'z')
-      consume_letter();
+    if (c >= '0' && c <= '9')
+      consume_digit();
   }
 }
 }
@@ -149,6 +149,11 @@ Among other things, this includes design decisions such as:
     Empty case ranges such as \tcode{case 0 ... -1} are valid,
     but recommended to be diagnosed.
   }
+  \li{
+    Both ends are inclusive.
+    That is, \tcode{case 0 ... 1} includes the values 0 and 1,
+    and can be expressed as the range [0, 1] in mathematical notation.
+  }
 }
 
 There is no obvious reason to deviate from the existing semantics
@@ -156,11 +161,12 @@ of the C2y feature and of the C++ compiler extension;
 all these choices seem adequate.
 
 A noteworthy quirk of the C2y feature is that a \tcode{case 0...9}
-is not valid because \tcode{0.} and \tcode{.9} are parsed
-as \gterm{floating-point-literal}s, with one \q{\tcode{.}} between.
+is not valid because \tcode{0...9} is parsed as a \gterm{pp-number}
+from which no valid \gterm{token} can formed,
+rather than two integers separated by an ellipsis.
 This problem cannot be fixed without altering the lexer,
 and having differences in lexing between C and C++ seems undesirable.
-It is strongly recommended to surround the \tcode{...} token with spaces,
+It is recommended to always surround the \tcode{...} token with spaces,
 which works around the problem.
 
 \Bnote{

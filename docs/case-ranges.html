@@ -1697,8 +1697,8 @@ This often results in a pattern like:
   <h- data-h=kw_ctrl>case</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>+</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>:</h-> <h- data-h=id>consume_plus</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=kw_ctrl>break</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw_ctrl>case</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>=</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_punc>:</h-> <h- data-h=id>consume_equals</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=kw_ctrl>break</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>default</h-><h- data-h=sym_punc>:</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=id>c</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>a</h-><h- data-h=str_dlim>'</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=id>c</h-> <h- data-h=sym_op>&lt;=</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>z</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h->
-      <h- data-h=id>consume_letter</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=id>c</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>0</h-><h- data-h=str_dlim>'</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=id>c</h-> <h- data-h=sym_op>&lt;=</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>9</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h->
+      <h- data-h=id>consume_digit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=sym_brac>}</h->
 <h- data-h=sym_brac>}</h-></code-block>
 <p>There is an obvious asymmetry here,
@@ -1741,6 +1741,11 @@ Among other things, this includes design decisions such as:
     Empty case ranges such as <code><h- data-h=kw_ctrl>case</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>...</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1</h-></code> are valid,
     but recommended to be diagnosed.
   </li>
+  <li>
+    Both ends are inclusive.
+    That is, <code><h- data-h=kw_ctrl>case</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>...</h-> <h- data-h=num>1</h-></code> includes the values 0 and 1,
+    and can be expressed as the range [0, 1] in mathematical notation.
+  </li>
 </ul>
 
 <p>There is no obvious reason to deviate from the existing semantics
@@ -1748,11 +1753,12 @@ of the C2y feature and of the C++ compiler extension;
 all these choices seem adequate.
 </p>
 <p>A noteworthy quirk of the C2y feature is that a <code><h- data-h=kw_ctrl>case</h-> <h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num_dlim>.</h-><h- data-h=num_dlim>.</h-><h- data-h=num>9</h-></code>
-is not valid because <code><h- data-h=num>0</h-><h- data-h=num_dlim>.</h-></code> and <code><h- data-h=num_dlim>.</h-><h- data-h=num>9</h-></code> are parsed
-as <g-term>floating-point-literal</g-term>s, with one <q><code><h- data-h=sym_op>.</h-></code></q> between.
+is not valid because <code><h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num_dlim>.</h-><h- data-h=num_dlim>.</h-><h- data-h=num>9</h-></code> is parsed as a <g-term>pp-number</g-term>
+from which no valid <g-term>token</g-term> can formed,
+rather than two integers separated by an ellipsis.
 This problem cannot be fixed without altering the lexer,
 and having differences in lexing between C and C++ seems undesirable.
-It is strongly recommended to surround the <code><h- data-h=sym_op>...</h-></code> token with spaces,
+It is recommended to always surround the <code><h- data-h=sym_op>...</h-></code> token with spaces,
 which works around the problem.
 </p>
 <note-block><p><intro-></intro-> 
