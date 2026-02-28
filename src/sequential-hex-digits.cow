@@ -1,0 +1,190 @@
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+  title = Sequential hexadecimal digits
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D4039R0}}
+  \dt{Date:}            \dd{\tt{2026-02-28}}
+  \dt{Audience:}        \dd{SG16}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P4039/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/sequential-hex-digits.cow)}
+}
+\hr
+}
+
+\Babstract{
+C2y provides the guarantee that the blocks of characters \tcode{'a'}..\tcode{'f'}
+and \tcode{'A'}..\tcode{'F'} are contiguous.
+C++ should inherit the same guarantee.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+Among other guarantees,
+\eelis{lex.charset#5} ensures the following:
+
+\Bquote{
+The code unit value of each decimal digit character after the digit
+\tcode{0} (U+0030) is one greater than the value of the previous.
+}
+
+The guarantee is useful because it allows
+\ul{
+  \li{
+    testing whether a
+    character \tcode{c} is an ASCII digit using the expression
+    \tcode{c >= '0' && c <= '9'}, and
+  }
+  \li{
+    computing the integer digit value using \tcode{c - '0'}.
+  }
+}
+
+Unfortunately, no similar guarantee is provided for other characters,
+which makes it non-portable to e.g. test whether a character \tcode{c}
+is a lower-case letter using \tcode{c >= 'a' && c <= 'z'}.
+This test only works for ASCII-compatible encodings such as UTF-8,
+and C++ supports encodings such as
+\ref(https://en.wikipedia.org/wiki/EBCDIC){EBCDIC},
+where letters are not contiguous.
+
+However, \ref(N3192) \q{Sequential Hexdigits}
+observed that even in EBCDIC,
+there are blocks of 8 or 9 contiguous letters in the \q{invariant subset}.
+That is, \tcode{'a'}..\tcode{'i'},
+\tcode{'j'}..\tcode{'r'}, and
+\tcode{'s'}..\tcode{'z'} are contiguous blocks;
+this is analogous for upper-case letters.
+\ref(N3192) has been merged into the C2y draft,
+providing the guarantee that \tcode{'a'}..\tcode{'f'}
+is a contiguous block,
+which is not quite as strong as EBCDIC would allow.
+At least the C2y guarantee should be provided in C++ as well.
+
+\h2{Motivation}
+
+Having the guarantee that the letters \tcode{'a'}..\tcode{'f'}
+form a contiguous block
+is mainly useful for working with hexadecimal digits.
+
+\Bex{
+The following function can be used to portably compute the integer value
+of a hexadecimal digit in C2y, but not in C++:
+\cppblock{
+int hex_digit_value(char c) {
+  return c >= '0' && c <= '9' ? c - '0'       // hex_digit_value('9') →  9
+       : c >= 'a' && c <= 'f' ? c - 'a' + 10  // hex_digit_value('f') → 15
+       : c >= 'A' && c <= 'F' ? c - 'A' + 10  // hex_digit_value('F') → 15
+                              : -1;           // hex_digit_value('?') → -1
+}
+}
+}
+
+There is likely a large amount of C++ code
+which relies on the contiguity of that range already,
+possibly unaware or disinterested in the lack of portability.
+Hexadecimal digits letters are uniquely interesting because of
+how frequently they are used and how obviously useful contiguity is.
+
+There is substantially less motivation for the other two EBCDIC letter blocks.
+While the guarantee allows implementing a test for whether a \tcode{char}
+is a lowercase letter using three range checks,
+such an implementation would likely perform worse than a bitset lookup anyway.
+Locale-specific character tests should either be done using standard library functions,
+or the user should \tcode{static_assert} that their encoding is ASCII-based.
+
+\h2{Design}
+
+The proposed change is to guarantee
+that the blocks of letters
+\tcode{'a'}..\tcode{'f'} and \tcode{'A'}..\tcode{'F'} are contiguous,
+similar to \tcode{'0'}..\tcode{'9'}.
+
+Due to the lack of motivation mentioned above,
+and out of caution not to provide more guarantees than C2y,
+no guarantee for other blocks of letters is proposed,
+despite EBCDIC seemingly allowing for a stronger guarantee.
+
+\h2{Impact}
+
+To my understanding and to the understanding of WG14,
+there is no change in behavior to existing code,
+nor is any implementation affected.
+The proposed change is for all intents and purposes \q{on paper}.
+
+However, the proposed change makes it impossible to
+create a hypothetical future C++ implementation where \tcode{'a'}..\tcode{'f'}
+is not contiguous.
+This seems like an acceptable sacrifice,
+especially considering that such a C++ implementation
+would be incompatible with C.
+
+\h2{Wording}
+
+The changes are relative to \ref(N5032).
+
+\editnote{
+A feature-test macro is deliberately omitted.
+}
+
+Change \eelis{lex.charset#5} as follows:
+
+\Bdiff{
+A literal encoding or a locale-specific encoding
+of one of the execution character sets\iref{character.seq}
+encodes each element of the basic literal character set
+as a single code unit with non-negative value,
+distinct from the code unit for any other such element.
+
+\note{
+A character not in the basic literal character set
+can be encoded with more than one code unit;
+the value of such a code unit can be the same
+as that of a code unit for an element of the basic literal character set.
+}
+
+The U+0000 null character is encoded as the value \tcode{0}.
+No other element of the translation character set is encoded
+with a code unit of value \tcode{0}.
+The code unit value\ins{s}
+\del{of each decimal digit character after the digit \tcode{0} (U+0030)
+is one greater than the value of the previous.}
+\ins{of characters in the ranges
+\tt{0..9} (U+0030..U+0039),
+\tt{A..F} (U+0041..U+0046), and
+\tt{a..f} (U+0061..U+0066)
+are contiguous and in the order of their assigned Unicode code points.
+}
+The ordinary and wide literal encodings are otherwise implementation-defined.
+For a UTF-8, UTF-16, or UTF-32 literal,
+the implementation shall encode the Unicode scalar value
+corresponding to each character of the translation character set
+as specified in the Unicode Standard for the respective Unicode encoding form.
+}
+
+\h2{References}
+
+\bib(
+  id = N3192,
+  title = Sequential Hexdigits,
+  date = 2023-11-30,
+  author = Alex Celeste,
+  link = https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3192.pdf,
+)\
+\bib(
+  id = N5032,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-12-15,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5032,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
+)\
+
+\make_bib
