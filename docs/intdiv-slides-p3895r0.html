@@ -1434,7 +1434,7 @@ if (theme !== null) {
     document.documentElement.className = theme;
 }
   </script>
-<title>Slides for P3642R4  Carry-less product: std::clmul</title></head>
+<title>Slides for P3724R1 — Integer division</title></head>
 <body>
 <div id=settings tabindex=0>
     <div id=theme-icon></div>
@@ -1524,7 +1524,7 @@ if (theme !== null) {
   }
 
   note-block.edit intro-::before {
-    content: "Drafting note:";
+    content: "Editor's note:";
     color: var(--edit-note-block-border-color);
   }
 
@@ -1668,33 +1668,46 @@ document.addEventListener('keydown', function (event) {
 
 
 
-<style>
-section>h1 {
-    margin-top: calc(0.075 * var(--sw)) !important;
-    font-size: 250%;
-    text-align: center;
-}
 
-#docnum {
+
+
+
+
+<style>
+  section>h1 {
+    margin-top: calc(0.15 * var(--sw)) !important;
+    font-size: 300%;
+    text-align: center;
+  }
+  #docnum {
     font-family: var(--sans-serif-family);
     font-size: 80%;
     font-weight: normal;
-}
-
-li>ul {
+  }
+  li>ul {
     margin-top: 0;
-}
+  }
+  #tony-table {
+    margin-left: auto;
+    margin-right: auto;
+    width: 90%;
+    table-layout: fixed;
+  }
+  #tony-table td {
+    background-color: var(--deep-background-color);
+    width: 50%;
+  }
 </style>
 
-<div class=wg21-head><h1>Slides for P3642R4 <br/> Carry-less product: <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clmul</h-></code></h1>
+<div class=wg21-head><h1>Slides for P3724R1 — Integer division</h1>
 
 <dl>
-    <dt>Document number:</dt> <dd><a href=https://wg21.link/P3647R1>P3647R1</a></dd>
-    <dt>Date:</dt>            <dd><tt->2026-03-03</tt-></dd>
-    <dt>Audience:</dt>        <dd>LEWG</dd>
-    <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
-    <dt>Reply-To:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
-    <dt>Source:</dt>          <dd><a href=https://github.com/Eisenwave/cpp-proposals/blob/master/src/clmul-slides.cow class=sans>github.com/Eisenwave/cpp-proposals/blob/master/src/clmul-slides.cow</a></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3895R0>P3895R0</a></dd>
+  <dt>Date:</dt>            <dd><tt->2025-03-11</tt-></dd>
+  <dt>Audience:</dt>        <dd>SG6</dd>
+  <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
+  <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
+  <dt>Source:</dt>          <dd><a href=https://github.com/Eisenwave/cpp-proposals/blob/master/src/intdiv-slides.cow class=sans>github.com/Eisenwave/cpp-proposals/blob/master/src/intdiv-slides.cow</a></dd>
 </dl>
 <hr/>
 <important-block><p><intro-></intro-> 
@@ -1718,17 +1731,16 @@ This document has custom controls<span><noscript> <b>which require JavaScript</b
 
 <section id=slide-1>
 
-<h1>Carry-less product:<br/><code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>clmul</h-></code><br/>
-<span id=docnum>P3642R4</span></h1>
+<h1>Integer division <br/> <span id=docnum>P3724R1</span></h1>
 
 <div class=slide-foot>
 Jan Schultke
  | 
-Slides for P3642R4
+Slides for P3724R1
 —
-Carry-less product: <tt->std::clmul</tt->
+Integer division
  | 
-Telecons 2026
+Kona 2025
  | 
 Slide 1
 </div>
@@ -1738,57 +1750,32 @@ Slide 1
 
 <h2 id=slide-h-2>Introduction</h2>
 
-<style>
-#tony-table {
-    margin-left: auto;
-    margin-right: auto;
-    width: 90%;
-    table-layout: fixed;
-}
-#tony-table td {
-    background-color: var(--deep-background-color);
-    width: 50%;
-}
-#tony-table code-block {
-    margin: 0.25em auto;
-    width: fit-content;
-}
-</style>
-
-<p><b>Intuition</b>: "carry-less" means we use XOR instead of plus.
-</p>
-<table id=tony-table>
-<tr>
-    <th>Regular multiplication</th>
-    <th>Carry-less multiplication</th>
-</tr>
-<tr>
-<td><code-block class=borderless>     <h- data-h=id>x</h-> <h- data-h=sym_op>*</h-> <h- data-h=num_deco>0b</h-><h- data-h=num>0110</h->
-<h- data-h=sym_op>==</h-> <tt-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>3</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>0</h-></tt->
- <h- data-h=sym_op>+</h-> <h- data-h=sym_par>(</h-><h- data-h=id>x</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>2</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>1</h->
- <h- data-h=sym_op>+</h-> <h- data-h=sym_par>(</h-><h- data-h=id>x</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>1</h->
- <h- data-h=sym_op>+</h-> <h- data-h=sym_par>(</h-><h- data-h=id>x</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>0</h-></code-block></td>
-<td><code-block class=borderless><h- data-h=id>clmul</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=num_deco>0b</h-><h- data-h=num>0110</h-><h- data-h=sym_par>)</h->
- <h- data-h=sym_op>==</h-> <tt-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>3</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>0</h-></tt->
-  <h- data-h=sym_op>^</h-> <h- data-h=sym_par>(</h-><h- data-h=id>x</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>2</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>1</h->
-  <h- data-h=sym_op>^</h-> <h- data-h=sym_par>(</h-><h- data-h=id>x</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>1</h->
-  <h- data-h=sym_op>^</h-> <h- data-h=sym_par>(</h-><h- data-h=id>x</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>0</h-></code-block></td>
-</tr>
-</table>
 <ul>
-<li>useful for CRC, AES-GCM, parsing, bit manipulation, …</li>
-<li>widespread hardware support (x86_64, ARM, RISC-V)</li>
-<li>a.k.a. "polynomial multiplication" and "XOR multiplication"</li>
+  <li>C++ supports integer division with rounding towards zero</li>
+  <li>many other rounding modes are useful:</li>
+</ul>
+<code-block><h- data-h=kw_type>int</h-> <h- data-h=id>bucket_size</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>1000</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>elements</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>100</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=kw_type>int</h-> <h- data-h=id>buckets_req</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>elements</h-> <h- data-h=sym_op>/</h-> <h- data-h=id>bucket_size</h-><h- data-h=sym_punc>;</h->            <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> WRONG, zero</h->
+<h- data-h=kw_type>int</h-> <h- data-h=id>buckets_req</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>div_to_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>elements</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>bucket_size</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, one</h-></code-block>
+<ul>
+  <li>
+    hardware division <em>always</em> rounds towards zero
+    <ul>
+      <li>only mode where <code><h- data-h=id>r</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>-</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>*</h-> <h- data-h=id>q</h-></code> doesn't overflow</li>
+    </ul>
+  </li>
+  <li>software division in other langs. sometimes supports other modes</li>
 </ul>
 
 <div class=slide-foot>
 Jan Schultke
  | 
-Slides for P3642R4
+Slides for P3724R1
 —
-Carry-less product: <tt->std::clmul</tt->
+Integer division
  | 
-Telecons 2026
+Kona 2025
  | 
 Slide 2
 </div>
@@ -1796,30 +1783,29 @@ Slide 2
 
 <section id=slide-3>
 
-<h2 id=slide-h-3>Motivating example</h2>
+<h2 id=slide-h-3>Why does this need to be in the standard?</h2>
 
 <ul>
-<li><code><h- data-h=id>clmul</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1</h-><h- data-h=num_deco>u</h-><h- data-h=sym_par>)</h-></code> computes <dfn>bitwise parity</dfn> (inclusive)</li>
-<li>i.e. for each bit in <code><h- data-h=id>x</h-></code>, <code><h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>is 1-bit count to right odd?</h-></f-serif><h- data-h=cmt> </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_op>?</h-> <h- data-h=num>1</h-> <h- data-h=sym_punc>:</h-> <h- data-h=num>0</h-></code></li>
-<li>can be used to check if character is inside/outside string in parallel</li>
+  <li>users need it all the time, and try to implement it</li>
+  <li>they fail miserably: almost all attempts on StackOverflow/blogs wrong</li>
 </ul>
-<pre>
-abc xxx <h- data-h=str_dlim>"</h-><h- data-h=str>foobar</h-><h- data-h=str_dlim>"</h-> zzz <h- data-h=str_dlim>"</h-><h- data-h=str>a</h-><h- data-h=str_dlim>"</h->
-00000000<h- data-h=str_dlim>1</h-><h- data-h=str>000000</h-><h- data-h=str_dlim>1</h->00000<h- data-h=str_dlim>1</h-><h- data-h=str>0</h-><h- data-h=str_dlim>1</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> quotes</h->
-00000000<h- data-h=str_dlim>0</h-><h- data-h=str>111111</h-><h- data-h=str_dlim>1</h->00000<h- data-h=str_dlim>0</h-><h- data-h=str>1</h-><h- data-h=str_dlim>1</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> clmul(quotes, -1u)</h->
-00000000<h- data-h=str_dlim>0</h-><h- data-h=str>111111</h-><h- data-h=str_dlim>0</h->00000<h- data-h=str_dlim>0</h-><h- data-h=str>1</h-><h- data-h=str_dlim>0</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> clmul(quotes, -1u) &amp; ~quotes</h->
-</pre>
+<bug-block><p><intro-></intro-> 
+<a href="https://stackoverflow%2ecom/q/2745074/5740428">[StackOverflowCeil]</a> answer (67 upvotes) fails at rounding to <math display=inline><mrow><mo>+</mo><mi>∞</mi></mrow></math>:
+</p><code-block><h- data-h=id>q</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_par>(</h-><h- data-h=id>x</h-> <h- data-h=sym_op>%</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>?</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>+</h-> <h- data-h=num>1</h-> <h- data-h=sym_punc>:</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=id>y</h-><h- data-h=sym_punc>;</h-></code-block>
+<p>Mistake: incrementing negative quotients: <code><h- data-h=id>x</h-><h- data-h=sym_op>=</h-><h- data-h=sym_op>-</h-><h- data-h=num>1</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-><h- data-h=sym_op>=</h-><h- data-h=num>2</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>q</h-><h- data-h=sym_op>=</h-><h- data-h=num>1</h-></code>
+</p></bug-block>
+<ul>
+  <li>pulling in third-party library for one division function is silly</li>
+</ul>
 
-<p>This technique is used to accelerate string parsing in <tt->simdjson</tt->.
-</p>
 <div class=slide-foot>
 Jan Schultke
  | 
-Slides for P3642R4
+Slides for P3724R1
 —
-Carry-less product: <tt->std::clmul</tt->
+Integer division
  | 
-Telecons 2026
+Kona 2025
  | 
 Slide 3
 </div>
@@ -1827,128 +1813,90 @@ Slide 3
 
 <section id=slide-4>
 
-<h2 id=slide-h-4>Hardware support</h2>
+<h2 id=slide-h-4>Computing remainders is hard</h2>
 
-<style>
-#optable {
-    margin-left: auto;
-    margin-right: auto;
-}
-.marked {
-    background-color: var(--mark-background-color);
-    color: var(--mark-color);
-}
-.center {
-    width: 100%;
-    text-align: center;
-}
-</style>
+<bug-block><p><intro-></intro-> 
+The following function has unintended UB:
+</p><code-block><h- data-h=kw>auto</h-> <h- data-h=id>div_rem_ceil</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>4</h-><h- data-h=sym_par>)</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>4</h-><h- data-h=sym_par>)</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>4</h-><h- data-h=sym_par>)</h-> <h- data-h=id>q</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>div_ceil</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> round to </h-><math display=inline><mrow><mo>+</mo><mi>∞</mi></mrow></math>
+  <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>4</h-><h- data-h=sym_par>)</h-> <h- data-h=id>r</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>-</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>*</h-> <h- data-h=id>q</h-><h- data-h=sym_punc>;</h->         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> overflow</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=id>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>4</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=sym_brac>{</h-> <h- data-h=id>q</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>r</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+<p><code><h- data-h=id>div_rem_ceil</h-><h- data-h=sym_par>(</h-><h- data-h=num>7</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>2</h-><h- data-h=sym_par>)</h-></code> overflows:
+<code><h- data-h=id>q</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>4</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>*</h-> <h- data-h=id>q</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>8</h-></code>
+</p></bug-block>
 
-<table id=optable>
-<tr>
-    <th>Operation</th><th>x86_64</th><th>ARM</th><th>RV64</th>
-</tr>
-
-<tr>
-    <td><tt->clmul u64×4 → u128×4</tt-></td>
-    <td><tt->vpclmulqdq</tt-></td>
-    <td></td>
-    <td></td>
-</tr>
-
-<tr>
-    <td><tt->clmul u64×2 → u128×2</tt-></td>
-    <td><tt->vpclmulqdq</tt-></td>
-    <td></td>
-    <td></td>
-</tr>
-
-<tr class=marked>
-    <td><tt->clmul u64 → u128</tt-></td>
-    <td><tt->pclmulqdq</tt-></td>
-    <td><tt->pmull</tt->+<tt->pmull2</tt-></td>
-    <td><tt->clmul</tt->+<tt->clmulh</tt-></td>
-</tr>
-
-<tr class=marked>
-    <td><tt->clmul u64 → u128</tt-></td>
-    <td><tt->pclmulqdq</tt-></td>
-    <td><tt->pmull</tt->+<tt->pmull2</tt-></td>
-    <td><tt->clmul</tt->+<tt->clmulh</tt-></td>
-</tr>
-
-<tr class=marked>
-    <td><tt->clmul u64 → u64</tt-></td>
-    <td></td>
-    <td><tt->pmull</tt-></td>
-    <td><tt->clmul</tt-></td>
-</tr>
-
-<tr>
-    <td><tt->clmul u8×8 → u16×8</tt-></td>
-    <td></td>
-    <td><tt->pmull</tt-></td>
-    <td></td>
-</tr>
-<tr>
-    <td><tt->clmul u8×8 → u8×8</tt-></td>
-    <td></td>
-    <td><tt->pmul</tt-></td>
-    <td></td>
-</tr>
-</table>
-
-<div class=center><mark>Marked</mark> rows are integrated in this proposal.</div>
+<ul>
+  <b>Conclusion</b>: provide functions for computing quotient and remainder
+</ul>
 
 <div class=slide-foot>
 Jan Schultke
  | 
-Slides for P3642R4
+Slides for P3724R1
 —
-Carry-less product: <tt->std::clmul</tt->
+Integer division
  | 
-Telecons 2026
+Kona 2025
  | 
 Slide 4
 </div>
 </section>
 
-<section id=slide-5>
-
-<h2 id=slide-h-5>Proposed design</h2>
-
 <style>
-#design {
-    font-size: 90%;
-}
+  .center {
+    margin-left: auto;
+    margin-right: auto;
+  }
 </style>
 
-<div id=design>
-<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=id>unsigned-integer</h-></i> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
-<h- data-h=id>T</h-> <h- data-h=id>clmul</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<section id=slide-5>
 
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
-<h- data-h=kw>struct</h-> <h- data-h=id>mul_wide_result</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> yoinked from P3161R4:</h->
-    <h- data-h=id>T</h-> <h- data-h=id>low_bits</h-><h- data-h=sym_punc>;</h->          <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Unified integer overflow arithmetic</h->
-    <h- data-h=id>T</h-> <h- data-h=id>high_bits</h-><h- data-h=sym_punc>;</h->
-<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h2 id=slide-h-5>Which rounding modes to support</h2>
 
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=id>unsigned-integer</h-></i> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
-<h- data-h=kw>constexpr</h-> <h- data-h=id>mul_wide_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>clmul_wide</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+
+
+<table class=center>
+  <tr>
+    <td><code><mark><h- data-h=id>div_to_zero</h-></mark></code><sub>📘</sub><sub>(<code><h- data-h=id>trunc</h-></code>)</sub></td>
+    <td><code><h- data-h=id>div_ties_to_zero</h-></code></td>
+  </tr>
+  <tr>
+    <td><code><mark><h- data-h=id>div_away_zero</h-></mark></code></td>
+    <td><code><mark><h- data-h=id>div_ties_away_zero</h-></mark></code><sub>📘</sub><sub>(<code><h- data-h=id>round</h-></code>)</sub></td>
+  </tr>
+  <tr>
+    <td><code><mark><h- data-h=id>div_to_inf</h-></mark></code><sub>📘</sub><sub>(<code><h- data-h=id>ceil</h-></code>)</sub></td>
+    <td><code><h- data-h=id>div_ties_to_inf</h-></code></td>
+  </tr>
+  <tr>
+    <td><code><mark><h- data-h=id>div_to_neg_inf</h-></mark></code><sub>📘</sub><sub>(<code><h- data-h=id>floor</h-></code>)</sub></td>
+    <td><code><h- data-h=id>div_ties_to_neg_inf</h-></code></td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>div_to_even</h-></code><sub>⚖️</sub></td>
+    <td><code><mark><h- data-h=id>div_ties_to_even</h-></mark></code><sub>⚖️📘</sub></td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=id>div_to_odd</h-></code><sub>⚖️</sub></td>
+    <td><code><h- data-h=id>div_ties_to_odd</h-></code><sub>⚖️</sub></td>
+  </tr>
+</table>
+
 <ul>
-<li><code><h- data-h=id>clmul</h-></code> names used because it is most common (Intel, LLVM, RV64, etc.)</li>
-<li><code><h- data-h=id>simd</h-><h- data-h=sym_op>::</h-><h- data-h=id>clmul</h-></code> also provided (but no <code><h- data-h=id>simd</h-><h- data-h=sym_op>::</h-><h- data-h=id>clmul_wide</h-></code>) (broken)</li>
+  <li><mark>marked</mark> functions are must-have, others fill the gaps</li>
+  <li>⚖️ — unbiased | 📘 — ISO/IEC 60559</li>
+  <li>each <code><h- data-h=id>div_</h-><i><h- data-h=id>mode</h-></i></code> function has <code><h- data-h=id>div_rem_</h-><i><h- data-h=id>mode</h-></i></code> counterpart (24 total)</li>
 </ul>
-</div>
 
 <div class=slide-foot>
 Jan Schultke
  | 
-Slides for P3642R4
+Slides for P3724R1
 —
-Carry-less product: <tt->std::clmul</tt->
+Integer division
  | 
-Telecons 2026
+Kona 2025
  | 
 Slide 5
 </div>
@@ -1956,39 +1904,37 @@ Slide 5
 
 <section id=slide-6>
 
-<h2 id=slide-h-6>Implementation and wording</h2>
+<h2 id=slide-h-6>Library interface</h2>
 
-<style>
-.no-vertical-margin {
-    margin-top: 0;
-    margin-bottom: 0;
-}
-</style>
-
-<h4 class=false-vertical-margin>Implementation</h4>
-<ul class=false-vertical-margin>
-<li>naive fallback implementation is trivial</li>
-<li>just need to wrap platform intrinsics when available</li>
-<li>portable support with <tt->@llvm.clmul</tt->
+<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=id>div_result</h->
+<h- data-h=sym_brac>{</h-> <h- data-h=id>T</h-> <h- data-h=id>quotient</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>remainder</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>friend</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw>auto</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;=&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw>default</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>div_rem_</h-><i><h- data-h=id>mode</h-></i><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h->             <h- data-h=id>div_to_</h-><i><h- data-h=id>mode</h-></i><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=id>T</h->             <h- data-h=id>mod</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>T</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 <ul>
-<li>could be wrapped in <tt->__builtin_clmul</tt-></li>
-</ul></li>
-</ul>
-
-<h4 class=false-vertical-margin>Wording</h4>
-<ul>
-<li>reviewed by SG6 for correctness</li>
-<li><i>see paper</i></li>
+  <li>no <code><h- data-h=kw>noexcept</h-></code> because narrow contract (<i>Preconditions</i>:)</li>
+  <li>no <code><h- data-h=id>rounding_mode</h-></code> constant template- or run-time parameter</li>
+  <li><code><h- data-h=id>mod</h-></code> is <code><h- data-h=id>div_rem_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>.</h-><h- data-h=id>remainder</h-></code><ul>
+    <li>as in <math display=inline><mrow>
+      <mo>−</mo>
+      <mn>2</mn>
+      <mo>mod</mo>
+      <mn>5</mn>
+      <mo>=</mo>
+      <mn>3</mn>
+    </mrow></math>﻿, and as in <code><h- data-h=id>mod</h-></code> in Haskell, Ada, CSS, etc.</li>
+  </ul></li>
 </ul>
 
 <div class=slide-foot>
 Jan Schultke
  | 
-Slides for P3642R4
+Slides for P3724R1
 —
-Carry-less product: <tt->std::clmul</tt->
+Integer division
  | 
-Telecons 2026
+Kona 2025
  | 
 Slide 6
 </div>
@@ -1996,32 +1942,103 @@ Slide 6
 
 <section id=slide-7>
 
+<h2 id=slide-h-7>Other design considerations</h2>
 
-<style>
-#bye {
-    font-size: 300%;
-    margin-top: 2.25em;
-    display: block;
-    font-weight: 900;
-    text-align: center;
-}
-</style>
-
-<div><span id=bye><tt->k thx bye</tt-> („• ֊ •„)</span></div>
-
+<ul>
+  <li>no SIMD overloads, but could be added in the future<ul>
+    <li>branchless implementation possible</li>
+  </ul></li>
+  <li>no functions that compute only remainder (except <code><h- data-h=id>mod</h-></code>)<ul>
+    <li>these are not usually needed</li>
+    <li>undesirable remainder sign for most rounding modes</li>
+  </ul></li>
+  <li>all functions are in <code><h- data-h=str>&lt;numeric&gt;</h-></code></li>
+  <li>feature-test macro: <code><h- data-h=id>__cpp_lib_integer_division</h-></code></li>
+</ul>
 
 <div class=slide-foot>
 Jan Schultke
  | 
-Slides for P3642R4
+Slides for P3724R1
 —
-Carry-less product: <tt->std::clmul</tt->
+Integer division
  | 
-Telecons 2026
+Kona 2025
  | 
 Slide 7
 </div>
 </section>
+
+<section id=slide-8>
+
+<h2 id=slide-h-8>Implementation experience</h2>
+
+<ul>
+  <li>Appendix A has simplified implementation for educational purposes</li>
+  <li><tt->eisenwave/integer-division</tt-> <a href="https://github%2ecom/Eisenwave/integer-division">[GitHub]</a> repo has full implementation</li>
+  <li>all functions can be made branchless and are suitable for SIMD port</li>
+</ul>
+
+<example-block><p><intro-></intro-> 
+Implementation is always in terms of <code><h- data-h=sym_op>/</h-></code> and <code><h- data-h=sym_op>%</h-></code>.
+</p><code-block><h- data-h=id>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>div_rem_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw_type>bool</h-> <h- data-h=id>quotient_negative</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_par>(</h-><h- data-h=id>x</h-> <h- data-h=sym_op>^</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_type>int</h-> <h- data-h=id>adjust</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw_type>int</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-> <h- data-h=sym_op>%</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>!=</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=id>quotient_negative</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_brac>{</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>-</h-> <h- data-h=id>adjust</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>%</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>+</h-> <h- data-h=id>adjust</h-> <h- data-h=sym_op>*</h-> <h- data-h=id>y</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+</example-block>
+
+<div class=slide-foot>
+Jan Schultke
+ | 
+Slides for P3724R1
+—
+Integer division
+ | 
+Kona 2025
+ | 
+Slide 8
+</div>
+</section>
+
+<section id=slide-9>
+
+<h2 id=slide-h-9>Questions</h2>
+
+<ul>
+  <li>Agreement with overall design?</li>
+  <li>SIMD overloads in another proposal?</li>
+  <li>Forward to LEWG?</li>
+</ul>
+
+<div class=slide-foot>
+Jan Schultke
+ | 
+Slides for P3724R1
+—
+Integer division
+ | 
+Kona 2025
+ | 
+Slide 9
+</div>
+</section>
+
+<h2 id=references><a class=para href=#references></a>References</h2>
+
+<div class=bib><div id=bib-item-P3724R1 class=bib-item>
+<a href="https://wg21%2elink/p3724r1">[P3724R1]</a>
+<span class=bib-author>Jan Schultke.</span>
+<span class=bib-title>Integer division</span>
+<span class=bib-date>2025-09-29</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/p3724r1%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3724r1.html</a></div><div id=bib-item-GitHub class=bib-item>
+<a href="https://github%2ecom/Eisenwave/integer-division">[GitHub]</a>
+<span class=bib-author>Jan Schultke.</span>
+<span class=bib-title>integer-division GitHub repository</span>
+<a href="https://github%2ecom/Eisenwave/integer-division" class=bib-link>https://github.com/Eisenwave/integer-division</a></div><div id=bib-item-StackOverflowCeil class=bib-item>
+<a href="https://stackoverflow%2ecom/q/2745074/5740428">[StackOverflowCeil]</a>
+<span class=bib-title>Fast ceiling of an integer division in C / C++</span>
+<a href="https://stackoverflow%2ecom/q/2745074/5740428" class=bib-link>https://stackoverflow.com/q/2745074/5740428</a></div></div>
 
 </main></body>
 </html>

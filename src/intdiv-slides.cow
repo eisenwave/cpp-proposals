@@ -1,7 +1,8 @@
+\: cowel 0.6.0
 \cowel_include{libwg21.cow}
 \cowel_include{libslides.cow}
 
-\Vset(paper-number){P3724R1}
+\Vset(paper-number){P3724R3}
 \Vset(paper-title){Integer division}
 
 \cowel_macro(neg_inf){\math{\mrow{\mo{\N{MINUS SIGN}}\mi{\N{INFINITY}}}}}
@@ -15,7 +16,7 @@ Slides for \Vget(paper-number)
 \N{EM DASH}
 \Vget(paper-title)
 \footsep
-Kona 2025
+Telecons 2026
 \footsep
 Slide \Vget(slidenum)
 }
@@ -50,9 +51,9 @@ Slide \Vget(slidenum)
   title = Slides for \Vget(paper-number) \N{EM DASH} \Vget(paper-title)
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3895R0}}
-  \dt{Date:}            \dd{\tt{2025-03-11}}
-  \dt{Audience:}        \dd{SG6}
+  \dt{Document number:} \dd{\docnum{P3895R1}}
+  \dt{Date:}            \dd{\tt{2025-03-03}}
+  \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/intdiv-slides.cow)}
@@ -73,10 +74,10 @@ Slide \Vget(slidenum)
   \li{many other rounding modes are useful:}
 }
 \cppblock{
-int bucket_size = 1000, elements = 100;
+int bucket_size = 1000, elems = 100;
 
-int buckets_req = elements / bucket_size;            // WRONG, zero
-int buckets_req = div_to_inf(elements, bucket_size); // OK, one
+int buckets_req = elems / bucket_size;                //\serif{ WRONG, zero}
+int buckets_req = div_to_pos_inf(elems, bucket_size); //\serif{ OK, one}
 }
 \ul{
   \li{
@@ -144,26 +145,26 @@ auto div_rem_ceil(_BitInt(4) x, _BitInt(4) y) {
 \table(class=center){
   \tr{
     \td{\tcode{\mark{div_to_zero}}\sub{📘}\classic_name{trunc}}
-    \td{\tcode{div_ties_to_zero}}
+    \td{\tcode{\mark{div_ties_to_zero}}\sub{📘}}
   }
   \tr{
     \td{\tcode{\mark{div_away_zero}}}
     \td{\tcode{\mark{div_ties_away_zero}}\sub{📘}\classic_name{round}}
   }
   \tr{
-    \td{\tcode{\mark{div_to_inf}}\sub{📘}\classic_name{ceil}}
-    \td{\tcode{div_ties_to_inf}}
+    \td{\tcode{\mark{div_to_pos_inf}}\sub{📘}\classic_name{ceil}}
+    \td{\tcode{div_ties_to_pos_inf}}
   }
   \tr{
     \td{\tcode{\mark{div_to_neg_inf}}\sub{📘}\classic_name{floor}}
     \td{\tcode{div_ties_to_neg_inf}}
   }
   \tr{
-    \td{\tcode{div_to_even}\sub{⚖️}}
-    \td{\tcode{\mark{div_ties_to_even}}\sub{⚖️📘}}
+    \td{}
+    \td{\tcode{\mark{div_ties_to_even}}\sub{⚖️📘}\classic_name{roundeven}}
   }
   \tr{
-    \td{\tcode{div_to_odd}\sub{⚖️}}
+    \td{}
     \td{\tcode{div_ties_to_odd}\sub{⚖️}}
   }
 }
@@ -171,7 +172,7 @@ auto div_rem_ceil(_BitInt(4) x, _BitInt(4) y) {
 \ul{
   \li{\mark{marked} functions are must-have, others fill the gaps}
   \li{⚖️ \N{EM DASH} unbiased | 📘 \N{EM DASH} ISO/IEC 60559}
-  \li{each \tcode{div_\exposid{mode}} function has \tcode{div_rem_\exposid{mode}} counterpart (24 total)}
+  \li{most \tcode{div_\exposid{mode}} functions have \tcode{div_rem_\exposid{mode}} counterpart (20 total)}
 }
 }
 
@@ -183,7 +184,7 @@ template<class T> struct div_result
 { T quotient, remainder;
   friend constexpr auto operator<=>(/* ... */) = default; };
 template<class T> constexpr div_result<T> div_rem_\exposid{mode}(T x, T y);
-template<class T> constexpr T             div_to_\exposid{mode}(T x, T y);
+template<class T> constexpr T             div_\exposid{mode}(T x, T y);
 template<class T> constexpr T             mod(T x, T y);
 }
 \ul{
@@ -236,16 +237,6 @@ div_result<int> div_rem_to_neg_inf(int x, int y) {
   return { x / y - adjust, x \N{PERCENT SIGN} y + adjust * y };
 }
 }
-}
-}
-
-\slide{
-\slideh{Questions}
-
-\ul{
-  \li{Agreement with overall design?}
-  \li{SIMD overloads in another proposal?}
-  \li{Forward to LEWG?}
 }
 }
 
