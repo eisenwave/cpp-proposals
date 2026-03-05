@@ -5,7 +5,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{D4037R0}}
-  \dt{Date:}            \dd{\tt{2026-02-26}}
+  \dt{Date:}            \dd{\tt{2026-03-04}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -139,6 +139,24 @@ It is not permitted to define \tcode{std::int8_t} or \tcode{std:uint8_t} as \tco
 even if \tcode{char} has the correct signedness.
 }
 
+\h3{Treating engines and distributions differently}
+
+While the paper is motivated by supporting distributions,
+engines such as \tcode{mersenne_twister_engine}
+also use \tcode{UIntType} template parameters and thus disallow \tcode{unsigned char}.
+Using 8-bit types for engines is mostly unmotivated because the quality
+of the generated numbers would be extremely low anyway.
+That being said, using an 8-bit \tcode{linear_congruential_engine} to get \q{quick and dirty}
+random number generation on an 8-bit architecture is not inconceivable.
+
+My opinion is that it is not worth treating engines and distributions any differently
+because they are all templates,
+and supporting one more integer type does not provide any meaningful hurdle.
+Ultimately, it would only complicate the status quo to single out specific integer types
+without clear technical obstacles,
+but simply because it would be \q{bad practice} or \q{not as useful}
+to instantiate templates with certain types.
+
 \h3{Whether to diagnose unsupported types}
 
 It may also be desirable to diagnose the use of unsupported types in \header{random},
@@ -154,6 +172,40 @@ and leave diagnostics up to implementations.
 This effectively means that \eelis{rand.req.gen}
 provides a minimal list of supported types,
 which the implementation optionally extends.
+
+\h3{Drive-by-fix for \tt{std::uint_leastN_t} and \tt{std::uint_fastN_t}}
+
+Since we are changing the set of types
+that \tcode{IntType} and \tcode{UIntType} support,
+we can also fix another existing defect as a drive-by product:
+\eelis{rand} uses the type aliases
+\tcode{uint_least32_t}, \tcode{uint_least64_t},
+\tcode{uint_fast32_t}, and \tcode{uint_least64_t}
+in a number of places,
+but there is no guarantee that those are aliases for standard integer types
+rather than extended integer types.
+
+\Bex{
+It is implementation-defined whether the following specialization
+from \eelis{rand.predef}
+causes compile-time undefined behavior upon instantiation.
+Specifically, there would be UB if \tcode{uint_fast32_t}
+was an alias for some \tcode{__uint32} extended integer type.
+\cppblock{
+using mt19937 =
+      mersenne_twister_engine<uint_fast32_t, 32, 624, 397, 31,
+       0x9908'b0df, 11, 0xffff'ffff, 7, 0x9d2c'5680, 15, 0xefc6'0000, 18, 1'812'433'253>;
+}
+}
+
+While it is obvious that we don't want use of \tcode{mt19937}
+to have undefined behavior,
+it is not obvious how to fix the problem.
+Allowing \em{all} extended integer types would include \tcode{__int128},
+which we don't want to support, as explained above.
+
+A good compromise is to support all integer types whose width is at most
+that of \tcode{long long}.
 
 \h2{Implementation experience}
 
@@ -172,7 +224,6 @@ libstdc++ supports any integral type as an extension; see:
 libc++ provides the proposed restrictions.
 }
 
-
 \h2{Wording}
 
 The changes are relative to \ref(N5032).
@@ -189,48 +240,73 @@ Change \eelis{rand.req.general#1} as follows:
 
 \Bdiff{
 Throughout \eelis{rand},
-the effect of instantiating a template:
+the effect of instantiating a template \ins{\math{\mi{T}}}:
 \ul{
   \li{
-    that has a template type parameter named \tcode{Sseq}
-    is undefined unless the corresponding template argument is cv-unqualified
-    and meets the requirements of
-    seed sequence\iref{rand.req.seedseq}.
+    \del{that} \ins{The program is ill-formed, no diagnostic required if \math{\mi{T}}}
+    has a template type parameter named \tcode{Sseq}
+    \del{is undefined unless} \ins{and}
+    the corresponding template argument is cv-\del{un}qualified
+    \del{and meets} \ins{or does not meet}
+    the requirements of seed sequence\iref{rand.req.seedseq}.
   }
   \li{
-    that has a template type parameter named \tcode{URBG}
-    is undefined unless the corresponding template argument is cv-unqualified
-    and meets the requirements of
-    uniform random bit generator\iref{rand.req.urng}.
+    \del{that} \ins{The program is ill-formed, no diagnostic required if \math{\mi{T}}}
+    has a template type parameter named \tcode{URBG}
+    \del{is undefined unless} \ins{and}
+    the corresponding template argument is cv-\del{un}qualified
+    \del{and meets} \ins{or does not meet}
+    the requirements of uniform random bit generator\iref{rand.req.urng}.
   }
   \li{
-    that has a template type parameter named \tcode{Engine}
-    is undefined unless the corresponding template argument is cv-unqualified
-    and meets the requirements of
-    random number engine\iref{rand.req.eng}.
+    \del{that} \ins{The program is ill-formed, no diagnostic required if \math{\mi{T}}}
+    has a template type parameter named \tcode{Engine}
+    \del{is undefined unless} \ins{and}
+    the corresponding template argument is cv-\del{un}qualified
+    \del{and meets} \ins{or does not meet}
+    the requirements of random number engine\iref{rand.req.eng}.
   }
   \li{
-    that has a template type parameter named \tcode{RealType}
-    is undefined unless the corresponding template argument
-    \del{is cv-unqualified and}
-    is one of \tcode{float}, \tcode{double}, or \tcode{long double}.
+    \del{that} \ins{The program is ill-formed if \math{\mi{T}}}
+    has a template type parameter named \tcode{RealType}
+    \del{is undefined unless} \ins{and}
+    the corresponding template argument \ins{\math{\mi{A}}}
+    \del{is cv-unqualified and
+    is one of \tcode{float}, \tcode{double}, or \tcode{long double}}
+    \ins{is not a cv-unqualified floating-point type\iref{basic.fundamental}}.
+    \ins{It is implementation-defined whether the program is ill-formed if
+    \math{\mi{A}} is an extended floating-point type.}
   }
   \li{
-    that has a template type parameter named \tcode{IntType}
-    is undefined unless the corresponding template argument is
-    \del{cv-unqualified and is one of
+    \del{that} \ins{The program is ill-formed if \math{\mi{T}}}
+    has a template type parameter named \tcode{IntType}
+    \del{is undefined unless} \ins{and}
+    the corresponding template argument \ins{\math{\mi{A}}}
+    \del{is cv-unqualified and is one of
     \tcode{short}, \tcode{int}, \tcode{long}, \tcode{long long},
     \tcode{unsigned short}, \tcode{unsigned int}, \tcode{unsigned long}, or
     \tcode{unsigned long long}}
-    \ins{a standard integer type\iref{basic.fundamental}}.
+    \ins{is not a cv-unqualified integral type\iref{basic.fundamental}}.
+    \ins{It is implementation-defined whether the program is ill-formed if
+    \math{\mi{A}} is not a signed or unsigned integer type or
+    the width of \math{\mi{A}} is less than that of \tcode{signed char} or
+    more than that of \tcode{long long}}.
   }
   \li{
-    that has a template type parameter named \tcode{UIntType}
-    is undefined unless the corresponding template argument is
-    \del{cv-unqualified and is one of
+    \del{that} \ins{The program is ill-formed if \math{\mi{T}}}
+    has a template type parameter named \tcode{UIntType}
+    \del{is undefined unless} \ins{and}
+    the corresponding template argument \ins{\math{\mi{A}}}
+    \del{is cv-unqualified and is one of
+    \tcode{short}, \tcode{int}, \tcode{long}, \tcode{long long},
     \tcode{unsigned short}, \tcode{unsigned int}, \tcode{unsigned long}, or
     \tcode{unsigned long long}}
-    \ins{a standard unsigned integer type\iref{basic.fundamental}}.
+    \ins{is not a cv-unqualified integral type\iref{basic.fundamental}
+    or if \tcode{is_signed_v<\math{\mi{A}}>} is \tcode{true}}.
+    \ins{It is implementation-defined whether the program is ill-formed if
+    \math{\mi{A}} is not an unsigned integer type or
+    the width of \math{\mi{A}} is less than that of \tcode{unsigned char} or
+    more than that of \tcode{unsigned long long}}.
   }
 }
 }
@@ -238,6 +314,13 @@ the effect of instantiating a template:
 \editnote{
 Removing the \q{is cv-unqualified} requirements is purely editorial.
 These requirements are redundant for the latter three bullets.
+}
+
+\editnote{
+The wording is deliberately crafted so that bit-precise integer types
+from \ref(P3666R3) are excluded.
+It's not obvious whether supporting extreme types like \tcode{_BitInt(1)}
+is desirable or easy to implement.
 }
 
 \h2{References}
@@ -264,6 +347,14 @@ These requirements are redundant for the latter three bullets.
   author = Stephan T. Lavavej,
   date = 2017-02-02,
   link = https://cplusplus.github.io/LWG/issue2326,
+)\
+\bib(
+  id = P3666R3,
+  title = Bit-precise integers,
+  date = 2026-02-21,
+  author = Jan Schultke,
+  link = https://wg21.link/p3666r3,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r3.pdf,
 )\
 
 \make_bib
