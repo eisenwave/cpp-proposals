@@ -1,11 +1,12 @@
+\: cowel 0.6.0
 \cowel_include{libwg21.cow}
 
 \wg21_head(
-  title = Allowing \tt{signed char} and \tt{unsigned char} in random number generation
+  title = Supporting \tt{signed char} and \tt{unsigned char}\br in random number generation
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{D4037R0}}
-  \dt{Date:}            \dd{\tt{2026-03-04}}
+  \dt{Document number:} \dd{\docnum{P4037R0}}
+  \dt{Date:}            \dd{\tt{2026-03-06}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -19,6 +20,9 @@
 Use of \tcode{signed char} or \tcode{unsigned char} in \header{random}
 currently results in undefined behavior.
 Instead, it should be permitted.
+There are further minor defects resulting from the restrictions in \eelis{rand.req.genl},
+which this paper also addresses.
+NB comment \ref(RU-272) is resolved by this paper.
 }
 
 \h2(listed=false){Contents}
@@ -49,28 +53,53 @@ providing \tcode{unsigned char} as an argument causes template instantiation
 to have undefined behavior.
 This is functionally equivalent to making the program ill-formed, no diagnostic required.
 
+It should also be noted that many users rely on support for 8-bit types
+in \header{random} already, despite the undefined behavior.
+A GitHub code search for
+\ref(
+https://github.com/search?q=language%3AC%2B%2B+%2F%28%3F-i%29uniform_int_distribution%3C%28%28unsigned+%7Csigned+%7C%29char%7C%28std%3A%3A%29%3Fu%3Fint8_t%7Ci8%7Cu8%29%3E%2F&type=code
+){\tt{language:C++ /(?-i)uniform_int_distribution<((unsigned |signed |)char|(std::)?u?int8_t|i8|u8)>/}}
+shows 8.4K files already using e.g.
+\tcode{std::uniform_int_distribution<uint8_t>}.
+This is possible because both libstdc++ and libc++ support those types as an extension;
+see \ref(#implementation-experience).
+
 In 2013,
 \ref(LWG2326) \q{\tcode{uniform_int_distribution<unsigned char>} should be permitted} stated that
 \q{it's just silly that we have a random number library with no natural way to generate random bytes}.
 As silly as it may be,
 the issue was closed as NAD (not a defect)
 because it was perceived as a feature request rather than the resolution of a defect.
-Some discussion of a writing a paper took place,
+Writing a paper was considered,
 but that paper never manifested.
 
-It is unclear why the restriction exists in the first place;
-I was unable to find any discussion in published papers.
-The restriction dates back at least to \ref(N1932), published 2006.
-One may suspect that it has to do with \tcode{unsigned char}
-and other single-byte types being subject to integer promotion (to \tcode{int}),
-but paradoxically,
-\tcode{unsigned short} and \tcode{short} are supported
-despite undergoing promotion.
+In 2025,
+\ref(LWG4109) \q{Instantiating templates in §[rand]
+with \tcode{int8_t}/\tcode{uint8_t} is undefined behavior}
+addressed the same problem,
+and addresses NB comment \ref(RU-272).
+Various comments on \ref(LWG4109) point out that support for
+extended integer types and extended floating-point types would be useful,
+and that many of the restrictions could be converted from compile-time UB
+(effectively IFNDR)
+to \i{Mandates}, i.e. \tcode{static_assert}.
 
-In any case, \tcode{signed char} and \tcode{unsigned char} should be supported.
+This paper resolves all these known defects and discrepancies
+of \eelis{rand.req.genl} in one fell swoop.
+
+\Bnote{
+It is unclear why the prohibition of \tcode{unsigned char} exists in the first place.
+The restriction dates back at least to \ref(N1932), published 2006.
+\ref(https://lists.isocpp.org/std-proposals/2026/02/17243.php){Discussion on [std-proposals]}
+suggests that it may exist because engines with 8-bit types
+(like \tcode{linear_congruential_engine<uint8_t>})
+have dreadful statistical properties.
+}
 
 \h2{Motivation}
 
+Support for \tcode{unsigned char} and \tcode{signed char}
+in distributions would be useful.
 The ability to generate random bytes or octets is extremely valuable for
 \ref(https://en.wikipedia.org/wiki/Fuzzing){fuzz testing}.
 For example, when testing an implementation of an
@@ -86,39 +115,124 @@ a user would typically
 It is easy to imagine testing methodology that involves random bytes
 for any kind of codec, network protocol, compiler, syntax highlighter, etc.
 
+\Bnote{
+Generating octets is effectively supported already.
+\tcode{uniform_int_distribution<unsigned int>(0, 255)} is functionally equivalent to
+\tcode{uniform_int_distribution<unsigned char>()}.
+}
+
 \h2{Design}
 
-\h3{Which character types to support}
+\h3{Which types to support}
 
 The current restriction which forbids \tcode{unsigned char} is bad,
 but it's not obvious how much the restriction should be relaxed.
-There are a few plausible options:
 
-\ul{
-  \li{
-    Permit all standard integers.
-    That is, the current restriction, plus \tcode{signed char} and \tcode{unsigned char}.
-  }
-  \li{
-    Permit all standard integers and \tcode{char}.
-  }
-  \li{
-    Permit all integral types.
-  }
+While \ref(LWG4109) offers the option to make the program ill-formed
+when the existing restrictions are not satisfied
+(\q{Option B} in the issue),
+it fails to mention that this would break
+thousands of files of existing code;
+see \ref(#introduction).
+We have to permit implementations to keep their current extensions,
+without requiring them to support more than is reasonable.
+We either have to continue treating anything other than the supported set of types
+as IFNDR (\q{Option A} in the issue),
+or carve out an optionally supported set of types (proposed).
+
+\h4{Proposed \tcode{IntType} restrictions}
+
+In short, the new restriction for \tcode{IntType} parameters
+is to ensure support for standard integers
+(including \tcode{signed char} and \tcode{unsigned char}),
+allow the implementation to support further integral types
+(such as extended integer types),
+and reject anything that is not even an integral type.
+However, some extended integer types are also required to be supported
+to prevent highly defective behavior.
+The following sections provide more details,
+and the following diagram illustrates the behavior:
+
+\pre{
+┌──────────────────────────────────────────────────────────────┐
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  ┌──────────────────────────────────────────────────┐  │  │
+│  │  │ REQUIRED: standard ints., some extended ints.    │  │  │
+│  │  │ e.g. unsigned char, int, int32_t, etc.           │  │  │
+│  │  └──────────────────────────────────────────────────┘  │  │
+│  │    OPTIONAL: cv-unqualified integral types             │  │
+│  │    e.g. __int128, char32_t, etc.                       │  │
+│  └────────────────────────────────────────────────────────┘  │
+│       REJECTED: anything else                                │
+│       e.g. std::vector, double, enum, const int, etc.        │
+└──────────────────────────────────────────────────────────────┘
 }
 
-Permitting all integral types imposes an unreasonable implementation burden.
+The \tcode{UIntType} restrictions are the same,
+except that signed types fall into the \q{anything else} set.
+
+\h4{Proposed \tcode{RealType} restrictions}
+
+The same restriction is mirrored for \tcode{RealType} parameters:
+there is mandatory support for \tcode{float}, \tcode{double}, and \tcode{long double}, and
+optional support extended floating-point types.
+
+\pre{
+┌──────────────────────────────────────────────────────────────┐
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  ┌──────────────────────────────────────────────────┐  │  │
+│  │  │ REQUIRED: cv-unqualified standard floating-point │  │  │
+│  │  │ float, double, and long double                   │  │  │
+│  │  └──────────────────────────────────────────────────┘  │  │
+│  │    OPTIONAL: cv-unqualified extended floating-point    │  │
+│  │    e.g. float32_t, float128_t, bfloat16_t, etc.        │  │
+│  └────────────────────────────────────────────────────────┘  │
+│       REJECTED: anything else                                │
+│       e.g. std::vector, int, enum, const double, etc.        │
+└──────────────────────────────────────────────────────────────┘
+}
+
+\h3{Don't require character types}
+
+Supporting use of character types
+(e.g. \tcode{char}, \tcode{char32_t}, etc.)
+is not motivated by this paper and
+outside the scope of \ref(RU-272).
+It is not proposed,
+despite character types being integral types,
+despite seeming vaguely useful, and
+despite GCC having support for this already (see \ref(#implementation-experience)).
+Such an extension could be proposed in a future paper targeting C++29.
+
+Supporting only \tcode{char} in addition to standard integer would also be strange,
+although there is precedent for this in \header{charconv}.
+If \tcode{char} is supported, why not character types in general?
+The design becomes somewhat arbitrary.
+
+\Bnote{
+It is not permitted to define \tcode{std::int8_t} or \tcode{std::uint8_t} as \tcode{char},
+even if \tcode{char} has the correct signedness.
+}
+
+\h3{Don't require all extended integer types}
+
+Supporting extended integer types in general
+imposes an unreasonable implementation burden.
 One of the biggest issues is \tcode{linear_congruential_engine<__int128>}
 assuming the implementation provides an extended 128-bit integer type,
-which recent version of GCC and Clang do.
+which recent versions of GCC and Clang do.
 libstdc++ permits \tcode{__int128} in most of \header{random},
 but rejects
 \tcode{linear_\cowel_to_html{\N{SOFT HYPHEN}}congruential_engine<__int128>} using:
+
+\Bquote{
 \cppblock{
 static_assert(__which < 0, /* needs to be dependent */
 		      "sorry, would be too much trouble for a slow result");
 }
-See \url{https://github.com/gcc-mirror/gcc/blob/0635bfb53a145cc005a15657635abf8ea9e6e9ba/libstdc%2B%2B-v3/include/bits/random.h#L521-L522}.
+
+\N{EM DASH}\url{https://github.com/gcc-mirror/gcc/blob/0635bfb53a145cc005a15657635abf8ea9e6e9ba/libstdc%2B%2B-v3/include/bits/random.h#L521-L522}
+}
 The difficulty lies in the fact that \tcode{linear_congruential_engine}
 uses modular arithmetic,
 which requires N×2-bit division for N-bit integer types.
@@ -126,61 +240,17 @@ For \tcode{long long},
 the existence of \tcode{__int128} makes this easy,
 but for \tcode{__int128}, 256-bit division would be required.
 
-Permitting only \tcode{char} in addition to standard integer types seems unmotivated,
-although there is precedent for this in \header{charconv}.
-If \tcode{char} is supported, why not character types in general?
-If characters types in general are supported, why not integral types and unscoped enumerations?
-The design becomes somewhat arbitrary.
+However, \em{some} extended integer types ought to be supported;
+more on that in the following section.
 
-Overall, permitting only standard integers is an obvious and minimal fix.
-
-\Bnote{
-It is not permitted to define \tcode{std::int8_t} or \tcode{std:uint8_t} as \tcode{char},
-even if \tcode{char} has the correct signedness.
-}
-
-\h3{Treating engines and distributions differently}
-
-While the paper is motivated by supporting distributions,
-engines such as \tcode{mersenne_twister_engine}
-also use \tcode{UIntType} template parameters and thus disallow \tcode{unsigned char}.
-Using 8-bit types for engines is mostly unmotivated because the quality
-of the generated numbers would be extremely low anyway.
-That being said, using an 8-bit \tcode{linear_congruential_engine} to get \q{quick and dirty}
-random number generation on an 8-bit architecture is not inconceivable.
-
-My opinion is that it is not worth treating engines and distributions any differently
-because they are all templates,
-and supporting one more integer type does not provide any meaningful hurdle.
-Ultimately, it would only complicate the status quo to single out specific integer types
-without clear technical obstacles,
-but simply because it would be \q{bad practice} or \q{not as useful}
-to instantiate templates with certain types.
-
-\h3{Whether to diagnose unsupported types}
-
-It may also be desirable to diagnose the use of unsupported types in \header{random},
-rather than treating it as IFNDR.
-However, this would raise warnings in substantial amounts of existing code
-without providing much benefit to users.
-For instance, GCC has supported all integral types in \header{random} for years now,
-and numerous uses of \tcode{uniform_int_distribution<char>}
-and other disallowed types can be found.
-
-Therefore, it may be best to simply perpetuate the status quo
-and leave diagnostics up to implementations.
-This effectively means that \eelis{rand.req.gen}
-provides a minimal list of supported types,
-which the implementation optionally extends.
-
-\h3{Drive-by-fix for \tt{std::uint_leastN_t} and \tt{std::uint_fastN_t}}
+\h3(id=fixing-int-least){Drive-by-fix for \tt{std::uint_leastN_t} and \tt{std::uint_fastN_t}}
 
 Since we are changing the set of types
 that \tcode{IntType} and \tcode{UIntType} support,
-we can also fix another existing defect as a drive-by product:
+we can also fix another defect as a drive-by product:
 \eelis{rand} uses the type aliases
 \tcode{uint_least32_t}, \tcode{uint_least64_t},
-\tcode{uint_fast32_t}, and \tcode{uint_least64_t}
+	code{uint_fast32_t}, and \tcode{uint_fast64_t}
 in a number of places,
 but there is no guarantee that those are aliases for standard integer types
 rather than extended integer types.
@@ -198,73 +268,147 @@ using mt19937 =
 }
 }
 
-While it is obvious that we don't want use of \tcode{mt19937}
+While it is obvious that we don't want the use of \tcode{mt19937}
 to have undefined behavior,
 it is not obvious how to fix the problem.
 Allowing \em{all} extended integer types would include \tcode{__int128},
 which we don't want to support, as explained above.
 
-A good compromise is to support all integer types whose width is at most
-that of \tcode{long long}.
+A good compromise is to support all integer types whose width
+at least that of \tcode{char} and at most that of \tcode{long long}.
+This ensures that \tcode{std::size_t}, \tcode{std::int_least32_t},
+and many other types are supported by \header{random},
+regardless of whether they are standard integer types,
+assuming they don't have an extreme width
+(which the user can easily test using \tcode{static_assert}).
+This compromise is also future-proof for bit-precise integers (see \ref(P3666R3)),
+which could introduce extreme widths like \tcode{_BitInt(1)} or \tcode{_BitInt(1024)}
+that we may not want to support.
+
+\h3{Treating engines and distributions differently}
+
+While the paper is motivated by supporting distributions,
+engines such as \tcode{mersenne_twister_engine}
+also use \tcode{UIntType} template parameters and thus disallow \tcode{unsigned char}.
+Using 8-bit types for engines is mostly unmotivated because the quality
+of the generated numbers would be extremely low anyway.
+That being said, using an 8-bit \tcode{linear_congruential_engine} to get \q{quick and dirty}
+random number generation on an 8-bit architecture is not inconceivable,
+and
+\ref(https://github.com/search?q=language%3AC%2B%2B+%2F(%3F-i)linear_congruential_engine%3C((unsigned+|signed+|)char|(std%3A%3A)%3Fu%3Fint8_t|i8|u8)%2F&type=code){GitHub code search}
+finds uses of \tcode{linear_congruential_engine<uint8_t>}.
+
+I argue that \tcode{unsigned char} and \tcode{signed char} should be supported
+unilaterally in \header{random}
+(not just for distributions)
+for the following reasons:
+\ul{
+  \li{
+    There are existing uses of 8-bit engine types,
+    and we don't need to break this existing code,
+    however questionable that existing code may be.
+  }
+  \li{
+    It is unlikely that support for 8-bit types would cause ordinary users to
+    \em{accidentally} create an engine of low quality.
+    Ordinary users don't create their own engines with custom parameters;
+    they typically reach for \tcode{std::mt19937} and other predefined aliases.
+  }
+  \li{
+    Creating an engine of extremely low quality is useful for
+    statistical libraries that measure said quality.
+    Sometimes, low quality is the goal, not a mistake.
+  }
+  \li{
+    A user can create a low-quality engine using both
+    \tcode{linear_congruential_engine<uint8_t, 2u, 3u, 8u>} and
+    \tcode{linear_congruential_engine<uint64_t, 2u, 3u, 8u>}.
+    The statistical quality is determined by the engine parameters,
+    not by the type.
+  }
+  \li{
+    None of the other numerical templates in \header{numeric} or \header{gcd}
+    single out a specific integer width as unsupported.
+    This design is very surprising
+    and actively hostile to generic programming.
+  }
+}
+
+\Bnote{
+In terms of wording, supporting 8-bit types unilaterally means that
+\tcode{UIntType} template type parameters accept \tcode{unsigned char}.
+}
 
 \h2{Implementation experience}
 
 At the time of writing,
 the MSVC STL has a \tcode{static_assert} which prevents instantiation
-of \tcode{std::uniform_int_distri\cowel_to_html{\N{SOFT HYPHEN}}bution<unsigned char>}; see:
+of \tcode{std::uniform_int_distri\cowel_to_html{\N{SOFT HYPHEN}}bution<unsigned char>}.
+It provides the minimum amount of support required by the standard; see:
 \br{}\url{https://github.com/microsoft/STL/blob/9b021cf66875d2fbf4627aad8db594595aebb148/stl/inc/random#L43}
 
-libc++ supports \tcode{signed char} and \tcode{unsigned char} as an extension; see:
+libc++ supports \tcode{signed char} and \tcode{unsigned char} as an extension.
+This is the minimum amount of support assuming this paper is accepted; see:
 \br{}\url{https://github.com/llvm/llvm-project/blob/9d075d271ff15ec153ada3413d294540206a15ed/libcxx/include/__random/is_valid.h#L49}.
 
 libstdc++ supports any integral type as an extension; see:
 \br{}\url{https://github.com/gcc-mirror/gcc/blob/0635bfb53a145cc005a15657635abf8ea9e6e9ba/libstdc%2B%2B-v3/include/bits/uniform_int_dist.h#L90-L91}.
 
-\Bnote{
-libc++ provides the proposed restrictions.
-}
-
 \h2{Wording}
 
 The changes are relative to \ref(N5032).
 
-Add a feature-test macro to \eelis{version.syn} as follows:
+\editnote{
+No feature-test macro is provided because these changes are intended
+to be applied as a defect report.
+}
 
-\Bins{
-\itemdecl{
-#define __cpp_lib_random 20XXXXL // \serif{also in \tt{<random>}}
+\editnote{
+Remember that the following wording changes are meant to resolve three defects at once:
+\ul{
+  \li{\tcode{signed char} and \tcode{unsigned char} are not supported.}
+  \li{\tcode{uint_least32_t} and other such types are not guaranteed to be supported.}
+  \li{
+    The effect of instantiating templates is undefined,
+    but many of the requirements (e.g. cv-unqualified types) are diagnosable;
+    even when they aren't, the wording idiom \q{ill-formed, no diagnostic required}
+    is more fitting.
+  }
 }
 }
 
-Change \eelis{rand.req.general#1} as follows:
+Change \eelis{rand.req.genl#1} as follows:
 
 \Bdiff{
 Throughout \eelis{rand},
-the effect of instantiating a template \ins{\math{\mi{T}}}:
+the effect of instantiating a template \ins{\math{\mi{T}} has the following constraints}:
 \ul{
   \li{
-    \del{that} \ins{The program is ill-formed, no diagnostic required if \math{\mi{T}}}
+    \del{that} \ins{The program is ill-formed if \math{\mi{T}}}
     has a template type parameter named \tcode{Sseq}
     \del{is undefined unless} \ins{and}
     the corresponding template argument is cv-\del{un}qualified
     \del{and meets} \ins{or does not meet}
-    the requirements of seed sequence\iref{rand.req.seedseq}.
+    the requirements of seed sequence\iref{rand.req.seedseq}\ins{;
+    no diagnostic is required for the latter condition}.
   }
   \li{
-    \del{that} \ins{The program is ill-formed, no diagnostic required if \math{\mi{T}}}
+    \del{that} \ins{The program is ill-formed if \math{\mi{T}}}
     has a template type parameter named \tcode{URBG}
     \del{is undefined unless} \ins{and}
     the corresponding template argument is cv-\del{un}qualified
     \del{and meets} \ins{or does not meet}
-    the requirements of uniform random bit generator\iref{rand.req.urng}.
+    the requirements of uniform random bit generator\iref{rand.req.urng}\ins{;
+    no diagnostic is required for the latter condition}.
   }
   \li{
-    \del{that} \ins{The program is ill-formed, no diagnostic required if \math{\mi{T}}}
+    \del{that} \ins{The program is ill-formed if \math{\mi{T}}}
     has a template type parameter named \tcode{Engine}
     \del{is undefined unless} \ins{and}
     the corresponding template argument is cv-\del{un}qualified
     \del{and meets} \ins{or does not meet}
-    the requirements of random number engine\iref{rand.req.eng}.
+    the requirements of random number engine\iref{rand.req.eng}\ins{;
+    no diagnostic is required for the latter condition}.
   }
   \li{
     \del{that} \ins{The program is ill-formed if \math{\mi{T}}}
@@ -281,46 +425,34 @@ the effect of instantiating a template \ins{\math{\mi{T}}}:
     \del{that} \ins{The program is ill-formed if \math{\mi{T}}}
     has a template type parameter named \tcode{IntType}
     \del{is undefined unless} \ins{and}
-    the corresponding template argument \ins{\math{\mi{A}}}
+    the corresponding template argument
     \del{is cv-unqualified and is one of
     \tcode{short}, \tcode{int}, \tcode{long}, \tcode{long long},
     \tcode{unsigned short}, \tcode{unsigned int}, \tcode{unsigned long}, or
     \tcode{unsigned long long}}
-    \ins{is not a cv-unqualified integral type\iref{basic.fundamental}}.
+    \ins{\tcode{A} is not a cv-unqualified integral type\iref{basic.fundamental}}.
     \ins{It is implementation-defined whether the program is ill-formed if
-    \math{\mi{A}} is not a signed or unsigned integer type or
-    the width of \math{\mi{A}} is less than that of \tcode{signed char} or
+    \tcode{A} is not a signed or unsigned integer type or if
+    the width of \tcode{A} is less than that of \tcode{char} or
     more than that of \tcode{long long}}.
   }
   \li{
     \del{that} \ins{The program is ill-formed if \math{\mi{T}}}
     has a template type parameter named \tcode{UIntType}
     \del{is undefined unless} \ins{and}
-    the corresponding template argument \ins{\math{\mi{A}}}
+    the corresponding template argument
     \del{is cv-unqualified and is one of
     \tcode{short}, \tcode{int}, \tcode{long}, \tcode{long long},
     \tcode{unsigned short}, \tcode{unsigned int}, \tcode{unsigned long}, or
     \tcode{unsigned long long}}
-    \ins{is not a cv-unqualified integral type\iref{basic.fundamental}
-    or if \tcode{is_signed_v<\math{\mi{A}}>} is \tcode{true}}.
+    \ins{\tcode{A} is not a cv-unqualified integral type\iref{basic.fundamental}
+    or if \tcode{is_signed_v<A>} is ill-formed or \tcode{true}}.
     \ins{It is implementation-defined whether the program is ill-formed if
-    \math{\mi{A}} is not an unsigned integer type or
-    the width of \math{\mi{A}} is less than that of \tcode{unsigned char} or
-    more than that of \tcode{unsigned long long}}.
+    \tcode{A} is not an unsigned integer type or if
+    the width of \tcode{A} is less than that of \tcode{char} or
+    more than that of \tcode{long long}}.
   }
 }
-}
-
-\editnote{
-Removing the \q{is cv-unqualified} requirements is purely editorial.
-These requirements are redundant for the latter three bullets.
-}
-
-\editnote{
-The wording is deliberately crafted so that bit-precise integer types
-from \ref(P3666R3) are excluded.
-It's not obvious whether supporting extreme types like \tcode{_BitInt(1)}
-is desirable or easy to implement.
 }
 
 \h2{References}
@@ -347,6 +479,18 @@ is desirable or easy to implement.
   author = Stephan T. Lavavej,
   date = 2017-02-02,
   link = https://cplusplus.github.io/LWG/issue2326,
+)\
+\bib(
+  id = LWG4109,
+  title = Instantiating templates in §[rand] with int8_t/uint8_t is undefined behavior,
+  author = Peter Dimov,
+  date = 2025-10-27,
+  link = https://cplusplus.github.io/LWG/issue4109,
+)\
+\bib(
+  id = RU-272,
+  title = [rand.req.genl] Prevent instantiation of uniform_int_distribution with std::uint8_t,
+  link = https://github.com/cplusplus/nbballot/issues/847,
 )\
 \bib(
   id = P3666R3,

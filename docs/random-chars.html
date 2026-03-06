@@ -1434,7 +1434,7 @@ if (theme !== null) {
     document.documentElement.className = theme;
 }
   </script>
-<title>Allowing signed char and unsigned char in random number generation</title></head>
+<title>Supporting signed char and unsigned char in random number generation</title></head>
 <body>
 <div id=settings tabindex=0>
     <div id=theme-icon></div>
@@ -1573,11 +1573,11 @@ if (theme !== null) {
   }
 </style>
 
-<div class=wg21-head><h1>Allowing <tt->signed char</tt-> and <tt->unsigned char</tt-> in random number generation</h1>
+<div class=wg21-head><h1>Supporting <tt->signed char</tt-> and <tt->unsigned char</tt-><br/> in random number generation</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/D4037R0>D4037R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-03-04</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P4037R0>P4037R0</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-03-06</tt-></dd>
   <dt>Audience:</dt>        <dd>LEWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1591,6 +1591,9 @@ if (theme !== null) {
 Use of <code><h- data-h=kw_type>signed</h-> <h- data-h=kw_type>char</h-></code> or <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code> in <code><h- data-h=str>&lt;random&gt;</h-></code>
 currently results in undefined behavior.
 Instead, it should be permitted.
+There are further minor defects resulting from the restrictions in <a href=https://eel.is/c++draft/rand.req.genl>[rand.req.genl]</a>,
+which this paper also addresses.
+NB comment <a href="https://github%2ecom/cplusplus/nbballot/issues/847">[RU-272]</a> is resolved by this paper.
 </p></abstract-block>
 
 <h2 id=contents><a class=para href=#contents></a>Contents</h2>
@@ -1602,13 +1605,19 @@ Instead, it should be permitted.
 <div class=toc-num data-level=2>3</div>
 <a href=#design><h2>Design</h2></a>
 <div class=toc-num data-level=3>3.1</div>
-<a href=#which-character-types-to-support><h3>Which character types to support</h3></a>
+<a href=#which-types-to-support><h3>Which types to support</h3></a>
+<div class=toc-num data-level=4>3.1.1</div>
+<a href=#proposed-inttype-restrictions><h4>Proposed <code><h- data-h=id>IntType</h-></code> restrictions</h4></a>
+<div class=toc-num data-level=4>3.1.2</div>
+<a href=#proposed-realtype-restrictions><h4>Proposed <code><h- data-h=id>RealType</h-></code> restrictions</h4></a>
 <div class=toc-num data-level=3>3.2</div>
-<a href=#treating-engines-and-distributions-differently><h3>Treating engines and distributions differently</h3></a>
+<a href=#dont-require-character-types><h3>Don't require character types</h3></a>
 <div class=toc-num data-level=3>3.3</div>
-<a href=#whether-to-diagnose-unsupported-types><h3>Whether to diagnose unsupported types</h3></a>
+<a href=#dont-require-all-extended-integer-types><h3>Don't require all extended integer types</h3></a>
 <div class=toc-num data-level=3>3.4</div>
-<a href=#drive-by-fix-for-std::uint_leastn_t-and-std::uint_fastn_t><h3>Drive-by-fix for <tt->std::uint_leastN_t</tt-> and <tt->std::uint_fastN_t</tt-></h3></a>
+<a href=#fixing-int-least><h3>Drive-by-fix for <tt->std::uint_leastN_t</tt-> and <tt->std::uint_fastN_t</tt-></h3></a>
+<div class=toc-num data-level=3>3.5</div>
+<a href=#treating-engines-and-distributions-differently><h3>Treating engines and distributions differently</h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#implementation-experience><h2>Implementation experience</h2></a>
 <div class=toc-num data-level=2>5</div>
@@ -1639,29 +1648,52 @@ providing <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></c
 to have undefined behavior.
 This is functionally equivalent to making the program ill-formed, no diagnostic required.
 </p>
+<p>It should also be noted that many users rely on support for 8-bit types
+in <code><h- data-h=str>&lt;random&gt;</h-></code> already, despite the undefined behavior.
+A GitHub code search for
+<a href="https://github.com/search?q=language%3AC%2B%2B+%2F%28%3F-i%29uniform_int_distribution%3C%28%28unsigned+%7Csigned+%7C%29char%7C%28std%3A%3A%29%3Fu%3Fint8_t%7Ci8%7Cu8%29%3E%2F&type=code"><tt->language:C++ /(?-i)uniform_int_distribution&lt;((unsigned |signed |)char|(std::)?u?int8_t|i8|u8)&gt;/</tt-></a>
+shows 8.4K files already using e.g.
+<code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>uniform_int_distribution</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>uint8_t</h-><h- data-h=sym_op>&gt;</h-></code>.
+This is possible because both libstdc++ and libc++ support those types as an extension;
+see <a href=#implementation-experience>§4. Implementation experience</a>.
+</p>
 <p>In 2013,
 <a href="https://cplusplus%2egithub%2eio/LWG/issue2326">[LWG2326]</a> <q><code><h- data-h=id>uniform_int_distribution</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>&gt;</h-></code> should be permitted</q> stated that
 <q>it's just silly that we have a random number library with no natural way to generate random bytes</q>.
 As silly as it may be,
 the issue was closed as NAD (not a defect)
 because it was perceived as a feature request rather than the resolution of a defect.
-Some discussion of a writing a paper took place,
+Writing a paper was considered,
 but that paper never manifested.
 </p>
-<p>It is unclear why the restriction exists in the first place;
-I was unable to find any discussion in published papers.
+<p>In 2025,
+<a href="https://cplusplus%2egithub%2eio/LWG/issue4109">[LWG4109]</a> <q>Instantiating templates in §[rand]
+with <code><h- data-h=id_type>int8_t</h-></code>/<code><h- data-h=id_type>uint8_t</h-></code> is undefined behavior</q>
+addressed the same problem,
+and addresses NB comment <a href="https://github%2ecom/cplusplus/nbballot/issues/847">[RU-272]</a>.
+Various comments on <a href="https://cplusplus%2egithub%2eio/LWG/issue4109">[LWG4109]</a> point out that support for
+extended integer types and extended floating-point types would be useful,
+and that many of the restrictions could be converted from compile-time UB
+(effectively IFNDR)
+to <i>Mandates</i>, i.e. <code><h- data-h=kw>static_assert</h-></code>.
+</p>
+<p>This paper resolves all these known defects and discrepancies
+of <a href=https://eel.is/c++draft/rand.req.genl>[rand.req.genl]</a> in one fell swoop.
+</p>
+<note-block><p><intro-></intro-> 
+It is unclear why the prohibition of <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code> exists in the first place.
 The restriction dates back at least to <a href="https://wg21%2elink/n1932">[N1932]</a>, published 2006.
-One may suspect that it has to do with <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code>
-and other single-byte types being subject to integer promotion (to <code><h- data-h=kw_type>int</h-></code>),
-but paradoxically,
-<code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>short</h-></code> and <code><h- data-h=kw_type>short</h-></code> are supported
-despite undergoing promotion.
-</p>
-<p>In any case, <code><h- data-h=kw_type>signed</h-> <h- data-h=kw_type>char</h-></code> and <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code> should be supported.
-</p>
+<a href=https://lists.isocpp.org/std-proposals/2026/02/17243.php>Discussion on [std-proposals]</a>
+suggests that it may exist because engines with 8-bit types
+(like <code><h- data-h=id>linear_congruential_engine</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>uint8_t</h-><h- data-h=sym_op>&gt;</h-></code>)
+have dreadful statistical properties.
+</p></note-block>
+
 <h2 id=motivation><a class=para href=#motivation></a>2. Motivation</h2>
 
-<p>The ability to generate random bytes or octets is extremely valuable for
+<p>Support for <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code> and <code><h- data-h=kw_type>signed</h-> <h- data-h=kw_type>char</h-></code>
+in distributions would be useful.
+The ability to generate random bytes or octets is extremely valuable for
 <a href=https://en.wikipedia.org/wiki/Fuzzing>fuzz testing</a>.
 For example, when testing an implementation of an
 <a href=https://en.wikipedia.org/wiki/LZ77_and_LZ78>LZ77 or LZ78</a> compression algorithm,
@@ -1676,99 +1708,140 @@ a user would typically
 <p>It is easy to imagine testing methodology that involves random bytes
 for any kind of codec, network protocol, compiler, syntax highlighter, etc.
 </p>
+<note-block><p><intro-></intro-> 
+Generating octets is effectively supported already.
+<code><h- data-h=id>uniform_int_distribution</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>255</h-><h- data-h=sym_par>)</h-></code> is functionally equivalent to
+<code><h- data-h=id>uniform_int_distribution</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>.
+</p></note-block>
+
 <h2 id=design><a class=para href=#design></a>3. Design</h2>
 
-<h3 id=which-character-types-to-support><a class=para href=#which-character-types-to-support></a>3.1. Which character types to support</h3>
+<h3 id=which-types-to-support><a class=para href=#which-types-to-support></a>3.1. Which types to support</h3>
 
 <p>The current restriction which forbids <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code> is bad,
 but it's not obvious how much the restriction should be relaxed.
-There are a few plausible options:
 </p>
-<ul>
-  <li>
-    Permit all standard integers.
-    That is, the current restriction, plus <code><h- data-h=kw_type>signed</h-> <h- data-h=kw_type>char</h-></code> and <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code>.
-  </li>
-  <li>
-    Permit all standard integers and <code><h- data-h=kw_type>char</h-></code>.
-  </li>
-  <li>
-    Permit all integral types.
-  </li>
-</ul>
+<p>While <a href="https://cplusplus%2egithub%2eio/LWG/issue4109">[LWG4109]</a> offers the option to make the program ill-formed
+when the existing restrictions are not satisfied
+(<q>Option B</q> in the issue),
+it fails to mention that this would break
+thousands of files of existing code;
+see <a href=#introduction>§1. Introduction</a>.
+We have to permit implementations to keep their current extensions,
+without requiring them to support more than is reasonable.
+We either have to continue treating anything other than the supported set of types
+as IFNDR (<q>Option A</q> in the issue),
+or carve out an optionally supported set of types (proposed).
+</p>
+<h4 id=proposed-inttype-restrictions><a class=para href=#proposed-inttype-restrictions></a>3.1.1. Proposed <code><h- data-h=id>IntType</h-></code> restrictions</h4>
 
-<p>Permitting all integral types imposes an unreasonable implementation burden.
+<p>In short, the new restriction for <code><h- data-h=id>IntType</h-></code> parameters
+is to ensure support for standard integers
+(including <code><h- data-h=kw_type>signed</h-> <h- data-h=kw_type>char</h-></code> and <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code>),
+allow the implementation to support further integral types
+(such as extended integer types),
+and reject anything that is not even an integral type.
+However, some extended integer types are also required to be supported
+to prevent highly defective behavior.
+The following sections provide more details,
+and the following diagram illustrates the behavior:
+</p>
+<pre>
+┌──────────────────────────────────────────────────────────────┐
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  ┌──────────────────────────────────────────────────┐  │  │
+│  │  │ REQUIRED: standard ints., some extended ints.    │  │  │
+│  │  │ e.g. unsigned char, int, int32_t, etc.           │  │  │
+│  │  └──────────────────────────────────────────────────┘  │  │
+│  │    OPTIONAL: cv-unqualified integral types             │  │
+│  │    e.g. __int128, char32_t, etc.                       │  │
+│  └────────────────────────────────────────────────────────┘  │
+│       REJECTED: anything else                                │
+│       e.g. std::vector, double, enum, const int, etc.        │
+└──────────────────────────────────────────────────────────────┘
+</pre>
+
+<p>The <code><h- data-h=id>UIntType</h-></code> restrictions are the same,
+except that signed types fall into the <q>anything else</q> set.
+</p>
+<h4 id=proposed-realtype-restrictions><a class=para href=#proposed-realtype-restrictions></a>3.1.2. Proposed <code><h- data-h=id>RealType</h-></code> restrictions</h4>
+
+<p>The same restriction is mirrored for <code><h- data-h=id>RealType</h-></code> parameters:
+there is mandatory support for <code><h- data-h=kw_type>float</h-></code>, <code><h- data-h=kw_type>double</h-></code>, and <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>, and
+optional support extended floating-point types.
+</p>
+<pre>
+┌──────────────────────────────────────────────────────────────┐
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  ┌──────────────────────────────────────────────────┐  │  │
+│  │  │ REQUIRED: cv-unqualified standard floating-point │  │  │
+│  │  │ float, double, and long double                   │  │  │
+│  │  └──────────────────────────────────────────────────┘  │  │
+│  │    OPTIONAL: cv-unqualified extended floating-point    │  │
+│  │    e.g. float32_t, float128_t, bfloat16_t, etc.        │  │
+│  └────────────────────────────────────────────────────────┘  │
+│       REJECTED: anything else                                │
+│       e.g. std::vector, int, enum, const double, etc.        │
+└──────────────────────────────────────────────────────────────┘
+</pre>
+
+<h3 id=dont-require-character-types><a class=para href=#dont-require-character-types></a>3.2. Don't require character types</h3>
+
+<p>Supporting use of character types
+(e.g. <code><h- data-h=kw_type>char</h-></code>, <code><h- data-h=kw_type>char32_t</h-></code>, etc.)
+is not motivated by this paper and
+outside the scope of <a href="https://github%2ecom/cplusplus/nbballot/issues/847">[RU-272]</a>.
+It is not proposed,
+despite character types being integral types,
+despite seeming vaguely useful, and
+despite GCC having support for this already (see <a href=#implementation-experience>§4. Implementation experience</a>).
+Such an extension could be proposed in a future paper targeting C++29.
+</p>
+<p>Supporting only <code><h- data-h=kw_type>char</h-></code> in addition to standard integer would also be strange,
+although there is precedent for this in <code><h- data-h=str>&lt;charconv&gt;</h-></code>.
+If <code><h- data-h=kw_type>char</h-></code> is supported, why not character types in general?
+The design becomes somewhat arbitrary.
+</p>
+<note-block><p><intro-></intro-> 
+It is not permitted to define <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>int8_t</h-></code> or <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>uint8_t</h-></code> as <code><h- data-h=kw_type>char</h-></code>,
+even if <code><h- data-h=kw_type>char</h-></code> has the correct signedness.
+</p></note-block>
+
+<h3 id=dont-require-all-extended-integer-types><a class=para href=#dont-require-all-extended-integer-types></a>3.3. Don't require all extended integer types</h3>
+
+<p>Supporting extended integer types in general
+imposes an unreasonable implementation burden.
 One of the biggest issues is <code><h- data-h=id>linear_congruential_engine</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>__int128</h-><h- data-h=sym_op>&gt;</h-></code>
 assuming the implementation provides an extended 128-bit integer type,
-which recent version of GCC and Clang do.
+which recent versions of GCC and Clang do.
 libstdc++ permits <code><h- data-h=kw_type>__int128</h-></code> in most of <code><h- data-h=str>&lt;random&gt;</h-></code>,
 but rejects
 <code><h- data-h=id>linear_</h->­<h- data-h=id>congruential_engine</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>__int128</h-><h- data-h=sym_op>&gt;</h-></code> using:
-</p><code-block><h- data-h=kw>static_assert</h-><h- data-h=sym_par>(</h-><h- data-h=id>__which</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>,</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> needs to be dependent </h-><h- data-h=cmt_dlim>*/</h->
+</p>
+<blockquote>
+<code-block><h- data-h=kw>static_assert</h-><h- data-h=sym_par>(</h-><h- data-h=id>__which</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>,</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> needs to be dependent </h-><h- data-h=cmt_dlim>*/</h->
 		      <h- data-h=str_dlim>"</h-><h- data-h=str>sorry, would be too much trouble for a slow result</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
-<p>See <a href=https://github.com/gcc-mirror/gcc/blob/0635bfb53a145cc005a15657635abf8ea9e6e9ba/libstdc%2B%2B-v3/include/bits/random.h#L521-L522 class=sans>https://github.com/gcc-mirror/gcc/blob/0635bfb53a145cc005a15657635abf8ea9e6e9ba/libstdc%2B%2B-v3/include/bits/random.h#L521-L522</a>.
-The difficulty lies in the fact that <code><h- data-h=id>linear_congruential_engine</h-></code>
+
+<p>—<a href=https://github.com/gcc-mirror/gcc/blob/0635bfb53a145cc005a15657635abf8ea9e6e9ba/libstdc%2B%2B-v3/include/bits/random.h#L521-L522 class=sans>https://github.com/gcc-mirror/gcc/blob/0635bfb53a145cc005a15657635abf8ea9e6e9ba/libstdc%2B%2B-v3/include/bits/random.h#L521-L522</a>
+</p></blockquote>
+<p>The difficulty lies in the fact that <code><h- data-h=id>linear_congruential_engine</h-></code>
 uses modular arithmetic,
 which requires N×2-bit division for N-bit integer types.
 For <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code>,
 the existence of <code><h- data-h=kw_type>__int128</h-></code> makes this easy,
 but for <code><h- data-h=kw_type>__int128</h-></code>, 256-bit division would be required.
 </p>
-<p>Permitting only <code><h- data-h=kw_type>char</h-></code> in addition to standard integer types seems unmotivated,
-although there is precedent for this in <code><h- data-h=str>&lt;charconv&gt;</h-></code>.
-If <code><h- data-h=kw_type>char</h-></code> is supported, why not character types in general?
-If characters types in general are supported, why not integral types and unscoped enumerations?
-The design becomes somewhat arbitrary.
+<p>However, <em>some</em> extended integer types ought to be supported;
+more on that in the following section.
 </p>
-<p>Overall, permitting only standard integers is an obvious and minimal fix.
-</p>
-<note-block><p><intro-></intro-> 
-It is not permitted to define <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>int8_t</h-></code> or <code><h- data-h=id>std</h-><h- data-h=sym_punc>:</h-><h- data-h=id_type>uint8_t</h-></code> as <code><h- data-h=kw_type>char</h-></code>,
-even if <code><h- data-h=kw_type>char</h-></code> has the correct signedness.
-</p></note-block>
-
-<h3 id=treating-engines-and-distributions-differently><a class=para href=#treating-engines-and-distributions-differently></a>3.2. Treating engines and distributions differently</h3>
-
-<p>While the paper is motivated by supporting distributions,
-engines such as <code><h- data-h=id>mersenne_twister_engine</h-></code>
-also use <code><h- data-h=id>UIntType</h-></code> template parameters and thus disallow <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code>.
-Using 8-bit types for engines is mostly unmotivated because the quality
-of the generated numbers would be extremely low anyway.
-That being said, using an 8-bit <code><h- data-h=id>linear_congruential_engine</h-></code> to get <q>quick and dirty</q>
-random number generation on an 8-bit architecture is not inconceivable.
-</p>
-<p>My opinion is that it is not worth treating engines and distributions any differently
-because they are all templates,
-and supporting one more integer type does not provide any meaningful hurdle.
-Ultimately, it would only complicate the status quo to single out specific integer types
-without clear technical obstacles,
-but simply because it would be <q>bad practice</q> or <q>not as useful</q>
-to instantiate templates with certain types.
-</p>
-<h3 id=whether-to-diagnose-unsupported-types><a class=para href=#whether-to-diagnose-unsupported-types></a>3.3. Whether to diagnose unsupported types</h3>
-
-<p>It may also be desirable to diagnose the use of unsupported types in <code><h- data-h=str>&lt;random&gt;</h-></code>,
-rather than treating it as IFNDR.
-However, this would raise warnings in substantial amounts of existing code
-without providing much benefit to users.
-For instance, GCC has supported all integral types in <code><h- data-h=str>&lt;random&gt;</h-></code> for years now,
-and numerous uses of <code><h- data-h=id>uniform_int_distribution</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>&gt;</h-></code>
-and other disallowed types can be found.
-</p>
-<p>Therefore, it may be best to simply perpetuate the status quo
-and leave diagnostics up to implementations.
-This effectively means that <a href=https://eel.is/c++draft/rand.req.gen>[rand.req.gen]</a>
-provides a minimal list of supported types,
-which the implementation optionally extends.
-</p>
-<h3 id=drive-by-fix-for-std::uint_leastn_t-and-std::uint_fastn_t><a class=para href=#drive-by-fix-for-std::uint_leastn_t-and-std::uint_fastn_t></a>3.4. Drive-by-fix for <tt->std::uint_leastN_t</tt-> and <tt->std::uint_fastN_t</tt-></h3>
+<h3 id=fixing-int-least><a class=para href=#fixing-int-least></a>3.4. Drive-by-fix for <tt->std::uint_leastN_t</tt-> and <tt->std::uint_fastN_t</tt-></h3>
 
 <p>Since we are changing the set of types
 that <code><h- data-h=id>IntType</h-></code> and <code><h- data-h=id>UIntType</h-></code> support,
-we can also fix another existing defect as a drive-by product:
+we can also fix another defect as a drive-by product:
 <a href=https://eel.is/c++draft/rand>[rand]</a> uses the type aliases
 <code><h- data-h=id_type>uint_least32_t</h-></code>, <code><h- data-h=id_type>uint_least64_t</h-></code>,
-<code><h- data-h=id_type>uint_fast32_t</h-></code>, and <code><h- data-h=id_type>uint_least64_t</h-></code>
+	code{uint_fast32_t}, and <code><h- data-h=id_type>uint_fast64_t</h-></code>
 in a number of places,
 but there is no guarantee that those are aliases for standard integer types
 rather than extended integer types.
@@ -1784,71 +1857,147 @@ was an alias for some <code><h- data-h=id>__uint32</h-></code> extended integer 
        <h- data-h=num_deco>0x</h-><h- data-h=num>9908</h-><h- data-h=num_dlim>'</h-><h- data-h=num>b0df</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>11</h-><h- data-h=sym_punc>,</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>ffff</h-><h- data-h=num_dlim>'</h-><h- data-h=num>ffff</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>7</h-><h- data-h=sym_punc>,</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>9d2c</h-><h- data-h=num_dlim>'</h-><h- data-h=num>5680</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>15</h-><h- data-h=sym_punc>,</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>efc6</h-><h- data-h=num_dlim>'</h-><h- data-h=num>0000</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>18</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>'</h-><h- data-h=num>812</h-><h- data-h=num_dlim>'</h-><h- data-h=num>433</h-><h- data-h=num_dlim>'</h-><h- data-h=num>253</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>;</h-></code-block>
 </example-block>
 
-<p>While it is obvious that we don't want use of <code><h- data-h=id>mt19937</h-></code>
+<p>While it is obvious that we don't want the use of <code><h- data-h=id>mt19937</h-></code>
 to have undefined behavior,
 it is not obvious how to fix the problem.
 Allowing <em>all</em> extended integer types would include <code><h- data-h=kw_type>__int128</h-></code>,
 which we don't want to support, as explained above.
 </p>
-<p>A good compromise is to support all integer types whose width is at most
-that of <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code>.
+<p>A good compromise is to support all integer types whose width
+at least that of <code><h- data-h=kw_type>char</h-></code> and at most that of <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code>.
+This ensures that <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>size_t</h-></code>, <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id_type>int_least32_t</h-></code>,
+and many other types are supported by <code><h- data-h=str>&lt;random&gt;</h-></code>,
+regardless of whether they are standard integer types,
+assuming they don't have an extreme width
+(which the user can easily test using <code><h- data-h=kw>static_assert</h-></code>).
+This compromise is also future-proof for bit-precise integers (see <a href="https://wg21%2elink/p3666r3">[P3666R3]</a>),
+which could introduce extreme widths like <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code> or <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1024</h-><h- data-h=sym_par>)</h-></code>
+that we may not want to support.
 </p>
+<h3 id=treating-engines-and-distributions-differently><a class=para href=#treating-engines-and-distributions-differently></a>3.5. Treating engines and distributions differently</h3>
+
+<p>While the paper is motivated by supporting distributions,
+engines such as <code><h- data-h=id>mersenne_twister_engine</h-></code>
+also use <code><h- data-h=id>UIntType</h-></code> template parameters and thus disallow <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code>.
+Using 8-bit types for engines is mostly unmotivated because the quality
+of the generated numbers would be extremely low anyway.
+That being said, using an 8-bit <code><h- data-h=id>linear_congruential_engine</h-></code> to get <q>quick and dirty</q>
+random number generation on an 8-bit architecture is not inconceivable,
+and
+<a href="https://github.com/search?q=language%3AC%2B%2B+%2F(%3F-i)linear_congruential_engine%3C((unsigned+|signed+|)char|(std%3A%3A)%3Fu%3Fint8_t|i8|u8)%2F&type=code">GitHub code search</a>
+finds uses of <code><h- data-h=id>linear_congruential_engine</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>uint8_t</h-><h- data-h=sym_op>&gt;</h-></code>.
+</p>
+<p>I argue that <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code> and <code><h- data-h=kw_type>signed</h-> <h- data-h=kw_type>char</h-></code> should be supported
+unilaterally in <code><h- data-h=str>&lt;random&gt;</h-></code>
+(not just for distributions)
+for the following reasons:
+</p><ul>
+  <li>
+    There are existing uses of 8-bit engine types,
+    and we don't need to break this existing code,
+    however questionable that existing code may be.
+  </li>
+  <li>
+    It is unlikely that support for 8-bit types would cause ordinary users to
+    <em>accidentally</em> create an engine of low quality.
+    Ordinary users don't create their own engines with custom parameters;
+    they typically reach for <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>mt19937</h-></code> and other predefined aliases.
+  </li>
+  <li>
+    Creating an engine of extremely low quality is useful for
+    statistical libraries that measure said quality.
+    Sometimes, low quality is the goal, not a mistake.
+  </li>
+  <li>
+    A user can create a low-quality engine using both
+    <code><h- data-h=id>linear_congruential_engine</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>uint8_t</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>2</h-><h- data-h=num_deco>u</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>3</h-><h- data-h=num_deco>u</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>8</h-><h- data-h=num_deco>u</h-><h- data-h=sym_op>&gt;</h-></code> and
+    <code><h- data-h=id>linear_congruential_engine</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>uint64_t</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>2</h-><h- data-h=num_deco>u</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>3</h-><h- data-h=num_deco>u</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>8</h-><h- data-h=num_deco>u</h-><h- data-h=sym_op>&gt;</h-></code>.
+    The statistical quality is determined by the engine parameters,
+    not by the type.
+  </li>
+  <li>
+    None of the other numerical templates in <code><h- data-h=str>&lt;numeric&gt;</h-></code> or <code><h- data-h=str>&lt;gcd&gt;</h-></code>
+    single out a specific integer width as unsupported.
+    This design is very surprising
+    and actively hostile to generic programming.
+  </li>
+</ul>
+
+<note-block><p><intro-></intro-> 
+In terms of wording, supporting 8-bit types unilaterally means that
+<code><h- data-h=id>UIntType</h-></code> template type parameters accept <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code>.
+</p></note-block>
+
 <h2 id=implementation-experience><a class=para href=#implementation-experience></a>4. Implementation experience</h2>
 
 <p>At the time of writing,
 the MSVC STL has a <code><h- data-h=kw>static_assert</h-></code> which prevents instantiation
-of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>uniform_int_distri</h->­<h- data-h=id>bution</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>&gt;</h-></code>; see:
+of <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>uniform_int_distri</h->­<h- data-h=id>bution</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>&gt;</h-></code>.
+It provides the minimum amount of support required by the standard; see:
 <br/><a href=https://github.com/microsoft/STL/blob/9b021cf66875d2fbf4627aad8db594595aebb148/stl/inc/random#L43 class=sans>https://github.com/microsoft/STL/blob/9b021cf66875d2fbf4627aad8db594595aebb148/stl/inc/random#L43</a></p>
 
-<p>libc++ supports <code><h- data-h=kw_type>signed</h-> <h- data-h=kw_type>char</h-></code> and <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code> as an extension; see:
+<p>libc++ supports <code><h- data-h=kw_type>signed</h-> <h- data-h=kw_type>char</h-></code> and <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code> as an extension.
+This is the minimum amount of support assuming this paper is accepted; see:
 <br/><a href=https://github.com/llvm/llvm-project/blob/9d075d271ff15ec153ada3413d294540206a15ed/libcxx/include/__random/is_valid.h#L49 class=sans>https://github.com/llvm/llvm-project/blob/9d075d271ff15ec153ada3413d294540206a15ed/libcxx/include/__random/is_valid.h#L49</a>.
 </p>
 <p>libstdc++ supports any integral type as an extension; see:
 <br/><a href=https://github.com/gcc-mirror/gcc/blob/0635bfb53a145cc005a15657635abf8ea9e6e9ba/libstdc%2B%2B-v3/include/bits/uniform_int_dist.h#L90-L91 class=sans>https://github.com/gcc-mirror/gcc/blob/0635bfb53a145cc005a15657635abf8ea9e6e9ba/libstdc%2B%2B-v3/include/bits/uniform_int_dist.h#L90-L91</a>.
 </p>
-<note-block><p><intro-></intro-> 
-libc++ provides the proposed restrictions.
-</p></note-block>
-
 <h2 id=wording><a class=para href=#wording></a>5. Wording</h2>
 
 <p>The changes are relative to <a href="https://wg21%2elink/n5032">[N5032]</a>.
 </p>
-<p>Add a feature-test macro to <a href=https://eel.is/c++draft/version.syn>[version.syn]</a> as follows:
-</p>
-<ins-block>
-<code-block class=borderless><h- data-h=mac>#define __cpp_lib_random 20XXXXL </h-><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>also in </h-><tt-><h- data-h=cmt>&lt;random&gt;</h-></tt-></f-serif></code-block>
-</ins-block>
+<note-block class=edit><p><intro-></intro-> 
+No feature-test macro is provided because these changes are intended
+to be applied as a defect report.
+</p></note-block>
 
-<p>Change <a href=https://eel.is/c++draft/rand.req.general#1>[rand.req.general] paragraph 1</a> as follows:
+<note-block class=edit><p><intro-></intro-> 
+Remember that the following wording changes are meant to resolve three defects at once:
+</p><ul>
+  <li><code><h- data-h=kw_type>signed</h-> <h- data-h=kw_type>char</h-></code> and <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code> are not supported.</li>
+  <li><code><h- data-h=id_type>uint_least32_t</h-></code> and other such types are not guaranteed to be supported.</li>
+  <li>
+    The effect of instantiating templates is undefined,
+    but many of the requirements (e.g. cv-unqualified types) are diagnosable;
+    even when they aren't, the wording idiom <q>ill-formed, no diagnostic required</q>
+    is more fitting.
+  </li>
+</ul>
+</note-block>
+
+<p>Change <a href=https://eel.is/c++draft/rand.req.genl#1>[rand.req.genl] paragraph 1</a> as follows:
 </p>
 <diff-block>
 <p>Throughout <a href=https://eel.is/c++draft/rand>[rand]</a>,
-the effect of instantiating a template <ins><math display=inline><mi>T</mi></math></ins>:
+the effect of instantiating a template <ins><math display=inline><mi>T</mi></math> has the following constraints</ins>:
 </p><ul>
   <li>
-    <del>that</del> <ins>The program is ill-formed, no diagnostic required if <math display=inline><mi>T</mi></math></ins>
+    <del>that</del> <ins>The program is ill-formed if <math display=inline><mi>T</mi></math></ins>
     has a template type parameter named <code><h- data-h=id>Sseq</h-></code>
     <del>is undefined unless</del> <ins>and</ins>
     the corresponding template argument is cv-<del>un</del>qualified
     <del>and meets</del> <ins>or does not meet</ins>
-    the requirements of seed sequence (<a href=https://eel.is/c++draft/rand.req.seedseq>[rand.req.seedseq]</a>).
+    the requirements of seed sequence (<a href=https://eel.is/c++draft/rand.req.seedseq>[rand.req.seedseq]</a>)<ins>;
+    no diagnostic is required for the latter condition</ins>.
   </li>
   <li>
-    <del>that</del> <ins>The program is ill-formed, no diagnostic required if <math display=inline><mi>T</mi></math></ins>
+    <del>that</del> <ins>The program is ill-formed if <math display=inline><mi>T</mi></math></ins>
     has a template type parameter named <code><h- data-h=id>URBG</h-></code>
     <del>is undefined unless</del> <ins>and</ins>
     the corresponding template argument is cv-<del>un</del>qualified
     <del>and meets</del> <ins>or does not meet</ins>
-    the requirements of uniform random bit generator (<a href=https://eel.is/c++draft/rand.req.urng>[rand.req.urng]</a>).
+    the requirements of uniform random bit generator (<a href=https://eel.is/c++draft/rand.req.urng>[rand.req.urng]</a>)<ins>;
+    no diagnostic is required for the latter condition</ins>.
   </li>
   <li>
-    <del>that</del> <ins>The program is ill-formed, no diagnostic required if <math display=inline><mi>T</mi></math></ins>
+    <del>that</del> <ins>The program is ill-formed if <math display=inline><mi>T</mi></math></ins>
     has a template type parameter named <code><h- data-h=id>Engine</h-></code>
     <del>is undefined unless</del> <ins>and</ins>
     the corresponding template argument is cv-<del>un</del>qualified
     <del>and meets</del> <ins>or does not meet</ins>
-    the requirements of random number engine (<a href=https://eel.is/c++draft/rand.req.eng>[rand.req.eng]</a>).
+    the requirements of random number engine (<a href=https://eel.is/c++draft/rand.req.eng>[rand.req.eng]</a>)<ins>;
+    no diagnostic is required for the latter condition</ins>.
   </li>
   <li>
     <del>that</del> <ins>The program is ill-formed if <math display=inline><mi>T</mi></math></ins>
@@ -1865,47 +2014,35 @@ the effect of instantiating a template <ins><math display=inline><mi>T</mi></mat
     <del>that</del> <ins>The program is ill-formed if <math display=inline><mi>T</mi></math></ins>
     has a template type parameter named <code><h- data-h=id>IntType</h-></code>
     <del>is undefined unless</del> <ins>and</ins>
-    the corresponding template argument <ins><math display=inline><mi>A</mi></math></ins>
+    the corresponding template argument
     <del>is cv-unqualified and is one of
     <code><h- data-h=kw_type>short</h-></code>, <code><h- data-h=kw_type>int</h-></code>, <code><h- data-h=kw_type>long</h-></code>, <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code>,
     <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>short</h-></code>, <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-></code>, <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-></code>, or
     <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code></del>
-    <ins>is not a cv-unqualified integral type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>)</ins>.
+    <ins><code><h- data-h=id>A</h-></code> is not a cv-unqualified integral type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>)</ins>.
     <ins>It is implementation-defined whether the program is ill-formed if
-    <math display=inline><mi>A</mi></math> is not a signed or unsigned integer type or
-    the width of <math display=inline><mi>A</mi></math> is less than that of <code><h- data-h=kw_type>signed</h-> <h- data-h=kw_type>char</h-></code> or
+    <code><h- data-h=id>A</h-></code> is not a signed or unsigned integer type or if
+    the width of <code><h- data-h=id>A</h-></code> is less than that of <code><h- data-h=kw_type>char</h-></code> or
     more than that of <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code></ins>.
   </li>
   <li>
     <del>that</del> <ins>The program is ill-formed if <math display=inline><mi>T</mi></math></ins>
     has a template type parameter named <code><h- data-h=id>UIntType</h-></code>
     <del>is undefined unless</del> <ins>and</ins>
-    the corresponding template argument <ins><math display=inline><mi>A</mi></math></ins>
+    the corresponding template argument
     <del>is cv-unqualified and is one of
     <code><h- data-h=kw_type>short</h-></code>, <code><h- data-h=kw_type>int</h-></code>, <code><h- data-h=kw_type>long</h-></code>, <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code>,
     <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>short</h-></code>, <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-></code>, <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-></code>, or
     <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code></del>
-    <ins>is not a cv-unqualified integral type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>)
-    or if <code><h- data-h=id>is_signed_v</h-><h- data-h=sym_op>&lt;</h-><math display=inline><mi>A</mi></math><h- data-h=sym_op>&gt;</h-></code> is <code><h- data-h=bool>true</h-></code></ins>.
+    <ins><code><h- data-h=id>A</h-></code> is not a cv-unqualified integral type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>)
+    or if <code><h- data-h=id>is_signed_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>A</h-><h- data-h=sym_op>&gt;</h-></code> is ill-formed or <code><h- data-h=bool>true</h-></code></ins>.
     <ins>It is implementation-defined whether the program is ill-formed if
-    <math display=inline><mi>A</mi></math> is not an unsigned integer type or
-    the width of <math display=inline><mi>A</mi></math> is less than that of <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code> or
-    more than that of <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code></ins>.
+    <code><h- data-h=id>A</h-></code> is not an unsigned integer type or if
+    the width of <code><h- data-h=id>A</h-></code> is less than that of <code><h- data-h=kw_type>char</h-></code> or
+    more than that of <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code></ins>.
   </li>
 </ul>
 </diff-block>
-
-<note-block class=edit><p><intro-></intro-> 
-Removing the <q>is cv-unqualified</q> requirements is purely editorial.
-These requirements are redundant for the latter three bullets.
-</p></note-block>
-
-<note-block class=edit><p><intro-></intro-> 
-The wording is deliberately crafted so that bit-precise integer types
-from <a href="https://wg21%2elink/p3666r3">[P3666R3]</a> are excluded.
-It's not obvious whether supporting extreme types like <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code>
-is desirable or easy to implement.
-</p></note-block>
 
 <h2 id=references><a class=para href=#references></a>6. References</h2>
 
@@ -1925,7 +2062,15 @@ is desirable or easy to implement.
 <span class=bib-author>Stephan T. Lavavej.</span>
 <span class=bib-title>uniform_int_distribution&lt;unsigned char&gt; should be permitted</span>
 <span class=bib-date>2017-02-02</span>
-<a href="https://cplusplus%2egithub%2eio/LWG/issue2326" class=bib-link>https://cplusplus.github.io/LWG/issue2326</a></div><div id=bib-item-P3666R3 class=bib-item>
+<a href="https://cplusplus%2egithub%2eio/LWG/issue2326" class=bib-link>https://cplusplus.github.io/LWG/issue2326</a></div><div id=bib-item-LWG4109 class=bib-item>
+<a href="https://cplusplus%2egithub%2eio/LWG/issue4109">[LWG4109]</a>
+<span class=bib-author>Peter Dimov.</span>
+<span class=bib-title>Instantiating templates in §[rand] with int8_t/uint8_t is undefined behavior</span>
+<span class=bib-date>2025-10-27</span>
+<a href="https://cplusplus%2egithub%2eio/LWG/issue4109" class=bib-link>https://cplusplus.github.io/LWG/issue4109</a></div><div id=bib-item-RU-272 class=bib-item>
+<a href="https://github%2ecom/cplusplus/nbballot/issues/847">[RU-272]</a>
+<span class=bib-title>[rand.req.genl] Prevent instantiation of uniform_int_distribution with std::uint8_t</span>
+<a href="https://github%2ecom/cplusplus/nbballot/issues/847" class=bib-link>https://github.com/cplusplus/nbballot/issues/847</a></div><div id=bib-item-P3666R3 class=bib-item>
 <a href="https://wg21%2elink/p3666r3">[P3666R3]</a>
 <span class=bib-author>Jan Schultke.</span>
 <span class=bib-title>Bit-precise integers</span>
