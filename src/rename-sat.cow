@@ -1,0 +1,372 @@
+\: cowel 0.6.0
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+  title = Renaming saturation arithmetic functions
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{P4052R0}}
+  \dt{Date:}            \dd{\tt{2026-03-13}}
+  \dt{Audience:}        \dd{LEWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+                        \dd{Corentin Jabot <\mail{corentin.jabot@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P4052/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/rename-sat.cow)}
+}
+\hr
+}
+
+\Babstract{
+Saturation arithmetic functions should be renamed.
+This paper resolves NB comment \ref(FR-026-265).
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+NB comment \ref(FR-026-265) states the following:
+
+\Bquote{
+The names \tcode{add_sat}, \tcode{sub_sat}, \tcode{mul_sat}
+etc are rather confusing and nondescript
+
+\b{Proposed change:}
+Rename to \tcode{saturating_add}, \tcode{saturating_sub}, \tcode{saturating_mul},
+\tcode{saturating_div} OR
+Rename to \tcode{add_saturate} / \tcode{sub_saturate} / \tcode{mul_saturate} /
+\tcode{div_saturate}.
+}
+
+\ref(P0543R3) provides the following rationale for the status quo:
+
+\Bquote{
+\cowel_html_element(h3){Naming}
+Considerations:
+\ul{
+  \li{These are basic low-level operations. Names should be short.}
+  \li{
+    \tcode{add} / \tcode{sub} / \tcode{mul} / \tcode{div}
+    are common abbreviation for the corresponding arithmetic operations.
+  }
+}
+Options (only showing the operation "saturated addition"):
+\ul{
+  \li{\tcode{addsat}, \tcode{satadd}: not easily readable}
+  \li{\tcode{saturated_add}, \tcode{add_saturated}: too long}
+  \li{\tcode{sat_add}: more readable due to underscore}
+  \li{\tcode{add_sat}: more readable due to underscore, precedence in OpenCL}
+}
+The last choice is taken.
+}
+
+\h3{Arguments against \tcode{sat}}
+
+The NB comment is right in the sense that to a novice,
+the abbreviation \tcode{sat} does not have obvious meaning.
+It can also be argued not to match the recommendation of the \ref(LEWGDesignGuidelines):
+
+\Bquote{
+Avoid abbreviations except for common words: \tcode{_ptr}, \tcode{std}, etc.
+(apply common sense).
+}
+
+While conciseness is generally desirable in numeric context,
+it may have been given too much importance in \ref(P0543R3).
+Several arguments speak against the status quo:
+
+\cowel_macro(regex){\code(c){\cowel_highlight_phantom{'}\cowel_put}}
+
+\style{
+  #search-table td:nth-child(2) {
+    text-align: right;
+  }
+}
+
+\ul{
+  \li{
+    The status quo is not internally consistent.
+    \tcode{add_sat} has a heavily abbreviated name,
+    whereas \tcode{saturate_cast} is unabbreviated.
+    By comparison, there is a
+    \ref(https://docs.rs/saturating_cast/latest/saturating_cast/){Rust crate \tt{saturating_cast}},
+    which is internally consistent with
+    \ref(https://doc.rust-lang.org/std/intrinsics/fn.saturating_add.html){\tt{saturating_add} in the Rust standard library}.
+  }
+  \li{
+    Many other libraries do not abbreviate \tcode{sat}:
+    \table{
+      \tr{
+        \th{Library}
+        \th{Function}
+      }
+      \tr{
+        \td{Rust Standard Library}
+        \td{\tcode{saturating_add}}
+      }
+      \tr{
+        \td{Java, Guava Core Libraries}
+        \td{\tcode{saturatedAdd}}
+      }
+      \tr{
+        \td{C#, .NET}
+        \td{\tcode{AddSaturate}}
+      }
+      \tr{
+        \td{C++, LLVM}
+        \td{\tcode{SaturatingAdd}}
+      }
+    }
+  }
+  \li{
+    At the time of writing,
+    \ref(https://github.com/search?q=%2F%5Cbsaturating_add%5Cb%2F&type=code){GitHub code search}
+    yields the following results:
+    \table(id=search-table){
+      \tr{
+        \th{Search Reg. Exp.}
+        \th{# Files}
+      }
+      \tr{
+        \td{\regex{\\bsaturating_add\\b}}
+        \td{204K}
+      }
+      \tr{
+        \td{\regex{\\badd_sat\\b}}
+        \td{71.9K}
+      }
+      \tr{
+        \td{\regex{\\bsat_add\\b}}
+        \td{3.1K}
+      }
+      \tr{
+        \td{\regex{\\badd_saturate\\b}}
+        \td{1.1K}
+      }
+      \tr{
+        \td{\regex{\\bsaturated_add\\b}}
+        \td{738}
+      }
+      \tr{
+        \td{\regex{\\badd_saturated\\b}}
+        \td{656}
+      }
+      \tr{
+        \td{\regex{\\bsaturate_add\\b}}
+        \td{248}
+      }
+      \tr{
+        \td{\regex{\\badd_saturating\\b}}
+        \td{189}
+      }
+      \tr{
+        \td{\regex{\\badd_saturation\\b}}
+        \td{143}
+      }
+      \tr{
+        \td{\regex{\\bsaturation_add\\b}}
+        \td{55}
+      }
+    }
+    If \tcode{sat} must be abbreviated because the alternative is \q{too long},
+    why is the unabbreviated \tt{saturating_add} almost three times as popular?
+  }
+  \li{
+    Both \q{\tcode{std::add_sat(x, y)}} (18 characters) and
+    \q{\tcode{std::saturating_add(x, y)}} (25 characters) are verbose,
+    compared to \q{\tcode{x + y}} (5 characters).
+    If large amounts of operations need to be made saturating,
+    the user should create a class template with saturating \tcode{operator+}.
+  }
+}
+
+\h3{Broader design context}
+
+The naming of saturation arithmetic functions is hugely important because it essentially
+sets the naming policy for all future \q{arithmetic variations}.
+For example, Rust supports a large amount of variations of multiplication:
+
+\style{
+  .center {
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .fun-table td {
+    border-top: 1px solid var(--border-color);
+    padding-top: 0.5em;
+    padding-bottom: 0.5em;
+  }
+}
+
+\table(class=fun-table center){
+  \tr{
+    \th{Rust function}
+    \th{Meaning}
+    \th{C++ counterpart}
+  }
+  \tr{
+    \td{\tcode{saturating_mul}}
+    \td{Returns product clamped to numeric range of type}
+    \td{C++26 \tcode{std::mul_sat}}
+  }
+  \tr{
+    \td{\tcode{overflowing_mul}}
+    \td{Returns product, as well as \tcode{bool} indicating overflow}
+    \td{
+      \ref(P3161R4) \tcode{std::mul_overflow},\br
+      C++26 and C23: \tcode{ckd_mul},\br
+      GCC: \tcode{__builtin_mul_overflow}
+    }
+  }
+  \tr{
+    \td{\tcode{widening_mul}}
+    \td{Returns low and high bits of product}
+    \td{\ref(P3161R4) \tcode{std::mul_wide}}
+  }
+  \tr{
+    \td{\tcode{wrapping_mul}}
+    \td{Wrapping multiplication (including for signed types)}
+    \td{\tcode{unsigned} multiplication}
+  }
+  \tr{
+    \td{\tcode{checked_mul}}
+    \td{
+      Returns \tcode{Option<T>} containing product,\br
+      or empty result on overflow
+    }
+    \td{N/A}
+  }
+}
+
+It is plausible that given time,
+some or all of these variations of multiplication could be available in C++.
+We thus need a sustainable naming scheme that can handle all such variations.
+
+\Bnote{
+Also related is \ref(P3642R4),
+which proposes \tcode{std::clmul_wide} as the widening variation of \tcode{std::clmul}.
+Note that the naming scheme here deliberately imitates that of \tcode{std::mul_sat};
+it is not \q{convergent evolution}.
+}
+
+\h2{Proposal}
+
+The existing functions in \eelis{numeric.sat} should all be renamed to follow a
+\tcode{saturating_\exposid{op}} naming scheme,
+including \tcode{std::saturate_cast}.
+This should be done for the following reasons:
+
+\ul{
+  \li{The meaning of \tcode{saturating} is more obvious than for \tcode{sat}.}
+  \li{
+    The design is familiar to Rust users,
+    and a similar Rust-based approach can be taken for many more operation variations.
+  }
+  \li{
+    The naming scheme is internally consistent,
+    unlike \tcode{add_sat} vs. \tcode{saturate_cast}.
+  }
+  \li{
+    \tcode{saturating_\exposid{op}} is the most common naming scheme.
+    Any other option (\tcode{sat}, \tcode{saturate}, etc.)
+    yields fewer results in GitHub code search.
+  }
+}
+
+Furthermore, LEWG should commit to the Rust naming scheme for future proposals,
+such as \ref(P3161R4) and \ref(P3642R4),
+which propose \tcode{std::mul_wide} and \tcode{std::clmul_wide}, respectively.
+
+\h2{Wording}
+
+The changes are relative to \ref(N5032).
+
+Bump the feature-test macro in \eelis{version.syn} as follows:
+
+\Bdiff{
+\itemdecl{
+#define __cpp_lib_saturation_arithmetic \del{202311L} \ins{202603L} //\serif{ freestanding, also in \tt{<numeric>}}
+}
+}
+
+\editnote{
+Without bumping the feature test macro,
+\tcode{__cpp_lib_saturation_arithmetic >= 202311L} could be \tcode{true},
+with \tcode{std::saturating_add} being ill-formed.
+}
+
+Change \eelis{numeric.ops.overview} as follows:
+
+\Bdiff{
+\itemdecl{
+namespace std {
+  \etc
+
+  //\serif{ \eelis{numeric.sat}, saturation arithmetic}
+  template<class T>
+    constexpr T \del{add_sat} \ins{saturating_add}(T x, T y) noexcept;
+  template<class T>
+    constexpr T \del{sub_sat} \ins{saturating_sub}(T x, T y) noexcept;
+  template<class T>
+    constexpr T \del{mul_sat} \ins{saturating_mul}(T x, T y) noexcept;
+  template<class T>
+    constexpr T \del{div_sat} \ins{saturating_div}(T x, T y) noexcept;
+  template<class T, class U>
+    constexpr T \del{saturate_cast} \ins{saturating_cast}(U x) noexcept;
+}
+}
+}
+
+Rename the declarations in \eelis{numeric.sat} analogously.
+
+\h2{References}
+
+\bib(
+  id = N5032,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-12-15,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5032,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
+)\
+\bib(
+  id = P0543R3,
+  title = Saturation arithmetic,
+  date = 2023-07-19,
+  author = Jens Maurer,
+  link = https://wg21.link/p0543r3,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p0543r3.html,
+)\
+\bib(
+  id = P3161R4,
+  title = Unified integer overflow arithmetic,
+  date = 2026-03-12,
+  author = Tiago Freire,
+  link = https://wg21.link/p3161r4,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3161r4.html,
+)\
+\bib(
+  id = P3642R4,
+  title = Carry-less product: std::clmul,
+  date = 2026-02-17,
+  author = Jan Schulte,
+  link = https://wg21.link/p3642r4,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3642r4.html,
+)\
+\bib(
+  id = FR-026-265,
+  title = Confusing names add_sat\, sub_sat\, mul_sat,
+  date = 2025-10-03,
+  author = AFNOR,
+  link = https://github.com/cplusplus/nbballot/issues/840,
+)\
+\bib(
+  id = LEWGDesignGuidelines,
+  date = 2018-04-16,
+  link = https://github.com/cplusplus/LEWG/blob/archive/library-design-guidelines.md,
+)\
+
+\make_bib
