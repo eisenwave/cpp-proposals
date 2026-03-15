@@ -1,0 +1,195 @@
+\: cowel 0.6.0
+\cowel_include{libwg21.cow}
+\cowel_include{libslides.cow}
+
+\Vset(paper-number){P3969R0}
+
+\cowel_macro(footsep){\N{EM SPACE}|\N{EM SPACE}}
+
+\cowel_macro(slidefoot){
+Jan Schultke
+\footsep
+Slides for \Vget(paper-number)
+\N{EM DASH}
+Fixing \tcode{std::bit_cast} of types with padding bits
+\footsep
+Telecons 2026
+\footsep
+Slide \Vget(slidenum)
+}
+
+\style{
+  section>h1 {
+    margin-top: calc(0.15 * var(--sw)) !important;
+    font-size: 250%;
+    text-align: center;
+  }
+  #docnum {
+    font-family: var(--sans-serif-family);
+    font-size: 80%;
+    font-weight: normal;
+  }
+  li>ul {
+    margin-top: 0;
+  }
+  #tony-table {
+    margin-left: auto;
+    margin-right: auto;
+    width: 90%;
+    table-layout: fixed;
+  }
+  #tony-table td {
+    background-color: var(--deep-background-color);
+    width: 50%;
+  }
+}
+
+\wg21_head(
+  title = Slides for \Vget(paper-number) \N{EM DASH} Fixing \tcode{std::bit_cast} of types with padding bits
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{P4038R0}}
+  \dt{Date:}            \dd{\tt{2026-03-10}}
+  \dt{Audience:}        \dd{LEWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/bit-cast-padding-slides.cow)}
+}
+\hr
+\slide_controls
+}
+
+\slide{
+\cowel_html_element(h1){Fixing \tcode{std::bit_cast}\br of types with padding bits \br \cowel_html_element(span, (id=docnum)){\Vget(paper-number)}}
+}
+
+\slide{
+\slideh{The problem}
+
+\cppblock{
+// GCC accepts (x == 0)
+// Clang rejects
+constexpr auto x = std::bit_cast<__int128>(0.0L);
+}
+
+\ul{
+  \li{UB due to padding bits in 80-bit x87 \tcode{long double}}
+  \li{this is (arguably) undiagnosed library UB}
+  \li{\tcode{std::bit_cast<__int128, long double>} = \tcode{std::unreachable}}
+  \li{it would be useful if it worked (for math function implementations)}
+}
+}
+
+\slide{
+\slideh{The problem, cont.}
+
+\cppblock{
+struct alignas(4) E { };
+// GCC and Clang error:
+constexpr auto x = std::bit_cast<int>(E{});
+// MSVC accepts:
+static_assert(x == 0);
+}
+
+\ul{
+  \li{MSVC treats padding in the original as zero}
+  \li{see \url{https://developercommunity.visualstudio.com/t/11027496}}
+  \li{maybe standardize the \del{bug} \ins{feature}?}
+}
+}
+
+\slide{
+\slideh{Possible solutions}
+
+\style{
+  .tony-table {
+    margin-left: auto;
+    margin-right: auto;
+    width: 95%;
+    table-layout: fixed;
+  }
+  .tony-table td {
+    width: 50%;
+    font-size: 80%;
+  }
+  .tony-table .code-cell {
+    background-color: var(--deep-background-color);
+    font-size: 75%;
+  }
+}
+
+"Mathematically correct" functions eliminate special cases and UB pitfalls:
+
+\table(class=tony-table){
+  \tr{
+    \th{Single-function}
+    \th{Two-function}
+  }
+  \tr{
+    \td(class=code-cell){
+      \codeblock(cpp,borders=false){
+struct alignas(4) E { };
+auto x = bit_cast<int>(E{});
+assert(x == 0); // OK}
+    }
+    \td(class=code-cell){
+      \codeblock(cpp,borders=false){
+struct alignas(4) E { };
+auto x = bit_cast<int>(E{}); // error
+
+auto y = bit_cast_zero_padding<int>(E{});
+assert(x == 0); // OK}
+    }
+  }
+  \tr{
+    \td{
+      ✔️ already implemented (accidentally)\br
+      ✔️ retroactively fixes code\br
+      ✔️ safety by default\br
+      ❌ doesn't express intent\br
+      ❌ not really \q{bit-casting}\br
+      ❌ hidden cost, no-opt out
+    }
+    \td{
+      ✔️ expresses intent\br
+      ✔️ can opt out of cost\br
+      ✔️ no semantic change between versions\br
+      ❌ more complex\br
+      ❌ unproven\br
+      ❌ unimplemented
+    }
+  }
+}
+}
+
+\slide{
+\slideh{Gotcha: clearing padding in unions}
+
+\cppblock{
+struct alignas(4) E { };
+union U {
+  int x;
+  E e;
+};
+auto x = bit_cast_zero_padding<int>(U{ .e = {} });
+}
+
+\ul{
+  \li{\tcode{U} has padding only when \tcode{E} is active}
+  \li{cannot clear padding without knowing active alternative}
+  \li{this discussion is missing from the paper}
+}
+}
+
+\h2(listed=false){References}
+
+\make_bib
+
+\bib(
+  id = P3969R0,
+  title = Fixing std::bit_cast of types with padding bits,
+  date = 2026-10-03,
+  author = Jan Schultke,
+  link = https://wg21.link/p3969r0,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3969r0.html,
+)\
