@@ -1576,9 +1576,9 @@ if (theme !== null) {
 <div class=wg21-head><h1>Supporting <tt->signed char</tt-> and <tt->unsigned char</tt-><br/> in random number generation</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/P4037R0>P4037R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-03-06</tt-></dd>
-  <dt>Audience:</dt>        <dd>LEWG</dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P4037R1>P4037R1</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-03-26</tt-></dd>
+  <dt>Audience:</dt>        <dd>LWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
   <dt>GitHub Issue:</dt>    <dd><a href=https://wg21.link/P4037/github class=sans>wg21.link/P4037/github</a></dd>
@@ -1599,34 +1599,47 @@ NB comment <a href="https://github%2ecom/cplusplus/nbballot/issues/847">[RU-272]
 <h2 id=contents><a class=para href=#contents></a>Contents</h2>
 
 <div class=toc><div class=toc-num data-level=2>1</div>
-<a href=#introduction><h2>Introduction</h2></a>
+<a href=#revision-history><h2>Revision history</h2></a>
+<div class=toc-num data-level=3>1.1</div>
+<a href=#changes-since-r0><h3>Changes since R0</h3></a>
 <div class=toc-num data-level=2>2</div>
-<a href=#motivation><h2>Motivation</h2></a>
+<a href=#introduction><h2>Introduction</h2></a>
 <div class=toc-num data-level=2>3</div>
-<a href=#design><h2>Design</h2></a>
-<div class=toc-num data-level=3>3.1</div>
-<a href=#which-types-to-support><h3>Which types to support</h3></a>
-<div class=toc-num data-level=4>3.1.1</div>
-<a href=#proposed-inttype-restrictions><h4>Proposed <code><h- data-h=id>IntType</h-></code> restrictions</h4></a>
-<div class=toc-num data-level=4>3.1.2</div>
-<a href=#proposed-realtype-restrictions><h4>Proposed <code><h- data-h=id>RealType</h-></code> restrictions</h4></a>
-<div class=toc-num data-level=3>3.2</div>
-<a href=#dont-require-character-types><h3>Don't require character types</h3></a>
-<div class=toc-num data-level=3>3.3</div>
-<a href=#dont-require-all-extended-integer-types><h3>Don't require all extended integer types</h3></a>
-<div class=toc-num data-level=3>3.4</div>
-<a href=#fixing-int-least><h3>Drive-by-fix for <tt->std::uint_leastN_t</tt-> and <tt->std::uint_fastN_t</tt-></h3></a>
-<div class=toc-num data-level=3>3.5</div>
-<a href=#treating-engines-and-distributions-differently><h3>Treating engines and distributions differently</h3></a>
+<a href=#motivation><h2>Motivation</h2></a>
 <div class=toc-num data-level=2>4</div>
-<a href=#implementation-experience><h2>Implementation experience</h2></a>
+<a href=#design><h2>Design</h2></a>
+<div class=toc-num data-level=3>4.1</div>
+<a href=#which-types-to-support><h3>Which types to support</h3></a>
+<div class=toc-num data-level=4>4.1.1</div>
+<a href=#proposed-inttype-restrictions><h4>Proposed <code><h- data-h=id>IntType</h-></code> restrictions</h4></a>
+<div class=toc-num data-level=4>4.1.2</div>
+<a href=#proposed-realtype-restrictions><h4>Proposed <code><h- data-h=id>RealType</h-></code> restrictions</h4></a>
+<div class=toc-num data-level=3>4.2</div>
+<a href=#dont-require-character-types><h3>Don't require character types</h3></a>
+<div class=toc-num data-level=3>4.3</div>
+<a href=#dont-require-all-extended-integer-types><h3>Don't require all extended integer types</h3></a>
+<div class=toc-num data-level=3>4.4</div>
+<a href=#fixing-int-least><h3>Drive-by-fix for <tt->std::uint_leastN_t</tt-> and <tt->std::uint_fastN_t</tt-></h3></a>
+<div class=toc-num data-level=3>4.5</div>
+<a href=#treating-engines-and-distributions-differently><h3>Treating engines and distributions differently</h3></a>
 <div class=toc-num data-level=2>5</div>
-<a href=#wording><h2>Wording</h2></a>
+<a href=#implementation-experience><h2>Implementation experience</h2></a>
 <div class=toc-num data-level=2>6</div>
+<a href=#wording><h2>Wording</h2></a>
+<div class=toc-num data-level=2>7</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
-<h2 id=introduction><a class=para href=#introduction></a>1. Introduction</h2>
+<h2 id=revision-history><a class=para href=#revision-history></a>1. Revision history</h2>
+
+<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.1. Changes since R0</h3>
+
+<ul>
+  <li>Removed mandatory support for <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code> in engines (as <code><h- data-h=id>UIntType</h-></code>)</li>
+  <li>Updated wording</li>
+</ul>
+
+<h2 id=introduction><a class=para href=#introduction></a>2. Introduction</h2>
 
 <bug-block><p><intro-></intro-> 
 The following code has compile-time undefined behavior:
@@ -1655,7 +1668,7 @@ A GitHub code search for
 shows 8.4K files already using e.g.
 <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>uniform_int_distribution</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>uint8_t</h-><h- data-h=sym_op>&gt;</h-></code>.
 This is possible because both libstdc++ and libc++ support those types as an extension;
-see <a href=#implementation-experience>§4. Implementation experience</a>.
+see <a href=#implementation-experience>§5. Implementation experience</a>.
 </p>
 <p>In 2013,
 <a href="https://cplusplus%2egithub%2eio/LWG/issue2326">[LWG2326]</a> <q><code><h- data-h=id>uniform_int_distribution</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>&gt;</h-></code> should be permitted</q> stated that
@@ -1689,7 +1702,7 @@ suggests that it may exist because engines with 8-bit types
 have dreadful statistical properties.
 </p></note-block>
 
-<h2 id=motivation><a class=para href=#motivation></a>2. Motivation</h2>
+<h2 id=motivation><a class=para href=#motivation></a>3. Motivation</h2>
 
 <p>Support for <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code> and <code><h- data-h=kw_type>signed</h-> <h- data-h=kw_type>char</h-></code>
 in distributions would be useful.
@@ -1714,9 +1727,9 @@ Generating octets is effectively supported already.
 <code><h- data-h=id>uniform_int_distribution</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>.
 </p></note-block>
 
-<h2 id=design><a class=para href=#design></a>3. Design</h2>
+<h2 id=design><a class=para href=#design></a>4. Design</h2>
 
-<h3 id=which-types-to-support><a class=para href=#which-types-to-support></a>3.1. Which types to support</h3>
+<h3 id=which-types-to-support><a class=para href=#which-types-to-support></a>4.1. Which types to support</h3>
 
 <p>The current restriction which forbids <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code> is bad,
 but it's not obvious how much the restriction should be relaxed.
@@ -1726,14 +1739,14 @@ when the existing restrictions are not satisfied
 (<q>Option B</q> in the issue),
 it fails to mention that this would break
 thousands of files of existing code;
-see <a href=#introduction>§1. Introduction</a>.
+see <a href=#introduction>§2. Introduction</a>.
 We have to permit implementations to keep their current extensions,
 without requiring them to support more than is reasonable.
 We either have to continue treating anything other than the supported set of types
 as IFNDR (<q>Option A</q> in the issue),
 or carve out an optionally supported set of types (proposed).
 </p>
-<h4 id=proposed-inttype-restrictions><a class=para href=#proposed-inttype-restrictions></a>3.1.1. Proposed <code><h- data-h=id>IntType</h-></code> restrictions</h4>
+<h4 id=proposed-inttype-restrictions><a class=para href=#proposed-inttype-restrictions></a>4.1.1. Proposed <code><h- data-h=id>IntType</h-></code> restrictions</h4>
 
 <p>In short, the new restriction for <code><h- data-h=id>IntType</h-></code> parameters
 is to ensure support for standard integers
@@ -1764,7 +1777,7 @@ and the following diagram illustrates the behavior:
 <p>The <code><h- data-h=id>UIntType</h-></code> restrictions are the same,
 except that signed types fall into the <q>anything else</q> set.
 </p>
-<h4 id=proposed-realtype-restrictions><a class=para href=#proposed-realtype-restrictions></a>3.1.2. Proposed <code><h- data-h=id>RealType</h-></code> restrictions</h4>
+<h4 id=proposed-realtype-restrictions><a class=para href=#proposed-realtype-restrictions></a>4.1.2. Proposed <code><h- data-h=id>RealType</h-></code> restrictions</h4>
 
 <p>The same restriction is mirrored for <code><h- data-h=id>RealType</h-></code> parameters:
 there is mandatory support for <code><h- data-h=kw_type>float</h-></code>, <code><h- data-h=kw_type>double</h-></code>, and <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>, and
@@ -1785,7 +1798,7 @@ optional support extended floating-point types.
 └──────────────────────────────────────────────────────────────┘
 </pre>
 
-<h3 id=dont-require-character-types><a class=para href=#dont-require-character-types></a>3.2. Don't require character types</h3>
+<h3 id=dont-require-character-types><a class=para href=#dont-require-character-types></a>4.2. Don't require character types</h3>
 
 <p>Supporting use of character types
 (e.g. <code><h- data-h=kw_type>char</h-></code>, <code><h- data-h=kw_type>char32_t</h-></code>, etc.)
@@ -1794,7 +1807,7 @@ outside the scope of <a href="https://github%2ecom/cplusplus/nbballot/issues/847
 It is not proposed,
 despite character types being integral types,
 despite seeming vaguely useful, and
-despite GCC having support for this already (see <a href=#implementation-experience>§4. Implementation experience</a>).
+despite GCC having support for this already (see <a href=#implementation-experience>§5. Implementation experience</a>).
 Such an extension could be proposed in a future paper targeting C++29.
 </p>
 <p>Supporting only <code><h- data-h=kw_type>char</h-></code> in addition to standard integer would also be strange,
@@ -1807,7 +1820,7 @@ It is not permitted to define <code><h- data-h=id>std</h-><h- data-h=sym_op>::</
 even if <code><h- data-h=kw_type>char</h-></code> has the correct signedness.
 </p></note-block>
 
-<h3 id=dont-require-all-extended-integer-types><a class=para href=#dont-require-all-extended-integer-types></a>3.3. Don't require all extended integer types</h3>
+<h3 id=dont-require-all-extended-integer-types><a class=para href=#dont-require-all-extended-integer-types></a>4.3. Don't require all extended integer types</h3>
 
 <p>Supporting extended integer types in general
 imposes an unreasonable implementation burden.
@@ -1834,7 +1847,7 @@ but for <code><h- data-h=kw_type>__int128</h-></code>, 256-bit division would be
 <p>However, <em>some</em> extended integer types ought to be supported;
 more on that in the following section.
 </p>
-<h3 id=fixing-int-least><a class=para href=#fixing-int-least></a>3.4. Drive-by-fix for <tt->std::uint_leastN_t</tt-> and <tt->std::uint_fastN_t</tt-></h3>
+<h3 id=fixing-int-least><a class=para href=#fixing-int-least></a>4.4. Drive-by-fix for <tt->std::uint_leastN_t</tt-> and <tt->std::uint_fastN_t</tt-></h3>
 
 <p>Since we are changing the set of types
 that <code><h- data-h=id>IntType</h-></code> and <code><h- data-h=id>UIntType</h-></code> support,
@@ -1874,7 +1887,7 @@ This compromise is also future-proof for bit-precise integers (see <a href="http
 which could introduce extreme widths like <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code> or <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1024</h-><h- data-h=sym_par>)</h-></code>
 that we may not want to support.
 </p>
-<h3 id=treating-engines-and-distributions-differently><a class=para href=#treating-engines-and-distributions-differently></a>3.5. Treating engines and distributions differently</h3>
+<h3 id=treating-engines-and-distributions-differently><a class=para href=#treating-engines-and-distributions-differently></a>4.5. Treating engines and distributions differently</h3>
 
 <p>While the paper is motivated by supporting distributions,
 engines such as <code><h- data-h=id>mersenne_twister_engine</h-></code>
@@ -1928,7 +1941,7 @@ In terms of wording, supporting 8-bit types unilaterally means that
 <code><h- data-h=id>UIntType</h-></code> template type parameters accept <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code>.
 </p></note-block>
 
-<h2 id=implementation-experience><a class=para href=#implementation-experience></a>4. Implementation experience</h2>
+<h2 id=implementation-experience><a class=para href=#implementation-experience></a>5. Implementation experience</h2>
 
 <p>At the time of writing,
 the MSVC STL has a <code><h- data-h=kw>static_assert</h-></code> which prevents instantiation
@@ -1943,7 +1956,7 @@ This is the minimum amount of support assuming this paper is accepted; see:
 <p>libstdc++ supports any integral type as an extension; see:
 <br/><a href=https://github.com/gcc-mirror/gcc/blob/0635bfb53a145cc005a15657635abf8ea9e6e9ba/libstdc%2B%2B-v3/include/bits/uniform_int_dist.h#L90-L91 class=sans>https://github.com/gcc-mirror/gcc/blob/0635bfb53a145cc005a15657635abf8ea9e6e9ba/libstdc%2B%2B-v3/include/bits/uniform_int_dist.h#L90-L91</a>.
 </p>
-<h2 id=wording><a class=para href=#wording></a>5. Wording</h2>
+<h2 id=wording><a class=para href=#wording></a>6. Wording</h2>
 
 <p>The changes are relative to <a href="https://wg21%2elink/n5032">[N5032]</a>.
 </p>
@@ -1968,83 +1981,84 @@ Remember that the following wording changes are meant to resolve three defects a
 
 <p>Change <a href=https://eel.is/c++draft/rand.req.genl#1>[rand.req.genl] paragraph 1</a> as follows:
 </p>
+
 <diff-block>
 <p>Throughout <a href=https://eel.is/c++draft/rand>[rand]</a>,
-the effect of instantiating a template <ins><math display=inline><mi>T</mi></math> has the following constraints</ins>:
+<del>the effect of instantiating a template</del>
+<ins>where the template parameters are not constrained, the names of template parameters
+are used to express type requirements
+on an instantiated template <math display=inline><mi>T</mi></math>:</ins>
 </p><ul>
   <li>
-    <del>that</del> <ins>The program is ill-formed if <math display=inline><mi>T</mi></math></ins>
-    has a template type parameter named <code><h- data-h=id>Sseq</h-></code>
-    <del>is undefined unless</del> <ins>and</ins>
-    the corresponding template argument is cv-<del>un</del>qualified
-    <del>and meets</del> <ins>or does not meet</ins>
-    the requirements of seed sequence (<a href=https://eel.is/c++draft/rand.req.seedseq>[rand.req.seedseq]</a>)<ins>;
-    no diagnostic is required for the latter condition</ins>.
+    <ins>
+      If <math display=inline><mi>T</mi></math> has a template type parameter named
+      <code><h- data-h=id>Sseq</h-></code>, <code><h- data-h=id>URBG</h-></code>, <code><h- data-h=id>Engine</h-></code>, <code><h- data-h=id>RealType</h-></code>, <code><h- data-h=id>IntType</h-></code>, or <code><h- data-h=id>UIntType</h-></code>,
+      the program is ill-formed if the corresponding template argument is cv-qualified.
+    </ins>
   </li>
   <li>
-    <del>that</del> <ins>The program is ill-formed if <math display=inline><mi>T</mi></math></ins>
-    has a template type parameter named <code><h- data-h=id>URBG</h-></code>
-    <del>is undefined unless</del> <ins>and</ins>
-    the corresponding template argument is cv-<del>un</del>qualified
-    <del>and meets</del> <ins>or does not meet</ins>
-    the requirements of uniform random bit generator (<a href=https://eel.is/c++draft/rand.req.urng>[rand.req.urng]</a>)<ins>;
-    no diagnostic is required for the latter condition</ins>.
+    <del>that has a template type parameter</del>
+    <ins>A template argument corresponding to a template parameter</ins>
+    named <code><h- data-h=id>Sseq</h-></code>
+    <del>is undefined unless the corresponding template argument is cv-unqualified and meets</del>
+    <ins>shall meet</ins>
+    the requirements of seed sequence (<a href=https://eel.is/c++draft/rand.req.seedseq>[rand.req.seedseq]</a>).
   </li>
   <li>
-    <del>that</del> <ins>The program is ill-formed if <math display=inline><mi>T</mi></math></ins>
-    has a template type parameter named <code><h- data-h=id>Engine</h-></code>
-    <del>is undefined unless</del> <ins>and</ins>
-    the corresponding template argument is cv-<del>un</del>qualified
-    <del>and meets</del> <ins>or does not meet</ins>
-    the requirements of random number engine (<a href=https://eel.is/c++draft/rand.req.eng>[rand.req.eng]</a>)<ins>;
-    no diagnostic is required for the latter condition</ins>.
+    <del>that has a template type parameter</del>
+    <ins>A template argument corresponding to a template parameter</ins>
+    named <code><h- data-h=id>URBG</h-></code>
+    <del>is undefined unless the corresponding template argument is cv-unqualified and meets</del>
+    <ins>shall meet</ins>
+    the requirements of uniform random bit generator (<a href=https://eel.is/c++draft/rand.req.urng>[rand.req.urng]</a>).
   </li>
   <li>
-    <del>that</del> <ins>The program is ill-formed if <math display=inline><mi>T</mi></math></ins>
-    has a template type parameter named <code><h- data-h=id>RealType</h-></code>
-    <del>is undefined unless</del> <ins>and</ins>
-    the corresponding template argument <ins><math display=inline><mi>A</mi></math></ins>
-    <del>is cv-unqualified and
-    is one of <code><h- data-h=kw_type>float</h-></code>, <code><h- data-h=kw_type>double</h-></code>, or <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code></del>
-    <ins>is not a cv-unqualified floating-point type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>)</ins>.
-    <ins>It is implementation-defined whether the program is ill-formed if
-    <math display=inline><mi>A</mi></math> is an extended floating-point type.</ins>
+    <del>that has a template type parameter</del>
+    <ins>A template argument corresponding to a template parameter</ins>
+    named <code><h- data-h=id>Engine</h-></code>
+    <del>is undefined unless the corresponding template argument is cv-unqualified and meets</del>
+    <ins>shall meet</ins>
+    the requirements of random number engine (<a href=https://eel.is/c++draft/rand.req.eng>[rand.req.eng]</a>).
   </li>
   <li>
-    <del>that</del> <ins>The program is ill-formed if <math display=inline><mi>T</mi></math></ins>
-    has a template type parameter named <code><h- data-h=id>IntType</h-></code>
-    <del>is undefined unless</del> <ins>and</ins>
-    the corresponding template argument
-    <del>is cv-unqualified and is one of
+    <del>that has a template type parameter</del>
+    <ins>If a template argument corresponding to a template parameter</ins>
+    named <code><h- data-h=id>RealType</h-></code>
+    <del>is undefined unless the corresponding template argument is cv-unqualified and is one of float, double, or long double</del>
+    <ins>is neither a standard floating-point type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>)
+    nor a member of an implementation-defined subset of extended floating-point types,
+    the program is ill-formed</ins>.
+  </li>
+  <li>
+    <del>that has a template type parameter</del>
+    <ins>If a template argument corresponding to a template parameter</ins>
+    named <code><h- data-h=id>IntType</h-></code>
+    <del>is undefined unless the corresponding template argument is cv-unqualified and is one of
     <code><h- data-h=kw_type>short</h-></code>, <code><h- data-h=kw_type>int</h-></code>, <code><h- data-h=kw_type>long</h-></code>, <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code>,
     <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>short</h-></code>, <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-></code>, <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-></code>, or
     <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code></del>
-    <ins><code><h- data-h=id>A</h-></code> is not a cv-unqualified integral type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>)</ins>.
-    <ins>It is implementation-defined whether the program is ill-formed if
-    <code><h- data-h=id>A</h-></code> is not a signed or unsigned integer type or if
-    the width of <code><h- data-h=id>A</h-></code> is less than that of <code><h- data-h=kw_type>char</h-></code> or
-    more than that of <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code></ins>.
+    <ins>is neither a standard signed nor a standard unsigned integer type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>),
+    nor an extended integer type whose width is greater or equal to that of <code><h- data-h=kw_type>char</h-></code>
+    and less than or equal to that of <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code>,
+    nor a member of an implementation-defined subset of integer types,
+    the program is ill-formed</ins>.
   </li>
   <li>
-    <del>that</del> <ins>The program is ill-formed if <math display=inline><mi>T</mi></math></ins>
-    has a template type parameter named <code><h- data-h=id>UIntType</h-></code>
-    <del>is undefined unless</del> <ins>and</ins>
-    the corresponding template argument
-    <del>is cv-unqualified and is one of
-    <code><h- data-h=kw_type>short</h-></code>, <code><h- data-h=kw_type>int</h-></code>, <code><h- data-h=kw_type>long</h-></code>, <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code>,
-    <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>short</h-></code>, <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-></code>, <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-></code>, or
-    <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code></del>
-    <ins><code><h- data-h=id>A</h-></code> is not a cv-unqualified integral type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>)
-    or if <code><h- data-h=id>is_signed_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>A</h-><h- data-h=sym_op>&gt;</h-></code> is ill-formed or <code><h- data-h=bool>true</h-></code></ins>.
-    <ins>It is implementation-defined whether the program is ill-formed if
-    <code><h- data-h=id>A</h-></code> is not an unsigned integer type or if
-    the width of <code><h- data-h=id>A</h-></code> is less than that of <code><h- data-h=kw_type>char</h-></code> or
-    more than that of <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code></ins>.
+    <del>that has a template type parameter</del>
+    <ins>If a template argument corresponding to a template parameter</ins>
+    named <code><h- data-h=id>UIntType</h-></code>
+    <del>is undefined unless the corresponding template argument is cv-unqualified and is one of
+    <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>short</h-></code>, <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-></code>, <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-></code>, or <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code>,</del>
+    <ins>is neither a standard or extended unsigned integer type
+    whose width is greater or equal to that of <code><h- data-h=kw_type>short</h-></code>
+    and less than or equal to that of <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code>,
+    nor a member of an implementation-defined subset of unsigned integer types,
+    the program is ill-formed</ins>.
   </li>
 </ul>
 </diff-block>
 
-<h2 id=references><a class=para href=#references></a>6. References</h2>
+<h2 id=references><a class=para href=#references></a>7. References</h2>
 
 
 <div class=bib><div id=bib-item-N1932 class=bib-item>

@@ -1576,9 +1576,9 @@ if (theme !== null) {
 <div class=wg21-head><h1>Clarify the behavior of floating-point overflow</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3899R1>P3899R1</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-02-20</tt-></dd>
-  <dt>Audience:</dt>        <dd>SG6, EWG, CWG</dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3899R2>P3899R2</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-03-25</tt-></dd>
+  <dt>Audience:</dt>        <dd>EWG, CWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>
     Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;<br/>
@@ -1600,6 +1600,8 @@ This paper fixes it.
 <div class=toc><div class=toc-num data-level=2>1</div>
 <a href=#revision-history><h2>Revision history</h2></a>
 <div class=toc-num data-level=3>1.1</div>
+<a href=#changes-since-r1><h3>Changes since R1</h3></a>
+<div class=toc-num data-level=3>1.2</div>
 <a href=#changes-since-r0><h3>Changes since R0</h3></a>
 <div class=toc-num data-level=2>2</div>
 <a href=#introduction><h2>Introduction</h2></a>
@@ -1631,6 +1633,8 @@ This paper fixes it.
 <a href=#division-by-zero><h3>Division by zero</h3></a>
 <div class=toc-num data-level=3>3.6</div>
 <a href=#nan><h3>NaN</h3></a>
+<div class=toc-num data-level=3>3.7</div>
+<a href=#relational-comparisons-with-nan><h3>Relational comparisons with NaN</h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#impact-on-existing-code><h2>Impact on existing code</h2></a>
 <div class=toc-num data-level=2>5</div>
@@ -1649,7 +1653,26 @@ This paper fixes it.
 
 <h2 id=revision-history><a class=para href=#revision-history></a>1. Revision history</h2>
 
-<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.1. Changes since R0</h3>
+<h3 id=changes-since-r1><a class=para href=#changes-since-r1></a>1.1. Changes since R1</h3>
+
+<p>The paper was seen by SG6 in Croydon 2026,
+and while the paper was forwarded to EWG,
+that was done with the expectation that the case of relational comparisons with quiet NaN
+would be investigated.
+Subsequently, the following changes were made:
+</p>
+<ul>
+  <li>Added relational comparisons with quiet NaN to <a href=#implementation-divergence>§2.3. Implementation divergence</a></li>
+  <li>Clarified the meaning of the "FP Exception" column in <a href=#implementation-divergence>§2.3. Implementation divergence</a></li>
+  <li>Added <a href=#relational-comparisons-with-nan>§3.7. Relational comparisons with NaN</a></li>
+  <li>
+    Improved readability of the changes to the "range of representable values" definition
+    in <a href=#basic.fundamental>§ [basic.fundamental]</a>,
+    based on SG6 feedback
+  </li>
+</ul>
+
+<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.2. Changes since R0</h3>
 
 <ul>
   <li>
@@ -2009,6 +2032,15 @@ The results can be seen in the table below.
     <td class=pass>OK</td>
   </tr>
   <tr>
+    <td><code><h- data-h=id>quiet_NaN</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=num>0</h-></code></td>
+    <td class=except><tt->FE_INVALID</tt-></td>
+    <td class=pass>OK</td>
+    <td class=pass>OK</td>
+    <td class=pass>OK</td>
+    <td class=pass>OK</td>
+    <td class=pass>OK</td>
+  </tr>
+  <tr>
     <td><code><h- data-h=id>signaling_NaN</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code></td>
     <td class=none>none</td>
     <td class=pass>OK</td>
@@ -2054,6 +2086,12 @@ The results can be seen in the table below.
     <td class=fail>error</td>
   </tr>
 </table>
+
+<note-block><p><intro-></intro-> 
+The "FP Exception" column indicates the floating-point exception that would be raised at runtime
+if the expression was evaluated by at runtime,
+in an implementation that adheres to <a href="https://www%2eiso%2eorg/standard/80985%2ehtml">[ISO/IEC 60559:2020]</a>.
+</p></note-block>
 
 <note-block><p><intro-></intro-> 
 "EDG 6.7 GNU" refers to EDG in GNU mode,
@@ -2106,7 +2144,8 @@ if <code><h- data-h=id>errno</h-></code> is set when <code><h- data-h=id>math_er
 <p>In short, the GCC 15 behavior is proposed.
 As can be seen in <a href=#implementation-divergence>§2.3. Implementation divergence</a>,
 GCC 15 considers an expression to be constant if and only if no floating-point exception is raised
-(ignoring <code><h- data-h=id>FE_INEXACT</h-></code> and <code><h- data-h=id>FE_UNDERFLOW</h-></code>),
+(ignoring <code><h- data-h=id>FE_INEXACT</h-></code> and <code><h- data-h=id>FE_UNDERFLOW</h-></code>,
+and ignoring <code><h- data-h=id>FE_INVALID</h-></code> on comparison),
 making GCC 15 relatively consistent with <code><h- data-h=str>&lt;cmath&gt;</h-></code> already.
 </p>
 <tip-block><p><intro-></intro-> 
@@ -2265,6 +2304,34 @@ with the behavior of the standard library,
 which is rigorously specified,
 just like for infinity.
 </p>
+<h3 id=relational-comparisons-with-nan><a class=para href=#relational-comparisons-with-nan></a>3.7. Relational comparisons with NaN</h3>
+
+<p>Relational comparisons with quiet NaN are an interesting case
+because they presumably raise <code><h- data-h=id>FE_INVALID</h-></code>;
+<a href=https://cigix.me/c23#F.3>C23 §F.3 Operations</a> maps the C <code><h- data-h=sym_op>&lt;</h-></code> operator
+to the <a href="https://www%2eiso%2eorg/standard/80985%2ehtml">[ISO/IEC 60559:2020]</a> compareSignalingLess operation
+(and this is recommended by <a href="https://www%2eiso%2eorg/standard/80985%2ehtml">[ISO/IEC 60559:2020]</a> for languages in general),
+meaning that the <code><h- data-h=id>FE_INVALID</h-></code> exception is raised on qNaN inputs,
+as compared to <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>isless</h-></code>, which implements compareQuietLess.
+Nonetheless, relation comparison with quiet NaN should be a constant expression,
+even if this is further inconsisten with library design because
+</p><ul>
+  <li>
+    there exists no compiler that rejects such relational comparisons in constant expressions,
+    so making it an error seems unhelpful and does not fix any divergence, and
+  </li>
+  <li>
+    there exists no C++ wording which suggests that this should be undefined behavior
+    (assuming the extremely aggressive <a href=https://eel.is/c++draft/expr.pre#4>[expr.pre] paragraph 4</a> is not meant to apply here)
+    or not a constant expression.
+  </li>
+</ul>
+
+<p>Furthermore, it is perfectly reasonable for an implementation
+not to conform to <a href="https://www%2eiso%2eorg/standard/80985%2ehtml">[ISO/IEC 60559:2020]</a> (for some types),
+so disallowing relational comparisons with quiet NaN for <em>every possible</em>
+floating-point representation seems unreasonable.
+</p>
 <h2 id=impact-on-existing-code><a class=para href=#impact-on-existing-code></a>4. Impact on existing code</h2>
 
 <p>The only concrete design change is that floating-point overflow produces infinity
@@ -2296,15 +2363,13 @@ Clang and MSVC compilers deviate only slightly.
 the most negative finite floating-point number representable in that type through
 the most positive finite floating-point number representable in that type.
 In addition, if negative infinity is representable in a type,
-the range of that type is extended to all negative real numbers
-<ins>(but not to negative infinity)</ins>;
+the range <ins>of representable values</ins> of that type is extended to all negative real numbers;
 likewise, if positive infinity is representable in a type,
-the range of that type is extended to all positive real numbers
-<ins>(but not to positive infinity)</ins>.
+the range <ins>of representable values</ins> of that type is extended to all positive real numbers.
 </p>
 <p>[<i>Note</i>: 
 Since negative and positive infinity are representable in ISO/IEC 60559 formats,
-all real numbers lie within the range of representable values
+all real numbers <ins>(but not infinity or NaN)</ins> lie within the range of representable values
 of a floating-point type adhering to ISO/IEC 60559.
  — <i>end note</i>]
 </p></diff-block>

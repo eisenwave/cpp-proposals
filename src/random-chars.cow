@@ -5,9 +5,9 @@
   title = Supporting \tt{signed char} and \tt{unsigned char}\br in random number generation
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P4037R0}}
-  \dt{Date:}            \dd{\tt{2026-03-06}}
-  \dt{Audience:}        \dd{LEWG}
+  \dt{Document number:} \dd{\docnum{P4037R1}}
+  \dt{Date:}            \dd{\tt{2026-03-26}}
+  \dt{Audience:}        \dd{LWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P4037/github)}
@@ -28,6 +28,15 @@ NB comment \ref(RU-272) is resolved by this paper.
 \h2(listed=false){Contents}
 
 \make_contents
+
+\h2{Revision history}
+
+\h3{Changes since R0}
+
+\ul{
+  \li{Removed mandatory support for \tcode{unsigned char} in engines (as \tcode{UIntType})}
+  \li{Updated wording}
+}
 
 \h2{Introduction}
 
@@ -379,78 +388,80 @@ Remember that the following wording changes are meant to resolve three defects a
 
 Change \eelis{rand.req.genl#1} as follows:
 
+\: the program is ill-formed if the corresponding template argument is cv-qualified. If that corresponding template argument does not meet the requirements of seed sequence, the program is ill-formed; no diagnostic required."
+
 \Bdiff{
 Throughout \eelis{rand},
-the effect of instantiating a template \ins{\math{\mi{T}} has the following constraints}:
+\del{the effect of instantiating a template}
+\ins{where the template parameters are not constrained, the names of template parameters
+are used to express type requirements
+on an instantiated template \math{\mi{T}}:}
 \ul{
   \li{
-    \del{that} \ins{The program is ill-formed if \math{\mi{T}}}
-    has a template type parameter named \tcode{Sseq}
-    \del{is undefined unless} \ins{and}
-    the corresponding template argument is cv-\del{un}qualified
-    \del{and meets} \ins{or does not meet}
-    the requirements of seed sequence\iref{rand.req.seedseq}\ins{;
-    no diagnostic is required for the latter condition}.
+    \ins{
+      If \math{\mi{T}} has a template type parameter named
+      \tcode{Sseq}, \tcode{URBG}, \tcode{Engine}, \tcode{RealType}, \tcode{IntType}, or \tcode{UIntType},
+      the program is ill-formed if the corresponding template argument is cv-qualified.
+    }
   }
   \li{
-    \del{that} \ins{The program is ill-formed if \math{\mi{T}}}
-    has a template type parameter named \tcode{URBG}
-    \del{is undefined unless} \ins{and}
-    the corresponding template argument is cv-\del{un}qualified
-    \del{and meets} \ins{or does not meet}
-    the requirements of uniform random bit generator\iref{rand.req.urng}\ins{;
-    no diagnostic is required for the latter condition}.
+    \del{that has a template type parameter}
+    \ins{A template argument corresponding to a template parameter}
+    named \tcode{Sseq}
+    \del{is undefined unless the corresponding template argument is cv-unqualified and meets}
+    \ins{shall meet}
+    the requirements of seed sequence\iref{rand.req.seedseq}.
   }
   \li{
-    \del{that} \ins{The program is ill-formed if \math{\mi{T}}}
-    has a template type parameter named \tcode{Engine}
-    \del{is undefined unless} \ins{and}
-    the corresponding template argument is cv-\del{un}qualified
-    \del{and meets} \ins{or does not meet}
-    the requirements of random number engine\iref{rand.req.eng}\ins{;
-    no diagnostic is required for the latter condition}.
+    \del{that has a template type parameter}
+    \ins{A template argument corresponding to a template parameter}
+    named \tcode{URBG}
+    \del{is undefined unless the corresponding template argument is cv-unqualified and meets}
+    \ins{shall meet}
+    the requirements of uniform random bit generator\iref{rand.req.urng}.
   }
   \li{
-    \del{that} \ins{The program is ill-formed if \math{\mi{T}}}
-    has a template type parameter named \tcode{RealType}
-    \del{is undefined unless} \ins{and}
-    the corresponding template argument \ins{\math{\mi{A}}}
-    \del{is cv-unqualified and
-    is one of \tcode{float}, \tcode{double}, or \tcode{long double}}
-    \ins{is not a cv-unqualified floating-point type\iref{basic.fundamental}}.
-    \ins{It is implementation-defined whether the program is ill-formed if
-    \math{\mi{A}} is an extended floating-point type.}
+    \del{that has a template type parameter}
+    \ins{A template argument corresponding to a template parameter}
+    named \tcode{Engine}
+    \del{is undefined unless the corresponding template argument is cv-unqualified and meets}
+    \ins{shall meet}
+    the requirements of random number engine\iref{rand.req.eng}.
   }
   \li{
-    \del{that} \ins{The program is ill-formed if \math{\mi{T}}}
-    has a template type parameter named \tcode{IntType}
-    \del{is undefined unless} \ins{and}
-    the corresponding template argument
-    \del{is cv-unqualified and is one of
+    \del{that has a template type parameter}
+    \ins{If a template argument corresponding to a template parameter}
+    named \tcode{RealType}
+    \del{is undefined unless the corresponding template argument is cv-unqualified and is one of float, double, or long double}
+    \ins{is neither a standard floating-point type\iref{basic.fundamental}
+    nor a member of an implementation-defined subset of extended floating-point types,
+    the program is ill-formed}.
+  }
+  \li{
+    \del{that has a template type parameter}
+    \ins{If a template argument corresponding to a template parameter}
+    named \tcode{IntType}
+    \del{is undefined unless the corresponding template argument is cv-unqualified and is one of
     \tcode{short}, \tcode{int}, \tcode{long}, \tcode{long long},
     \tcode{unsigned short}, \tcode{unsigned int}, \tcode{unsigned long}, or
     \tcode{unsigned long long}}
-    \ins{\tcode{A} is not a cv-unqualified integral type\iref{basic.fundamental}}.
-    \ins{It is implementation-defined whether the program is ill-formed if
-    \tcode{A} is not a signed or unsigned integer type or if
-    the width of \tcode{A} is less than that of \tcode{char} or
-    more than that of \tcode{long long}}.
+    \ins{is neither a standard signed nor a standard unsigned integer type\iref{basic.fundamental},
+    nor an extended integer type whose width is greater or equal to that of \tcode{char}
+    and less than or equal to that of \tcode{long long},
+    nor a member of an implementation-defined subset of integer types,
+    the program is ill-formed}.
   }
   \li{
-    \del{that} \ins{The program is ill-formed if \math{\mi{T}}}
-    has a template type parameter named \tcode{UIntType}
-    \del{is undefined unless} \ins{and}
-    the corresponding template argument
-    \del{is cv-unqualified and is one of
-    \tcode{short}, \tcode{int}, \tcode{long}, \tcode{long long},
-    \tcode{unsigned short}, \tcode{unsigned int}, \tcode{unsigned long}, or
-    \tcode{unsigned long long}}
-    \ins{\tcode{A} is not a cv-unqualified integral type\iref{basic.fundamental}
-    or if \tcode{is_signed_v<A>} is ill-formed or \tcode{true}}.
-    \ins{It is implementation-defined whether the program is ill-formed if
-    \tcode{A} is not an unsigned integer type or if
-    the width of \tcode{A} is less than that of \tcode{char} or
-    more than that of \tcode{long long}}.
+    \del{that has a template type parameter}
+    \ins{If a template argument corresponding to a template parameter}
+    named \tcode{UIntType}
+    \del{is undefined unless the corresponding template argument is cv-unqualified and is one of
+    \tcode{unsigned short}, \tcode{unsigned int}, \tcode{unsigned long}, or \tcode{unsigned long long},}
+    \ins{is neither a standard or extended unsigned integer type
+    whose width is greater or equal to that of \tcode{short}
+    and less than or equal to that of \tcode{long long},
+    nor a member of an implementation-defined subset of unsigned integer types,
+    the program is ill-formed}.
   }
 }
 }

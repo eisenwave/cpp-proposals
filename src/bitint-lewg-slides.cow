@@ -1,0 +1,140 @@
+\: cowel 0.6.0
+\cowel_include{libwg21.cow}
+\cowel_include{libslides.cow}
+
+\cowel_macro(footsep){\N{EM SPACE}|\N{EM SPACE}}
+
+\cowel_macro(slidefoot){
+Jan Schultke
+\footsep
+LEWG Slides for P3666R3
+\N{EM DASH}
+Bit-precise integers
+\footsep
+Croydon 2026
+\footsep
+Slide \Vget(slidenum)
+}
+
+\style{
+section>h1 {
+    margin-top: calc(0.125 * var(--sw)) !important;
+    font-size: 250%;
+    text-align: center;
+}
+
+#docnum {
+    font-family: var(--sans-serif-family);
+    font-size: 80%;
+    font-weight: normal;
+}
+
+li>ul {
+    margin-top: 0;
+}
+}
+
+\wg21_head(
+    title = Slides for P3666R3 \br Bit-precise integers
+){
+\dl{
+    \dt{Document number:} \dd{\docnum{P4157R0}}
+    \dt{Date:}            \dd{\tt{2026-03-26}}
+    \dt{Audience:}        \dd{LEWG}
+    \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+    \dt{Reply-To:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+    \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/bitint-lewg-slides.cow)}
+}
+\hr
+\slide_controls
+}
+
+\slide{
+\cowel_html_element(h1){Bit-precise integers\br
+\span(id=docnum){P3666R3}}
+}
+
+\slide{
+\slideh{Introduction}
+C23 now has \tcode{_BitInt} type for N-bit integers (WG14 N2763, N2775):
+\cppblock{
+// 8-bit unsigned integer initialized with value 255.
+// The literal suffix wb is unnecessary in this case.
+unsigned _BitInt(8) x = 0xFFwb;
+}
+\ul{
+  \li{implemented by GCC and Clang; max: \tcode{_BitInt(8'388'608)}}
+  \li{forwarded by EWG to LEWG/CWG for C++29}
+}
+}
+
+\slide{
+\slideh{P3666 Library decisions to be made}
+
+\ul{
+  \li{How much library support to provide? \ul{
+    \li{Aggressively minimal: just the core feature}
+    \li{Minimal but useful: P3666R3}
+    \li{More extensive: \header{simd}, \header{atomic}, etc.}
+  }}
+  \li{Add \tcode{std::bit_int} and \tcode{std::bit_uint} alias templates?}
+  \li{Is \tcode{std::is_integral_v<_BitInt(N)>} true?}
+}
+}
+
+\slide{
+\slideh{Anecdote: \tcode{std::cmp_less}}
+
+\cppblock{
+template<typename _Tp, typename _Up>
+constexpr bool cmp_less(_Tp __t, _Up __u) noexcept
+{
+  static_assert(__is_signed_or_unsigned_integer<_Tp>::value);
+  static_assert(__is_signed_or_unsigned_integer<_Up>::value);
+
+  if constexpr (is_signed_v<_Tp> == is_signed_v<_Up>)
+    return __t < __u;
+  else if constexpr (is_signed_v<_Tp>)
+    return __t < 0 || make_unsigned_t<_Tp>(__t) < __u;
+  else
+    return __u >= 0 && __t < make_unsigned_t<_Up>(__u);
+}
+}
+}
+
+\slide{
+\slideh{Alias templates}
+
+\cppblock{
+template<size_t N>
+  using bit_int = _BitInt(N);
+
+template<size_t N>
+  using bit_uint = unsigned _BitInt(N);
+}
+
+\ul{
+  \li{deduction is supported}
+  \li{library spec should prefer alias templates over keyword spelling}
+}
+}
+
+\slide{
+\slideh{\tcode{std::is_integral_v<_BitInt(N)>}}
+
+\pre{
+integral types
+   ├── signed or unsigned integer types
+   │   ├── standard integers: \tcode{int}, \tcode{unsigned}, etc.
+   │   ├── extended integers: \tcode{__int128} etc.
+   │   └── bit-precise integers: (\tcode{unsigned}) \tcode{_BitInt(N)}
+   ├── character types: \tcode{char}, \tcode{wchar_t}, etc.
+   └── \tcode{bool}
+}
+
+\ul{
+  \li{mostly matches C2y taxonomy}
+  \li{\em{very surprising} if \tcode{std::is_integral_v<_BitInt(N)>} was \tcode{false}}
+  \li{huge wording/teaching effort to treat \tcode{_BitInt(N)} specially}
+}
+}

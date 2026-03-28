@@ -5,9 +5,9 @@
   title = Clarify the behavior of floating-point overflow
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3899R1}}
-  \dt{Date:}            \dd{\tt{2026-02-20}}
-  \dt{Audience:}        \dd{SG6, EWG, CWG}
+  \dt{Document number:} \dd{\docnum{P3899R2}}
+  \dt{Date:}            \dd{\tt{2026-03-25}}
+  \dt{Audience:}        \dd{EWG, CWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{
     Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -29,6 +29,25 @@ This paper fixes it.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R1}
+
+The paper was seen by SG6 in Croydon 2026,
+and while the paper was forwarded to EWG,
+that was done with the expectation that the case of relational comparisons with quiet NaN
+would be investigated.
+Subsequently, the following changes were made:
+
+\ul{
+  \li{Added relational comparisons with quiet NaN to \ref(#implementation-divergence)}
+  \li{Clarified the meaning of the "FP Exception" column in \ref(#implementation-divergence)}
+  \li{Added \ref(#relational-comparisons-with-nan)}
+  \li{
+    Improved readability of the changes to the "range of representable values" definition
+    in \ref(#basic.fundamental),
+    based on SG6 feedback
+  }
+}
 
 \h3{Changes since R0}
 
@@ -391,6 +410,15 @@ The results can be seen in the table below.
     \td_pass
   }
   \tr{
+    \td{\tcode{quiet_NaN() < 0}}
+    \td(class=except){\tt{FE_INVALID}}
+    \td_pass
+    \td_pass
+    \td_pass
+    \td_pass
+    \td_pass
+  }
+  \tr{
     \td{\tcode{signaling_NaN()}}
     \td(class=none){none}
     \td_pass
@@ -435,6 +463,12 @@ The results can be seen in the table below.
     \td_fail
     \td_fail
   }
+}
+
+\Bnote{
+The "FP Exception" column indicates the floating-point exception that would be raised at runtime
+if the expression was evaluated by at runtime,
+in an implementation that adheres to \ref(ISO/IEC 60559:2020).
 }
 
 \Bnote{
@@ -488,7 +522,8 @@ if \tcode{errno} is set when \tcode{math_errhandling & MATH_ERRNO} is \tcode{tru
 In short, the GCC 15 behavior is proposed.
 As can be seen in \ref(#implementation-divergence),
 GCC 15 considers an expression to be constant if and only if no floating-point exception is raised
-(ignoring \tcode{FE_INEXACT} and \tcode{FE_UNDERFLOW}),
+(ignoring \tcode{FE_INEXACT} and \tcode{FE_UNDERFLOW},
+and ignoring \tcode{FE_INVALID} on comparison),
 making GCC 15 relatively consistent with \header{cmath} already.
 
 \Btip{
@@ -649,6 +684,34 @@ with the behavior of the standard library,
 which is rigorously specified,
 just like for infinity.
 
+\h3{Relational comparisons with NaN}
+
+Relational comparisons with quiet NaN are an interesting case
+because they presumably raise \tcode{FE_INVALID};
+\ref(https://cigix.me/c23#F.3){C23 §F.3 Operations} maps the C \tcode{<} operator
+to the \ref(ISO/IEC 60559:2020) compareSignalingLess operation
+(and this is recommended by \ref(ISO/IEC 60559:2020) for languages in general),
+meaning that the \tcode{FE_INVALID} exception is raised on qNaN inputs,
+as compared to \tcode{std::isless}, which implements compareQuietLess.
+Nonetheless, relation comparison with quiet NaN should be a constant expression,
+even if this is further inconsisten with library design because
+\ul{
+  \li{
+    there exists no compiler that rejects such relational comparisons in constant expressions,
+    so making it an error seems unhelpful and does not fix any divergence, and
+  }
+  \li{
+    there exists no C++ wording which suggests that this should be undefined behavior
+    (assuming the extremely aggressive \eelis{expr.pre#4} is not meant to apply here)
+    or not a constant expression.
+  }
+}
+
+Furthermore, it is perfectly reasonable for an implementation
+not to conform to \ref(ISO/IEC 60559:2020) (for some types),
+so disallowing relational comparisons with quiet NaN for \em{every possible}
+floating-point representation seems unreasonable.
+
 \h2{Impact on existing code}
 
 The only concrete design change is that floating-point overflow produces infinity
@@ -680,15 +743,13 @@ The minimum range of representable values for a floating-point type is
 the most negative finite floating-point number representable in that type through
 the most positive finite floating-point number representable in that type.
 In addition, if negative infinity is representable in a type,
-the range of that type is extended to all negative real numbers
-\ins{(but not to negative infinity)};
+the range \ins{of representable values} of that type is extended to all negative real numbers;
 likewise, if positive infinity is representable in a type,
-the range of that type is extended to all positive real numbers
-\ins{(but not to positive infinity)}.
+the range \ins{of representable values} of that type is extended to all positive real numbers.
 
 \note{
 Since negative and positive infinity are representable in ISO/IEC 60559 formats,
-all real numbers lie within the range of representable values
+all real numbers \ins{(but not infinity or NaN)} lie within the range of representable values
 of a floating-point type adhering to ISO/IEC 60559.
 }
 }
