@@ -1,0 +1,852 @@
+\cowel_include{libwg21.cow}
+
+\wg21_head(
+  title = Fix defects in floating-point \tcode{std::from_chars}\br
+  (LWG3081\, LWG3082\, LWG3456)
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D4168R0}}
+  \dt{Date:}            \dd{\tt{2026-04-04}}
+  \dt{Audience:}        \dd{SG6}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P4168/github)}
+  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/fix-floating-from-chars.cow)}
+}
+\hr
+}
+
+\Babstract{
+This paper supersedes \ref(P2827R1)
+and fixes \ref(LWG3081), \ref(LWG3082), and \ref(LWG3456).
+It is intended as a defect report for C++17.
+The handling of floating-point overflow and underflow in \tcode{std::from_chars}
+is inconsistent;
+the implementations diverge from each other,
+and every implementation diverges from the wording in the standard.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+In 2018, \ref(LWG3081) pointed out that the \tcode{from_chars} API
+does not give the user a means of distinguishing floating-point overflow and underflow.
+The perceived defect is a loss of functionality compared to \tcode{std::strtod}.
+This issue remains open till today despite having Priority 2.
+
+In 2023, \ref(P2827R1) attempted to solve this issue,
+but died in LEWG eventually.
+Lack of motivation within the paper was among the feedback given.
+Perplexingly, \ref(P2827R1) does not mention the implementation divergence
+between libstdc++ and MSVC STL, which already existed at the time;
+mentioning it surely would have added motivation.
+
+The issue is much more severe than the LWG issue and paper make it out to be.
+The wording is defective, implementations diverge, and users suffer from it
+to the point where \tcode{boost::from_chars_erange} (\ref(BoostCharConv))
+should arguably be recommended to users over the standard feature;
+at least it is portable and well-specified.
+
+\h3{Implementation divergence}
+
+There are three cases of interest where typical implementations likely diverge:
+\ul{
+  \li{
+    Treatment of floating-point overflow (always resulting in infinity),
+    such as when parsing \tcode{"1e+1000"} as \tcode{std::float32_t}.
+  }
+  \li{
+    Treatment of floating-point underflow that results in an inexact zero,
+    such as when parsing \tcode{"1e-10000"} as \tcode{std::float32_t}.
+  }
+  \li{
+    Treatment of floating-point underflow that results in an inexact subnormal,
+    such as when parsing \tcode{"1e-45"} as \tcode{std::float32_t}.
+  }
+}
+
+\Bnote{
+ISO/IEC 60559 leaves the definition of \q{tininess} up to the implementation.
+This means that it is unclear whether the \tcode{"1e-45"} case is analogous
+to floating-point underflow.
+}
+
+At the time of writing,
+implementations behave as shown in the table below
+when parsing a string as \tcode{float} (binary32).
+Each cell shows what value the given \tcode{float&} is set to,
+as well as the returned \tcode{std::errc} value.
+
+\style{
+  #divergence {
+    font-size: 95%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+\table(id=divergence){
+  \tr{
+    \th{Input}
+    \th{libstdc++}
+    \th{libc++}
+    \th{MSVC STL}
+  }
+  \tr{
+    \td{\tcode{"0"}}
+    \td{\tcode{0.f} / \tcode{{}}}
+    \td{\tcode{0.f} / \tcode{{}}}
+    \td{\tcode{0.f} / \tcode{{}}}
+  }
+  \tr{
+    \td{\tcode{"#"}}
+    \td{unmodified / \tcode{invalid_argument}}
+    \td{unmodified / \tcode{invalid_argument}}
+    \td{unmodified / \tcode{invalid_argument}}
+  }
+  \tr{
+    \td{\tcode{"1e-45"}}
+    \td{\tcode{1e-45f} / \tcode{{}}}
+    \td{\tcode{1e-45f} / \tcode{{}}}
+    \td{\tcode{1e-45f} / \tcode{{}}}
+  }
+  \tr{
+    \td{\tcode{"1e-10000"}}
+    \td{unmodified / \tcode{result_out_of_range}}
+    \td{\tcode{0.f} / \tcode{result_out_of_range}}
+    \td{\tcode{0.f} / \tcode{result_out_of_range}}
+  }
+  \tr{
+    \td{\tcode{"-1e-10000"}}
+    \td{unmodified / \tcode{result_out_of_range}}
+    \td{\tcode{-0.f} / \tcode{result_out_of_range}}
+    \td{\tcode{-0.f} / \tcode{result_out_of_range}}
+  }
+  \tr{
+    \td{\tcode{"1e+10000"}}
+    \td{unmodified / \tcode{result_out_of_range}}
+    \td{\math{\mrow{\mo{+}\mi{∞}}} / \tcode{result_out_of_range}}
+    \td{\math{\mrow{\mo{+}\mi{∞}}} / \tcode{result_out_of_range}}
+  }
+  \tr{
+    \td{\tcode{"-1e+10000"}}
+    \td{unmodified / \tcode{result_out_of_range}}
+    \td{\math{\mrow{\mo{−}\mi{∞}}} / \tcode{result_out_of_range}}
+    \td{\math{\mrow{\mo{−}\mi{∞}}} / \tcode{result_out_of_range}}
+  }
+}
+
+\Bnote{
+The libc++ and MSVC STL behavior is proposed.
+}
+
+\h3{Defective wording}
+
+\h4{Range of representable values}
+
+Out of the implementations above,
+none comply with the existing wording.
+\eelis{charconv.from.chars} states:
+
+\Bquote{
+\etc
+If the parsed value is not in the \mark{range representable by the type} of \tcode{value},
+\tcode{value} is unmodified and the member \tcode{ec} of the return value
+is equal to \tcode{errc::result_out_of_range}.
+Otherwise, \tcode{value} is set to the parsed value,
+after rounding according to \tcode{round_to_nearest}\iref{round.style},
+and the member \tcode{ec} is value-initialized.
+}
+
+The problem is that for several years while \tcode{std::from_chars} existed,
+there was no definition of \q{range of representable values} (\mark{marked} above)
+in the standard.
+That definition was only added recently in 2023 via \ref(CWG2723);
+the definition in \eelis{basic.fundamental#13} includes \em{all real numbers}
+in that range,
+meaning that every standard library is incorrect
+for returning \tcode{errc::result_out_of_range}.
+Ergo, not only is underflow indistinguishable from overflow via error code,
+overflow, underflow, and exact rounding are all indistinguishable
+if the wording is implemented (which it isn't).
+
+\h4{No handling of non-ISO/IEC 60559 types}
+
+Another problem with the wording is that it does not account for types
+that do not have a representation of infinity or NaN.
+The string pattern accepted by \tcode{std::from_chars}
+is always permitted to be \tcode{"INFINITY"},
+but what should happen when returning a floating-point type without infinity representations?
+
+\h4{No specification of parsing}
+
+Last but most severe,
+the entire mechanism of mapping the matched pattern
+onto a floating-point value is described as:
+
+\Bquote{
+Otherwise, \tcode{value} is set to the parsed value,
+after rounding according to \tcode{round_to_nearest}\iref{round.style},
+and the member \tcode{ec} is value-initialized.
+}
+
+The fact that a string such as \tcode{"INF"} results in infinity
+or that \tcode{"1"} results in \tcode{1.0} is handwaved as
+the single word \q{parsed}, which is not explained anywhere.
+While most such cases are obvious, \tcode{std::to_chars} in libc++
+represents signaling NaNs as \tcode{"nan(snan)"},
+and it is unclear whether the implementation can recover a signaling NaN from such a string
+because there exists no wording for \q{parsed}.
+
+The intent is presumably to handle these cases like \tcode{std::strtod},
+but this is not stated anywhere;
+only the syntax of the matched pattern is specified,
+not the interpretation of the pattern.
+The description of the matched pattern is also deemed underspecified,
+as explained in \ref(LWG3456).
+
+\h4(id=signaling-nans){Signaling NaNs make \tt{std::from_chars} unimplementable}
+
+Yet another problem is that \tcode{std::from_chars}
+cannot be implemented for types that can represent signaling NaNs;
+the problem lies in \eelis{charconv.to.chars#2}:
+
+\Bquote{
+The functions that take a floating-point value but not a precision parameter
+ensure that the string representation consists of the smallest number
+of characters such that there is at least one digit before the radix point (if present)
+and parsing the representation using the corresponding from_chars function
+\mark{recovers value exactly}.
+}
+
+It is not entirely clear whether this requirement was intended
+to apply to non-finite inputs,
+but it technically could be read in such a way.
+If so, it would additionally mandate that \tcode{"inf"} instead of \tcode{"infinity"}
+is emitted when the \tcode{value} is \math{\mrow{\mo{+}\mi{∞}}},
+which implementations do.
+
+The problem is that the pattern accepted by \tcode{std::from_chars}
+is that of \tcode{std::strtod}, which supports
+\tcode{"INFINITY"}, \tcode{"NAN"}, and \tcode{"NAN(\exposid{d-char-sequence})"}
+but no \tcode{"SNAN"} as inputs.
+\tcode{std::strtod} interprets every NaN input as a quiet NaN,
+which is presumably the intent for \tcode{std::from_chars},
+even if the wording does not explicitly say so;
+in fact, the wording does not say anything about how these text representations of
+infinity or NaN are interpreted as a floating-point value by \tcode{std::from_chars}.
+
+As things stand, the requirement to \q{recover the value exactly}
+cannot be implemented for signaling NaNs in any reasonable way.
+Therefore, it is necessary to exempt signaling NaNs from being recovered.
+\tcode{std::strtod} has this exemption, as does \nobr{ISO/IEC 60559};
+see §5.12.1 \q{External character sequences representing zeros, infinities, and NaNs}:
+
+\Bquote{
+Conversion of a signaling NaN in a supported format to an external character sequence
+should produce a language-defined one of "snan" or "nan"
+or a sequence that is equivalent except for case,
+with an optional preceding sign.
+}
+
+\h2{Design}
+
+In short, the MSVC STL and libc++ behavior is proposed,
+with additional wording clarifications.
+
+\h3{Limited design options}
+
+At this stage,
+the available design options are extremely limited because
+floating-point implementations of \tcode{std::from_chars}
+have already existed for years
+(MSVC STL since 2018, libstdc++ since 2021, libc++ since 2025).
+Changing the behavior of \tcode{std::from_chars}
+can break substantial amounts of existing code.
+
+There seem to be only two plausible options with sufficiently low impact:
+\ul{
+  \li{
+    Standardize the libstdc++ behavior,
+    which is to leave the given \tcode{float&} unmodified on overflow/underflow.
+  }
+  \li{
+    Standardize the MSVC STL and libc++ behavior,
+    which is to overwrite the given \tcode{float&} with either zero or infinity.
+  }
+}
+
+I argue that the libc++ behavior is strictly better because
+\ul{
+  \li{
+    the behavior resolves \ref(LWG3081) by making underflow distinguishable from overflow,
+  }
+  \li{
+    users may actually want to ignore \tcode{result_out_of_range} and simply
+    take the 0 resulting from underflow and \math{\mi{∞}} resulting from overflow,
+    which the libc++ behavior makes possible, and
+  }
+  \li{the behavior is consistent with \tcode{std::strtod}.}
+}
+
+To provide the maximum amount of information to the user,
+it is also important that the user obtains a correctly signed zero on underflow
+and a correctly signed \math{\mi{∞}} on overflow.
+That is, the sign of the result value should always be the sign
+of the parsed mathematical value,
+even if rounded to zero or infinity.
+Both MSVC STL and libc++ provide correctly signed values.
+
+\h3{Note on ISO/IEC 60559 conformance}
+
+The choice of (correctly signed) zeros and infinities
+to signal underflow and overflow is far from arbitrary;
+\tcode{strtod} has that design,
+and correctly implements the ISO/IEC 60559 (or IEEE-754) operation
+\q{convertFromDecimalCharacter} for floating-point types
+(see \ref(https://cigix.me/c23#F.3){C23\N{NO-BREAK SPACE}§F.3}).
+
+\tcode{std::from_chars} should have that same behavior to increase ISO/IEC 60559
+conformance.
+\eelis{charconv.from.chars} even uses the \tcode{round_to_nearest} rounding mode
+corresponding to \q{roundTiesToEven} already,
+which makes it extremely to the ISO/IEC 60559 operation.
+
+As mentioned in \ref(#signaling-nans),
+it is also necessary to handle signaling NaNs in some way,
+as part of the \q{convertFromDecimalCharacter} operation.
+The easiest way to do so would be to double down on the practice
+of always producing \tcode{"NAN"} for both quiet and signaling NaNs;
+the wording merely needs to relax the exact recoverability requirement for that case.
+
+\h3{Impact on existing code}
+
+Furthermore, we must consider how the change in behavior affects existing users,
+if we standardize the behavior of the other implementation:
+
+\ul{
+  \li{
+    Users of libstdc++ likely ignore the written value on \tcode{result_out_of_range}
+    because it is unmodified.
+    Now modifying the value does not cause any problem if they were ignoring it already.
+  }
+  \li{
+    Users of MSVC STL and libc++ may rely on infinity or zero being written
+    on \tcode{result_out_of_range},
+    and suddenly leaving the value unmodified
+    would result in use of erroneous or even indeterminate memory for them.
+  }
+}
+
+When considering these two options,
+standardizing the GCC behavior appears more risky.
+
+\h3{Alternatives considered}
+
+Neither \ref(LWG3081) nor \ref(P2827R1) fully resolve the defects in the wording.
+Each proposes a different value that should be written for overflow;
+the LWG issue proposes \tcode{numeric_limits<T>::max()}, and
+the paper proposes \tcode{1}.
+
+Neither of these behaviors standardizes existing practice in standard libraries,
+is particularly well-motivated,
+or matches the behavior of other functions such as \tcode{std::strtod}.
+Both alternatives make it difficult to simply ignore the \tcode{result_out_of_range}
+error and use the value.
+
+\h2{Implementation experience}
+
+The proposed behavior has been released in MSVC STL and libc++.
+
+It has also been implemented as \tcode{boost::from_chars_erange} (\ref(BoostCharConv)).
+
+\h2{Editorial problems}
+
+Beyond the normative issues,
+there are also significant editorial problems with \eelis{charconv.from.chars}
+which make it difficult to understand what pattern it actually accepts.
+Namely, the wording is currently:
+
+\Bquote{
+\effects
+The pattern is the expected form of the subject sequence
+in the \tcode{"C"} locale,
+as described for \tcode{strtod}, except that
+\ul{
+  \li{the sign \tcode{'+'} may only appear in the exponent part;}
+  \li{
+    if \tcode{fmt} has \tcode{chars_format​::​scientific} set
+    but not \tcode{chars_format​::​fixed},
+    the otherwise optional exponent part shall appear;
+  }
+  \li{
+    if \tcode{fmt} has \tcode{chars_format​::​fixed} set
+    but not \tcode{chars_format​::​scientific},
+    the optional exponent part shall not appear; and
+  }
+  \li{
+    if \tcode{fmt} is \tcode{chars_format​::​hex},
+    the prefix \tcode{"0x"} or \tcode{"0X"} is assumed.
+  }
+}
+In any case, the resulting \tcode{value}
+is one of at most two floating-point values
+closest to the value of the string matching the pattern.
+}
+
+We don't actually get to understand what the pattern is here,
+just that we should look at \tcode{strtod} and make mental changes relative to that.
+\ref(https://cigix.me/c23#7.24.1.5.p3){C23 §7.24.1.5 paragraph 3}
+then describes the sequence partially using a mixture of prose and grammar,
+containing descriptions such as
+\Bquote{
+\etc a nonempty sequence of decimal digits
+optionally containing a decimal-point character, then
+an optional exponent part as defined in 6.4.4.3,
+excluding any digit separators (6.4.4.2);
+}
+
+Even the C wording doesn't directly describe the pattern but refers to various
+other definitions such as \q{exponent part} and \q{digit separators}
+that must be looked up elsewhere.
+Anyone trying to understand what \tcode{std::from_chars} actually accepts
+needs to go through a multi-standard scavenger hunt and keep track of two layers
+of \q{excluding} and \q{except that}.
+
+This is an ineffective way to communicate the behavior of \tcode{std::from_chars}
+and should be rewritten so that the accepted pattern can be understood
+solely through \eelis{charconv.from.chars}.
+\ref(LWG3456) performs such a rewrite,
+but does not fully decouple \tcode{std::from_chars} from the C wording.
+
+\h2{Wording}
+
+The changes are relative to \ref(N5032).
+
+\h3(show-number=false){[version.syn]}
+
+Bump the feature-test macro in \eelis{version.syn} as follows:
+
+\Bdiff{
+\itemdecl{
+#define __cpp_lib_to_chars \del{202306L} \ins{20XXXXL} //\serif{ freestanding, also in \tt{<charconv>}}
+}
+}
+
+\editnote{
+There is no separate macro for \tcode{std::from_chars}.
+\tcode{__cpp_lib_to_chars} can be viewed as a representative feature-test
+for all of \header{charconv}.
+}
+
+\h3(show-number=false){[charconv.to.chars]}
+
+Change \eelis{charconv.to.chars#2} as follows:
+
+\Bdiff{
+The functions that take a floating-point value
+but not a \tcode{precision} parameter ensure that
+\ins{when the given \tcode{value} is finite,}
+the string representation consists of the smallest number of characters
+such that there is at least one digit before the radix point (if present) and
+parsing the representation using the corresponding \tcode{from_chars} function
+recovers \tcode{value} exactly.
+
+\note{
+This guarantee applies only if \tcode{to_chars} and \tcode{from_chars}
+are executed on the same implementation.
+}
+
+If there are several such representations,
+the representation with the smallest difference
+from the floating-point argument value is chosen,
+resolving any remaining ties using rounding
+according to \tcode{round_to_nearest}\iref{round.style}.
+}
+
+\h3(show-number=false){[charconv.from.chars]}
+
+\style{
+  .spaced-words {
+    word-spacing: 0.3em;
+  }
+}
+
+Change \eelis{charconv.from.chars} as follows:
+
+\Bdiff{
+¶
+All functions named from_chars analyze the string [\tcode{first}, \tcode{last}) for a pattern,
+where [\tcode{first}, \tcode{last}) is required to be a valid range.
+If no characters match the pattern,
+\tcode{value} is unmodified,
+the member \tcode{ptr} of the return value is \tcode{first} and
+the member \tcode{ec} is equal to \tcode{errc::invalid_argument}.
+
+\note{
+If the pattern allows for an optional sign,
+but the string has no digit characters following the sign,
+no characters match the pattern.
+}
+
+Otherwise, the characters matching the pattern
+are interpreted as a representation of a value of the type of \tcode{value}.
+The member \tcode{ptr} of the return value points to the first character not matching the pattern,
+or has the value \tcode{last} if all characters match.
+\del{If the parsed value is not in the range representable by the type of \tcode{value},
+\tcode{value} is unmodified and
+the member \tcode{ec} of the return value is equal to \tcode{errc::result_out_of_range}.
+Otherwise, \tcode{value} is set to the parsed value,
+after rounding according to \tcode{round_to_nearest}\iref{round.style},
+and the member \tcode{ec} is value-initialized.}
+
+\itemdecl{
+constexpr from_chars_result from_chars(const char* first, const char* last,
+                                       \exposid{integer-type}& value, int base = 10);
+}
+
+\itemdescr{
+\Bins{
+¶
+Let the pattern be the maximal sequence of characters starting with \tcode{*first} that
+matches a \grammarterm{from-chars-signed-integer-pattern}
+if \tcode{value} is of a signed type, and
+matches a \grammarterm{from-chars-unsigned-pattern} otherwise.
+
+\dl(class=grammar spaced-words){
+  \dt{\grammarterm{from-chars-signed-integer-pattern}:}
+  \dd{\opt{\tt{-}} from-chars-unsigned-integer-pattern}
+
+  \dt{\grammarterm{from-chars-unsigned-integer-pattern}:}
+  \dd{base-digit-seq}
+  
+  \dt{\grammarterm{base-digit-seq}:}
+  \dd{base-digit \opt{base-digit-seq}}
+}
+
+\grammarterm{base-digit} is digit character whose value is less than \tcode{base}.
+The code points U+0030..U+0039 DIGIT ZERO..NINE
+represent digit characters with values in the range 0..9;
+Both U+0041..U+005A LATIN CAPITAL LETTER A..Z and
+U+0061..U+007A LATIN SMALL LETTER A..Z
+represent digit characters in the range 10..35.
+}
+
+¶
+\expects
+\tcode{base} has a value between 2 and 36 (inclusive).
+
+\Bdel{
+¶
+\effects
+The pattern is the expected form of the subject sequence
+in the \tcode{"C"} locale for the given nonzero base,
+as described for \tcode{strtol},
+except that no \tcode{"0b"} or \tcode{"0B"} prefix shall appear
+if the value of base is 2,
+no \tcode{"0x"} or \tcode{"0X"} prefix shall appear if the value of base is 16,
+and except that \tcode{'-'} is the only sign that may appear,
+and only if \tcode{value} has a signed type.
+}
+
+\Bins{
+¶
+\effects
+If the pattern is empty,
+the effect is as described above.
+Otherwise,
+an integer value \math{\mi{x}} is obtained by interpreting the
+\grammarterm{base-digit}s as digits of an integer in the given \tcode{base}, and
+negating that value if the leading \tcode{'-'} is present.
+If \math{\mi{x}} is in the range of values representable by the type of \tcode{value},
+\tcode{value} is set to \math{\mi{x}} and
+the member \tcode{ec} of the result is value-initialized;
+otherwise, \tcode{value} is unmodified and
+the member \tcode{ec} of the result is \tcode{errc::result_out_of_range}.
+}
+
+¶
+\throws
+Nothing.
+}
+
+\itemdecl{
+from_chars_result from_chars(const char* first, const char* last, \exposid{floating-point-type}& value,
+                             chars_format fmt = chars_format::general);
+}
+
+\itemdescr{
+\Bins{
+¶
+Let the pattern be the maximal sequence of characters starting with \tcode{*first}
+that matches a \grammarterm{from-chars-floating-pattern}.
+
+\dl(class=grammar spaced-words){
+  \dt{\grammarterm{from-chars-floating-pattern}:}
+  \dd{\opt{\tt{-}} from-chars-unsigned-floating-pattern}
+
+  \dt{\grammarterm{from-chars-unsigned-floating-pattern}:}
+  \dd{fixed-float}
+  \dd{scientific-float}
+  \dd{general-float}
+  \dd{hex-float}
+  \dd{from-chars-infinity}
+  \dd{from-chars-nan}
+
+  \dt{\grammarterm{fixed-float}:}
+  \dd{digit-sequence \opt{decimal-fraction}}
+
+  \dt{\grammarterm{scientific-float}:}
+  \dd{digit-sequence \opt{decimal-fraction} exponent-part}
+
+  \dt{\grammarterm{general-float}:}
+  \dd{digit-sequence \opt{decimal-fraction} \opt{exponent-part}}
+
+  \dt{\grammarterm{hex-float}:}
+  \dd{hexadecimal-digit-sequence \opt{hexadecimal-fraction} \opt{binary-exponent-part}}
+
+  \dt{\grammarterm{decimal-fraction}:}
+  \dd{\tt{.} digit-sequence}
+
+  \dt{\grammarterm{hexadecimal-fraction}:}
+  \dd{\tt{.} hexadecimal-digit-sequence}
+
+  \dt{\grammarterm{from-chars-infinity}:}
+  \dd{\tt{INF}}
+  \dd{\tt{INFINITY}}
+
+  \dt{\grammarterm{from-chars-nan}:}
+  \dd{\tt{NAN}}
+  \dd{\tt{NAN(} \opt{nan-char-seq} \tt{)}}
+
+  \dt{\grammarterm{nan-char-seq}:}
+  \dd{nan-char \opt{nan-char-seq}}
+
+  \dt{\grammarterm{nan-char}:}
+  \dd{digit}
+  \dd{nondigit}
+}
+
+¶
+Matching of a \grammarterm{from-chars-floating-pattern}
+behaves so that
+\ul{
+  \li{
+    \grammarterm{fixed-float},
+    \grammarterm{scientific-float},
+    \grammarterm{general-float}, and
+    \grammarterm{hex-float}
+    may only be matched if \tcode{fmt} equals
+    \tcode{chars_format::fixed},
+    \tcode{chars_format::scientific},
+    \tcode{chars_format::general}, and
+    \tcode{chars_format::hex}, respectively;
+  }
+  \li{
+    case is ignored in \grammarterm{from-chars-infinity} and
+    in the leading \tt{NAN} part of a \grammarterm{from-chars-nan}; and
+  }
+  \li{
+    a \q{\tcode{'}} digit separator
+    is not matched anywhere in a \grammarterm{from-chars-floating-pattern}.
+  }
+}
+}
+
+¶
+\expects
+\tcode{fmt} has the value of one of the enumerators of \tcode{chars_format}.
+
+\Bdel{
+¶
+\effects
+The pattern is the expected form of the subject sequence
+in the \tcode{"C"} locale,
+as described for \tcode{strtod}, except that
+\ul{
+  \li{the sign \tcode{'+'} may only appear in the exponent part;}
+  \li{
+    if \tcode{fmt} has \tcode{chars_format​::​scientific} set
+    but not \tcode{chars_format​::​fixed},
+    the otherwise optional exponent part shall appear;
+  }
+  \li{
+    if \tcode{fmt} has \tcode{chars_format​::​fixed} set
+    but not \tcode{chars_format​::​scientific},
+    the optional exponent part shall not appear; and
+  }
+  \li{
+    if \tcode{fmt} is \tcode{chars_format​::​hex},
+    the prefix \tcode{"0x"} or \tcode{"0X"} is assumed.
+  }
+}
+In any case, the resulting \tcode{value}
+is one of at most two floating-point values
+closest to the value of the string matching the pattern.
+}
+
+\Bins{
+¶
+\effects
+\ul{
+  \li{
+    If the pattern is empty,
+    the effect is as described above.
+  }
+  \li{
+    Otherwise, if the pattern is of the form \q{\tt{-} \grammarterm{from-chars-infinity}},
+    \ul{
+      \li{
+        if negative infinity is representable in the type of \tcode{value},
+        \tcode{value} is set to negative infinity and
+        the member \tcode{ec} of the result is value-initialized;
+      }
+      \li{
+        otherwise, \tcode{value} is set to the lowest finite value
+        representable in the type of \tcode{value} and
+        the member \tcode{ec} of the result is \tcode{errc::result_out_of_range}.
+      }
+    }
+  }
+  \li{
+    Otherwise, if the pattern is of the form \grammarterm{from-chars-infinity},
+    \ul{
+      \li{
+        if either positive or unsigned infinity is representable in the type of \tcode{value},
+        \tcode{value} is set to such an infinity and
+        the member \tcode{ec} of the result is value-initialized;
+      }
+      \li{
+        otherwise, \tcode{value} is set to the greatest finite value
+        representable in the type of \tcode{value} and
+        the member \tcode{ec} of the result is \tcode{errc::result_out_of_range}.
+      }
+    }
+  }
+  \li{
+    Otherwise, if the pattern is of the form
+    \q{\opt{-} \grammarterm{from-chars-nan}},
+    \ul{
+      \li{
+        if quiet NaN is representable in the type of \tcode{value},
+        \tcode{value} is set to quiet NaN and
+        the member \tcode{ec} of the result is value-initialized,
+        where the meaning of the optional \grammarterm{nan-char-seq}
+        is implementation-defined,
+      }
+      \li{
+        otherwise, \tcode{value} is set to positive or unsigned zero and
+        the member \tcode{ec} of the result is \tcode{errc::invalid_argument}.
+      }
+    }
+  }
+  \li{
+    Otherwise, the character sequence represents a rational number \math{\mi{q}}
+    whose value is determined by
+    \ul{
+      \li{
+        interpreting the pattern without leading \tcode{'-'}
+        but with an added \grammarterm{hexadecimal-prefix}
+        as a \grammarterm{hexadecimal-floating-point-literal}
+        if \tcode{fmt} is \tcode{chars_format::hex}, and
+      }
+      \li{
+        interpreting the pattern without leading \tcode{'-'}
+        \grammarterm{decimal-floating-point-literal} otherwise,
+      }
+    }
+    then interpreting the scaled value\iref{lex.fcon} of that literal
+    as the value of \math{\mi{q}},
+    negated if the leading \tcode{'-'} is present.
+    \math{\mi{q}} is correctly rounded to a value \math{\mi{r}}
+    according to \tcode{round_to_nearest}\iref{round.style}.
+    \tcode{value} is set to \math{\mi{r}}, and
+    the member \tcode{ec} of the result is
+    \ul{
+      \li{
+        value-initialized if \tcode{isnormal(\math{\mi{r}})} is \tcode{true},
+      }
+      \li{
+        \tcode{errc::result_out_of_range}
+        if \math{\mi{r}} is negative or positive infinity or
+        \math{\mi{q}} is not in the range of values
+        representable by the type of \tcode{value},
+      }
+      \li{
+        \tcode{errc::result_out_of_range}
+        if \math{\mi{r}} is zero but \math{\mi{q}} is not zero, or
+      }
+      \li{
+        an implementation-defined choice of either
+        \tcode{errc::result_out_of_range} or a value-initialized result
+        if \math{\mi{r}} is a subnormal.
+      }
+    }
+  }
+}
+}
+
+¶
+\throws
+Nothing.
+}\: itemdescr 
+
+\del{See also: ISO/IEC 9899:2024, 7.24.2.6, 7.24.2.8}
+}
+
+\h2{References}
+
+\bib(
+  id = N5032,
+  title = Working Draft\, Programming Languages — C++,
+  date = 2025-12-15,
+  author = Thomas Köppe,
+  link = https://wg21.link/n5032,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
+)\
+\bib(
+  id = P2827R1,
+  title = Floating-point overflow and underflow in from_chars (LWG 3081),
+  date = 2023-11-20,
+  author = Zhihao Yan,
+  link = https://wg21.link/p2827r1,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2827r1.html,
+)\
+\bib(
+  id = LWG3081,
+  title = Floating point from_chars API does not distinguish between overflow and underflow,
+  date = 2018-03-12,
+  author = Jiang An,
+  link = https://wg21.link/LWG3081,
+)\
+\bib(
+  id = LWG3082,
+  title = from_chars specification regarding floating point rounding is inconsistent,
+  date = 2018-03-12,
+  author = Greg Falcon,
+  link = https://wg21.link/LWG3082,
+)\
+\bib(
+  id = LWG3456,
+  title = Pattern used by std::from_chars is underspecified,
+  date = 2020-06-23,
+  author = Jonathan Wakely,
+  link = https://wg21.link/LWG3456,
+)\
+\bib(
+  id = CWG2723,
+  title = Range of representable values for floating-point types,
+  date = 2023-04-21,
+  author = Jiang An,
+  link = https://cplusplus.github.io/CWG/issues/2723.html,
+)\
+\bib(
+  id = BoostCharConv,
+  title = CharConv: An Implementation of <charconv> in C++11,
+  link = https://www.boost.org/doc/libs/latest/libs/charconv/doc/html/charconv.html,
+)\
+
+\make_bib
