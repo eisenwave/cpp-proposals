@@ -1,3 +1,4 @@
+\: cowel 0.6.0
 \cowel_include{libwg21.cow}
 
 \wg21_head(
@@ -30,14 +31,18 @@ We propose a syntax for calling C++ functions with named arguments.
 
 \h2{Introduction}
 
-We propose a syntax for calling C++ functions with named arguments:
+We propose a syntax
+for declaring C++ functions with named parameters and
+for calling C++ functions with named arguments:
 
 \cppblock{
-f(.x = 0, .y = 1, .z = 2);
-}
+// Declare a function with three "labeled parameters".
+void f(int .x, int .y, int .z);
 
-There is no consensus yet on whether changes to C++ function declarations are needed
-to opt into this call syntax.
+// Call that function with named arguments,
+// not in the same order as declared.
+f(.x = 0, .z = 2, .y = 1);
+}
 
 A call syntax like this has been suggested multiple times historically
 in \ref(N4172), \ref(P0671R2), and \ref(P1229R0),
@@ -782,23 +787,63 @@ for each "attribute".
 
 \h2{Design}
 
-\h3{Overload resolution impact}
+To cornerstone of the design is the introduction of \dfn{labeled parameters},
+which are parameters of \dfn{labeled type}.
+This makes parameter types with a label a distinct fundamental type
+that is \q{tagged} or \q{labelled} with the desired argument name.
 
-In short, C++ function calls are resolved in the following stages:
+\Bex{
+In this code below,
+the function \tcode{f} has a single parameter of type
+\q{\tcode{int} with label \tt{x}}.
 
-\ol{
-  \li{name lookup}
-  \li{collecting viable candidates}
-  \li{selecting the best viable candidate using various tie breakers}
+\cppblock{
+int f(int .x) {
+  // The label of the parameter is simultaneously the name
+  // found by lookup within the function.
+  return x;
 }
 
-Named arguments are resolved during the second stage,
-i.e. when collecting viable candidates.
-Essentially,
-argument names are just a means of matching arguments to parameters.
-Positional calls do this by matching arguments to parameters from left to right,
-named calls do it by name.
-Whether a call uses positional or named arguments is irrelevant to which overload is better.
+using P = int .x; // Same syntax is used for the parameter type.
+int f(P);         // OK, redeclares f
+}
+}
+
+\h3{Why require an explicit opt-in?}
+
+An obvious question is why an explicit opt-in should be necessary at all.
+After all, many other languages such as Kotlin allow
+any function parameter to be called with both positional and named syntax.
+However, we chose not to pursue this for a number of reasons:
+
+\ol{
+  \li{
+    The massive amount of existing C++ code would all inadvertently opt into
+    being called with named arguments.
+    Parameter names in libraries were historically inconsequential and something
+    that the library author can change arbitrarily.
+    Even in C++26, the only way to observe parameter names is using reflection.
+    It would be problematic to make the entire ecosystem shift
+    towards parameter names becoming part of the API.
+  }
+  \li{
+    After long discussion,
+    we were unable to come up with an elegant solution to forwarding
+    for parameter names.
+    By comparison, our current design allows any existing \tcode{emplace} function
+    to work with named parameters.
+  }
+  \li{
+    If parameter names are not part of function type,
+    detecting problems such as inconsistent parameters across TUs becomes difficult.
+    If they are part of the type, that type is mangled.
+  }
+  \li{
+    Function pointers or features such as \tcode{std::function_ref}
+    could not interoperate without an explicit opt in.
+    Our approach allows for \tcode{std::function_ref<int(int .x)>}.
+  }
+}
 
 \h3{Mixing named and positional arguments}
 
@@ -824,9 +869,11 @@ emit_html_element("div", .id = "container");
 
 \h3{Forwarding named arguments}
 
-Past proposals have faced concerns over the ability to forward argument names,
-such as in:
+Past proposals have faced concerns over the ability to forward argument names.
+This is something that works \q{out of the box} with our design
+because parameter names simply become part of the type.
 
+\Bex{
 \cppblock{
 template<class... Args>
 T& emplace(Args&&... args) {
@@ -834,103 +881,209 @@ T& emplace(Args&&... args) {
   // ...
   return *p;
 }
-}
 
-While the following syntax is \u{not} proposed,
-it is possible to allow forwarding in the future,
-with mechanics like:
+// OK, Args deduces to int.x,
+// i.e. "int with label x".
+emplace(.x = 100);
 
-\cppblock{
-template<class... Args, std::meta::info... names>
-T& emplace(Args&&... args .names) {
-    T* p = new (storage) T(.[: names :]... = std::forward<Args>(args)...);
-    // ...
-    return *p;
+// OK, Args deduces to int&.x,
+// i.e. "lvalue reference to int, with label x".
+int value = 42;
+emplace(.x = value);
 }
 }
 
-Now that C++26 has reflection,
-there seems to be a realistic path to forwarding argument names.
-While the syntax is obviously up for debate,
-the basic idea is:
+\h3{Calling labeled parameters with positional arguments}
 
+It is possible to call a function with a labeled parameter
+using a positional argument.
+This is a hugely important design aspect because
 \ul{
   \li{
-    "\tcode{args .names}"
-    deduces a pack of argument names as \tcode{std::meta::info}.
-    Note that this cannot be done with \tcode{std::string_view}
-    because it is not a structural type,
-    and even if it was,
-    it is unclear what the pointer inside would point to.
-    "\tcode{args .names}" could also work bidirectionally,
-    i.e. it could be used to specify the parameter names separately.
+    it provides libraries an upgrade path from positional-only parameters
+    to labeled parameters
+    without breaking API, and
   }
   \li{
-    "\tcode{.[: names :]...}"
-    performs a pack expansion of an argument name slice.
-    In other words, each of the names in \tcode{names}
-    would be used as an argument name when calling \tcode{T}'s constructor.
+    there are many cases where providing a named argument does not add clarity.
   }
 }
 
-If it was possible to deduce argument names,
-this would also enable support for named arguments in \tcode{std::format}:
-
+\Bex{
 \cppblock{
-template<typename... Args, meta::info... names>
-string format(format_string<Args...>, Args&&... args .names);
+void print_number(int x, int .base = 10);
 
-format("{x}", .x = 100); // Args  = [ int ]
-                         // names = [ "x" ]
+print_number(100, 16);           // Confusing and unclear. What does 16 mean here?
+print_number(100, .base = 16);   // Better: we know what "16" means now.
+
+constexpr int base = 16;
+print_number(100, .base = base); // Redundant. 
+print_number(100, base);         // Better: no need to repeat ourselves.
+}
 }
 
-\h3{\tt{[[positional]]}}
+The reason why \tcode{print_number(100, 16)} works
+is that an implicit conversion sequence from \tcode{16}
+(which is a prvalue of type \tcode{int}) to \tcode{int .base} is formed.
+This is treated like an identity conversion sequence
+for the purpose of overload resolution.
+Such a \q{labeling conversion} preserves the value of the expression and
+value category exactly,
+so it only exists on paper,
+much like a conversion from \tcode{int} to \tcode{int}.
 
-While library authors in C++ don't feel comfortable
-with making a parameter name a permanent part of the API,
-experience from other languages with named argument support (e.g. Kotlin)
-tells us that "parameter name permanence" is largely a non-issue.
-It is rare that a parameter name would have to be changed.
+Crucially,
+an argument of labeled type cannot be converted to another labeled type
+because this would alter the name against the user's intent,
+and the name cannot be dropped.
 
-Nonetheless, there are certain instances where parameter name stability
-cannot be guaranteed,
-and to cover this case,
-we propose a \tcode{[[positional]]} attribute,
-which may be applied to a function declaration.
-This attribute enables a warning if a function is called with named arguments:
+\h3{Macro-friendliness}
+
+A potential issue with the syntax \tcode{int .x}
+is that the identifier \tcode{x} can no longer be used as the name of a macro.
+When a large library opts into named parameters in large amounts of code,
+this could have some chance of conflicting with macros defined by the user.
+The standard library uses reserved names like \tcode{__param} or \tcode{_Param}
+to avoid this conflict.
+
+To solve this problem, we propose an alias template that enables spelling
+a labeled parameter using a string literal:
+
+\cppblock{
+// Similar trick to std::constant_wrapper to allow passing string literals:
+template<class T, \exposid{cw-fixed-value} Label>
+using labeled = __builtin_labeled_type(T, Label.\exposid{data});
+}
+
+\Bex{
+This alias template permits the user to write the following:
+\cppblock{
+void f(int .x); // OK
+void f(std::labeled<int, "x">); // OK, redeclaration of f
+}
+}
+
+While it would also be possible to have a builtin syntax like \tcode{int ."x"}
+rather than \tcode{std::labeled<int, "x">},
+this whole problem is relatively minor anyway,
+and adding a second competing syntax appears excessive.
+Most C++ users happily use identifiers like \tcode{x}
+without needing to protect against macros.
+
+\h3{Out-of-order named arguments}
+
+We also propose to allow for reordering of named arguments
+to fit the respective parameters.
 
 \Bex{
 \cppblock{
-[[positional]] void f(int x);
-f(.x = 0); // warning: f should only be called with positional arguments
+void f(int .x, int .y);
+f(.y = 1, .x = 0); // OK, the first parameter is initialized to 0
 }
 }
 
-Such an attribute is particularly useful for functions where only positional calls make sense.
+This requires altering overload resolution so that named arguments
+can be mapped onto their respective parameters,
+prior to forming any implicit conversion sequence and even
+prior to template argument deduction.
 
 \Bex{
-Consider the following function template:
 \cppblock{
-template<class T>
-[[positional]] T max(const T& x, const T& y) {
-  return x < y ? y : x;
+void f(auto a, auto b);
+f(.y = 1, .x = 0); // OK, deduces first parameter to int.y,
+                   // but no attempt at reordering is made
 }
 }
 
-Because we "disallow" named arguments,
-we retain the freedom to turn this into a variadic function template later:
+\h3{Disqualifying overloads early}
+
+As explained in \ref(#simplifying-overload-resolution),
+cutting down the number of candidate overloads via argument names
+is an important design goal.
+To do this,
+the disqualification would have to occur early in the process,
+even before template argument deduction.
+
+\Bex{
+Consider the following example with two (abbreviated) function templates:
 \cppblock{
-template<class T, class... Us>
-  requires (std::is_same_v<T, Us> && ...)
-[[positional]] T max(const T& x, const Us&... ys) {
+void f(auto .x) { /* ... */ }
+void f(auto .y) { /* ... */ }
+
+f(.y = 0); // OK, calls second overload
+}
+
+A notably feature is that template argument deduction does not take place
+for \tcode{f(auto .x)};
+the entire candidate is disqualified because the argument is of a labeled type
+whose label does not match any parameter label in \tcode{f}.
+}
+
+\Btodo{
+An unresolved problem is that this early disqualification
+breaks down when either the argument or the parameter are dependent.
+It is also not yet clear how deduction could be skipped if the first
+overload was declared \tcode{void f(auto)},
+since that signature does accept labeled types.
+}
+
+\h3{C compatibility}
+
+Surprisingly, even with the explicit opt-in syntax,
+it is possible to achieve C compatibility.
+
+\Bex{
+The following example shows a header that can be used in both C and C++:
+
+\cppblock{
+#ifdef __cplusplus
+extern "C" void* memcpy(void* .dest, const void* .src, size_t .count);
+#else
+void* memcpy(void dest, const void* src, size_t count);
+#endif
+}
+
+C++ users can call \tcode{memcpy} using both named and positional arguments,
+whereas C users can only call \tcode{memcpy} using positional arguments.
+This approach relies on the fact that \tcode{extern "C"}
+disables mangling of the parameter names,
+so the underlying symbol is called \tcode{memcpy}.
+It also relies on the fact that a labeled type
+has the same value ABI properties as its underlying type,
+similar to how \tcode{const int} has the same ABI as \tcode{int}.
+}
+
+The design of the proposal can also be adopted by C in principle.
+
+\h3{Cross-version compatibility}
+
+It may also be possible to extend this approach beyond \tcode{extern "C"}
+in order to reduce \q{upgrade friction}.
+For example, consider if we had a \tcode{\keyword{callable_nameless}}
+keyword to deactivate label mangling:
+
+\cppblock{
+// OK, two declarations with distinct types:
+void f(int .x);
+void f(int);
+
+void f(int .x) \keyword{callable_nameless};
+void f(int) \keyword{callable_nameless}; // error: cannot differ only in name
+}
+
+Crucially, this enables shipping a header with the signature
+\tcode{void f(int .x) \keyword{callable_nameless};} in C++29 and
+\tcode{void f(int);} in any older version, down to C++98.
+Without any ODR violation,
+it would be possible to define the function in a source file later like:
+\cppblock{
+void f(int .x) /* callable_nameless need not be repeated */ {
   // ...
 }
 }
-}
 
-That being said,
-calling functions \tcode{max} with named arguments is dubious in the first place,
-and it is unlikely that much — or any code would be broken by changing \tcode{y}.
+This means that conditional compilation is only ever needed in headers,
+not in source files.
 
 \h2{Impact on the standard}
 

@@ -1472,6 +1472,62 @@ if (theme !== null) {
 </div>
 <main>
 <style>
+  html {
+    --light-edit-note-block-border-color: #6faba9;
+    --light-edit-note-block-background-color: #e6f4f3;
+    --light-edit-note-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%236faba9"><path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>');
+
+    --dark-edit-note-block-border-color: #6faba9;
+    --dark-edit-note-block-background-color: #232f30;
+    --dark-edit-note-block-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="%236faba9"><path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>');
+
+    --light-diff-comment-color: #386a57ff;
+    --dark-diff-comment-color: #a7c7bbff;
+  }
+
+  @media (prefers-color-scheme: light) {
+    html {
+      --edit-note-block-border-color: var(--light-edit-note-block-border-color);
+      --edit-note-block-background-color: var(--light-edit-note-block-background-color);
+      --edit-note-block-image: var(--light-edit-note-block-image);
+      --diff-comment-color: var(--light-diff-comment-color);
+    }
+  }
+  @media (prefers-color-scheme: dark) {
+    html {
+      --edit-note-block-border-color: var(--dark-edit-note-block-border-color);
+      --edit-note-block-background-color: var(--dark-edit-note-block-background-color);
+      --edit-note-block-image: var(--dark-edit-note-block-image);
+      --diff-comment-color: var(--dark-diff-comment-color);
+    }
+  }
+  html.light {
+    --edit-note-block-border-color: var(--light-edit-note-block-border-color);
+    --edit-note-block-background-color: var(--light-edit-note-block-background-color);
+    --edit-note-block-image: var(--light-edit-note-block-image);
+    --diff-comment-color: var(--light-diff-comment-color);
+  }
+  html.dark {
+    --edit-note-block-border-color: var(--dark-edit-note-block-border-color);
+    --edit-note-block-background-color: var(--dark-edit-note-block-background-color);
+    --edit-note-block-image: var(--dark-edit-note-block-image);
+    --diff-comment-color: var(--dark-diff-comment-color);
+  }
+
+  note-block.edit {
+    background-color: var(--edit-note-block-background-color);
+    border-left: var(--border-thickness) solid var(--edit-note-block-border-color);
+  }
+
+  note-block.edit::before {
+    background-image: var(--edit-note-block-image);
+  }
+
+  note-block.edit intro-::before {
+    content: "Drafting note:";
+    color: var(--edit-note-block-border-color);
+  }
+
   ins-block .para::before {
     display: none;
   }
@@ -1482,6 +1538,12 @@ if (theme !== null) {
   }
 
   .opt {
+    font-family: var(--serif-family);
+    font-style: oblique;
+  }
+
+  .normal {
+    font-style: normal;
     font-family: var(--serif-family);
   }
 
@@ -1502,6 +1564,12 @@ if (theme !== null) {
   }
   q::after {
     content: "”";
+  }
+
+  diff-block h-[data-h^=cmt],
+  html.light diff-block h-[data-h^=cmt],
+  html.dark diff-block h-[data-h^=cmt] {
+    color: var(--diff-comment-color);
   }
 </style>
 
@@ -1571,13 +1639,23 @@ We propose a syntax for calling C++ functions with named arguments.
 <div class=toc-num data-level=2>4</div>
 <a href=#design><h2>Design</h2></a>
 <div class=toc-num data-level=3>4.1</div>
-<a href=#overload-resolution-impact><h3>Overload resolution impact</h3></a>
+<a href=#why-require-an-explicit-opt-in><h3>Why require an explicit opt-in?</h3></a>
 <div class=toc-num data-level=3>4.2</div>
 <a href=#mixing-named-and-positional-arguments><h3>Mixing named and positional arguments</h3></a>
 <div class=toc-num data-level=3>4.3</div>
 <a href=#forwarding-named-arguments><h3>Forwarding named arguments</h3></a>
 <div class=toc-num data-level=3>4.4</div>
-<a href=#positional><h3><tt->[[positional]]</tt-></h3></a>
+<a href=#calling-labeled-parameters-with-positional-arguments><h3>Calling labeled parameters with positional arguments</h3></a>
+<div class=toc-num data-level=3>4.5</div>
+<a href=#macro-friendliness><h3>Macro-friendliness</h3></a>
+<div class=toc-num data-level=3>4.6</div>
+<a href=#out-of-order-named-arguments><h3>Out-of-order named arguments</h3></a>
+<div class=toc-num data-level=3>4.7</div>
+<a href=#disqualifying-overloads-early><h3>Disqualifying overloads early</h3></a>
+<div class=toc-num data-level=3>4.8</div>
+<a href=#c-compatibility><h3>C compatibility</h3></a>
+<div class=toc-num data-level=3>4.9</div>
+<a href=#cross-version-compatibility><h3>Cross-version compatibility</h3></a>
 <div class=toc-num data-level=2>5</div>
 <a href=#impact-on-the-standard><h2>Impact on the standard</h2></a>
 <div class=toc-num data-level=3>5.1</div>
@@ -1592,13 +1670,17 @@ We propose a syntax for calling C++ functions with named arguments.
 
 <h2 id=introduction><a class=para href=#introduction></a>1. Introduction</h2>
 
-<p>We propose a syntax for calling C++ functions with named arguments:
+<p>We propose a syntax
+for declaring C++ functions with named parameters and
+for calling C++ functions with named arguments:
 </p>
-<code-block><h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>y</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>1</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>z</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>2</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+<code-block><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Declare a function with three "labeled parameters".</h->
+<h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>z</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
-<p>There is no consensus yet on whether changes to C++ function declarations are needed
-to opt into this call syntax.
-</p>
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Call that function with named arguments,</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> not in the same order as declared.</h->
+<h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>z</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>2</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>y</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
 <p>A call syntax like this has been suggested multiple times historically
 in <a href="https://wg21%2elink/n4172">[N4172]</a>, <a href="https://wg21%2elink/p0671r2">[P0671R2]</a>, and <a href="https://wg21%2elink/p1229r0">[P1229R0]</a>,
 but never in a way that found consensus in WG21.
@@ -1655,8 +1737,8 @@ See also <a href=#simplifying-overload-resolution>§3.1. Simplifying overload re
 
 <p>Users don't want to maintain these additional parameter <code><h- data-h=kw>struct</h-></code>s.
 They make a simple problem of passing named arguments more tedious than it needs to be.
-Realistically, if someone proposed to add an overload to <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>lerp</h-></code>
-that took <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>lerp_args</h-></code>, they would be laughed out of LEWG.
+Realistically, proposing to add an overload to <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>lerp</h-></code>
+that took <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>lerp_args</h-></code> would likely not be fruitful.
 While the existing declaration is obviously problematic,
 it would be a huge burden
 on the committee to maintain these additional argument <code><h- data-h=kw>struct</h-></code>s.
@@ -1883,7 +1965,7 @@ Yes=6, No=11.
 </ul>
 
 <p>We believe that our proposal meaningfully addresses all of these criticisms.
-The language has evolved significantly since 2025,
+The language has evolved significantly since 2014,
 and the perspective on many of these issues changed.
 </p>
 <h3 id=p0671r2-self-explanatory-function-arguments><a class=para href=#p0671r2-self-explanatory-function-arguments></a>2.2. P0671R2 "Self-explanatory function arguments"</h3>
@@ -2288,24 +2370,62 @@ for each "attribute".
 </p>
 <h2 id=design><a class=para href=#design></a>4. Design</h2>
 
-<h3 id=overload-resolution-impact><a class=para href=#overload-resolution-impact></a>4.1. Overload resolution impact</h3>
+<p>To cornerstone of the design is the introduction of <dfn>labeled parameters</dfn>,
+which are parameters of <dfn>labeled type</dfn>.
+This makes parameter types with a label a distinct fundamental type
+that is <q>tagged</q> or <q>labelled</q> with the desired argument name.
+</p>
+<example-block><p><intro-></intro-> 
+In this code below,
+the function <code><h- data-h=id>f</h-></code> has a single parameter of type
+<q><code><h- data-h=kw_type>int</h-></code> with label <tt->x</tt-></q>.
+</p>
+<code-block><h- data-h=kw_type>int</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> The label of the parameter is simultaneously the name</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> found by lookup within the function.</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h->
 
-<p>In short, C++ function calls are resolved in the following stages:
+<h- data-h=kw>using</h-> <h- data-h=id>P</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Same syntax is used for the parameter type.</h->
+<h- data-h=kw_type>int</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=id>P</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, redeclares f</h-></code-block>
+</example-block>
+
+<h3 id=why-require-an-explicit-opt-in><a class=para href=#why-require-an-explicit-opt-in></a>4.1. Why require an explicit opt-in?</h3>
+
+<p>An obvious question is why an explicit opt-in should be necessary at all.
+After all, many other languages such as Kotlin allow
+any function parameter to be called with both positional and named syntax.
+However, we chose not to pursue this for a number of reasons:
 </p>
 <ol>
-  <li>name lookup</li>
-  <li>collecting viable candidates</li>
-  <li>selecting the best viable candidate using various tie breakers</li>
+  <li>
+    The massive amount of existing C++ code would all inadvertently opt into
+    being called with named arguments.
+    Parameter names in libraries were historically inconsequential and something
+    that the library author can change arbitrarily.
+    Even in C++26, the only way to observe parameter names is using reflection.
+    It would be problematic to make the entire ecosystem shift
+    towards parameter names becoming part of the API.
+  </li>
+  <li>
+    After long discussion,
+    we were unable to come up with an elegant solution to forwarding
+    for parameter names.
+    By comparison, our current design allows any existing <code><h- data-h=id>emplace</h-></code> function
+    to work with named parameters.
+  </li>
+  <li>
+    If parameter names are not part of function type,
+    detecting problems such as inconsistent parameters across TUs becomes difficult.
+    If they are part of the type, that type is mangled.
+  </li>
+  <li>
+    Function pointers or features such as <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>function_ref</h-></code>
+    could not interoperate without an explicit opt in.
+    Our approach allows for <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>function_ref</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-></code>.
+  </li>
 </ol>
 
-<p>Named arguments are resolved during the second stage,
-i.e. when collecting viable candidates.
-Essentially,
-argument names are just a means of matching arguments to parameters.
-Positional calls do this by matching arguments to parameters from left to right,
-named calls do it by name.
-Whether a call uses positional or named arguments is irrelevant to which overload is better.
-</p>
 <h3 id=mixing-named-and-positional-arguments><a class=para href=#mixing-named-and-positional-arguments></a>4.2. Mixing named and positional arguments</h3>
 
 <p>We propose a heavily restricted form of mixing name and positional arguments.
@@ -2326,101 +2446,201 @@ The following calls could be valid:
 
 <h3 id=forwarding-named-arguments><a class=para href=#forwarding-named-arguments></a>4.3. Forwarding named arguments</h3>
 
-<p>Past proposals have faced concerns over the ability to forward argument names,
-such as in:
+<p>Past proposals have faced concerns over the ability to forward argument names.
+This is something that works <q>out of the box</q> with our design
+because parameter names simply become part of the type.
 </p>
-<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-><h- data-h=sym_op>...</h-> <h- data-h=id>Args</h-><h- data-h=sym_op>&gt;</h->
+<example-block><p><intro-></intro-> 
+</p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-><h- data-h=sym_op>...</h-> <h- data-h=id>Args</h-><h- data-h=sym_op>&gt;</h->
 <h- data-h=id>T</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>emplace</h-><h- data-h=sym_par>(</h-><h- data-h=id>Args</h-><h- data-h=sym_op>&amp;&amp;</h-><h- data-h=sym_op>...</h-> <h- data-h=id>args</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=id>T</h-><h- data-h=sym_op>*</h-> <h- data-h=id>p</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw>new</h-> <h- data-h=sym_par>(</h-><h- data-h=id>storage</h-><h- data-h=sym_par>)</h-> <h- data-h=id>T</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>forward</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>Args</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>args</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>...</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
   <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_op>*</h-><h- data-h=id>p</h-><h- data-h=sym_punc>;</h->
-<h- data-h=sym_brac>}</h-></code-block>
+<h- data-h=sym_brac>}</h->
 
-<p>While the following syntax is <u>not</u> proposed,
-it is possible to allow forwarding in the future,
-with mechanics like:
-</p>
-<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-><h- data-h=sym_op>...</h-> <h- data-h=id>Args</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>meta</h-><h- data-h=sym_op>::</h-><h- data-h=id>info</h-><h- data-h=sym_op>...</h-> <h- data-h=id>names</h-><h- data-h=sym_op>&gt;</h->
-<h- data-h=id>T</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>emplace</h-><h- data-h=sym_par>(</h-><h- data-h=id>Args</h-><h- data-h=sym_op>&amp;&amp;</h-><h- data-h=sym_op>...</h-> <h- data-h=id>args</h-> <h- data-h=sym_op>.</h-><h- data-h=id>names</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=id>T</h-><h- data-h=sym_op>*</h-> <h- data-h=id>p</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw>new</h-> <h- data-h=sym_par>(</h-><h- data-h=id>storage</h-><h- data-h=sym_par>)</h-> <h- data-h=id>T</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_punc>:</h-> <h- data-h=id>names</h-> <h- data-h=sym_punc>:</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_op>...</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>forward</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>Args</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>args</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>...</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
-    <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_op>*</h-><h- data-h=id>p</h-><h- data-h=sym_punc>;</h->
-<h- data-h=sym_brac>}</h-></code-block>
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, Args deduces to int.x,</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> i.e. "int with label x".</h->
+<h- data-h=id>emplace</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>100</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
-<p>Now that C++26 has reflection,
-there seems to be a realistic path to forwarding argument names.
-While the syntax is obviously up for debate,
-the basic idea is:
-</p>
-<ul>
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, Args deduces to int&amp;.x,</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> i.e. "lvalue reference to int, with label x".</h->
+<h- data-h=kw_type>int</h-> <h- data-h=id>value</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>42</h-><h- data-h=sym_punc>;</h->
+<h- data-h=id>emplace</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+</example-block>
+
+<h3 id=calling-labeled-parameters-with-positional-arguments><a class=para href=#calling-labeled-parameters-with-positional-arguments></a>4.4. Calling labeled parameters with positional arguments</h3>
+
+<p>It is possible to call a function with a labeled parameter
+using a positional argument.
+This is a hugely important design aspect because
+</p><ul>
   <li>
-    "<code><h- data-h=id>args</h-> <h- data-h=sym_op>.</h-><h- data-h=id>names</h-></code>"
-    deduces a pack of argument names as <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>meta</h-><h- data-h=sym_op>::</h-><h- data-h=id>info</h-></code>.
-    Note that this cannot be done with <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>string_view</h-></code>
-    because it is not a structural type,
-    and even if it was,
-    it is unclear what the pointer inside would point to.
-    "<code><h- data-h=id>args</h-> <h- data-h=sym_op>.</h-><h- data-h=id>names</h-></code>" could also work bidirectionally,
-    i.e. it could be used to specify the parameter names separately.
+    it provides libraries an upgrade path from positional-only parameters
+    to labeled parameters
+    without breaking API, and
   </li>
   <li>
-    "<code><h- data-h=sym_op>.</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_punc>:</h-> <h- data-h=id>names</h-> <h- data-h=sym_punc>:</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_op>...</h-></code>"
-    performs a pack expansion of an argument name slice.
-    In other words, each of the names in <code><h- data-h=id>names</h-></code>
-    would be used as an argument name when calling <code><h- data-h=id>T</h-></code>'s constructor.
+    there are many cases where providing a named argument does not add clarity.
   </li>
 </ul>
 
-<p>If it was possible to deduce argument names,
-this would also enable support for named arguments in <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>format</h-></code>:
-</p>
-<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>typename</h-><h- data-h=sym_op>...</h-> <h- data-h=id>Args</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>meta</h-><h- data-h=sym_op>::</h-><h- data-h=id>info</h-><h- data-h=sym_op>...</h-> <h- data-h=id>names</h-><h- data-h=sym_op>&gt;</h->
-<h- data-h=id>string</h-> <h- data-h=id>format</h-><h- data-h=sym_par>(</h-><h- data-h=id>format_string</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>Args</h-><h- data-h=sym_op>...</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>Args</h-><h- data-h=sym_op>&amp;&amp;</h-><h- data-h=sym_op>...</h-> <h- data-h=id>args</h-> <h- data-h=sym_op>.</h-><h- data-h=id>names</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-
-<h- data-h=id>format</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>{x}</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>100</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Args  = [ int ]</h->
-                         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> names = [ "x" ]</h-></code-block>
-
-<h3 id=positional><a class=para href=#positional></a>4.4. <tt->[[positional]]</tt-></h3>
-
-<p>While library authors in C++ don't feel comfortable
-with making a parameter name a permanent part of the API,
-experience from other languages with named argument support (e.g. Kotlin)
-tells us that "parameter name permanence" is largely a non-issue.
-It is rare that a parameter name would have to be changed.
-</p>
-<p>Nonetheless, there are certain instances where parameter name stability
-cannot be guaranteed,
-and to cover this case,
-we propose a <code><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=id>positional</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-></code> attribute,
-which may be applied to a function declaration.
-This attribute enables a warning if a function is called with named arguments:
-</p>
 <example-block><p><intro-></intro-> 
-</p><code-block><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=id>positional</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> warning: f should only be called with positional arguments</h-></code-block>
+</p><code-block><h- data-h=kw_type>void</h-> <h- data-h=id>print_number</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=id>print_number</h-><h- data-h=sym_par>(</h-><h- data-h=num>100</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>16</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->           <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Confusing and unclear. What does 16 mean here?</h->
+<h- data-h=id>print_number</h-><h- data-h=sym_par>(</h-><h- data-h=num>100</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>16</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Better: we know what "16" means now.</h->
+
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=id>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>16</h-><h- data-h=sym_punc>;</h->
+<h- data-h=id>print_number</h-><h- data-h=sym_par>(</h-><h- data-h=num>100</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>base</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Redundant. </h->
+<h- data-h=id>print_number</h-><h- data-h=sym_par>(</h-><h- data-h=num>100</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>base</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Better: no need to repeat ourselves.</h-></code-block>
 </example-block>
 
-<p>Such an attribute is particularly useful for functions where only positional calls make sense.
+<p>The reason why <code><h- data-h=id>print_number</h-><h- data-h=sym_par>(</h-><h- data-h=num>100</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>16</h-><h- data-h=sym_par>)</h-></code> works
+is that an implicit conversion sequence from <code><h- data-h=num>16</h-></code>
+(which is a prvalue of type <code><h- data-h=kw_type>int</h-></code>) to <code><h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>base</h-></code> is formed.
+This is treated like an identity conversion sequence
+for the purpose of overload resolution.
+Such a <q>labeling conversion</q> preserves the value of the expression and
+value category exactly,
+so it only exists on paper,
+much like a conversion from <code><h- data-h=kw_type>int</h-></code> to <code><h- data-h=kw_type>int</h-></code>.
+</p>
+<p>Crucially,
+an argument of labeled type cannot be converted to another labeled type
+because this would alter the name against the user's intent,
+and the name cannot be dropped.
+</p>
+<h3 id=macro-friendliness><a class=para href=#macro-friendliness></a>4.5. Macro-friendliness</h3>
+
+<p>A potential issue with the syntax <code><h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-></code>
+is that the identifier <code><h- data-h=id>x</h-></code> can no longer be used as the name of a macro.
+When a large library opts into named parameters in large amounts of code,
+this could have some chance of conflicting with macros defined by the user.
+The standard library uses reserved names like <code><h- data-h=id>__param</h-></code> or <code><h- data-h=id>_Param</h-></code>
+to avoid this conflict.
+</p>
+<p>To solve this problem, we propose an alias template that enables spelling
+a labeled parameter using a string literal:
+</p>
+<code-block><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Similar trick to std::constant_wrapper to allow passing string literals:</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=id>cw-fixed-value</h-></i> <h- data-h=id>Label</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=kw>using</h-> <h- data-h=id>labeled</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>__builtin_labeled_type</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>Label</h-><h- data-h=sym_op>.</h-><i><h- data-h=id>data</h-></i><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<example-block><p><intro-></intro-> 
+This alias template permits the user to write the following:
+</p><code-block><h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK</h->
+<h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>labeled</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>"</h-><h- data-h=str>x</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, redeclaration of f</h-></code-block>
+</example-block>
+
+<p>While it would also be possible to have a builtin syntax like <code><h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=str_dlim>"</h-><h- data-h=str>x</h-><h- data-h=str_dlim>"</h-></code>
+rather than <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>labeled</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_punc>,</h-> <h- data-h=str_dlim>"</h-><h- data-h=str>x</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_op>&gt;</h-></code>,
+this whole problem is relatively minor anyway,
+and adding a second competing syntax appears excessive.
+Most C++ users happily use identifiers like <code><h- data-h=id>x</h-></code>
+without needing to protect against macros.
+</p>
+<h3 id=out-of-order-named-arguments><a class=para href=#out-of-order-named-arguments></a>4.6. Out-of-order named arguments</h3>
+
+<p>We also propose to allow for reordering of named arguments
+to fit the respective parameters.
 </p>
 <example-block><p><intro-></intro-> 
-Consider the following function template:
-</p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
-<h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=id>positional</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=id>T</h-> <h- data-h=id>max</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
-  <h- data-h=kw_ctrl>return</h-> <h- data-h=id>x</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=id>y</h-> <h- data-h=sym_op>?</h-> <h- data-h=id>y</h-> <h- data-h=sym_punc>:</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>;</h->
-<h- data-h=sym_brac>}</h-></code-block>
+</p><code-block><h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>y</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>1</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, the first parameter is initialized to 0</h-></code-block>
+</example-block>
 
-<p>Because we "disallow" named arguments,
-we retain the freedom to turn this into a variadic function template later:
-</p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-><h- data-h=sym_op>...</h-> <h- data-h=id>Us</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>requires</h-> <h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>is_same_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>Us</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=sym_op>...</h-><h- data-h=sym_par>)</h->
-<h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=id>positional</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=id>T</h-> <h- data-h=id>max</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=id>Us</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_op>...</h-> <h- data-h=id>ys</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+<p>This requires altering overload resolution so that named arguments
+can be mapped onto their respective parameters,
+prior to forming any implicit conversion sequence and even
+prior to template argument deduction.
+</p>
+<example-block><p><intro-></intro-> 
+</p><code-block><h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw>auto</h-> <h- data-h=id>a</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>auto</h-> <h- data-h=id>b</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>y</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>1</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, deduces first parameter to int.y,</h->
+                   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> but no attempt at reordering is made</h-></code-block>
+</example-block>
+
+<h3 id=disqualifying-overloads-early><a class=para href=#disqualifying-overloads-early></a>4.7. Disqualifying overloads early</h3>
+
+<p>As explained in <a href=#simplifying-overload-resolution>§3.1. Simplifying overload resolution</a>,
+cutting down the number of candidate overloads via argument names
+is an important design goal.
+To do this,
+the disqualification would have to occur early in the process,
+even before template argument deduction.
+</p>
+<example-block><p><intro-></intro-> 
+Consider the following example with two (abbreviated) function templates:
+</p><code-block><h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw>auto</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>}</h->
+<h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw>auto</h-> <h- data-h=sym_op>.</h-><h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>}</h->
+
+<h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>y</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, calls second overload</h-></code-block>
+
+<p>A notably feature is that template argument deduction does not take place
+for <code><h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw>auto</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-></code>;
+the entire candidate is disqualified because the argument is of a labeled type
+whose label does not match any parameter label in <code><h- data-h=id>f</h-></code>.
+</p></example-block>
+
+<todo-block><p><intro-></intro-> 
+An unresolved problem is that this early disqualification
+breaks down when either the argument or the parameter are dependent.
+It is also not yet clear how deduction could be skipped if the first
+overload was declared <code><h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw>auto</h-><h- data-h=sym_par>)</h-></code>,
+since that signature does accept labeled types.
+</p></todo-block>
+
+<h3 id=c-compatibility><a class=para href=#c-compatibility></a>4.8. C compatibility</h3>
+
+<p>Surprisingly, even with the explicit opt-in syntax,
+it is possible to achieve C compatibility.
+</p>
+<example-block><p><intro-></intro-> 
+The following example shows a header that can be used in both C and C++:
+</p>
+<code-block><h- data-h=mac>#ifdef __cplusplus</h->
+<h- data-h=kw>extern</h-> <h- data-h=str_dlim>"</h-><h- data-h=str>C</h-><h- data-h=str_dlim>"</h-> <h- data-h=kw_type>void</h-><h- data-h=sym_op>*</h-> <h- data-h=id>memcpy</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>void</h-><h- data-h=sym_op>*</h-> <h- data-h=sym_op>.</h-><h- data-h=id>dest</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>void</h-><h- data-h=sym_op>*</h-> <h- data-h=sym_op>.</h-><h- data-h=id>src</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_type>size_t</h-> <h- data-h=sym_op>.</h-><h- data-h=id>count</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=mac>#else</h->
+<h- data-h=kw_type>void</h-><h- data-h=sym_op>*</h-> <h- data-h=id>memcpy</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>void</h-> <h- data-h=id>dest</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>void</h-><h- data-h=sym_op>*</h-> <h- data-h=id>src</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_type>size_t</h-> <h- data-h=id>count</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=mac>#endif</h-></code-block>
+
+<p>C++ users can call <code><h- data-h=id>memcpy</h-></code> using both named and positional arguments,
+whereas C users can only call <code><h- data-h=id>memcpy</h-></code> using positional arguments.
+This approach relies on the fact that <code><h- data-h=kw>extern</h-> <h- data-h=str_dlim>"</h-><h- data-h=str>C</h-><h- data-h=str_dlim>"</h-></code>
+disables mangling of the parameter names,
+so the underlying symbol is called <code><h- data-h=id>memcpy</h-></code>.
+It also relies on the fact that a labeled type
+has the same value ABI properties as its underlying type,
+similar to how <code><h- data-h=kw>const</h-> <h- data-h=kw_type>int</h-></code> has the same ABI as <code><h- data-h=kw_type>int</h-></code>.
+</p></example-block>
+
+<p>The design of the proposal can also be adopted by C in principle.
+</p>
+<h3 id=cross-version-compatibility><a class=para href=#cross-version-compatibility></a>4.9. Cross-version compatibility</h3>
+
+<p>It may also be possible to extend this approach beyond <code><h- data-h=kw>extern</h-> <h- data-h=str_dlim>"</h-><h- data-h=str>C</h-><h- data-h=str_dlim>"</h-></code>
+in order to reduce <q>upgrade friction</q>.
+For example, consider if we had a <code><h- data-h=kw>callable_nameless</h-></code>
+keyword to deactivate label mangling:
+</p>
+<code-block><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, two declarations with distinct types:</h->
+<h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>callable_nameless</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>callable_nameless</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> error: cannot differ only in name</h-></code-block>
+
+<p>Crucially, this enables shipping a header with the signature
+<code><h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>callable_nameless</h-><h- data-h=sym_punc>;</h-></code> in C++29 and
+<code><h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code> in any older version, down to C++98.
+Without any ODR violation,
+it would be possible to define the function in a source file later like:
+</p><code-block><h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> callable_nameless need not be repeated </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
 <h- data-h=sym_brac>}</h-></code-block>
-</example-block>
 
-<p>That being said,
-calling functions <code><h- data-h=id>max</h-></code> with named arguments is dubious in the first place,
-and it is unlikely that much — or any code would be broken by changing <code><h- data-h=id>y</h-></code>.
+<p>This means that conditional compilation is only ever needed in headers,
+not in source files.
 </p>
 <h2 id=impact-on-the-standard><a class=para href=#impact-on-the-standard></a>5. Impact on the standard</h2>
 
