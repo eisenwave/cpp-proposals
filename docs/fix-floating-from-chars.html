@@ -1578,8 +1578,8 @@ if (theme !== null) {
   (LWG3081, LWG3082, LWG3456)</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/D4168R0>D4168R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-04-04</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P4168R0>P4168R0</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-04-05</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1610,7 +1610,7 @@ and every implementation diverges from the wording in the standard.
 <div class=toc-num data-level=4>1.2.1</div>
 <a href=#range-of-representable-values><h4>Range of representable values</h4></a>
 <div class=toc-num data-level=4>1.2.2</div>
-<a href=#no-handling-of-non-isoiec-60559-types><h4>No handling of non-ISO/IEC 60559 types</h4></a>
+<a href=#non-iso-60559-types><h4>No handling of non-ISO/IEC 60559 types</h4></a>
 <div class=toc-num data-level=4>1.2.3</div>
 <a href=#no-specification-of-parsing><h4>No specification of parsing</h4></a>
 <div class=toc-num data-level=4>1.2.4</div>
@@ -1625,6 +1625,8 @@ and every implementation diverges from the wording in the standard.
 <a href=#impact-on-existing-code><h3>Impact on existing code</h3></a>
 <div class=toc-num data-level=3>2.4</div>
 <a href=#alternatives-considered><h3>Alternatives considered</h3></a>
+<div class=toc-num data-level=3>2.5</div>
+<a href=#further-edge-cases><h3>Further edge cases</h3></a>
 <div class=toc-num data-level=2>3</div>
 <a href=#implementation-experience><h2>Implementation experience</h2></a>
 <div class=toc-num data-level=2>4</div>
@@ -1646,8 +1648,20 @@ and every implementation diverges from the wording in the standard.
 <p>In 2018, <a href="https://wg21%2elink/LWG3081">[LWG3081]</a> pointed out that the <code><h- data-h=id>from_chars</h-></code> API
 does not give the user a means of distinguishing floating-point overflow and underflow.
 The perceived defect is a loss of functionality compared to <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>strtod</h-></code>.
-This issue remains open till today despite having Priority 2.
+This issue remains open to this day despite having Priority 2.
 </p>
+<example-block><p><intro-></intro-> 
+An example of code affected by this detect looks as follows:
+</p><code-block><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-> <h- data-h=id>str</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_op>=</h-> <h- data-h=str_dlim>"</h-><h- data-h=str>1e100000</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw_type>float</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> assuming float in binary32 ISO/IEC 60559 format</h->
+<h- data-h=kw>const</h-> <h- data-h=kw>auto</h-> <h- data-h=sym_sqr>[</h-><h- data-h=id>p</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>ec</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>begin</h-><h- data-h=sym_par>(</h-><h- data-h=id>str</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>end</h-><h- data-h=sym_par>(</h-><h- data-h=id>str</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+<p>libstdc++ leaves <code><h- data-h=id>x</h-></code> unmodified, but libc++ and MSVC STL set it to <math display=inline><mi>∞</mi></math>.
+<code><h- data-h=id>ec</h-></code> is <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>errc</h-><h- data-h=sym_op>::</h-><h- data-h=id>result_out_of_range</h-></code> for all implementations,
+but the wording requires that <code><h- data-h=id>x</h-></code> is set to <math display=inline><mi>∞</mi></math> and
+that <code><h- data-h=id>ec</h-></code> is value-initialized,
+which no one implements.
+</p></example-block>
+
 <p>In 2023, <a href="https://wg21%2elink/p2827r1">[P2827R1]</a> attempted to solve this issue,
 but died in LEWG eventually.
 Lack of motivation within the paper was among the feedback given.
@@ -1779,12 +1793,13 @@ That definition was only added recently in 2023 via <a href="https://cplusplus%2
 the definition in <a href=https://eel.is/c++draft/basic.fundamental#13>[basic.fundamental] paragraph 13</a> includes <em>all real numbers</em>
 in that range,
 meaning that every standard library is incorrect
-for returning <code><h- data-h=id>errc</h-><h- data-h=sym_op>::</h-><h- data-h=id>result_out_of_range</h-></code>.
+for returning <code><h- data-h=id>errc</h-><h- data-h=sym_op>::</h-><h- data-h=id>result_out_of_range</h-></code>
+on overflow and underflow.
 Ergo, not only is underflow indistinguishable from overflow via error code,
 overflow, underflow, and exact rounding are all indistinguishable
 if the wording is implemented (which it isn't).
 </p>
-<h4 id=no-handling-of-non-isoiec-60559-types><a class=para href=#no-handling-of-non-isoiec-60559-types></a>1.2.2. No handling of non-ISO/IEC 60559 types</h4>
+<h4 id=non-iso-60559-types><a class=para href=#non-iso-60559-types></a>1.2.2. No handling of non-ISO/IEC 60559 types</h4>
 
 <p>Another problem with the wording is that it does not account for types
 that do not have a representation of infinity or NaN.
@@ -1809,7 +1824,8 @@ or that <code><h- data-h=str_dlim>"</h-><h- data-h=str>1</h-><h- data-h=str_dlim
 the single word <q>parsed</q>, which is not explained anywhere.
 While most such cases are obvious, <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>to_chars</h-></code> in libc++
 represents signaling NaNs as <code><h- data-h=str_dlim>"</h-><h- data-h=str>nan(snan)</h-><h- data-h=str_dlim>"</h-></code>,
-and it is unclear whether the implementation can recover a signaling NaN from such a string
+and it is unclear whether <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code>
+can recover a signaling NaN from such a string
 because there exists no wording for <q>parsed</q>.
 </p>
 <p>The intent is presumably to handle these cases like <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>strtod</h-></code>,
@@ -1924,7 +1940,7 @@ and correctly implements the ISO/IEC 60559 (or IEEE-754) operation
 conformance.
 <a href=https://eel.is/c++draft/charconv.from.chars>[charconv.from.chars]</a> even uses the <code><h- data-h=id>round_to_nearest</h-></code> rounding mode
 corresponding to <q>roundTiesToEven</q> already,
-which makes it extremely to the ISO/IEC 60559 operation.
+which makes it extremely similar to the ISO/IEC 60559 operation.
 </p>
 <p>As mentioned in <a href=#signaling-nans>§1.2.4. Signaling NaNs make <tt->std::from_chars</tt-> unimplementable</a>,
 it is also necessary to handle signaling NaNs in some way,
@@ -1948,7 +1964,7 @@ if we standardize the behavior of the other implementation:
     Users of MSVC STL and libc++ may rely on infinity or zero being written
     on <code><h- data-h=id>result_out_of_range</h-></code>,
     and suddenly leaving the value unmodified
-    would result in use of erroneous or even indeterminate memory for them.
+    would result in use of erroneous or even indeterminate values for these users.
   </li>
 </ul>
 
@@ -1968,11 +1984,32 @@ or matches the behavior of other functions such as <code><h- data-h=id>std</h-><
 Both alternatives make it difficult to simply ignore the <code><h- data-h=id>result_out_of_range</h-></code>
 error and use the value.
 </p>
+<h3 id=further-edge-cases><a class=para href=#further-edge-cases></a>2.5. Further edge cases</h3>
+
+<p>As explained in <a href=#non-iso-60559-types>§1.2.2. No handling of non-ISO/IEC 60559 types</a>,
+there are various edge cases such as parsing the string <code><h- data-h=str_dlim>"</h-><h- data-h=str>INFINITY</h-><h- data-h=str_dlim>"</h-></code>
+and attempting to store it in a floating-point type
+that does not have a representation of infinity.
+These edge cases are currently not handled in any explicit way
+by major standard library implementations.
+To my knowledge, all major standard libraries assume ISO/IEC-60559-like types,
+meaning that negative and positive infinity and NaN are also supported.
+</p>
+<p>The proposed solution is to handle these cases
+as closely as possible to <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>strtod</h-></code>,
+as specified in <a href=https://cigix.me/c23#7.24.1.5>C23 §7.24.1.5</a>.
+For example, this means that when <code><h- data-h=str_dlim>"</h-><h- data-h=str>inf</h-><h- data-h=str_dlim>"</h-></code> is parsed but not representable in the type,
+the greatest finite value is returned instead, and
+the error code is <code><h- data-h=id>errc</h-><h- data-h=sym_op>::</h-><h- data-h=id>result_out_of_range</h-></code>.
+</p>
 <h2 id=implementation-experience><a class=para href=#implementation-experience></a>3. Implementation experience</h2>
 
-<p>The proposed behavior has been released in MSVC STL and libc++.
+<p>The proposed behavior has been released in MSVC STL and libc++,
+except that the behavior in <a href=#further-edge-cases>§2.5. Further edge cases</a> does not need to be implemented
+and only exists on paper for these implementations.
 </p>
-<p>It has also been implemented as <code><h- data-h=id>boost</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars_erange</h-></code> (<a href="https://www%2eboost%2eorg/doc/libs/latest/libs/charconv/doc/html/charconv%2ehtml">[BoostCharConv]</a>).
+<p>The proposed behavior has also been implemented as
+<code><h- data-h=id>boost</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars_erange</h-></code> (<a href="https://www%2eboost%2eorg/doc/libs/latest/libs/charconv/doc/html/charconv%2ehtml">[BoostCharConv]</a>).
 </p>
 <h2 id=editorial-problems><a class=para href=#editorial-problems></a>4. Editorial problems</h2>
 
@@ -2032,6 +2069,8 @@ and should be rewritten so that the accepted pattern can be understood
 solely through <a href=https://eel.is/c++draft/charconv.from.chars>[charconv.from.chars]</a>.
 <a href="https://wg21%2elink/LWG3456">[LWG3456]</a> performs such a rewrite,
 but does not fully decouple <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>from_chars</h-></code> from the C wording.
+</p>
+<p>A proper rewrite can also fix the lack of clarity pointed out in <a href="https://wg21%2elink/LWG3082">[LWG3082]</a>.
 </p>
 <h2 id=wording><a class=para href=#wording></a>5. Wording</h2>
 
@@ -2121,7 +2160,7 @@ and the member <code><h- data-h=id>ec</h-></code> is value-initialized.</del></p
 Let the pattern be the maximal sequence of characters starting with <code><h- data-h=sym_op>*</h-><h- data-h=id>first</h-></code> that
 matches a <g-term>from-chars-signed-integer-pattern</g-term>
 if <code><h- data-h=id>value</h-></code> is of a signed type, and
-matches a <g-term>from-chars-unsigned-pattern</g-term> otherwise.
+matches a <g-term>from-chars-unsigned-integer-pattern</g-term> otherwise.
 </p>
 <dl class="grammar spaced-words">
   <dt><g-term>from-chars-signed-integer-pattern</g-term>:</dt>
@@ -2134,13 +2173,20 @@ matches a <g-term>from-chars-unsigned-pattern</g-term> otherwise.
   <dd>base-digit base-digit-seq<sub class=opt>opt</sub></dd>
 </dl>
 
-<p><g-term>base-digit</g-term> is digit character whose value is less than <code><h- data-h=id>base</h-></code>.
+<p><g-term>base-digit</g-term> is a digit character whose value is less than <code><h- data-h=id>base</h-></code>.
 The code points U+0030..U+0039 DIGIT ZERO..NINE
-represent digit characters with values in the range 0..9;
-Both U+0041..U+005A LATIN CAPITAL LETTER A..Z and
+represent digit characters with value 0..9, respectively;
+both U+0041..U+005A LATIN CAPITAL LETTER A..Z and
 U+0061..U+007A LATIN SMALL LETTER A..Z
-represent digit characters in the range 10..35.
+represent digit characters with value 10..35, respectively.
 </p></ins-block>
+
+<note-block class=edit><p><intro-></intro-> 
+The description deliberately uses code points
+to avoid ever spelling a character literal,
+in preparation for <a href="https://wg21%2elink/p3876r1">[P3876R1]</a>,
+which adds support for <code><h- data-h=kw_type>char8_t</h-></code> and other character types.
+</p></note-block>
 
 <p>¶
 <i>Preconditions</i>:
@@ -2167,7 +2213,7 @@ the effect is as described above.
 Otherwise,
 an integer value <math display=inline><mi>x</mi></math> is obtained by interpreting the
 <g-term>base-digit</g-term>s as digits of an integer in the given <code><h- data-h=id>base</h-></code>, and
-negating that value if the leading <code><h- data-h=str_dlim>'</h-><h- data-h=str>-</h-><h- data-h=str_dlim>'</h-></code> is present.
+negating that value if the leading U+002D HYPHEN MINUS is present.
 If <math display=inline><mi>x</mi></math> is in the range of values representable by the type of <code><h- data-h=id>value</h-></code>,
 <code><h- data-h=id>value</h-></code> is set to <math display=inline><mi>x</mi></math> and
 the member <code><h- data-h=id>ec</h-></code> of the result is value-initialized;
@@ -2180,7 +2226,8 @@ the member <code><h- data-h=id>ec</h-></code> of the result is <code><h- data-h=
 Nothing.
 </p></div>
 
-<code-block class=borderless><h- data-h=id>from_chars_result</h-> <h- data-h=id>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=id>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=id>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=id>floating-point-type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=id>value</h-><h- data-h=sym_punc>,</h->
+<code-block class=borderless><h- data-h=id>from_chars_result</h-> <h- data-h=id>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=id>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=id>last</h-><h- data-h=sym_punc>,</h->
+                             <i><h- data-h=id>floating-point-type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=id>value</h-><h- data-h=sym_punc>,</h->
                              <h- data-h=id>chars_format</h-> <h- data-h=id>fmt</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>chars_format</h-><h- data-h=sym_op>::</h-><h- data-h=id>general</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
@@ -2194,23 +2241,23 @@ that matches a <g-term>from-chars-floating-pattern</g-term>.
   <dd><tt->-</tt-><sub class=opt>opt</sub> from-chars-unsigned-floating-pattern</dd>
 
   <dt><g-term>from-chars-unsigned-floating-pattern</g-term>:</dt>
-  <dd>fixed-float</dd>
-  <dd>scientific-float</dd>
-  <dd>general-float</dd>
-  <dd>hex-float</dd>
+  <dd>from-chars-fixed-float</dd>
+  <dd>from-chars-scientific-float</dd>
+  <dd>from-chars-general-float</dd>
+  <dd>from-chars-hex-float</dd>
   <dd>from-chars-infinity</dd>
   <dd>from-chars-nan</dd>
 
-  <dt><g-term>fixed-float</g-term>:</dt>
+  <dt><g-term>from-chars-fixed-float</g-term>:</dt>
   <dd>digit-sequence decimal-fraction<sub class=opt>opt</sub></dd>
 
-  <dt><g-term>scientific-float</g-term>:</dt>
+  <dt><g-term>from-chars-scientific-float</g-term>:</dt>
   <dd>digit-sequence decimal-fraction<sub class=opt>opt</sub> exponent-part</dd>
 
-  <dt><g-term>general-float</g-term>:</dt>
+  <dt><g-term>from-chars-general-float</g-term>:</dt>
   <dd>digit-sequence decimal-fraction<sub class=opt>opt</sub> exponent-part<sub class=opt>opt</sub></dd>
 
-  <dt><g-term>hex-float</g-term>:</dt>
+  <dt><g-term>from-chars-hex-float</g-term>:</dt>
   <dd>hexadecimal-digit-sequence hexadecimal-fraction<sub class=opt>opt</sub> binary-exponent-part<sub class=opt>opt</sub></dd>
 
   <dt><g-term>decimal-fraction</g-term>:</dt>
@@ -2237,13 +2284,13 @@ that matches a <g-term>from-chars-floating-pattern</g-term>.
 
 <p>¶
 Matching of a <g-term>from-chars-floating-pattern</g-term>
-behaves so that
+is performed so that
 </p><ul>
   <li>
-    <g-term>fixed-float</g-term>,
-    <g-term>scientific-float</g-term>,
-    <g-term>general-float</g-term>, and
-    <g-term>hex-float</g-term>
+    <g-term>from-chars-fixed-float</g-term>,
+    <g-term>from-chars-scientific-float</g-term>,
+    <g-term>from-chars-general-float</g-term>, and
+    <g-term>from-chars-hex-float</g-term>
     may only be matched if <code><h- data-h=id>fmt</h-></code> equals
     <code><h- data-h=id>chars_format</h-><h- data-h=sym_op>::</h-><h- data-h=id>fixed</h-></code>,
     <code><h- data-h=id>chars_format</h-><h- data-h=sym_op>::</h-><h- data-h=id>scientific</h-></code>,
@@ -2353,19 +2400,19 @@ closest to the value of the string matching the pattern.
     whose value is determined by
     <ul>
       <li>
-        interpreting the pattern without leading <code><h- data-h=str_dlim>'</h-><h- data-h=str>-</h-><h- data-h=str_dlim>'</h-></code>
+        interpreting the pattern without leading U+002D HYPHEN MINUS
         but with an added <g-term>hexadecimal-prefix</g-term>
         as a <g-term>hexadecimal-floating-point-literal</g-term>
         if <code><h- data-h=id>fmt</h-></code> is <code><h- data-h=id>chars_format</h-><h- data-h=sym_op>::</h-><h- data-h=id>hex</h-></code>, and
       </li>
       <li>
-        interpreting the pattern without leading <code><h- data-h=str_dlim>'</h-><h- data-h=str>-</h-><h- data-h=str_dlim>'</h-></code>
-        <g-term>decimal-floating-point-literal</g-term> otherwise,
+        interpreting the pattern without leading U+002D HYPHEN MINUS
+        as a <g-term>decimal-floating-point-literal</g-term> otherwise,
       </li>
     </ul>
     then interpreting the scaled value (<a href=https://eel.is/c++draft/lex.fcon>[lex.fcon]</a>) of that literal
     as the value of <math display=inline><mi>q</mi></math>,
-    negated if the leading <code><h- data-h=str_dlim>'</h-><h- data-h=str>-</h-><h- data-h=str_dlim>'</h-></code> is present.
+    negated if the leading U+002D HYPHEN MINUS is present.
     <math display=inline><mi>q</mi></math> is correctly rounded to a value <math display=inline><mi>r</mi></math>
     according to <code><h- data-h=id>round_to_nearest</h-></code> (<a href=https://eel.is/c++draft/round.style>[round.style]</a>).
     <code><h- data-h=id>value</h-></code> is set to <math display=inline><mi>r</mi></math>, and
@@ -2414,7 +2461,11 @@ Nothing.
 <span class=bib-author>Zhihao Yan.</span>
 <span class=bib-title>Floating-point overflow and underflow in from_chars (LWG 3081)</span>
 <span class=bib-date>2023-11-20</span>
-<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2023/p2827r1%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2827r1.html</a></div><div id=bib-item-LWG3081 class=bib-item>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2023/p2827r1%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2827r1.html</a></div><div id=bib-item-P3876R1 class=bib-item>
+<a href="https://wg21%2elink/p3876r1">[P3876R1]</a>
+<span class=bib-author>Jan Schultke, Peter Bindels.</span>
+<span class=bib-title>Extending &lt;charconv&gt; support to more character types</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/p3876r1%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3876r1.html</a></div><div id=bib-item-LWG3081 class=bib-item>
 <a href="https://wg21%2elink/LWG3081">[LWG3081]</a>
 <span class=bib-author>Jiang An.</span>
 <span class=bib-title>Floating point from_chars API does not distinguish between overflow and underflow</span>

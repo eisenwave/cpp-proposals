@@ -5,8 +5,8 @@
   (LWG3081\, LWG3082\, LWG3456)
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{D4168R0}}
-  \dt{Date:}            \dd{\tt{2026-04-04}}
+  \dt{Document number:} \dd{\docnum{P4168R0}}
+  \dt{Date:}            \dd{\tt{2026-04-05}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -35,7 +35,21 @@ and every implementation diverges from the wording in the standard.
 In 2018, \ref(LWG3081) pointed out that the \tcode{from_chars} API
 does not give the user a means of distinguishing floating-point overflow and underflow.
 The perceived defect is a loss of functionality compared to \tcode{std::strtod}.
-This issue remains open till today despite having Priority 2.
+This issue remains open to this day despite having Priority 2.
+
+\Bex{
+An example of code affected by this detect looks as follows:
+\cppblock{
+const char str[] = "1e100000";
+float x; // assuming float in binary32 ISO/IEC 60559 format
+const auto [p, ec] = std::from_chars(std::begin(str), std::end(str), x);
+}
+libstdc++ leaves \tcode{x} unmodified, but libc++ and MSVC STL set it to \math{\mi{∞}}.
+\tcode{ec} is \tcode{std::errc::result_out_of_range} for all implementations,
+but the wording requires that \tcode{x} is set to \math{\mi{∞}} and
+that \tcode{ec} is value-initialized,
+which no one implements.
+}
 
 In 2023, \ref(P2827R1) attempted to solve this issue,
 but died in LEWG eventually.
@@ -168,12 +182,13 @@ That definition was only added recently in 2023 via \ref(CWG2723);
 the definition in \eelis{basic.fundamental#13} includes \em{all real numbers}
 in that range,
 meaning that every standard library is incorrect
-for returning \tcode{errc::result_out_of_range}.
+for returning \tcode{errc::result_out_of_range}
+on overflow and underflow.
 Ergo, not only is underflow indistinguishable from overflow via error code,
 overflow, underflow, and exact rounding are all indistinguishable
 if the wording is implemented (which it isn't).
 
-\h4{No handling of non-ISO/IEC 60559 types}
+\h4(id=non-iso-60559-types){No handling of non-ISO/IEC 60559 types}
 
 Another problem with the wording is that it does not account for types
 that do not have a representation of infinity or NaN.
@@ -198,7 +213,8 @@ or that \tcode{"1"} results in \tcode{1.0} is handwaved as
 the single word \q{parsed}, which is not explained anywhere.
 While most such cases are obvious, \tcode{std::to_chars} in libc++
 represents signaling NaNs as \tcode{"nan(snan)"},
-and it is unclear whether the implementation can recover a signaling NaN from such a string
+and it is unclear whether \tcode{std::from_chars}
+can recover a signaling NaN from such a string
 because there exists no wording for \q{parsed}.
 
 The intent is presumably to handle these cases like \tcode{std::strtod},
@@ -313,7 +329,7 @@ and correctly implements the ISO/IEC 60559 (or IEEE-754) operation
 conformance.
 \eelis{charconv.from.chars} even uses the \tcode{round_to_nearest} rounding mode
 corresponding to \q{roundTiesToEven} already,
-which makes it extremely to the ISO/IEC 60559 operation.
+which makes it extremely similar to the ISO/IEC 60559 operation.
 
 As mentioned in \ref(#signaling-nans),
 it is also necessary to handle signaling NaNs in some way,
@@ -337,7 +353,7 @@ if we standardize the behavior of the other implementation:
     Users of MSVC STL and libc++ may rely on infinity or zero being written
     on \tcode{result_out_of_range},
     and suddenly leaving the value unmodified
-    would result in use of erroneous or even indeterminate memory for them.
+    would result in use of erroneous or even indeterminate values for these users.
   }
 }
 
@@ -357,11 +373,32 @@ or matches the behavior of other functions such as \tcode{std::strtod}.
 Both alternatives make it difficult to simply ignore the \tcode{result_out_of_range}
 error and use the value.
 
+\h3{Further edge cases}
+
+As explained in \ref(#non-iso-60559-types),
+there are various edge cases such as parsing the string \tcode{"INFINITY"}
+and attempting to store it in a floating-point type
+that does not have a representation of infinity.
+These edge cases are currently not handled in any explicit way
+by major standard library implementations.
+To my knowledge, all major standard libraries assume ISO/IEC-60559-like types,
+meaning that negative and positive infinity and NaN are also supported.
+
+The proposed solution is to handle these cases
+as closely as possible to \tcode{std::strtod},
+as specified in \ref(https://cigix.me/c23#7.24.1.5){C23 §7.24.1.5}.
+For example, this means that when \tcode{"inf"} is parsed but not representable in the type,
+the greatest finite value is returned instead, and
+the error code is \tcode{errc::result_out_of_range}.
+
 \h2{Implementation experience}
 
-The proposed behavior has been released in MSVC STL and libc++.
+The proposed behavior has been released in MSVC STL and libc++,
+except that the behavior in \ref(#further-edge-cases) does not need to be implemented
+and only exists on paper for these implementations.
 
-It has also been implemented as \tcode{boost::from_chars_erange} (\ref(BoostCharConv)).
+The proposed behavior has also been implemented as
+\tcode{boost::from_chars_erange} (\ref(BoostCharConv)).
 
 \h2{Editorial problems}
 
@@ -421,6 +458,8 @@ and should be rewritten so that the accepted pattern can be understood
 solely through \eelis{charconv.from.chars}.
 \ref(LWG3456) performs such a rewrite,
 but does not fully decouple \tcode{std::from_chars} from the C wording.
+
+A proper rewrite can also fix the lack of clarity pointed out in \ref(LWG3082).
 
 \h2{Wording}
 
@@ -514,7 +553,7 @@ constexpr from_chars_result from_chars(const char* first, const char* last,
 Let the pattern be the maximal sequence of characters starting with \tcode{*first} that
 matches a \grammarterm{from-chars-signed-integer-pattern}
 if \tcode{value} is of a signed type, and
-matches a \grammarterm{from-chars-unsigned-pattern} otherwise.
+matches a \grammarterm{from-chars-unsigned-integer-pattern} otherwise.
 
 \dl(class=grammar spaced-words){
   \dt{\grammarterm{from-chars-signed-integer-pattern}:}
@@ -527,12 +566,19 @@ matches a \grammarterm{from-chars-unsigned-pattern} otherwise.
   \dd{base-digit \opt{base-digit-seq}}
 }
 
-\grammarterm{base-digit} is digit character whose value is less than \tcode{base}.
+\grammarterm{base-digit} is a digit character whose value is less than \tcode{base}.
 The code points U+0030..U+0039 DIGIT ZERO..NINE
-represent digit characters with values in the range 0..9;
-Both U+0041..U+005A LATIN CAPITAL LETTER A..Z and
+represent digit characters with value 0..9, respectively;
+both U+0041..U+005A LATIN CAPITAL LETTER A..Z and
 U+0061..U+007A LATIN SMALL LETTER A..Z
-represent digit characters in the range 10..35.
+represent digit characters with value 10..35, respectively.
+}
+
+\editnote{
+The description deliberately uses code points
+to avoid ever spelling a character literal,
+in preparation for \ref(P3876R1),
+which adds support for \tcode{char8_t} and other character types.
 }
 
 ¶
@@ -560,7 +606,7 @@ the effect is as described above.
 Otherwise,
 an integer value \math{\mi{x}} is obtained by interpreting the
 \grammarterm{base-digit}s as digits of an integer in the given \tcode{base}, and
-negating that value if the leading \tcode{'-'} is present.
+negating that value if the leading U+002D HYPHEN MINUS is present.
 If \math{\mi{x}} is in the range of values representable by the type of \tcode{value},
 \tcode{value} is set to \math{\mi{x}} and
 the member \tcode{ec} of the result is value-initialized;
@@ -574,7 +620,8 @@ Nothing.
 }
 
 \itemdecl{
-from_chars_result from_chars(const char* first, const char* last, \exposid{floating-point-type}& value,
+from_chars_result from_chars(const char* first, const char* last,
+                             \exposid{floating-point-type}& value,
                              chars_format fmt = chars_format::general);
 }
 
@@ -589,23 +636,23 @@ that matches a \grammarterm{from-chars-floating-pattern}.
   \dd{\opt{\tt{-}} from-chars-unsigned-floating-pattern}
 
   \dt{\grammarterm{from-chars-unsigned-floating-pattern}:}
-  \dd{fixed-float}
-  \dd{scientific-float}
-  \dd{general-float}
-  \dd{hex-float}
+  \dd{from-chars-fixed-float}
+  \dd{from-chars-scientific-float}
+  \dd{from-chars-general-float}
+  \dd{from-chars-hex-float}
   \dd{from-chars-infinity}
   \dd{from-chars-nan}
 
-  \dt{\grammarterm{fixed-float}:}
+  \dt{\grammarterm{from-chars-fixed-float}:}
   \dd{digit-sequence \opt{decimal-fraction}}
 
-  \dt{\grammarterm{scientific-float}:}
+  \dt{\grammarterm{from-chars-scientific-float}:}
   \dd{digit-sequence \opt{decimal-fraction} exponent-part}
 
-  \dt{\grammarterm{general-float}:}
+  \dt{\grammarterm{from-chars-general-float}:}
   \dd{digit-sequence \opt{decimal-fraction} \opt{exponent-part}}
 
-  \dt{\grammarterm{hex-float}:}
+  \dt{\grammarterm{from-chars-hex-float}:}
   \dd{hexadecimal-digit-sequence \opt{hexadecimal-fraction} \opt{binary-exponent-part}}
 
   \dt{\grammarterm{decimal-fraction}:}
@@ -632,13 +679,13 @@ that matches a \grammarterm{from-chars-floating-pattern}.
 
 ¶
 Matching of a \grammarterm{from-chars-floating-pattern}
-behaves so that
+is performed so that
 \ul{
   \li{
-    \grammarterm{fixed-float},
-    \grammarterm{scientific-float},
-    \grammarterm{general-float}, and
-    \grammarterm{hex-float}
+    \grammarterm{from-chars-fixed-float},
+    \grammarterm{from-chars-scientific-float},
+    \grammarterm{from-chars-general-float}, and
+    \grammarterm{from-chars-hex-float}
     may only be matched if \tcode{fmt} equals
     \tcode{chars_format::fixed},
     \tcode{chars_format::scientific},
@@ -748,19 +795,19 @@ closest to the value of the string matching the pattern.
     whose value is determined by
     \ul{
       \li{
-        interpreting the pattern without leading \tcode{'-'}
+        interpreting the pattern without leading U+002D HYPHEN MINUS
         but with an added \grammarterm{hexadecimal-prefix}
         as a \grammarterm{hexadecimal-floating-point-literal}
         if \tcode{fmt} is \tcode{chars_format::hex}, and
       }
       \li{
-        interpreting the pattern without leading \tcode{'-'}
-        \grammarterm{decimal-floating-point-literal} otherwise,
+        interpreting the pattern without leading U+002D HYPHEN MINUS
+        as a \grammarterm{decimal-floating-point-literal} otherwise,
       }
     }
     then interpreting the scaled value\iref{lex.fcon} of that literal
     as the value of \math{\mi{q}},
-    negated if the leading \tcode{'-'} is present.
+    negated if the leading U+002D HYPHEN MINUS is present.
     \math{\mi{q}} is correctly rounded to a value \math{\mi{r}}
     according to \tcode{round_to_nearest}\iref{round.style}.
     \tcode{value} is set to \math{\mi{r}}, and
@@ -814,6 +861,13 @@ Nothing.
   author = Zhihao Yan,
   link = https://wg21.link/p2827r1,
   long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2827r1.html,
+)\
+\bib(
+  id = P3876R1,
+  title = Extending <charconv> support to more character types,
+  author = Jan Schultke\, Peter Bindels,
+  link = https://wg21.link/p3876r1,
+  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3876r1.html,
 )\
 \bib(
   id = LWG3081,
