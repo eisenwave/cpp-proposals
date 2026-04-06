@@ -1577,7 +1577,7 @@ if (theme !== null) {
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/D3777R0>D3777R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-04-05</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2026-04-06</tt-></dd>
   <dt>Audience:</dt>        <dd>EWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;<br/>
@@ -1648,16 +1648,20 @@ We propose a syntax for calling C++ functions with named arguments.
 <div class=toc-num data-level=3>4.3</div>
 <a href=#forwarding-named-arguments><h3>Forwarding named arguments</h3></a>
 <div class=toc-num data-level=3>4.4</div>
-<a href=#calling-labeled-parameters-with-positional-arguments><h3>Calling labeled parameters with positional arguments</h3></a>
+<a href=#restrictions-on-labeled-types><h3>Restrictions on labeled types</h3></a>
 <div class=toc-num data-level=3>4.5</div>
-<a href=#macro-friendliness><h3>Macro-friendliness</h3></a>
+<a href=#combining-references-and-labeled-types><h3>Combining references and labeled types</h3></a>
 <div class=toc-num data-level=3>4.6</div>
-<a href=#out-of-order-named-arguments><h3>Out-of-order named arguments</h3></a>
+<a href=#calling-labeled-parameters-with-positional-arguments><h3>Calling labeled parameters with positional arguments</h3></a>
 <div class=toc-num data-level=3>4.7</div>
-<a href=#disqualifying-overloads-early><h3>Disqualifying overloads early</h3></a>
+<a href=#macro-friendliness><h3>Macro-friendliness</h3></a>
 <div class=toc-num data-level=3>4.8</div>
-<a href=#c-compatibility><h3>C compatibility</h3></a>
+<a href=#out-of-order-named-arguments><h3>Out-of-order named arguments</h3></a>
 <div class=toc-num data-level=3>4.9</div>
+<a href=#disqualifying-overloads-early><h3>Disqualifying overloads early</h3></a>
+<div class=toc-num data-level=3>4.10</div>
+<a href=#c-compatibility><h3>C compatibility</h3></a>
+<div class=toc-num data-level=3>4.11</div>
 <a href=#cross-version-compatibility><h3>Cross-version compatibility</h3></a>
 <div class=toc-num data-level=2>5</div>
 <a href=#impact-on-the-standard><h2>Impact on the standard</h2></a>
@@ -2386,6 +2390,8 @@ the function <code><h- data-h=id>f</h-></code> has a single parameter of type
 <code-block><h- data-h=kw_type>int</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> The label of the parameter is simultaneously the name</h->
   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> found by lookup within the function.</h->
+  <h- data-h=cmt_dlim>//</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> "x" is an lvalue of type int inside here.</h->
   <h- data-h=kw_ctrl>return</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h->
 
@@ -2393,6 +2399,22 @@ the function <code><h- data-h=id>f</h-></code> has a single parameter of type
 <h- data-h=kw_type>int</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=id>P</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, redeclares f</h-></code-block>
 </example-block>
 
+<p>Similar to reference parameters,
+there is a mismatch between the type of the parameter and
+the type of the expression in the function:
+</p><code-block><h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=sym_op>&amp;</h-><h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=id>x</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> lvalue of type int,</h->
+     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> but the parameter has declared type "reference to int"</h->
+  
+  <h- data-h=id>y</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> lvalue of type int,</h->
+     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> but the parameter has declared type "int with label y"</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>This kind of type adjustment is crucial because otherwise
+access to <code><h- data-h=id>y</h-></code> would have type <code><h- data-h=kw_type>int</h-><h- data-h=sym_op>.</h-><h- data-h=id>y</h-></code>
+as if it was a named argument rather than
+just an access of the parameter's value.
+</p>
 <h3 id=why-require-an-explicit-opt-in><a class=para href=#why-require-an-explicit-opt-in></a>4.1. Why require an explicit opt-in?</h3>
 
 <p>An obvious question is why an explicit opt-in should be necessary at all.
@@ -2465,13 +2487,85 @@ because parameter names simply become part of the type.
 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> i.e. "int with label x".</h->
 <h- data-h=id>emplace</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>100</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, Args deduces to int&amp;.x,</h->
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> i.e. "lvalue reference to int, with label x".</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, Args deduces to int.&amp;x,</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> i.e. "lvalue reference to int with label x".</h->
 <h- data-h=kw_type>int</h-> <h- data-h=id>value</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>42</h-><h- data-h=sym_punc>;</h->
 <h- data-h=id>emplace</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 </example-block>
 
-<h3 id=calling-labeled-parameters-with-positional-arguments><a class=para href=#calling-labeled-parameters-with-positional-arguments></a>4.4. Calling labeled parameters with positional arguments</h3>
+<p>Note that the type adjustment which would <q>discard</q> the label from the type
+only takes place in non-dependent parameters.
+Perfect forwarding works because it is possible
+to form a reference to an object of labeled type such as <code><h- data-h=kw_type>int</h-><h- data-h=sym_op>.</h-><h- data-h=id>x</h-></code>,
+and object of labeled type can be copied and passed around following
+all the usual language rules.
+</p>
+<example-block><p><intro-></intro-> 
+The difference can be observed as follows:
+</p><code-block><h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=id>x</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> lvalue of type int, not of type int.x</h->
+<h- data-h=sym_brac>}</h->
+
+<h- data-h=kw_type>void</h-> <h- data-h=id>h</h-><h- data-h=sym_par>(</h-><h- data-h=kw>auto</h-> <h- data-h=id>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=id>y</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> lvalue of type int.y</h->
+<h- data-h=sym_brac>}</h->
+<h- data-h=id>g</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>y</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, deduces auto to int.y</h->
+
+<h- data-h=kw>using</h-> <h- data-h=id>P</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw_type>int</h-><h- data-h=sym_op>.</h-><h- data-h=id>z</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw_type>void</h-> <h- data-h=id>h</h-><h- data-h=sym_par>(</h-><h- data-h=id>P</h-> <h- data-h=id>p</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=id>p</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> lvalue of type int, not of type int.z</h->
+<h- data-h=sym_brac>}</h->
+<h- data-h=id>h</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>z</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK</h-></code-block>
+<p>Here, the type adjustment does not take place for "y"
+because it depends on a template parameter.
+However, it takes place for <code><h- data-h=id>p</h-></code>.
+</p></example-block>
+
+<h3 id=restrictions-on-labeled-types><a class=para href=#restrictions-on-labeled-types></a>4.4. Restrictions on labeled types</h3>
+
+<p>Labeled types such as <code><h- data-h=kw_type>int</h-><h- data-h=sym_op>.</h-><h- data-h=id>x</h-></code> are copyable,
+but not assignable.
+There is also no implicit conversion to their underlying type
+because this would drop the argument name,
+which violates user intent.
+</p>
+<h3 id=combining-references-and-labeled-types><a class=para href=#combining-references-and-labeled-types></a>4.5. Combining references and labeled types</h3>
+
+<p>It is both possible to have a labeled reference
+and a reference to a labeled type:
+</p>
+<example-block><p><intro-></intro-> 
+</p><ul>
+  <li>
+    <code><h- data-h=kw_type>int</h-><h- data-h=sym_op>.</h-><h- data-h=sym_op>&amp;</h-><h- data-h=id>x</h-></code> is an <q>lvalue reference to: <code><h- data-h=kw_type>int</h-></code> with label <code><h- data-h=id>x</h-></code></q>
+  </li>
+  <li>
+    <code><h- data-h=kw_type>int</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_op>.</h-><h- data-h=id>x</h-></code> is an <q>lvalue reference to <code><h- data-h=kw_type>int</h-></code>, with label <code><h- data-h=id>x</h-></code></q>
+  </li>
+</ul>
+</example-block>
+
+<p>Being able to form references to labeled types is crucial to enable perfect forwarding and
+to make labeled types not behave specially in generic code.
+Being able to form labeled references is necessary to have labeled parameters
+of reference type.
+</p>
+<example-block><p><intro-></intro-> 
+While the two are functionally very similar,
+the type adjustment rules are different.
+</p><code-block><h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=sym_op>&amp;</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=id>x</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> lvalue of type int.x because we simply access what the reference refers to</h->
+  <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, binds x to an lvalue of type int.x</h->
+<h- data-h=sym_brac>}</h->
+
+<h- data-h=kw_type>void</h-> <h- data-h=id>g</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=sym_op>&amp;</h-><h- data-h=sym_op>.</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=id>x</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> lvalue of type int because the label is adjusted away, as is the reference</h->
+  <h- data-h=id>g</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, implicit conversion of int to int&amp;.x</h->
+<h- data-h=sym_brac>}</h-></code-block>
+</example-block>
+
+
+<h3 id=calling-labeled-parameters-with-positional-arguments><a class=para href=#calling-labeled-parameters-with-positional-arguments></a>4.6. Calling labeled parameters with positional arguments</h3>
 
 <p>It is possible to call a function with a labeled parameter
 using a positional argument.
@@ -2510,10 +2604,10 @@ much like a conversion from <code><h- data-h=kw_type>int</h-></code> to <code><h
 </p>
 <p>Crucially,
 an argument of labeled type cannot be converted to another labeled type
-because this would alter the name against the user's intent,
-and the name cannot be dropped.
+because this would alter the name against the user's intent.
+It also cannot be converted to its underlying type.
 </p>
-<h3 id=macro-friendliness><a class=para href=#macro-friendliness></a>4.5. Macro-friendliness</h3>
+<h3 id=macro-friendliness><a class=para href=#macro-friendliness></a>4.7. Macro-friendliness</h3>
 
 <p>A potential issue with the syntax <code><h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-></code>
 is that the identifier <code><h- data-h=id>x</h-></code> can no longer be used as the name of a macro.
@@ -2542,7 +2636,7 @@ and adding a second competing syntax appears excessive.
 Most C++ users happily use identifiers like <code><h- data-h=id>x</h-></code>
 without needing to protect against macros.
 </p>
-<h3 id=out-of-order-named-arguments><a class=para href=#out-of-order-named-arguments></a>4.6. Out-of-order named arguments</h3>
+<h3 id=out-of-order-named-arguments><a class=para href=#out-of-order-named-arguments></a>4.8. Out-of-order named arguments</h3>
 
 <p>We also propose to allow for reordering of named arguments
 to fit the respective parameters.
@@ -2563,7 +2657,7 @@ prior to template argument deduction.
                    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> but no attempt at reordering is made</h-></code-block>
 </example-block>
 
-<h3 id=disqualifying-overloads-early><a class=para href=#disqualifying-overloads-early></a>4.7. Disqualifying overloads early</h3>
+<h3 id=disqualifying-overloads-early><a class=para href=#disqualifying-overloads-early></a>4.9. Disqualifying overloads early</h3>
 
 <p>As explained in <a href=#simplifying-overload-resolution>§3.1. Simplifying overload resolution</a>,
 cutting down the number of candidate overloads via argument names
@@ -2593,7 +2687,7 @@ overload was declared <code><h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h-
 since that signature does accept labeled types.
 </p></todo-block>
 
-<h3 id=c-compatibility><a class=para href=#c-compatibility></a>4.8. C compatibility</h3>
+<h3 id=c-compatibility><a class=para href=#c-compatibility></a>4.10. C compatibility</h3>
 
 <p>Surprisingly, even with the explicit opt-in syntax,
 it is possible to achieve C compatibility.
@@ -2619,7 +2713,7 @@ similar to how <code><h- data-h=kw>const</h-> <h- data-h=kw_type>int</h-></code>
 
 <p>The design of the proposal can also be adopted by C in principle.
 </p>
-<h3 id=cross-version-compatibility><a class=para href=#cross-version-compatibility></a>4.9. Cross-version compatibility</h3>
+<h3 id=cross-version-compatibility><a class=para href=#cross-version-compatibility></a>4.11. Cross-version compatibility</h3>
 
 <p>It may also be possible to extend this approach beyond <code><h- data-h=kw>extern</h-> <h- data-h=str_dlim>"</h-><h- data-h=str>C</h-><h- data-h=str_dlim>"</h-></code>
 in order to reduce <q>upgrade friction</q>.
