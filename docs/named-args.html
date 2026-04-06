@@ -2494,7 +2494,7 @@ because parameter names simply become part of the type.
 </example-block>
 
 <p>Note that the type adjustment which would <q>discard</q> the label from the type
-only takes place in non-dependent parameters.
+only takes place parameters where the label is not dependent.
 Perfect forwarding works because it is possible
 to form a reference to an object of labeled type such as <code><h- data-h=kw_type>int</h-><h- data-h=sym_op>.</h-><h- data-h=id>x</h-></code>,
 and object of labeled type can be copied and passed around following
@@ -2515,10 +2515,19 @@ The difference can be observed as follows:
 <h- data-h=kw_type>void</h-> <h- data-h=id>h</h-><h- data-h=sym_par>(</h-><h- data-h=id>P</h-> <h- data-h=id>p</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=id>p</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> lvalue of type int, not of type int.z</h->
 <h- data-h=sym_brac>}</h->
-<h- data-h=id>h</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>z</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK</h-></code-block>
-<p>Here, the type adjustment does not take place for "y"
-because it depends on a template parameter.
-However, it takes place for <code><h- data-h=id>p</h-></code>.
+<h- data-h=id>h</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>z</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK</h->
+
+<h- data-h=kw_type>void</h-> <h- data-h=id>i</h-><h- data-h=sym_par>(</h-><h- data-h=kw>auto</h-> <h- data-h=sym_op>.</h-><h- data-h=id>w</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=id>w</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> lvalue of type int, not of type int.z</h->
+<h- data-h=sym_brac>}</h->
+<h- data-h=id>i</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>.</h-><h- data-h=id>w</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK</h-></code-block>
+<p>Here, the type adjustment does not take place for <code><h- data-h=id>y</h-></code>
+because the label depends on a template parameter.
+However, type adjustment takes place for <code><h- data-h=id>p</h-></code>.
+</p>
+<p>Type adjustment also takes place for <code><h- data-h=id>w</h-></code>
+because while the type is dependent,
+the label of the type is not (it is always <code><h- data-h=id>w</h-></code>).
 </p></example-block>
 
 <h3 id=restrictions-on-labeled-types><a class=para href=#restrictions-on-labeled-types></a>4.4. Restrictions on labeled types</h3>
@@ -2679,13 +2688,11 @@ the entire candidate is disqualified because the argument is of a labeled type
 whose label does not match any parameter label in <code><h- data-h=id>f</h-></code>.
 </p></example-block>
 
-<todo-block><p><intro-></intro-> 
-An unresolved problem is that this early disqualification
-breaks down when either the argument or the parameter are dependent.
-It is also not yet clear how deduction could be skipped if the first
-overload was declared <code><h- data-h=kw_type>void</h-> <h- data-h=id>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw>auto</h-><h- data-h=sym_par>)</h-></code>,
-since that signature does accept labeled types.
-</p></todo-block>
+<note-block><p><intro-></intro-> 
+This early disqualification only works if the label is not dependent;
+that is, it takes place in <code><h- data-h=kw_type>int</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-></code> and in <code><h- data-h=kw>auto</h-> <h- data-h=sym_op>.</h-><h- data-h=id>x</h-></code>
+but not in <code><h- data-h=kw>auto</h-></code> which deduced to <code><h- data-h=kw_type>int</h-><h- data-h=sym_op>.</h-><h- data-h=id>x</h-></code>.
+</p></note-block>
 
 <h3 id=c-compatibility><a class=para href=#c-compatibility></a>4.10. C compatibility</h3>
 

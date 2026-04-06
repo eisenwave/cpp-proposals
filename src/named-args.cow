@@ -916,7 +916,7 @@ emplace(.x = value);
 }
 
 Note that the type adjustment which would \q{discard} the label from the type
-only takes place in non-dependent parameters.
+only takes place parameters where the label is not dependent.
 Perfect forwarding works because it is possible
 to form a reference to an object of labeled type such as \tcode{int.x},
 and object of labeled type can be copied and passed around following
@@ -939,10 +939,19 @@ void h(P p) {
   p; // lvalue of type int, not of type int.z
 }
 h(.z = 0); // OK
+
+void i(auto .w) {
+  w; // lvalue of type int, not of type int.z
 }
-Here, the type adjustment does not take place for "y"
-because it depends on a template parameter.
-However, it takes place for \tcode{p}.
+i(.w = 0); // OK
+}
+Here, the type adjustment does not take place for \tcode{y}
+because the label depends on a template parameter.
+However, type adjustment takes place for \tcode{p}.
+
+Type adjustment also takes place for \tcode{w}
+because while the type is dependent,
+the label of the type is not (it is always \tcode{w}).
 }
 
 \h3{Restrictions on labeled types}
@@ -1117,12 +1126,10 @@ the entire candidate is disqualified because the argument is of a labeled type
 whose label does not match any parameter label in \tcode{f}.
 }
 
-\Btodo{
-An unresolved problem is that this early disqualification
-breaks down when either the argument or the parameter are dependent.
-It is also not yet clear how deduction could be skipped if the first
-overload was declared \tcode{void f(auto)},
-since that signature does accept labeled types.
+\Bnote{
+This early disqualification only works if the label is not dependent;
+that is, it takes place in \tcode{int .x} and in \tcode{auto .x}
+but not in \tcode{auto} which deduced to \tcode{int.x}.
 }
 
 \h3{C compatibility}
