@@ -1608,6 +1608,8 @@ Other sections will be filled in over time.
 <div class=toc-num data-level=3>2.5</div>
 <a href=#numeric%2eabs><h3>[numeric.abs]</h3></a>
 <div class=toc-num data-level=3>2.6</div>
+<a href=#numeric%2esat%2ecast><h3>[numeric.sat.cast]</h3></a>
+<div class=toc-num data-level=3>2.7</div>
 <a href=#numeric%2econversions><h3>[numeric.conversions]</h3></a>
 <div class=toc-num data-level=2>3</div>
 <a href=#references><h2>References</h2></a>
@@ -2574,6 +2576,55 @@ and then extend the overload set:
 <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>forward</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>x</h-><h- data-h=sym_par>)</h-></code> otherwise.
 </p></div>
 </ins-block>
+
+<h3 id=numeric.sat.cast><a class=para href=#numeric%2esat%2ecast></a>[numeric.sat.cast]</h3>
+
+
+<blockquote>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>R</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=id>R</h-> <h- data-h=id>saturating_cast</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p>1
+<i>Constraints</i>:
+<code><h- data-h=id>R</h-></code> and <code><h- data-h=id>T</h-></code> are signed or unsigned integer types (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>).
+</p>
+<p>2
+<i>Returns</i>:
+If <code><h- data-h=id>x</h-></code> is representable as a value of type <code><h- data-h=id>R</h-></code>, <code><h- data-h=id>x</h-></code>;
+otherwise, either the largest or smallest representable value of type <code><h- data-h=id>R</h-></code>,
+whichever is closer to the value of <code><h- data-h=id>x</h-></code>.
+</p></div>
+</blockquote>
+
+<ins-block>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>R</h-><h- data-h=sym_punc>,</h-> <h- data-h=id_type>size_t</h-> <h- data-h=id>fixed_bits</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>Allocator</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=id>R</h-> <h- data-h=id>saturating_cast</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=id>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>fixed_bits</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>Allocator</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p>3
+<i>Constraints</i>:
+<code><h- data-h=id>R</h-></code> is a signed or unsigned integer type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>).
+</p>
+<p>4
+<i>Returns</i>:
+If the integer value (<a href=https://eel.is/c++draft/big.int.class>[big.int.class]</a>) <math display=inline><mi>v</mi></math> of <code><h- data-h=id>x</h-></code>
+is representable as a value of type <code><h- data-h=id>R</h-></code>, <math display=inline><mi>v</mi></math>;
+otherwise, either the largest or smallest representable value of type <code><h- data-h=id>R</h-></code>,
+whichever is closer to <math display=inline><mi>v</mi></math>.
+</p></div>
+</ins-block>
+
+<note-block class=edit><p><intro-></intro-> 
+This is partially motivated by the fact that Boost's
+<code><h- data-h=kw>static_cast</h-></code> for <code><h- data-h=id>cpp_int</h-></code> behaves in a saturating
+instead of truncating way.
+While that behavior is useful,
+it would be surprising to C++ users who expect conversions to truncate,
+and it would be inconvenient in generic code.
+</p>
+<p>Therefore, <code><h- data-h=id>saturating_cast</h-></code> can act as an unsurprising spelling.
+</p></note-block>
 
 <h3 id=numeric.conversions><a class=para href=#numeric%2econversions></a>[numeric.conversions]</h3>
 

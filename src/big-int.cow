@@ -1088,6 +1088,59 @@ template<class T> constexpr remove_cvref_t<T> abs(T&& x);
 }
 }
 
+\h3(show-number=false){[numeric.sat.cast]}
+\Vset(pnum){0}
+
+\Bquote{
+\itemdecl{
+template<class R, class T>
+  constexpr R saturating_cast(T x) noexcept;
+}
+
+\itemdescr{
+\pnum
+\constraints
+\tcode{R} and \tcode{T} are signed or unsigned integer types\iref{basic.fundamental}.
+
+\pnum
+\returns
+If \tcode{x} is representable as a value of type \tcode{R}, \tcode{x};
+otherwise, either the largest or smallest representable value of type \tcode{R},
+whichever is closer to the value of \tcode{x}.
+}
+}
+
+\Bins{
+\itemdecl{
+template<class R, size_t fixed_bits, class Allocator>
+  constexpr R saturating_cast(T x, const basic_big_int<fixed_bits, Allocator>& x) noexcept;
+}
+
+\itemdescr{
+\pnum
+\constraints
+\tcode{R} is a signed or unsigned integer type\iref{basic.fundamental}.
+
+\pnum
+\returns
+If the integer value\iref{big.int.class} \math{\mi{v}} of \tcode{x}
+is representable as a value of type \tcode{R}, \math{\mi{v}};
+otherwise, either the largest or smallest representable value of type \tcode{R},
+whichever is closer to \math{\mi{v}}.
+}
+}
+
+\editnote{
+This is partially motivated by the fact that Boost's
+\tcode{static_cast} for \tcode{cpp_int} behaves in a saturating
+instead of truncating way.
+While that behavior is useful,
+it would be surprising to C++ users who expect conversions to truncate,
+and it would be inconvenient in generic code.
+
+Therefore, \tcode{saturating_cast} can act as an unsurprising spelling.
+}
+
 \h3(show-number=false){[numeric.conversions]}
 \Vset(pnum){0}
 
