@@ -88,85 +88,31 @@ as well as related type aliases.
 
 \itemdecl{
 #include <compare>
+#include <span>
 
 namespace std {
+  // alias \tcode{uint_multiprecision_t}
   using uint_multiprecision_t = \seebelow;
 
+  //\serif{ [big.int.class], class template \tcode{basic_big_int}}
+  template<size_t fixed_bits, class Allocator = allocator<uint_multiprecision_t>>
+    class basic_big_int;
+
+  //\serif{ [big.int.expos], exposition-only helpers}
   template<class T>
     concept \exposid{signed-or-unsigned} = \seebelow; //\serif{ exposition only}
   template<class T>
     concept \exposid{arbitrary-integer} = \seebelow; //\serif{ exposition only}
-
-  template<size_t fixed_bits, class Allocator = allocator<uint_multiprecision_t>>
-  class basic_big_int {
-    //\serif{ types}
-    using allocator_type = Allocator;
-
-    //\serif{ [big.int.expos], exposition-only helpers}
-    template<class T>
-      inline constexpr bool \exposid{no-alloc-constructible-from} = \seebelow;
-
-    //\serif{ [big.int.cons], construct/copy/destroy}
-    constexpr basic_big_int() noexcept(noexcept(Allocator()));
-    constexpr explicit basic_big_int(const Allocator& a) noexcept;
-    constexpr basic_big_int(const basic_big_int& x);
-    constexpr basic_big_int(basic_big_int&&) x noexcept;
-    template<\exposid{arbitrary-integer} T>
-      constexpr basic_big_int(T&& x) noexcept(\exposid{no-alloc-constructible-from}<T>);
-    template<\exposid{arbitrary-integer} T>
-      constexpr explicit basic_big_int(const T& x, const Allocator& a)
-        noexcept(\exposid{no-alloc-constructible-from}<T>);
-    constexpr ~basic_big_int();
-
-    //\serif{ [big.int.ops], operations}
-    constexpr allocator_type get_allocator() const noexcept;
-
-    //\serif{ [big.int.modifiers], modifiers}
-    constexpr basic_big_int& operator=(const basic_big_int& x);
-    constexpr basic_big_int& operator=(basic_big_int&& x) noexcept;
-    template<\exposid{arbitrary-integer} T>
-      constexpr basic_big_int& operator=(T&& x) noexcept(\exposid{no-alloc-constructible-from}<T>);
-
-    constexpr void swap(basic_big_int& x)
-      noexcept(allocator_traits<Allocator>::propagate_on_container_swap::value ||
-               allocator_traits<Allocator>::is_always_equal::value);
-
-    //\serif{ [big.int.conv], conversions}
-    constexpr explicit operator bool() const noexcept;
-    template<\exposid{signed-or-unsigned} T>
-      constexpr explicit operator T() const noexcept;
-
-    //\serif{ [big.int.unary], unary operations}
-    constexpr basic_big_int operator+() const&;
-    constexpr basic_big_int operator+() noexcept &&;
-    constexpr basic_big_int operator-() const&;
-    constexpr basic_big_int operator-() &&;
-    constexpr basic_big_int operator~() const&;
-    constexpr basic_big_int operator~() &&;
-
-    constexpr basic_big_int& operator++();
-    constexpr basic_big_int operator++(int);
-    constexpr basic_big_int& operator--();
-    constexpr basic_big_int operator--(int);
-
-    //\serif{ [big.int.compound], compound assignment}
-    template<\exposid{arbitrary-integer} T> constexpr basic_big_int& operator+=(T&& x);
-    template<\exposid{arbitrary-integer} T> constexpr basic_big_int& operator-=(T&& x);
-    template<\exposid{arbitrary-integer} T> constexpr basic_big_int& operator*=(T&& x);
-    template<\exposid{arbitrary-integer} T> constexpr basic_big_int& operator/=(T&& x);
-    template<\exposid{arbitrary-integer} T> constexpr basic_big_int& operator%=(T&& x);
-    template<\exposid{arbitrary-integer} T> constexpr basic_big_int& operator&=(T&& x);
-    template<\exposid{arbitrary-integer} T> constexpr basic_big_int& operator|=(T&& x);
-    template<\exposid{arbitrary-integer} T> constexpr basic_big_int& operator^=(T&& x);
-  };
+  template<class L, class R>
+    using \exposid{common-big-int-type} = \seebelow; //\serif{ exposition only}
 
   //\serif{ alias \tcode{big_int}}
   using big_int = basic_big_int<\exposid{implementation-defined}>;
 
   //\serif{ [big.int.cmp], non-member comparison operator functions}
-  template<\exposid{arbitrary-integer} L, \exposid{arbitrary-integer} R>
+  template<class L, class R>
     constexpr bool operator==(const L& lhs, const R& rhs) noexcept;
-  template<\exposid{arbitrary-integer} L, \exposid{arbitrary-integer} R>
+  template<class L, class R>
     constexpr strong_ordering operator<=>(const L& lhs, const R& rhs) noexcept;
 
   //\serif{ [big.int.binary], binary operations}
@@ -180,6 +126,10 @@ namespace std {
   template<class L, class R> constexpr \exposid{common-big-int-type}<L, R> operator|(L&& x, R&& y);
   template<class L, class R> constexpr \exposid{common-big-int-type}<L, R> operator^(L&& x, R&& y);
 
+  template<class T, \exposid{signed-or-unsigned} S> remove_cvref_t<T> operator<<(T&& x, S s);
+  template<class T, \exposid{signed-or-unsigned} S> remove_cvref_t<T> operator>>(T&& x, S s);
+
+
   //\serif{ [big.int.literal], literals}
   inline namespace literals {
     inline namespace big_int_literals {
@@ -191,17 +141,116 @@ namespace std {
 }
 
 \pnum
-The exposition-only concept \tcode{\exposid{signed-or-unsigned}}
-is satisfied and modeled if and only if \tcode{T}
-is a signed or unsigned integer type\iref{basic.fundamental}.
+The type alias \tcode{uint_multiprecision_t}
+denotes a standard unsigned or extended unsigned integer type\iref{basic.fundamental}
+which has no padding bits.
 
 \pnum
-The exposition-only concept \tcode{\exposid{arbitrary-integer}}
-is satisfied and modeled if and only if \tcode{remove_cvref_t<T>}
-is either a signed or unsigned integer type\iref{basic.fundamental}
-or a specialization of \tcode{basic_big_int}.
+\recommended
+\tcode{uint_multiprecision_t} should be chosen
+to have the greatest possible width
+so that an arithmetic expression\iref{expr.pre}
+performed on operands of the type
+maps onto a single instruction in the execution environment.
+
+\editnote{
+It is important not to overconstrain here because there are many edge cases
+in architectures:
+\ul{
+  \li{
+    8-bit microcontrollers only have 8-bit arithmetic but can address memory
+    with 16-bit addressing;
+    the appropriate type there is presumably \tcode{uint8_t}
+    despite \tcode{size_t} and \tcode{int} being wider.
+  }
+  \li{
+    WASM32 only has 32-bit addressable memory and has a 32-bit \tcode{size_t};
+    however, WASM32 supports 64-bit arithmetic instructions,
+    so the appropriate limb type there is \tcode{uint64_t}.
+  }
+  \li{
+    In most cases, the limb type can simply be \tcode{size_t}.
+  }
+}
+}
 
 \cowel_html_element(h3){X.\snum1 Class template \tcode{basic_big_int} \stable_ref{big.int.class}}
+
+\itemdecl{
+template<size_t fixed_bits, class Allocator>
+class basic_big_int {
+  //\serif{ types}
+  using allocator_type = Allocator;
+
+  //\serif{ [big.int.expos], exposition-only helpers}
+  template<class T>
+    inline constexpr bool \exposid{no-alloc-constructible-from} = \seebelow; //\serif{ exposition only}
+  template<class T>
+    concept \exposid{common-big-int-type-with} = requires { //\serif{ exposition only}
+      typename \exposid{common-big-int-type}<basic_big_int, T>;
+    };
+
+  //\serif{ [big.int.cons], construct/copy/destroy}
+  constexpr basic_big_int() noexcept(noexcept(Allocator()));
+  constexpr explicit basic_big_int(const Allocator& a) noexcept;
+  constexpr basic_big_int(const basic_big_int& x);
+  constexpr basic_big_int(basic_big_int&&) x noexcept;
+  template<\exposid{arbitrary-integer} T>
+    constexpr basic_big_int(T&& x) noexcept(\exposid{no-alloc-constructible-from}<T>);
+  template<\exposid{arbitrary-integer} T>
+    constexpr explicit basic_big_int(const T& x, const Allocator& a)
+      noexcept(\exposid{no-alloc-constructible-from}<T>);
+  template<input_range R>
+    requires \exposid{signed-or-unsigned}<ranges::range_value_t<R>>
+    constexpr explicit basic_big_int(from_range_t, R&&, const Allocator& a = Allocator());
+  constexpr ~basic_big_int();
+
+  //\serif{ [big.int.ops], operations}
+  constexpr size_t width_mag() const noexcept;
+  constexpr span<const uint_multiprecision_t> limbs() const noexcept;
+  constexpr allocator_type get_allocator() const noexcept;
+
+  //\serif{ [big.int.modifiers], modifiers}
+  constexpr basic_big_int& operator=(const basic_big_int& x);
+  constexpr basic_big_int& operator=(basic_big_int&& x) noexcept;
+  template<\exposid{arbitrary-integer} T>
+    constexpr basic_big_int& operator=(T&& x) noexcept(\exposid{no-alloc-constructible-from}<T>);
+
+  template<\exposid{common-big-int-type-with} T> constexpr basic_big_int& operator+=(T&& x);
+  template<\exposid{common-big-int-type-with} T> constexpr basic_big_int& operator-=(T&& x);
+  template<\exposid{common-big-int-type-with} T> constexpr basic_big_int& operator*=(T&& x);
+  template<\exposid{common-big-int-type-with} T> constexpr basic_big_int& operator/=(T&& x);
+  template<\exposid{common-big-int-type-with} T> constexpr basic_big_int& operator%=(T&& x);
+  template<\exposid{common-big-int-type-with} T> constexpr basic_big_int& operator&=(T&& x);
+  template<\exposid{common-big-int-type-with} T> constexpr basic_big_int& operator|=(T&& x);
+  template<\exposid{common-big-int-type-with} T> constexpr basic_big_int& operator^=(T&& x);
+
+  template<\exposid{signed-or-unsigned} S> constexpr basic_big_int& operator<<=(S s);
+  template<\exposid{signed-or-unsigned} S> constexpr basic_big_int& operator>>=(S s);
+
+  constexpr void swap(basic_big_int& x)
+    noexcept(allocator_traits<Allocator>::propagate_on_container_swap::value ||
+              allocator_traits<Allocator>::is_always_equal::value);
+
+  //\serif{ [big.int.conv], conversions}
+  constexpr explicit operator bool() const noexcept;
+  template<\exposid{signed-or-unsigned} T>
+    constexpr explicit operator T() const noexcept;
+
+  //\serif{ [big.int.unary], unary operations}
+  constexpr basic_big_int operator+() const&;
+  constexpr basic_big_int operator+() && noexcept;
+  constexpr basic_big_int operator-() const&;
+  constexpr basic_big_int operator-() && noexcept;
+  constexpr basic_big_int operator~() const&;
+  constexpr basic_big_int operator~() &&;
+
+  constexpr basic_big_int& operator++();
+  constexpr basic_big_int operator++(int);
+  constexpr basic_big_int& operator--();
+  constexpr basic_big_int operator--(int);
+};
+}
 
 \pnum
 A \tcode{basic_big_int} represents an \dfn{integer value};
@@ -249,6 +298,31 @@ so the initial proposal maybe shouldn't mandate it.
 }
 
 \cowel_html_element(h4){X.\Vget(snum1).\snum2 Exposition-only helpers \stable_ref{big.int.expos}}
+
+\itemdecl{
+template<class T>
+  concept \exposid{signed-or-unsigned} = \seebelow;
+}
+
+\itemdescr{
+\pnum
+The exposition-only concept \tcode{\exposid{signed-or-unsigned}}
+is satisfied and modeled if and only if \tcode{T}
+is a signed or unsigned integer type\iref{basic.fundamental}.
+}
+
+\itemdecl{
+template<class T>
+  concept \exposid{arbitrary-integer} = \seebelow;
+}
+
+\itemdescr{
+\pnum
+The exposition-only concept \tcode{\exposid{arbitrary-integer}}
+is satisfied and modeled if and only if \tcode{remove_cvref_t<T>}
+is either a signed or unsigned integer type\iref{basic.fundamental}
+or a specialization of \tcode{basic_big_int}.
+}
 
 \itemdecl{
 template<class T>
@@ -362,7 +436,87 @@ is less than or equal to \tcode{fixed_bits};
 otherwise, exceptions thrown during allocation.
 }
 
+\itemdecl{
+template<input_range R>
+  requires \exposid{signed-or-unsigned}<ranges::range_value_t<R>>
+  constexpr explicit basic_big_int(from_range_t, R&& r, const Allocator& a = Allocator());
+}
+
+\itemdescr{
+\pnum
+\effects
+Initializes the integer value to an integer value formed
+by concatenating the base-2 representation of each element in \tcode{r},
+where the first element in \tcode{r} holds the least significant part
+of the concatenated base-2 representation.
+If \tcode{ranges::range_value_t<R>} is a signed type,
+the combined base-2 representation is interpreted as that of a signed integer,
+otherwise as that of an unsigned integer.
+Initializes the allocator to \tcode{a}.
+
+\pnum
+\throws
+Nothing if the effective width of the combined integer value
+is less than or equal to \tcode{fixed_bits};
+otherwise, exceptions thrown during allocation.
+}
+
 \cowel_html_element(h4){X.\Vget(snum1).\snum2 Operations \stable_ref{big.int.ops}}
+
+\itemdecl{
+constexpr size_t width_mag() const noexcept;
+}
+
+\itemdescr{
+\pnum
+\returns
+If the integer value is zero, \tcode{0};
+otherwise the base-2 logarithm of the integer value,
+with any fractional part discarded.
+
+\pnum
+\complexity
+Constant.
+}
+
+\itemdecl{
+constexpr span<const uint_multiprecision_t> limbs() const noexcept;
+}
+
+\itemdescr{
+\pnum
+\returns
+A \tcode{span} representing the range of digits either
+nested within this object or dynamically allocated,
+where the first digit in the range has the least significant set of bits;
+otherwise, a value-initialized result.
+
+\pnum
+\remarks
+If the integer value is greater or equal to zero,
+\tcode{basic_big_int(from_range, limbs(), get_allocator())}
+has the same integer value.
+
+\pnum
+\note{\tcode{operator-()}} does not affect the contents of the result.
+}
+
+\editnote{
+This getter single-handedly imposes a huge amount of constraints on the implementation:
+\ul{
+  \li{
+    \tcode{basic_big_int} needs to store a \tcode{union} of dynamically allocated data
+    and of \tcode{uint_multiprecision_t} to make the value accessible
+    via \tcode{span}.
+  }
+  \li{
+    The sign bit is kept separate.
+  }
+  \li{
+    The padding needs to be kept zero.
+  }
+}
+}
 
 \itemdecl{
 constexpr allocator_type get_allocator() const noexcept;
@@ -424,6 +578,47 @@ Sets the integer value to that of \tcode{x}.
 }
 
 \itemdecl{
+template<\exposid{common-big-int-type-with} T> constexpr basic_big_int& operator+=(T&& x);
+template<\exposid{common-big-int-type-with} T> constexpr basic_big_int& operator-=(T&& x);
+template<\exposid{common-big-int-type-with} T> constexpr basic_big_int& operator*=(T&& x);
+template<\exposid{common-big-int-type-with} T> constexpr basic_big_int& operator/=(T&& x);
+template<\exposid{common-big-int-type-with} T> constexpr basic_big_int& operator%=(T&& x);
+template<\exposid{common-big-int-type-with} T> constexpr basic_big_int& operator&=(T&& x);
+template<\exposid{common-big-int-type-with} T> constexpr basic_big_int& operator|=(T&& x);
+template<\exposid{common-big-int-type-with} T> constexpr basic_big_int& operator^=(T&& x);
+}
+
+\itemdescr{
+\pnum
+\effects
+Equivalent to:
+\itemdecl{
+*this = std::move(*this) @ std::forward<T>(x);
+return *this;
+}
+where \tcode{@} is a placeholder for the token
+in the respective \tcode{operator@}.
+}
+
+\itemdecl{
+template<\exposid{signed-or-unsigned} S> constexpr basic_big_int& operator<<=(S s);
+}
+
+\itemdescr{
+Equivalent to: \tcode{return *this = std::move(*this) << s;}
+}
+
+\itemdecl{
+template<\exposid{signed-or-unsigned} S> constexpr basic_big_int& operator>>=(S s);
+}
+
+\itemdescr{
+\pnum
+\effects
+Equivalent to: \tcode{return *this = std::move(*this) >> s;}
+}
+
+\itemdecl{
 constexpr void swap(basic_big_int& x)
   noexcept(allocator_traits<Allocator>::propagate_on_container_swap::value ||
            allocator_traits<Allocator>::is_always_equal::value);
@@ -433,6 +628,8 @@ constexpr void swap(basic_big_int& x)
 \pnum
 \effects
 Exchanges the integer values of this object and of \tcode{x}.
+
+\Btodo{What does this do for allocators?}
 }
 
 \cowel_html_element(h4){X.\Vget(snum1).\snum2 Conversions \stable_ref{big.int.conv}}
@@ -473,7 +670,7 @@ constexpr basic_big_int operator+() const&;
 \itemdescr{
 \pnum
 \effects
-Equivalent to \tcode{auto(*this)}.
+Equivalent to: \tcode{return *this;}
 }
 
 \itemdecl{
@@ -483,33 +680,51 @@ constexpr basic_big_int operator+() && noexcept;
 \itemdescr{
 \pnum
 \effects
-Equivalent to \tcode{auto(std::move(*this))}.
+Equivalent to: \tcode{return std::move(*this);}
 }
 
 \itemdecl{
 constexpr basic_big_int operator-() const&;
-constexpr basic_big_int operator-() &&;
 }
 
 \itemdescr{
 \pnum
-\returns
-A \tcode{basic_big_int} whose
-integer value is \math{\mrow{\mo{−}\mi{v}}} and
-whose allocator is \tcode{get_allocator()}.
+\effects
+Equivalent to: \tcode{return 0 - *this;}
+}
+
+\itemdecl{
+constexpr basic_big_int operator-() && noexcept;
+}
+
+\itemdescr{
+\pnum
+\effects
+Equivalent to: \tcode{return 0 - std::move(*this);}
+
+\pnum
+\complexity
+Constant.
 }
 
 \itemdecl{
 constexpr basic_big_int operator~() const&;
+}
+
+\itemdescr{
+\pnum
+\effects
+Equivalent to: \tcode{return -1 - *this;}
+}
+
+\itemdecl{
 constexpr basic_big_int operator~() &&;
 }
 
 \itemdescr{
 \pnum
 \returns
-A \tcode{basic_big_int} whose
-integer value is \math{\mrow{\mo{−}\mi{v}\mo{−}\mn{1}}} and
-whose allocator is \tcode{get_allocator()}.
+Equivalent to: \tcode{return -1 - std::move(*this);}
 }
 
 \itemdecl{
@@ -519,7 +734,7 @@ constexpr basic_big_int& operator++();
 \itemdescr{
 \pnum
 \effects
-Equivalent to \tcode{*this += 1}.
+Equivalent to: \tcode{return *this += 1;}
 }
 
 \itemdecl{
@@ -532,7 +747,7 @@ constexpr basic_big_int operator++(int);
 Equivalent to:
 \itemdecl{
 auto copy = *this;
-++*this;
+++(*this);
 return copy;
 }
 }
@@ -544,7 +759,7 @@ constexpr basic_big_int& operator--();
 \itemdescr{
 \pnum
 \effects
-Equivalent to \tcode{*this -= 1}.
+Equivalent to: \tcode{return *this -= 1;}
 }
 
 \itemdecl{
@@ -557,7 +772,7 @@ constexpr basic_big_int operator--(int);
 Equivalent to:
 \itemdecl{
 auto copy = *this;
---*this;
+--(*this);
 return copy;
 }
 }
@@ -565,14 +780,14 @@ return copy;
 \cowel_html_element(h4){X.\Vget(snum1).\snum2 Non-member comparison operator functions \stable_ref{big.int.cmp}}
 
 \itemdecl{
-template<\exposid{arbitrary-integer} L, \exposid{arbitrary-integer} R>
+template<class L, class R>
   constexpr bool operator==(const L& x, const R& y) noexcept;
 }
 
 \itemdescr{
 \pnum
 \constraints
-\tcode{L} or \tcode{R} is a specialization of \tcode{basic_big_int}.
+\tcode{\exposid{common-big-int-type}<L, R>} denotes a valid type.
 
 \pnum
 \returns
@@ -590,14 +805,14 @@ This may involve multi-precision comparisons such as in \tcode{big_int == __int1
 }
 
 \itemdecl{
-template<\exposid{arbitrary-integer} L, \exposid{arbitrary-integer} R>
+template<class L, class R>
   constexpr strong_ordering operator<=>(const L& x, const R& y) noexcept;
 }
 
 \itemdescr{
 \pnum
 \constraints
-\tcode{L} or \tcode{R} is a specialization of \tcode{basic_big_int}.
+\tcode{\exposid{common-big-int-type}<L, R>} denotes a valid type.
 
 \pnum
 \returns
@@ -663,15 +878,65 @@ the integer value of \tcode{y} is nonzero.
 
 \pnum
 \returns
-For each operator function template \tcode{operator \placeholder{op}},
+For each operator function template \tcode{operator@}
+where \tcode{@} is a placeholder for the respective token,
 a \tcode{basic_big_int} object whose integer value is that of performing
-the operation \tcode{T(x) \placeholder{op} T(y)},
+the operation \tcode{T(x) @ T(y)},
 where \tcode{T} is a hypothetical signed integer type with infinite range.
 \br\note{
 Bitwise operations are performed as if on a two's-complement representation, where
 positive numbers have an infinite number of leading zeroes, and
 negative numbers have an infinite number of leading ones.
 }
+
+\Btodo{
+\tcode{std::atomic} has a similar specification with \tcode{operator@};
+maybe copy the wording from there.
+}
+}
+
+\itemdecl{
+template<class T, \exposid{signed-or-unsigned} S> remove_cvref_t<T> operator<<(T&& x, S s);
+}
+
+\itemdescr{
+\pnum
+\constraints
+\tcode{remove_cvref_t<T>} is a specialization of \tcode{basic_big_int}.
+
+\pnum
+\expects
+\tcode{s} is greater or equal to zero.
+
+\pnum
+\returns
+A \tcode{basic_big_int} whose integer value is
+\math{\mrow{\mi{v}\mo{×}\msup{\mn{2}\mi{s}}}},
+where \math{\mi{v}} is the integer value of \tcode{x},
+and whose allocator is that of \tcode{x}.
+}
+
+\itemdecl{
+template<class T, \exposid{signed-or-unsigned} S> remove_cvref_t<T> operator>>(T&& x, S s);
+
+}
+
+\itemdescr{
+\pnum
+\constraints
+\tcode{remove_cvref_t<T>} is a specialization of \tcode{basic_big_int}.
+
+\pnum
+\expects
+\tcode{s} is greater or equal to zero.
+
+\pnum
+\returns
+A \tcode{basic_big_int} whose integer value is
+\math{\mrow{\mi{v}\mo{×}\msup{\mn{2}\mrow{\mo{−}\mi{s}}}}}
+rounded towards negative infinity,
+where \math{\mi{v}} is the integer value of \tcode{x},
+and whose allocator is that of \tcode{x}.
 }
 
 \cowel_html_element(h4){X.\Vget(snum1).\snum2 Literals \stable_ref{big.int.literal}}
@@ -838,7 +1103,7 @@ string to_string(float val);
 string to_string(double val);
 string to_string(long double val);
 \ins{template<size_t fixed_bits, class Allocator>
-  string to_string(const basic_big_int<fixed_bits, Allocator>& val);}
+  constexpr string to_string(const basic_big_int<fixed_bits, Allocator>& val);}
 }
 
 \itemdescr{
@@ -859,7 +1124,7 @@ wstring to_wstring(float val);
 wstring to_wstring(double val);
 wstring to_wstring(long double val);
 \ins{template<size_t fixed_bits, class Allocator>
-  wstring to_wstring(const basic_big_int<fixed_bits, Allocator>& val);}
+  constexpr wstring to_wstring(const basic_big_int<fixed_bits, Allocator>& val);}
 }
 
 \itemdescr{
