@@ -1622,11 +1622,6 @@ Other sections will be filled in over time.
 Open design questions:
 </p><ul>
   <li>
-    Guarantee fast <code><h- data-h=kw>operator</h-><h- data-h=sym_op>-</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>,
-    possibly even add a function for <code><h- data-h=kw>noexcept</h-></code> in-place negation?
-  </li>
-  <li>Expose the limb array to the user directly?</li>
-  <li>
     What string conversions to offer?
   </li>
   <li>
@@ -1634,15 +1629,15 @@ Open design questions:
     Within the container, or in a header in front of the allocated limbs?
   </li>
   <li>
-    Give user access to size and capacity, even without limb access?
-    Maybe give user access only to information whether limb data is currently allocated?
-  </li>
-  <li>
     Be clever about the return type of <code><h- data-h=kw>operator</h-><h- data-h=sym_op>%</h-></code>?
   </li>
   <li>
     Provide constructors taking <code><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>string_view</h-></code>
     despite having user-defined literals?
+  </li>
+  <li>
+    Provide <code><h- data-h=kw>operator</h-><h- data-h=sym_op>==</h-></code> and <code><h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;=&gt;</h-></code> support for floating-point?
+    If so, handle NaN silently?
   </li>
 </ul>
 </decision-block>
@@ -1720,6 +1715,16 @@ as well as related type aliases.
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=id>signed-or-unsigned</h-></i> <h- data-h=id>S</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;&lt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>S</h-> <h- data-h=id>s</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=id>signed-or-unsigned</h-></i> <h- data-h=id>S</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=id>T</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=id>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>S</h-> <h- data-h=id>s</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
+  <h- data-h=kw>namespace</h-> <h- data-h=id>pmr</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>b</h-><h- data-h=sym_op>&gt;</h->
+      <h- data-h=kw>using</h-> <h- data-h=id>basic_big_int</h-> <h- data-h=sym_op>=</h->
+        <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>polymorphic_allocator</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw>using</h-> <h- data-h=id>big_int</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>big_int</h-><h- data-h=sym_op>::</h-><h- data-h=id>inplace_bits</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+
+  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> [big.int.hash], hash support</h-></f-serif>
+  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=id>hash</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>A</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=id>hash</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>A</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> [big.int.literal], literals</h-></f-serif>
   <h- data-h=kw>inline</h-> <h- data-h=kw>namespace</h-> <h- data-h=id>literals</h-> <h- data-h=sym_brac>{</h->
@@ -1727,13 +1732,6 @@ as well as related type aliases.
       <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>...</h-> <h- data-h=id>digits</h-><h- data-h=sym_op>&gt;</h->
         <h- data-h=kw>constexpr</h-> <h- data-h=id>big_int</h-> <h- data-h=kw>operator</h-><h- data-h=str_dlim>"</h-><h- data-h=str_dlim>"</h-><h- data-h=str_deco>n</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>see below</h-></i><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
     <h- data-h=sym_brac>}</h->
-  <h- data-h=sym_brac>}</h->
-
-  <h- data-h=kw>namespace</h-> <h- data-h=id>pmr</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>inplace_bits</h-><h- data-h=sym_op>&gt;</h->
-      <h- data-h=kw>using</h-> <h- data-h=id>basic_big_int</h-> <h- data-h=sym_op>=</h->
-        <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>inplace_bits</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>polymorphic_allocator</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>using</h-> <h- data-h=id>big_int</h-> <h- data-h=sym_op>=</h-> <h- data-h=id>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>big_int</h-><h- data-h=sym_op>::</h-><h- data-h=id>inplace_bits</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>;</h->
   <h- data-h=sym_brac>}</h->
 <h- data-h=sym_brac>}</h-></code-block>
 
@@ -1805,8 +1803,9 @@ in architectures:
 
   <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> [big.int.ops], operations</h-></f-serif>
   <h- data-h=kw>constexpr</h-> <h- data-h=id_type>size_t</h-> <h- data-h=id>width_mag</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=id>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>const</h-> <h- data-h=id_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>limbs</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=id>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>const</h-> <h- data-h=id_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>representation</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=id>allocator_type</h-> <h- data-h=id>get_allocator</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>void</h-> <h- data-h=id>shrink_to_fit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> [big.int.modifiers], modifiers</h-></f-serif>
   <h- data-h=kw>constexpr</h-> <h- data-h=id>basic_big_int</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>=</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=id>basic_big_int</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=id>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
@@ -1910,6 +1909,26 @@ even though it can be represented without allocations.
 still makes sense because that allocation may be reused at a later point.
 </p></note-block>
 
+<p>5
+The <dfn>representation</dfn> of a <code><h- data-h=id>basic_big_int</h-></code> object
+is the sequence of <code><h- data-h=id_type>uint_multiprecision_t</h-></code> elements
+that collectively represents the integer value of that object.
+Unless otherwise stated,
+</p><ul>
+  <li>
+    any member function or member function template
+    without <code><h- data-h=kw>const</h-></code> qualifier, and
+  </li>
+  <li>
+    any free function or specialization of a function template
+    that has a parameter of type <q>rvalue reference to <code><h- data-h=id>basic_big_int</h-></code></q>
+  </li>
+</ul>
+<p>described in <a href=https://eel.is/c++draft/big.int>[big.int]</a> <dfn>invalidates</dfn>
+the representation of the object,
+meaning that results previously returned by <code><h- data-h=id>representation</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>
+are no longer valid.
+</p>
 <h4>X.3.1 Exposition-only helpers <span class=stable-ref>[big.int.expos]</span></h4>
 
 <code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=id>T</h-><h- data-h=sym_op>&gt;</h->
@@ -2118,24 +2137,34 @@ with any fractional part discarded.
 Constant.
 </p></div>
 
-<code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=id>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>const</h-> <h- data-h=id_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>limbs</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+<code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=id>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>const</h-> <h- data-h=id_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=id>representation</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>3
 <i>Returns</i>:
 A <code><h- data-h=id>span</h-></code> representing the range of digits either
 nested within this object or dynamically allocated,
-where the first digit in the range has the least significant set of bits;
-otherwise, a value-initialized result.
+where the first digit in the range has the least significant set of bits.
+The <code><h- data-h=id>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> of the result is
+<code><h- data-h=id>div_to_pos_inf</h-><h- data-h=sym_par>(</h-><h- data-h=id>width_mag</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=id>digits</h-><h- data-h=sym_par>)</h-></code>.
 </p>
+<note-block class=edit><p><intro-></intro-> 
+<code><h- data-h=id>div_to_pos_inf</h-></code> is added by <a href="https://wg21%2elink/p3724r3">[P3724R3]</a>.
+I would expect it to be available by the time <code><h- data-h=id>big_int</h-></code> is standardized.
+</p></note-block>
+
 <p>4
 <i>Remarks</i>:
 If the integer value is greater or equal to zero,
-<code><h- data-h=id>basic_big_int</h-><h- data-h=sym_par>(</h-><h- data-h=id>from_range</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>limbs</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>get_allocator</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code>
-has the same integer value.
-</p>
-<p>5
-[<i>Note</i>: <code><h- data-h=kw>operator</h-><h- data-h=sym_op>-</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> — <i>end note</i>] does not affect the contents of the result.
+<code><h- data-h=id>basic_big_int</h-><h- data-h=sym_par>(</h-><h- data-h=id>from_range</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>representation</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>get_allocator</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code>
+shall have the same integer value.
+<br/>[<i>Note</i>: 
+Consequently, elements of type <code><h- data-h=id_type>uint_multiprecision_t</h-></code>
+that are part of the representation must be kept in the correct state,
+including otherwise extraneous upper bits of magnitude greater than the integer value.
+This restriction does not apply to elements that are allocated
+but not part of the representation.
+ — <i>end note</i>]
 </p></div>
 
 <note-block class=edit><p><intro-></intro-> 
@@ -2158,9 +2187,22 @@ This getter single-handedly imposes a huge amount of constraints on the implemen
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=id>allocator_type</h-> <h- data-h=id>get_allocator</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
-<p>6
+<p>5
 <i>Returns</i>:
 The allocator of this object.
+</p></div>
+
+<code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>void</h-> <h- data-h=id>shrink_to_fit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p>6
+<i>Effects</i>:
+If the effective width of the integer value is
+less than or equal to <code><h- data-h=id>inplace_bits</h-></code>,
+<code><h- data-h=id>shrink_to_fit</h-></code> frees the allocation and stores the integer value
+within the <code><h- data-h=id>basic_big_int</h-></code> object.
+Otherwise, <code><h- data-h=id>shrink_to_fit</h-></code> is a non-binding request
+to reduce <code><h- data-h=id>capacity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> to the 
 </p></div>
 
 <h4>X.3.4 Modifiers <span class=stable-ref>[big.int.modifiers]</span></h4>
@@ -2316,12 +2358,17 @@ Equivalent to: <code><h- data-h=kw_ctrl>return</h-> <h- data-h=num>0</h-> <h- da
 <p>6
 <i>Complexity</i>:
 Constant.
+</p>
+<p>7
+<i>Remarks</i>:
+The contents of the representation of the result
+are identical to those of <code><h- data-h=id>representation</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> prior to the call.
 </p></div>
 
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=id>basic_big_int</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>~</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
-<p>7
+<p>8
 <i>Effects</i>:
 Equivalent to: <code><h- data-h=kw_ctrl>return</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1</h-> <h- data-h=sym_op>-</h-> <h- data-h=sym_op>*</h-><h- data-h=this>this</h-><h- data-h=sym_punc>;</h-></code>
 </p></div>
@@ -2329,7 +2376,7 @@ Equivalent to: <code><h- data-h=kw_ctrl>return</h-> <h- data-h=sym_op>-</h-><h- 
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=id>basic_big_int</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>~</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&amp;&amp;</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
-<p>8
+<p>9
 <i>Returns</i>:
 Equivalent to: <code><h- data-h=kw_ctrl>return</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1</h-> <h- data-h=sym_op>-</h-> <h- data-h=id>std</h-><h- data-h=sym_op>::</h-><h- data-h=id>move</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>*</h-><h- data-h=this>this</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code>
 </p></div>
@@ -2337,7 +2384,7 @@ Equivalent to: <code><h- data-h=kw_ctrl>return</h-> <h- data-h=sym_op>-</h-><h- 
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=id>basic_big_int</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>++</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
-<p>9
+<p>10
 <i>Effects</i>:
 Equivalent to: <code><h- data-h=kw_ctrl>return</h-> <h- data-h=sym_op>*</h-><h- data-h=this>this</h-> <h- data-h=sym_op>+=</h-> <h- data-h=num>1</h-><h- data-h=sym_punc>;</h-></code>
 </p></div>
@@ -2345,7 +2392,7 @@ Equivalent to: <code><h- data-h=kw_ctrl>return</h-> <h- data-h=sym_op>*</h-><h- 
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=id>basic_big_int</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>++</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
-<p>10
+<p>11
 <i>Effects</i>:
 Equivalent to:
 </p><code-block class=borderless><h- data-h=kw>auto</h-> <h- data-h=id>copy</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_op>*</h-><h- data-h=this>this</h-><h- data-h=sym_punc>;</h->
@@ -2356,7 +2403,7 @@ Equivalent to:
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=id>basic_big_int</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>--</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
-<p>11
+<p>12
 <i>Effects</i>:
 Equivalent to: <code><h- data-h=kw_ctrl>return</h-> <h- data-h=sym_op>*</h-><h- data-h=this>this</h-> <h- data-h=sym_op>-=</h-> <h- data-h=num>1</h-><h- data-h=sym_punc>;</h-></code>
 </p></div>
@@ -2364,7 +2411,7 @@ Equivalent to: <code><h- data-h=kw_ctrl>return</h-> <h- data-h=sym_op>*</h-><h- 
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=id>basic_big_int</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>--</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
-<p>12
+<p>13
 <i>Effects</i>:
 Equivalent to:
 </p><code-block class=borderless><h- data-h=kw>auto</h-> <h- data-h=id>copy</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_op>*</h-><h- data-h=this>this</h-><h- data-h=sym_punc>;</h->
@@ -2521,32 +2568,41 @@ where <math display=inline><mi>v</mi></math> is the integer value of <code><h- d
 and whose allocator is that of <code><h- data-h=id>x</h-></code>.
 </p></div>
 
-<h4>X.3.9 Literals <span class=stable-ref>[big.int.literal]</span></h4>
+<h4>X.3.9 Hash support <span class=stable-ref>[big.int.hash]</span></h4>
+
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id_type>size_t</h-> <h- data-h=id>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=id>A</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=id>hash</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=id>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>A</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p>1
+The specialization is enabled (<a href=https://eel.is/c++draft/unord.hash>[unord.hash]</a>).
+</p></div>
+
+<h4>X.3.10 Literals <span class=stable-ref>[big.int.literal]</span></h4>
 
 <code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>...</h-> <h- data-h=id>digits</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=id>big_int</h-> <h- data-h=kw>operator</h-><h- data-h=str_dlim>"</h-><h- data-h=str_dlim>"</h-><h- data-h=str_deco>n</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_par>(</h-><i><h- data-h=id>see below</h-></i><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>1
-<i>Mandates</i>:
-</p><ul>
-  <li><code><h- data-h=id>digits</h-></code> is not an empty pack.</li>
-  <li><code><h- data-h=sym_par>(</h-><h- data-h=sym_par>(</h-><h- data-h=id>digits</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>0</h-><h- data-h=str_dlim>'</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=id>digits</h-> <h- data-h=sym_op>&lt;=</h-> <h- data-h=str_dlim>'</h-><h- data-h=str>9</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=sym_op>...</h-><h- data-h=sym_par>)</h-></code> is <code><h- data-h=bool>true</h-></code>.</li>
-</ul>
-
+Let <math display=inline><mi>s</mi></math> be a character sequence obtained by concatenating
+the elements of <code><h- data-h=id>digits</h-></code>.
+</p>
 <p>2
-<i>Effects</i>:
-Equivalent to:
-</p><code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>char</h-> <h- data-h=id>literal</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_brac>{</h-> <h- data-h=id>digits</h-><h- data-h=sym_op>...</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
-<h- data-h=id>big_int</h-> <h- data-h=id>result</h-><h- data-h=sym_punc>;</h->
-<h- data-h=id>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=id>begin</h-><h- data-h=sym_par>(</h-><h- data-h=id>literal</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>end</h-><h- data-h=sym_par>(</h-><h- data-h=id>literal</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=id>result</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw_ctrl>return</h-> <h- data-h=id>result</h-><h- data-h=sym_punc>;</h-></code-block>
+<i>Mandates</i>:
+<math display=inline><mi>s</mi></math> matches the syntax of an <g-term>integer-literal</g-term>
+with no <g-term>integer-suffix</g-term> and
+containing no digit separators. (<a href=https://eel.is/c++draft/lex.icon>[lex.icon]</a>)</p>
 
 <p>3
+<i>Returns</i>:
+A <code><h- data-h=id>big_int</h-></code> object whose integer value is that
+of <math display=inline><mi>s</mi></math> interpreted as an <g-term>integer-literal</g-term>.
+</p>
+<p>4
 <i>Remarks</i>:
 The function specialization has a non-throwing exception specification
 if the effective width of the integer value returned by a function call expression
-is less than or equal to <code><h- data-h=id>inplace_bits</h-></code>.
+is less than or equal to <code><h- data-h=id>big_int</h-><h- data-h=sym_op>::</h-><h- data-h=id>inplace_bits</h-></code>.
 </p>
 <note-block class=edit><p><intro-></intro-> 
 This implies we have to perform two-stage parsing.

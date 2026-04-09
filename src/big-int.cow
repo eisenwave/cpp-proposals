@@ -30,11 +30,6 @@ Other sections will be filled in over time.
 Open design questions:
 \ul{
   \li{
-    Guarantee fast \tcode{operator-()},
-    possibly even add a function for \tcode{noexcept} in-place negation?
-  }
-  \li{Expose the limb array to the user directly?}
-  \li{
     What string conversions to offer?
   }
   \li{
@@ -42,15 +37,15 @@ Open design questions:
     Within the container, or in a header in front of the allocated limbs?
   }
   \li{
-    Give user access to size and capacity, even without limb access?
-    Maybe give user access only to information whether limb data is currently allocated?
-  }
-  \li{
     Be clever about the return type of \tcode{operator%}?
   }
   \li{
     Provide constructors taking \tcode{std::string_view}
     despite having user-defined literals?
+  }
+  \li{
+    Provide \tcode{operator==} and \tcode{operator<=>} support for floating-point?
+    If so, handle NaN silently?
   }
 }
 }
@@ -131,6 +126,16 @@ namespace std {
   template<class T, \exposid{signed-or-unsigned} S> remove_cvref_t<T> operator<<(T&& x, S s);
   template<class T, \exposid{signed-or-unsigned} S> remove_cvref_t<T> operator>>(T&& x, S s);
 
+  namespace pmr {
+    template<size_t b>
+      using basic_big_int =
+        std::basic_big_int<b, polymorphic_allocator<uint_multiprecision_t>>;
+    using big_int = basic_big_int<std::big_int::inplace_bits>;
+  }
+
+  //\serif{ [big.int.hash], hash support}
+  template<class T> struct hash;
+  template<size_t b, class A> struct hash<basic_big_int<b, A>>;
 
   //\serif{ [big.int.literal], literals}
   inline namespace literals {
@@ -138,13 +143,6 @@ namespace std {
       template<char... digits>
         constexpr big_int \keyword{operator}""n() noexcept(\seebelow);
     }
-  }
-
-  namespace pmr {
-    template<size_t inplace_bits>
-      using basic_big_int =
-        std::basic_big_int<inplace_bits, polymorphic_allocator<uint_multiprecision_t>>;
-    using big_int = basic_big_int<std::big_int::inplace_bits>;
   }
 }
 }
@@ -218,8 +216,9 @@ class basic_big_int {
 
   //\serif{ [big.int.ops], operations}
   constexpr size_t width_mag() const noexcept;
-  constexpr span<const uint_multiprecision_t> limbs() const noexcept;
+  constexpr span<const uint_multiprecision_t> representation() const noexcept;
   constexpr allocator_type get_allocator() const noexcept;
+  constexpr void shrink_to_fit();
 
   //\serif{ [big.int.modifiers], modifiers}
   constexpr basic_big_int& operator=(const basic_big_int& x);
@@ -323,6 +322,26 @@ even though it can be represented without allocations.
 Giving the implementation the freedom to hold an \q{unnecessary allocation}
 still makes sense because that allocation may be reused at a later point.
 }
+
+\pnum
+The \dfn{representation} of a \tcode{basic_big_int} object
+is the sequence of \tcode{uint_multiprecision_t} elements
+that collectively represents the integer value of that object.
+Unless otherwise stated,
+\ul{
+  \li{
+    any member function or member function template
+    without \tcode{const} qualifier, and
+  }
+  \li{
+    any free function or specialization of a function template
+    that has a parameter of type \q{rvalue reference to \tcode{basic_big_int}}
+  }
+}
+described in \eelis{big.int} \dfn{invalidates}
+the representation of the object,
+meaning that results previously returned by \tcode{representation()}
+are no longer valid.
 
 \cowel_html_element(h4){X.\Vget(snum1).\snum2 Exposition-only helpers \stable_ref{big.int.expos}}
 
@@ -557,7 +576,7 @@ Constant.
 }
 
 \itemdecl{
-constexpr span<const uint_multiprecision_t> limbs() const noexcept;
+constexpr span<const uint_multiprecision_t> representation() const noexcept;
 }
 
 \itemdescr{
@@ -565,17 +584,27 @@ constexpr span<const uint_multiprecision_t> limbs() const noexcept;
 \returns
 A \tcode{span} representing the range of digits either
 nested within this object or dynamically allocated,
-where the first digit in the range has the least significant set of bits;
-otherwise, a value-initialized result.
+where the first digit in the range has the least significant set of bits.
+The \tcode{size()} of the result is
+\tcode{div_to_pos_inf(width_mag(), numeric_limits<uint_multiprecision_t>::digits)}.
+
+\editnote{
+\tcode{div_to_pos_inf} is added by \ref(P3724R3).
+I would expect it to be available by the time \tcode{big_int} is standardized.
+}
 
 \pnum
 \remarks
 If the integer value is greater or equal to zero,
-\tcode{basic_big_int(from_range, limbs(), get_allocator())}
-has the same integer value.
-
-\pnum
-\note{\tcode{operator-()}} does not affect the contents of the result.
+\tcode{basic_big_int(from_range, representation(), get_allocator())}
+shall have the same integer value.
+\br\note{
+Consequently, elements of type \tcode{uint_multiprecision_t}
+that are part of the representation must be kept in the correct state,
+including otherwise extraneous upper bits of magnitude greater than the integer value.
+This restriction does not apply to elements that are allocated
+but not part of the representation.
+}
 }
 
 \editnote{
@@ -603,6 +632,21 @@ constexpr allocator_type get_allocator() const noexcept;
 \pnum
 \returns
 The allocator of this object.
+}
+
+\itemdecl{
+constexpr void shrink_to_fit();
+}
+
+\itemdescr{
+\pnum
+\effects
+If the effective width of the integer value is
+less than or equal to \tcode{inplace_bits},
+\tcode{shrink_to_fit} frees the allocation and stores the integer value
+within the \tcode{basic_big_int} object.
+Otherwise, \tcode{shrink_to_fit} is a non-binding request
+to reduce \tcode{capacity()} to the 
 }
 
 \cowel_html_element(h4){X.\Vget(snum1).\snum2 Modifiers \stable_ref{big.int.modifiers}}
@@ -784,6 +828,11 @@ Equivalent to: \tcode{return 0 - std::move(*this);}
 \pnum
 \complexity
 Constant.
+
+\pnum
+\remarks
+The contents of the representation of the result
+are identical to those of \tcode{representation()} prior to the call.
 }
 
 \itemdecl{
@@ -1018,6 +1067,17 @@ where \math{\mi{v}} is the integer value of \tcode{x},
 and whose allocator is that of \tcode{x}.
 }
 
+\cowel_html_element(h4){X.\Vget(snum1).\snum2 Hash support \stable_ref{big.int.hash}}
+
+\itemdecl{
+template<size_t b, class A> struct hash<basic_big_int<b, A>>;
+}
+
+\itemdescr{
+\pnum
+The specialization is enabled\iref{unord.hash}.
+}
+
 \cowel_html_element(h4){X.\Vget(snum1).\snum2 Literals \stable_ref{big.int.literal}}
 
 \itemdecl{
@@ -1027,27 +1087,25 @@ template<char... digits>
 
 \itemdescr{
 \pnum
-\mandates
-\ul{
-  \li{\tcode{digits} is not an empty pack.}
-  \li{\tcode{((digits >= '0' && digits <= '9') && ...)} is \tcode{true}.}
-}
+Let \math{\mi{s}} be a character sequence obtained by concatenating
+the elements of \tcode{digits}.
 
 \pnum
-\effects
-Equivalent to:
-\itemdecl{
-constexpr char literal[] { digits... };
-big_int result;
-from_chars(begin(literal), end(literal), result);
-return result;
-}
+\mandates
+\math{\mi{s}} matches the syntax of an \grammarterm{integer-literal}
+with no \grammarterm{integer-suffix} and
+containing no digit separators.\iref{lex.icon}
+
+\pnum
+\returns
+A \tcode{big_int} object whose integer value is that
+of \math{\mi{s}} interpreted as an \grammarterm{integer-literal}.
 
 \pnum
 \remarks
 The function specialization has a non-throwing exception specification
 if the effective width of the integer value returned by a function call expression
-is less than or equal to \tcode{inplace_bits}.
+is less than or equal to \tcode{big_int::inplace_bits}.
 
 \editnote{
 This implies we have to perform two-stage parsing.
