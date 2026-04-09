@@ -95,7 +95,7 @@ namespace std {
   using uint_multiprecision_t = \seebelow;
 
   //\serif{ [big.int.class], class template \tcode{basic_big_int}}
-  template<size_t fixed_bits, class Allocator = allocator<uint_multiprecision_t>>
+  template<size_t inplace_bits, class Allocator = allocator<uint_multiprecision_t>>
     class basic_big_int;
 
   //\serif{ [big.int.expos], exposition-only helpers}
@@ -103,6 +103,8 @@ namespace std {
     concept \exposid{signed-or-unsigned} = \seebelow; //\serif{ exposition only}
   template<class T>
     concept \exposid{arbitrary-integer} = \seebelow; //\serif{ exposition only}
+  template<class T>
+    concept \exposid{arbitrary-arithmetic-type} = \seebelow; //\serif{ exposition only}
   template<class L, class R>
     using \exposid{common-big-int-type} = \seebelow; //\serif{ exposition only}
 
@@ -137,6 +139,13 @@ namespace std {
         constexpr big_int \keyword{operator}""n() noexcept(\seebelow);
     }
   }
+
+  namespace pmr {
+    template<size_t inplace_bits>
+      using basic_big_int =
+        std::basic_big_int<inplace_bits, polymorphic_allocator<uint_multiprecision_t>>;
+    using big_int = basic_big_int<std::big_int::inplace_bits>;
+  }
 }
 }
 
@@ -151,7 +160,7 @@ which has no padding bits.
 to have the greatest possible width
 so that an arithmetic expression\iref{expr.pre}
 performed on operands of the type
-maps onto a single instruction in the execution environment.
+corresponds to single instruction in the execution environment.
 
 \editnote{
 It is important not to overconstrain here because there are many edge cases
@@ -177,10 +186,11 @@ in architectures:
 \cowel_html_element(h3){X.\snum1 Class template \tcode{basic_big_int} \stable_ref{big.int.class}}
 
 \itemdecl{
-template<size_t fixed_bits, class Allocator>
+template<size_t inplace_bits_, class Allocator>
 class basic_big_int {
-  //\serif{ types}
+  //\serif{ types and constants}
   using allocator_type = Allocator;
+  static constexpr inplace_bits = inplace_bits_;
 
   //\serif{ [big.int.expos], exposition-only helpers}
   template<class T>
@@ -195,9 +205,10 @@ class basic_big_int {
   constexpr explicit basic_big_int(const Allocator& a) noexcept;
   constexpr basic_big_int(const basic_big_int& x);
   constexpr basic_big_int(basic_big_int&&) x noexcept;
-  template<\exposid{arbitrary-integer} T>
-    constexpr basic_big_int(T&& x) noexcept(\exposid{no-alloc-constructible-from}<T>);
-  template<\exposid{arbitrary-integer} T>
+  template<\exposid{arbitrary-arithmetic-type} T>
+    constexpr explicit(\seebelow) basic_big_int(T&& x)
+      noexcept(\exposid{no-alloc-constructible-from}<T>);
+  template<\exposid{arbitrary-arithmetic-type} T>
     constexpr explicit basic_big_int(const T& x, const Allocator& a)
       noexcept(\exposid{no-alloc-constructible-from}<T>);
   template<input_range R>
@@ -234,8 +245,7 @@ class basic_big_int {
 
   //\serif{ [big.int.conv], conversions}
   constexpr explicit operator bool() const noexcept;
-  template<\exposid{signed-or-unsigned} T>
-    constexpr explicit operator T() const noexcept;
+  template<class T> constexpr explicit operator T() const noexcept;
 
   //\serif{ [big.int.unary], unary operations}
   constexpr basic_big_int operator+() const&;
@@ -275,10 +285,10 @@ The \dfn{effective width} of an integer value \math{\mi{x}} is
 }
 
 \pnum
-Template parameter \tcode{fixed_bits} specifies the minimum width of integers
+Template parameter \tcode{inplace_bits} specifies the minimum width of integers
 that a \tcode{basic_big_int} shall be capable of representing
 using a subobject nested within.
-\tcode{fixed_bits} shall be nonzero and
+\tcode{inplace_bits} shall be nonzero and
 less than or equal to an implementation-defined limit.
 That limit shall be greater than or equal to the maximum width
 of any standard or extended integer type\iref{basic.fundamental}.
@@ -326,6 +336,19 @@ or a specialization of \tcode{basic_big_int}.
 
 \itemdecl{
 template<class T>
+  concept \exposid{arbitrary-arithmetic-type} = \seebelow;
+}
+
+\itemdescr{
+\pnum
+The exposition-only concept \tcode{\exposid{arbitrary-arithmetic-type}}
+is satisfied and modeled if and only if \tcode{remove_cvref_t<T>}
+is either a cv-unqualified arithmetic type\iref{basic.fundamental}
+or a specialization of \tcode{basic_big_int}.
+}
+
+\itemdecl{
+template<class T>
   inline constexpr bool \exposid{no-alloc-constructible-from} = \seebelow;
 }
 
@@ -334,7 +357,7 @@ template<class T>
 \effects
 \tcode{\exposid{no-alloc-constructible-from}} is \tcode{true} if
 \tcode{remove_cvref_t<T>} is a signed or unsigned integer type
-whose width is less than or equal to \tcode{fixed_bits},
+whose width is less than or equal to \tcode{inplace_bits},
 and \tcode{false} otherwise.
 }
 
@@ -375,7 +398,7 @@ Initializes the allocator to \tcode{x.get_allocator()}.
 \pnum
 \throws
 Nothing if the effective width of the integer value of \tcode{x}
-is less than or equal to \tcode{fixed_bits};
+is less than or equal to \tcode{inplace_bits};
 otherwise, exceptions thrown during allocation.
 }
 
@@ -391,8 +414,8 @@ Initializes the allocator to \tcode{x.get_allocator()}.
 }
 
 \itemdecl{
-template<\exposid{arbitrary-integer} T>
-  constexpr basic_big_int(T&& x) noexcept(\exposid{no-alloc-constructible-from}<T>);
+template<\exposid{arbitrary-arithmetic-type} T>
+  constexpr explicit(\seebelow) basic_big_int(T&& x) noexcept(\exposid{no-alloc-constructible-from}<T>);
 }
 
 \itemdescr{
@@ -408,31 +431,68 @@ with other allocators.
 }
 
 \pnum
+\expects
+If \tcode{remove_cvref_t<T>} is a floating-point type,
+the value of \tcode{x} is finite.
+
+\pnum
 \effects
-Initializes the integer value to that of \tcode{x}.
+If \tcode{remove_cvref_t<T>} is an integral type or
+a specialization of \tcode{basic_big_int},
+initializes the integer value to that of \tcode{x}.
+Otherwise, \tcode{remove_cvref_t<T>} is a floating-point type,
+and this object is initialized to the integer value obtained
+by discarding the fractional part of \tcode{x}.
 
 \pnum
 \throws
-Nothing if the effective width of the integer value of \tcode{x}
-is less than or equal to \tcode{fixed_bits};
+Nothing if the effective width of the integer value
+this object is initialized with
+is less than or equal to \tcode{inplace_bits};
 otherwise, exceptions thrown during allocation.
+
+\pnum
+\remarks
+The constructor is explicit if \tcode{remove_cvref_t<T>} is neither
+a signed or unsigned integer type\iref{basic.fundamental} nor
+\tcode{basic_big_int<inplace_bits, Allocator>}.
+
+\editnote{
+The design goal here is to permit conversion from any arithmetic type
+as well as for \tcode{basic_big_int} specializations with other allocators,
+but to make allocator mixing and floating-point conversions explicit.
+Also explicit is the conversion from character types to \tcode{basic_big_int},
+which is arguably needed because character types and integers are used in different domains.
+}
 }
 
 \itemdecl{
-template<\exposid{arbitrary-integer} T>
+template<\exposid{arbitrary-arithmetic-type} T>
   constexpr basic_big_int(const T& x, const Allocator& a)
     noexcept(\exposid{no-alloc-constructible-from}<T>);
 }
 
 \itemdescr{
 \pnum
+\expects
+If \tcode{remove_cvref_t<T>} is a floating-point type,
+the value of \tcode{x} is finite.
+
+\pnum
 \effects
-Initializes the integer value to that of \tcode{x}.
+If \tcode{remove_cvref_t<T>} is an integral type or
+a specialization of \tcode{basic_big_int},
+initializes the integer value to that of \tcode{x}.
+Otherwise, \tcode{remove_cvref_t<T>} is a floating-point type,
+and this object is initialized to the integer value obtained
+by discarding the fractional part of \tcode{x}.
+Initializes the allocator to \tcode{a}.
 
 \pnum
 \throws
-Nothing if the effective width of the integer value of \tcode{x}
-is less than or equal to \tcode{fixed_bits};
+Nothing if the effective width of the integer value
+this object is initialized with
+is less than or equal to \tcode{inplace_bits};
 otherwise, exceptions thrown during allocation.
 }
 
@@ -457,7 +517,7 @@ Initializes the allocator to \tcode{a}.
 \pnum
 \throws
 Nothing if the effective width of the combined integer value
-is less than or equal to \tcode{fixed_bits};
+is less than or equal to \tcode{inplace_bits};
 otherwise, exceptions thrown during allocation.
 }
 
@@ -559,7 +619,7 @@ Sets the integer value to that of \tcode{x}.
 }
 
 \itemdecl{
-template<arbitrary-integer T>
+template<\exposid{arbitrary-integer} T>
   constexpr basic_big_int& operator=(T&& x) noexcept(\exposid{no-alloc-constructible-from}<T>);
 }
 
@@ -635,26 +695,28 @@ Exchanges the integer values of this object and of \tcode{x}.
 \cowel_html_element(h4){X.\Vget(snum1).\snum2 Conversions \stable_ref{big.int.conv}}
 
 \itemdecl{
-constexpr explicit operator bool() const noexcept;
+template<class T> constexpr explicit operator T() const noexcept;
 }
 
 \itemdescr{
 \pnum
-\returns
-\tcode{true} if the integer value is nonzero, and
-\tcode{false} otherwise.
-}
+Let \tcode{U} be a hypothetical signed integer type
+with sufficient width to represent the \tcode{basic_big_int}'s
+integer value \math{\mi{v}}.
 
-\itemdecl{
-template<\exposid{signed-or-unsigned} T>
-  constexpr explicit operator T() const noexcept;
-}
+\pnum
+\tcode{T} is a cv-unqualified arithmetic type\iref{basic.fundamental}.
 
-\itemdescr{
 \pnum
 \returns
-The integer value modulo \math{\msup{\mn{2}\mi{N}}},
-where \math{\mi{N}} is the width of \tcode{T}.
+\tcode{T(U(\math{\mi{v}}))}.
+\br\note{
+If \tcode{T} is \tcode{bool},
+the result is \tcode{true} if \math{\mi{v}} is nonzero and
+\tcode{false} otherwise\iref{conv.integral}.
+If \tcode{T} is a floating-point type,
+the result value is determined as if by floating-integral conversion\iref{conv.fpint}.
+}
 }
 
 \cowel_html_element(h4){X.\Vget(snum1).\snum2 Unary operations \stable_ref{big.int.unary}}
@@ -968,7 +1030,7 @@ return result;
 \remarks
 The function specialization has a non-throwing exception specification
 if the effective width of the integer value returned by a function call expression
-is less than or equal to \tcode{fixed_bits}.
+is less than or equal to \tcode{inplace_bits}.
 
 \editnote{
 This implies we have to perform two-stage parsing.
@@ -998,9 +1060,9 @@ namespace std {
 
   constexpr to_chars_result to_chars(char* first, char* last,           //\serif{ freestanding}
                                      \exposid{integer-type} value, int base = 10);
-\ins{  template<size_t fixed_bits, class Allocator>
+\ins{  template<size_t inplace_bits, class Allocator>
     constexpr to_chars_result to_chars(char* first, char* last,
-                                       const basic_big_int<fixed_bits, Allocator>& value,
+                                       const basic_big_int<inplace_bits, Allocator>& value,
                                        int base = 10);}
   to_chars_result to_chars(char* first, char* last,                     //\serif{ freestanding}
                            bool value, int base = 10) = delete;
@@ -1009,9 +1071,9 @@ namespace std {
 
   constexpr from_chars_result from_chars(const char* first, const char* last,   //\serif{ freestanding}
                                        \exposid{integer-type}& value, int base = 10);
-\ins{  template<size_t fixed_bits, class Allocator>
+\ins{  template<size_t inplace_bits, class Allocator>
     constexpr from_chars_result from_chars(const char* first, const char* last,
-                                           basic_big_int<fixed_bits, Allocator>& value,
+                                           basic_big_int<inplace_bits, Allocator>& value,
                                            int base = 10);}
 
   from_chars_result from_chars(const char* first, const char* last,     //\serif{ freestanding-deleted}
@@ -1112,8 +1174,8 @@ whichever is closer to the value of \tcode{x}.
 
 \Bins{
 \itemdecl{
-template<class R, size_t fixed_bits, class Allocator>
-  constexpr R saturating_cast(T x, const basic_big_int<fixed_bits, Allocator>& x) noexcept;
+template<class R, size_t inplace_bits, class Allocator>
+  constexpr R saturating_cast(T x, const basic_big_int<inplace_bits, Allocator>& x) noexcept;
 }
 
 \itemdescr{
@@ -1155,8 +1217,8 @@ constexpr string to_string(unsigned long long val);
 string to_string(float val);
 string to_string(double val);
 string to_string(long double val);
-\ins{template<size_t fixed_bits, class Allocator>
-  constexpr string to_string(const basic_big_int<fixed_bits, Allocator>& val);}
+\ins{template<size_t inplace_bits, class Allocator>
+  constexpr string to_string(const basic_big_int<inplace_bits, Allocator>& val);}
 }
 
 \itemdescr{
@@ -1176,8 +1238,8 @@ constexpr wstring to_wstring(unsigned long long val);
 wstring to_wstring(float val);
 wstring to_wstring(double val);
 wstring to_wstring(long double val);
-\ins{template<size_t fixed_bits, class Allocator>
-  constexpr wstring to_wstring(const basic_big_int<fixed_bits, Allocator>& val);}
+\ins{template<size_t inplace_bits, class Allocator>
+  constexpr wstring to_wstring(const basic_big_int<inplace_bits, Allocator>& val);}
 }
 
 \itemdescr{
