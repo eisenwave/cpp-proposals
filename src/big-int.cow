@@ -1,16 +1,17 @@
-\cowel_include{libwg21.cow}
+\: cowel 0.8.1
+\cowel_include("libwg21-8.cow")
 
 \wg21_head(
-  title = \tcode{std::big_int}
+  title = {\tcode{std::big_int}}
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{D4444R0}}
-  \dt{Date:}            \dd{\tt{2026-04-13}}
+  \dt{Date:}            \dd{\tt{2026-04-16}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P4444/github)}
-  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/big-int.cow)}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P4444/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/big-int.cow")}
 }
 \hr
 }
@@ -24,37 +25,11 @@ Other sections will be filled in over time.
 
 \make_contents
 
-\h2{Design}
-
-\Bdecision{
-Open design questions:
-\ul{
-  \li{
-    What string conversions to offer?
-  }
-  \li{
-    Where to store size and capacity of the allocation?
-    Within the container, or in a header in front of the allocated limbs?
-  }
-  \li{
-    Be clever about the return type of \tcode{operator%}?
-  }
-  \li{
-    Provide constructors taking \tcode{std::string_view}
-    despite having user-defined literals?
-  }
-  \li{
-    Provide \tcode{operator==} and \tcode{operator<=>} support for floating-point?
-    If so, handle NaN silently?
-  }
-}
-}
-
 \h2{Wording}
 
 The changes are relative to \ref(N5032).
 
-\h3(show-number=false){[version.syn]}
+\h3(show_number=false){[version.syn]}
 
 Add a feature-test macro to \eelis{version.syn} as follows:
 
@@ -64,7 +39,7 @@ Add a feature-test macro to \eelis{version.syn} as follows:
 }
 }
 
-\h3(show-number=false){[big.int]}
+\h3(show_number=false){[big.int]}
 
 In Clause \eelis{numerics},
 insert a new subclause immediately following \eelis{complex.numbers}.
@@ -90,7 +65,7 @@ namespace std {
   using uint_multiprecision_t = \seebelow;
 
   //\serif{ [big.int.class], class template \tcode{basic_big_int}}
-  template<size_t min_inplace_bits, class Allocator = allocator<uint_multiprecision_t>>
+  template<size_t min_inplace_capacity, class Allocator = allocator<uint_multiprecision_t>>
     class basic_big_int;
 
   //\serif{ [big.int.expos], exposition-only helpers}
@@ -188,14 +163,14 @@ in architectures:
 \cowel_html_element(h3){X.\snum1 Class template \tcode{basic_big_int} \stable_ref{big.int.class}}
 
 \itemdecl{
-template<size_t min_inplace_bits, class Allocator>
+template<size_t min_inplace_capacity, class Allocator>
 class basic_big_int {
   //\serif{ [big.int.defns], types and constants}
   using allocator_type = Allocator;
   using size_type = \exposid{implementation-defined};
-  static constexpr size_type inplace_capacity = \seebelow;
-  static constexpr size_type inplace_bits =
-    inplace_capacity * numeric_limits<uint_multiprecision_t>::digits;
+  static constexpr size_type inplace_representation_capacity = \seebelow;
+  static constexpr size_type inplace_capacity =
+    inplace_representation_capacity * numeric_limits<uint_multiprecision_t>::digits;
 
   //\serif{ [big.int.expos], exposition-only helpers}
   template<class T>
@@ -218,14 +193,17 @@ class basic_big_int {
   constexpr ~basic_big_int();
 
   //\serif{ [big.int.ops], operations}
-  constexpr size_type width_mag() const noexcept;
   constexpr span<const uint_multiprecision_t> representation() const noexcept;
   constexpr size_type size() const noexcept;
+  constexpr size_type representation_size() const noexcept;
   constexpr size_type max_size() const noexcept;
+  constexpr size_type max_representation_size() const noexcept;
   constexpr size_type capacity() const noexcept;
+  constexpr size_type representation_capacity() const noexcept;
   constexpr allocator_type get_allocator() const noexcept;
 
   constexpr void reserve(size_type n);
+  constexpr void reserve_representation(size_type n);
   constexpr void shrink_to_fit();
 
   //\serif{ [big.int.modifiers], modifiers}
@@ -280,29 +258,21 @@ class basic_big_int {
 A \tcode{basic_big_int} represents an \dfn{integer value};
 the integer value of an object of integral type
 is the value\iref{basic.types.general} of that object.
-The integer value of a \tcode{basic_big_int} is either
-represented using a subobject nested within a \tcode{basic_big_int} or
-represented within storage obtained from the given \tcode{Allocator}.
+The magnitude of the integer value of a \tcode{basic_big_int} is either
+represented using subobjects nested within a \tcode{basic_big_int} or
+represented within storage obtained from the given \tcode{Allocator};
+the sign of the integer value is represented separately.
 
 \pnum
 The \dfn{effective width} of an integer value \math{\mi{x}} is
-\ul{
-  \li{
-    the width of the smallest hypothetical unsigned integer type
-    able to represent \math{\mi{x}}
-    if \math{\mi{x}} is positive, and
-  }
-  \li{
-    the width of the smallest hypothetical signed integer type
-    able to represent \math{\mi{x}} otherwise.
-  }
-}
+the width of the smallest hypothetical unsigned integer type\iref{basic.fundamental}
+able to represent  the magnitude of \math{\mi{x}}.
 
 \pnum
-Template parameter \tcode{min_inplace_bits} specifies the minimum width of integers
+Template parameter \tcode{min_inplace_capacity} specifies the minimum width of integers
 that a \tcode{basic_big_int} shall be capable of representing
 using a subobject nested within.
-\tcode{min_inplace_bits} shall be nonzero and
+\tcode{min_inplace_capacity} shall be nonzero and
 less than or equal to an implementation-defined limit.
 That limit shall be greater than or equal to the maximum width
 of any standard or extended integer type\iref{basic.fundamental}.
@@ -325,7 +295,11 @@ so the initial proposal maybe shouldn't mandate it.
 During constant evaluation,
 if the effective width of the integer value of a \tcode{basic_big_int}
 is less than or equal to its \tcode{inplace_bits} member,
-the object shall not hold an allocation.
+the object shall not hold an allocation following any operation.
+\br\note{
+The behavior is as if \tcode{shrink_to_fit()} was called
+following every operation that may allocate.
+}
 
 \editnote{
 This ensures that even without non-transient allocations,
@@ -358,26 +332,26 @@ the representation of the object,
 meaning that results previously returned by \tcode{representation()}
 are no longer valid.
 
-\cowel_html_element(h4){X.\Vget(snum1).\snum2 Types and constants \stable_ref{big.int.defns}}
+\cowel_html_element(h4){X.\cowel_var_get(snum1).\snum2 Types and constants \stable_ref{big.int.defns}}
 
 \itemdecl{
-static constexpr size_type inplace_capacity = \seebelow;
+static constexpr size_type inplace_representation_capacity = \seebelow;
 }
 
 \itemdescr{
 \pnum
-The value of the static data member \tcode{inplace_capacity}
+The value of the static data member \tcode{inplace_representation_capacity}
 is the amount of \tcode{uint_multiprecision_t}
 nested within a \tcode{basic_big_int} object
 and which participate in representing its integer value.
 
 \pnum
 \remarks
-The value of \tcode{inplace_capacity} shall be at least
-\tcode{div_to_pos_inf(min_inplace_bits, numeric_limits<uint_multiprecision_t>::digits)}.
+The value of \tcode{inplace_representation_capacity} shall be at least
+\tcode{div_to_pos_inf(min_inplace_capacity, numeric_limits<uint_multiprecision_t>::digits)}.
 }
 
-\cowel_html_element(h4){X.\Vget(snum1).\snum2 Exposition-only helpers \stable_ref{big.int.expos}}
+\cowel_html_element(h4){X.\cowel_var_get(snum1).\snum2 Exposition-only helpers \stable_ref{big.int.expos}}
 
 \itemdecl{
 template<class T>
@@ -386,7 +360,7 @@ template<class T>
 
 \itemdescr{
 \pnum
-The exposition-only concept \tcode{\exposid{signed-or-unsigned}}
+The exposition-only concept \exposid{signed-or-unsigned}
 is satisfied and modeled if and only if \tcode{T}
 is a signed or unsigned integer type\iref{basic.fundamental}.
 }
@@ -398,7 +372,7 @@ template<class T>
 
 \itemdescr{
 \pnum
-The exposition-only concept \tcode{\exposid{arbitrary-integer}}
+The exposition-only concept \exposid{arbitrary-integer}
 is satisfied and modeled if and only if \tcode{remove_cvref_t<T>}
 is either a signed or unsigned integer type\iref{basic.fundamental}
 or a specialization of \tcode{basic_big_int}.
@@ -411,7 +385,7 @@ template<class T>
 
 \itemdescr{
 \pnum
-The exposition-only concept \tcode{\exposid{arbitrary-arithmetic-type}}
+The exposition-only concept \exposid{arbitrary-arithmetic-type}
 is satisfied and modeled if and only if \tcode{remove_cvref_t<T>}
 is either a cv-unqualified arithmetic type\iref{basic.fundamental}
 or a specialization of \tcode{basic_big_int}.
@@ -458,14 +432,14 @@ template<class T>
 \itemdescr{
 \pnum
 \effects
-\tcode{\exposid{no-alloc-constructible-from}} is \tcode{true} if
+\exposid{no-alloc-constructible-from} is \tcode{true} if
 \tcode{remove_cvref_t<T>} is a signed or unsigned integer type
 whose width is less than or equal to \tcode{inplace_bits},
 and \tcode{false} otherwise.
 }
 
 
-\cowel_html_element(h4){X.\Vget(snum1).\snum2 Construct/copy/destroy \stable_ref{big.int.cons}}
+\cowel_html_element(h4){X.\cowel_var_get(snum1).\snum2 Construct/copy/destroy \stable_ref{big.int.cons}}
 
 \itemdecl{
 constexpr basic_big_int() noexcept(noexcept(Allocator()));
@@ -624,23 +598,7 @@ is less than or equal to \tcode{inplace_bits};
 otherwise, exceptions thrown during allocation.
 }
 
-\cowel_html_element(h4){X.\Vget(snum1).\snum2 Operations \stable_ref{big.int.ops}}
-
-\itemdecl{
-constexpr size_type width_mag() const noexcept;
-}
-
-\itemdescr{
-\pnum
-\returns
-If the integer value is zero, \tcode{0};
-otherwise the base-2 logarithm of the integer value,
-with any fractional part discarded.
-
-\pnum
-\complexity
-Constant.
-}
+\cowel_html_element(h4){X.\cowel_var_get(snum1).\snum2 Operations \stable_ref{big.int.ops}}
 
 \itemdecl{
 constexpr span<const uint_multiprecision_t> representation() const noexcept;
@@ -653,7 +611,7 @@ A \tcode{span} representing the range of digits either
 nested within this object or dynamically allocated,
 where the first digit in the range has the least significant set of bits.
 The \tcode{size()} of the result is
-\tcode{div_to_pos_inf(width_mag(), numeric_limits<uint_multiprecision_t>::digits)}.
+\tcode{div_to_pos_inf(representation_size(), numeric_limits<uint_multiprecision_t>::digits)}.
 
 \editnote{
 \tcode{div_to_pos_inf} is added by \ref(P3724R3).
@@ -697,12 +655,62 @@ constexpr size_type size() const noexcept;
 
 \itemdescr{
 \pnum
-\effects
-Equivalent to: \tcode{return representation().size();}
+\returns
+If the integer value is zero, \tcode{0};
+otherwise
+\math{\mrow{
+  \mo(fence=true, form="prefix", stretchy=true){⌊}
+  \msub{\mi{log}\mn{2}}
+  \mrow{
+    \mo(fence=true, form="prefix", stretchy=false){|}
+    \mi{v}
+    \mo(fence=true, form="postfix", stretchy=false){|}
+  }
+  \mo(fence=true, form="postfix", stretchy=true){⌋}
+  \mo{+}
+  \mn{1}
+}},
+where \math{\mi{v}} is the integer value.
+
+\editnote{
+The result is identical to \tcode{std::bit_width(U(std::abs(T(\math{\mi{v}}))))} for
+a hypothetical signed integer type \tcode{T} with infinite range and
+a hypothetical unsigned integer type \tcode{U} with infinite range.
+However, this description seems inelegant.
+It would also be possible to imitate the wording from \eelis{bit.pow.two},
+but with the addition of \q{abs}/\q{magnitude},
+we are describing too complicated a math formula in prose.
+}
+
+\pnum
+\complexity
+Constant.
+}
+
+\itemdecl{
+constexpr size_type representation_size() const noexcept;
+}
+
+\itemdescr{
+\pnum
+\returns
+If the integer value is zero, \tcode{1};
+otherwise
+\tcode{div_to_pos_inf(size(), numeric_\N{SOFT HYPHEN}limits\brk{}<uint_\N{SOFT HYPHEN}multiprecision_t>::digits)}.
 }
 
 \itemdecl{
 constexpr size_type max_size() const noexcept;
+}
+
+\itemdescr{
+\pnum
+\returns
+\tcode{max_representation_size() * numeric_limits<uint_multiprecision_t>::digits}.
+}
+
+\itemdecl{
+constexpr size_type max_representation_size() const noexcept;
 }
 
 \itemdescr{
@@ -719,8 +727,20 @@ constexpr size_type capacity() const noexcept;
 \itemdescr{
 \pnum
 \returns
-The greater of \tcode{inplace_capacity} and
-the amount of dynamically allocated \tcode{uint_\N{SOFT HYPHEN}multiprecision_t} objects.
+\tcode{representation_capacity() * numeric_limits<uint_multiprecision_t>::digits}.
+}
+
+\itemdecl{
+constexpr size_type representation_capacity() const noexcept;
+}
+
+\itemdescr{
+\pnum
+\returns
+\tcode{max(inplace_representation_capacity, \exposid{dynamic-representation-capacity}()
+* numeric_\N{SOFT HYPHEN}limits\brk{}<uint_\N{SOFT HYPHEN}multiprecision_t>::digits)},
+where \tcode{\exposid{dynamic-representation-capacity}()} is the number of currently allocated
+\tcode{uint_\N{SOFT HYPHEN}multiprecision_t} objects.
 }
 
 \itemdecl{
@@ -753,6 +773,17 @@ equal to the previous value of \tcode{capacity()} otherwise.
 }
 
 \itemdecl{
+constexpr void reserve_representation(size_type n);
+}
+
+\itemdescr{
+\pnum
+\effects
+Equivalent to:
+\tcode{reserve(n * numeric_limits<uint_multiprecision_t>::digits);}
+}
+
+\itemdecl{
 constexpr void shrink_to_fit();
 }
 
@@ -774,7 +805,7 @@ If the size is not equal to the old capacity,
 linear in the size of the sequence; otherwise constant.
 }
 
-\cowel_html_element(h4){X.\Vget(snum1).\snum2 Modifiers \stable_ref{big.int.modifiers}}
+\cowel_html_element(h4){X.\cowel_var_get(snum1).\snum2 Modifiers \stable_ref{big.int.modifiers}}
 
 \itemdecl{
 constexpr basic_big_int& operator=(const basic_big_int& x);
@@ -888,7 +919,7 @@ Exchanges the integer values of this object and of \tcode{x}.
 \Btodo{What does this do for allocators?}
 }
 
-\cowel_html_element(h4){X.\Vget(snum1).\snum2 Conversions \stable_ref{big.int.conv}}
+\cowel_html_element(h4){X.\cowel_var_get(snum1).\snum2 Conversions \stable_ref{big.int.conv}}
 
 \itemdecl{
 template<class T> constexpr explicit operator T() const noexcept;
@@ -916,7 +947,7 @@ the result value is determined as if by floating-integral conversion\iref{conv.f
 }
 }
 
-\cowel_html_element(h4){X.\Vget(snum1).\snum2 Unary operations \stable_ref{big.int.unary}}
+\cowel_html_element(h4){X.\cowel_var_get(snum1).\snum2 Unary operations \stable_ref{big.int.unary}}
 
 \itemdecl{
 constexpr basic_big_int operator+() const&;
@@ -1037,7 +1068,7 @@ return copy;
 }
 }
 
-\cowel_html_element(h4){X.\Vget(snum1).\snum2 Alias \tcode{big_int} \stable_ref{big.int.alias}}
+\cowel_html_element(h4){X.\cowel_var_get(snum1).\snum2 Alias \tcode{big_int} \stable_ref{big.int.alias}}
 
 \itemdecl{
 using big_int = basic_big_int<\seebelow>;
@@ -1047,7 +1078,7 @@ using big_int = basic_big_int<\seebelow>;
 \pnum
 \result
 A specialization of \tcode{basic_big_int} with an implementation-defined
-argument \math{\mi{B}} for the \tcode{min_inplace_bits} constant template parameter,
+argument \math{\mi{B}} for the \tcode{min_inplace_capacity} constant template parameter,
 chosen so that \math{\mi{B}} equals \tcode{basic_big_int<\math{\mi{B}}>::inplace_\N{SOFT HYPHEN}bits}.
 
 \pnum
@@ -1056,7 +1087,7 @@ chosen so that \math{\mi{B}} equals \tcode{basic_big_int<\math{\mi{B}}>::inplace
 may represent the value of all commonly used integer types without allocating.
 }
 
-\cowel_html_element(h4){X.\Vget(snum1).\snum2 Non-member comparison operator functions \stable_ref{big.int.cmp}}
+\cowel_html_element(h4){X.\cowel_var_get(snum1).\snum2 Non-member comparison operator functions \stable_ref{big.int.cmp}}
 
 \itemdecl{
 template<class L, \exposid{common-big-int-type-with}<L> R>
@@ -1094,7 +1125,7 @@ is greater than the integer value of \tcode{y}, and
 \tcode{strong_ordering::equal} otherwise.
 }
 
-\cowel_html_element(h4){X.\Vget(snum1).\snum2 Binary operations \stable_ref{big.int.binary}}
+\cowel_html_element(h4){X.\cowel_var_get(snum1).\snum2 Binary operations \stable_ref{big.int.binary}}
 
 \itemdecl{
 template<class L, class R> constexpr \exposid{common-big-int-type}<L, R> operator+(L&& x, R&& y);
@@ -1177,7 +1208,7 @@ where \math{\mi{v}} is the integer value of \tcode{x},
 and whose allocator is that of \tcode{x}.
 }
 
-\cowel_html_element(h4){X.\Vget(snum1).\snum2 Hash support \stable_ref{big.int.hash}}
+\cowel_html_element(h4){X.\cowel_var_get(snum1).\snum2 Hash support \stable_ref{big.int.hash}}
 
 \itemdecl{
 template<size_t b, class A> struct hash<basic_big_int<b, A>>;
@@ -1205,7 +1236,7 @@ For an object \math{\mi{x}} of integral type \tcode{T},
 }
 }
 
-\cowel_html_element(h4){X.\Vget(snum1).\snum2 Literals \stable_ref{big.int.literal}}
+\cowel_html_element(h4){X.\cowel_var_get(snum1).\snum2 Literals \stable_ref{big.int.literal}}
 
 \itemdecl{
 template<char... digits>
@@ -1249,7 +1280,7 @@ fits in \tcode{std::big_int} without allocation.
 }
 }
 
-\h3(show-number=false){[charconv]}
+\h3(show_number=false){[charconv]}
 
 Change the synopsis \eelis{charconv.syn} as follows:
 
@@ -1286,7 +1317,7 @@ namespace std {
 }
 }
 
-\h3(show-number=false){[numeric.int.div]}
+\h3(show_number=false){[numeric.int.div]}
 
 \editnote{
 This is just a rough sketch of how to go about computing the quotient and remainder
@@ -1305,7 +1336,7 @@ template<class T>
 }
 }
 
-\h3(show-number=false){[numeric.abs]}
+\h3(show_number=false){[numeric.abs]}
 
 \editnote{
 \tcode{std::abs} currently sits in \header{cmath} or in \eelis{c.math.abs},
@@ -1315,7 +1346,7 @@ I think it would make more sense for \header{numeric} to also expose \tcode{std:
 and then extend the overload set:
 }
 
-\Vset(pnum){0}
+\cowel_var_set(pnum, 0)
 
 \Bquote{
 \itemdecl{
@@ -1352,8 +1383,8 @@ template<class T> constexpr remove_cvref_t<T> abs(T&& x);
 }
 }
 
-\h3(show-number=false){[numeric.sat.cast]}
-\Vset(pnum){0}
+\h3(show_number=false){[numeric.sat.cast]}
+\cowel_var_set(pnum, 0)
 
 \Bquote{
 \itemdecl{
@@ -1405,8 +1436,8 @@ and it would be inconvenient in generic code.
 Therefore, \tcode{saturating_cast} can act as an unsurprising spelling.
 }
 
-\h3(show-number=false){[numeric.conversions]}
-\Vset(pnum){0}
+\h3(show_number=false){[numeric.conversions]}
+\cowel_var_set(pnum, 0)
 
 \Bdiff{
 \itemdecl{
@@ -1455,20 +1486,20 @@ This requires formatting support.
 \h2{References}
 
 \bib(
-  id = N5032,
-  title = Working Draft\, Programming Languages — C++,
-  date = 2025-12-15,
-  author = Thomas Köppe,
-  link = https://wg21.link/n5032,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
+  id = "N5032",
+  title = "Working Draft Programming Languages — C++",
+  date = "2025-12-15",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5032",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf",
 )\
 \bib(
-  id = P3724R3,
-  title = Integer division,
-  date = 2026-02-20,
-  author = Jan Schultke,
-  link = https://wg21.link/p3724r3,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3724r3.html,
+  id = "P3724R3",
+  title = "Integer division",
+  date = "2026-02-20",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3724r3",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3724r3.html",
 )\
 
 \make_bib
