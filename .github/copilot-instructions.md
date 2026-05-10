@@ -22,13 +22,13 @@ Most paper sources are written in **COWEL**.
 It is a specialized language designed for C++ proposal documentation.
 
 - **File extensions**: `.cow` or `.cowel`
-- **Default version**: COWEL 0.6.0
-- **Version specification**: Some files include a version comment at the top
-  (e.g., `; Version: 0.6.0`)
+- **Default version**: COWEL 0.9.1
+- **Version specification**: All files include a version comment at the top
+  (e.g., `\: cowel 0.9.1`)
 - **Build command**: `cowel run input.cow output.html`
 - **Installation**:
   - Latest: `npm i -g cowel`
-  - Specific version: `npm i -g cowel@0.6.0`
+  - Specific version: `npm i -g cowel@0.9.1`
 
 **Resources**:
 
@@ -66,8 +66,6 @@ bikeshed spec src/example.bs docs/example.html
   Syntax was changed substantially since 0.6.0.
 - When examining or modifying paper sources,
   check for version comments at the top of `.cow`/`.cowel` files
-- Most sources target COWEL 0.6.0 by default
-  Explicit version comments indicate deviations
 - Check the current COWEL version with `cowel --version`
   before building COWEL documents
 - Generated HTML files in `docs/` should not be edited directly
