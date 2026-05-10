@@ -1,17 +1,15 @@
-\: cowel 0.6.0
-\cowel_include{libwg21.cow}
+\: cowel 0.9.1
+\cowel_include("libwg21.cow")
 
-\wg21_head(
-  title = \tcode{std::to_signed} and \tcode{std::to_unsigned}
-){
+\wg21_head(title={\tcode{std::to_signed} and \tcode{std::to_unsigned}}){
 \dl{
   \dt{Document number:} \dd{\docnum{P3643R2}}
   \dt{Date:}            \dd{\tt{2025-09-29}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3643/github)}
-  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/to-signed-unsigned.cow)}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3643/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/to-signed-unsigned.cow")}
 }
 \hr
 }
@@ -31,20 +29,20 @@ in the style of \tcode{std::to_underlying}.
 
 \ul{
   \li{ported proposal from Bikeshed to COWEL}
-  \li{added \ref(#dual-purpose)}
-  \li{reordered \ref(#design) and \ref(#possible-implementation)}
-  \li{added discussion on constraints in \ref(#design)}
-  \li{fixed typo in \ref(#wording): \del{x} \ins{value}}
+  \li{added \ref("#dual-purpose")}
+  \li{reordered \ref("#design") and \ref("#possible-implementation")}
+  \li{added discussion on constraints in \ref("#design")}
+  \li{fixed typo in \ref("#wording"): \del{x} \ins{value}}
 }
 
 \h3{Changes since R0}
 
 \ul{
   \li{
-    tightened constraints in \ref(#wording) to exclude
+    tightened constraints in \ref("#wording") to exclude
     cv-qualified types in general, not just \i{cv} \tcode{bool}
   }
-  \li{added \tcode{\hl(comment){freestanding}} comment to feature-test macro}
+  \li{added \tcode{\hl("comment"){freestanding}} comment to feature-test macro}
 }
 
 \h2{Introduction}
@@ -102,9 +100,7 @@ This is concise and always uses the correct type.
 A GitHub code search for
 
 \Bquote{
-\ref(
-  https://github.com/search?type=code&q=%2F%5B%5Ea-zA-Z_%5D%28to_signed%7Cto_unsigned%29%7Cstatic_cast%3C%28typename%29%3F+%3F%28%28%3A%3A%29%3Fstd%3A%3A%29%3F%28make_signed%7Cmake_unsigned%29%2F+-is%3Afork+language%3Ac%2B%2B
-){\small{\tcode{/[^a-zA-Z_](to_signed|to_unsigned)|static_cast<(typename)? ?((::)?std::)?(make_signed|make_unsigned)/
+\ref("https://github.com/search?type=code&q=%2F%5B%5Ea-zA-Z_%5D%28to_signed%7Cto_unsigned%29%7Cstatic_cast%3C%28typename%29%3F+%3F%28%28%3A%3A%29%3Fstd%3A%3A%29%3F%28make_signed%7Cmake_unsigned%29%2F+-is%3Afork+language%3Ac%2B%2B"){\small{\tcode{/[^a-zA-Z_](to_signed|to_unsigned)|static_cast<(typename)? ?((::)?std::)?(make_signed|make_unsigned)/
 \br{}-is:fork language:c++}}}
 }
 
@@ -115,9 +111,7 @@ or which \tcode{static_cast} to \tcode{make_signed} or \tcode{make_unsigned}.
 By comparison,
 
 \Bquote{
-\ref(
-  https://github.com/search?q=%2F%5B%5Ea-zA-Z_%5D%28to_underlying%29%7Cstatic_cast%3C%28typename%29%3F+%3F%28%28%3A%3A%29%3Fstd%3A%3A%29%3F%28underlying_type%29%2F+-is%3Afork+language%3Ac%2B%2B&type=code
-){\small{\tcode{/[^a-zA-Z_](to_underlying)|static_cast<(typename)? ?((::)?std::)?(underlying_type)/\br{}
+\ref("https://github.com/search?q=%2F%5B%5Ea-zA-Z_%5D%28to_underlying%29%7Cstatic_cast%3C%28typename%29%3F+%3F%28%28%3A%3A%29%3Fstd%3A%3A%29%3F%28underlying_type%29%2F+-is%3Afork+language%3Ac%2B%2B&type=code"){\small{\tcode{/[^a-zA-Z_](to_underlying)|static_cast<(typename)? ?((::)?std::)?(underlying_type)/\br{}
 -is:fork language:c++}}}
 }
 
@@ -125,7 +119,7 @@ By comparison,
 which use \tcode{to_underlying},
 or which \tcode{static_cast} to \tcode{std::underlying_type}.
 
-The proposal \ref(P1682R3) for \tcode{std::to_underlying} had similar rationale, and at the time,
+The proposal \ref("P1682R3") for \tcode{std::to_underlying} had similar rationale, and at the time,
 the author was only able to discover 1000 search results for \tcode{to_underlying}.
 
 \h3{Dual purpose}
@@ -168,7 +162,7 @@ This proposal is a pure library extension.
 This proposal follows precedent:
 Similar to \tcode{to_underlying}, the proposed functions are located in \header{utility}.
 The naming scheme is based on \tcode{to_underlying}
-and the search results in \ref(#existing-developer-practice).
+and the search results in \ref("#existing-developer-practice").
 
 \h3{Constraints}
 
@@ -197,7 +191,7 @@ there are multiple options:
     This would be needlessly restrictive because e.g.
     \tcode{make_signed<char16_t>} is also valid (and yields e.g. \tcode{signed short}),
     which makes it possible to implement the \tcode{arithmetic_shift_right} function
-    in \ref(#introduction) for that \tcode{char16_t} as well.
+    in \ref("#introduction") for that \tcode{char16_t} as well.
     In general, it would make generic programming harder if only some of the integral
     types were supported.
   }
@@ -255,7 +249,7 @@ constexpr make_unsigned_t<T> to_unsigned(T x) noexcept {
 
 \h2{Wording}
 
-The proposed wording is relative to \ref(N5014).
+The proposed wording is relative to \ref("N5014").
 
 In subclause \eelis{version.syn},
 add the following feature-testing macro:
@@ -293,7 +287,7 @@ In subclause \eelis{utility},
 add a subclause immediately prior to \eelis{utility.underlying}:
 
 \Bins{
-\cowel_html_element(h3){Sign conversion \stable_ref{utility.sign.conv}}
+\cowel_html_element("h3"){Sign conversion \stable_ref{utility.sign.conv}}
 
 \itemdecl{
 template<class T>
@@ -339,21 +333,7 @@ which discusses many design aspects in more detail.
 
 \h2{References}
 
-\bib(
-  id = N5014,
-  title = Working Draft\, Programming Languages — C++,
-  date = 2025-08-05,
-  author = Thomas Köppe,
-  link = https://wg21.link/n5014,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
-)\
-\bib(
-  id = P1682R3,
-  title = std::to_underlying for enumerations,
-  date = 2021-01-22,
-  author = JeanHeyd Meneide,
-  link = https://wg21.link/p1682r3,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p1682r3.html,
-)\
+\bib(id="N5014", title="Working Draft, Programming Languages — C++", date="2025-08-05", author="Thomas Köppe", link="https://wg21.link/n5014", long_link="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf")\
+\bib(id="P1682R3", title="std::to_underlying for enumerations", date="2021-01-22", author="JeanHeyd Meneide", link="https://wg21.link/p1682r3", long_link="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p1682r3.html")\
 
 \make_bib

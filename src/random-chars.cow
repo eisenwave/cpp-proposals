@@ -1,17 +1,15 @@
-\: cowel 0.6.0
-\cowel_include{libwg21.cow}
+\: cowel 0.9.1
+\cowel_include("libwg21.cow")
 
-\wg21_head(
-  title = Supporting \tt{signed char} and \tt{unsigned char}\br in random number generation
-){
+\wg21_head(title={Supporting \tt{signed char} and \tt{unsigned char}\br in random number generation}){
 \dl{
   \dt{Document number:} \dd{\docnum{P4037R1}}
   \dt{Date:}            \dd{\tt{2026-03-26}}
   \dt{Audience:}        \dd{LWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P4037/github)}
-  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/random-chars.cow)}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P4037/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/random-chars.cow")}
 }
 \hr
 }
@@ -22,7 +20,7 @@ currently results in undefined behavior.
 Instead, it should be permitted.
 There are further minor defects resulting from the restrictions in \eelis{rand.req.genl},
 which this paper also addresses.
-NB comment \ref(RU-272) is resolved by this paper.
+NB comment \ref("RU-272") is resolved by this paper.
 }
 
 \h2(listed=false){Contents}
@@ -65,16 +63,14 @@ This is functionally equivalent to making the program ill-formed, no diagnostic 
 It should also be noted that many users rely on support for 8-bit types
 in \header{random} already, despite the undefined behavior.
 A GitHub code search for
-\ref(
-https://github.com/search?q=language%3AC%2B%2B+%2F%28%3F-i%29uniform_int_distribution%3C%28%28unsigned+%7Csigned+%7C%29char%7C%28std%3A%3A%29%3Fu%3Fint8_t%7Ci8%7Cu8%29%3E%2F&type=code
-){\tt{language:C++ /(?-i)uniform_int_distribution<((unsigned |signed |)char|(std::)?u?int8_t|i8|u8)>/}}
+\ref("https://github.com/search?q=language%3AC%2B%2B+%2F%28%3F-i%29uniform_int_distribution%3C%28%28unsigned+%7Csigned+%7C%29char%7C%28std%3A%3A%29%3Fu%3Fint8_t%7Ci8%7Cu8%29%3E%2F&type=code"){\tt{language:C++ /(?-i)uniform_int_distribution<((unsigned |signed |)char|(std::)?u?int8_t|i8|u8)>/}}
 shows 8.4K files already using e.g.
 \tcode{std::uniform_int_distribution<uint8_t>}.
 This is possible because both libstdc++ and libc++ support those types as an extension;
-see \ref(#implementation-experience).
+see \ref("#implementation-experience").
 
 In 2013,
-\ref(LWG2326) \q{\tcode{uniform_int_distribution<unsigned char>} should be permitted} stated that
+\ref("LWG2326") \q{\tcode{uniform_int_distribution<unsigned char>} should be permitted} stated that
 \q{it's just silly that we have a random number library with no natural way to generate random bytes}.
 As silly as it may be,
 the issue was closed as NAD (not a defect)
@@ -83,11 +79,11 @@ Writing a paper was considered,
 but that paper never manifested.
 
 In 2025,
-\ref(LWG4109) \q{Instantiating templates in §[rand]
+\ref("LWG4109") \q{Instantiating templates in §[rand]
 with \tcode{int8_t}/\tcode{uint8_t} is undefined behavior}
 addressed the same problem,
-and addresses NB comment \ref(RU-272).
-Various comments on \ref(LWG4109) point out that support for
+and addresses NB comment \ref("RU-272").
+Various comments on \ref("LWG4109") point out that support for
 extended integer types and extended floating-point types would be useful,
 and that many of the restrictions could be converted from compile-time UB
 (effectively IFNDR)
@@ -98,8 +94,8 @@ of \eelis{rand.req.genl} in one fell swoop.
 
 \Bnote{
 It is unclear why the prohibition of \tcode{unsigned char} exists in the first place.
-The restriction dates back at least to \ref(N1932), published 2006.
-\ref(https://lists.isocpp.org/std-proposals/2026/02/17243.php){Discussion on [std-proposals]}
+The restriction dates back at least to \ref("N1932"), published 2006.
+\ref("https://lists.isocpp.org/std-proposals/2026/02/17243.php"){Discussion on [std-proposals]}
 suggests that it may exist because engines with 8-bit types
 (like \tcode{linear_congruential_engine<uint8_t>})
 have dreadful statistical properties.
@@ -110,9 +106,9 @@ have dreadful statistical properties.
 Support for \tcode{unsigned char} and \tcode{signed char}
 in distributions would be useful.
 The ability to generate random bytes or octets is extremely valuable for
-\ref(https://en.wikipedia.org/wiki/Fuzzing){fuzz testing}.
+\ref("https://en.wikipedia.org/wiki/Fuzzing"){fuzz testing}.
 For example, when testing an implementation of an
-\ref(https://en.wikipedia.org/wiki/LZ77_and_LZ78){LZ77 or LZ78} compression algorithm,
+\ref("https://en.wikipedia.org/wiki/LZ77_and_LZ78"){LZ77 or LZ78} compression algorithm,
 a user would typically
 \ol{
   \li{generate a random sequence of bytes,}
@@ -137,12 +133,12 @@ Generating octets is effectively supported already.
 The current restriction which forbids \tcode{unsigned char} is bad,
 but it's not obvious how much the restriction should be relaxed.
 
-While \ref(LWG4109) offers the option to make the program ill-formed
+While \ref("LWG4109") offers the option to make the program ill-formed
 when the existing restrictions are not satisfied
 (\q{Option B} in the issue),
 it fails to mention that this would break
 thousands of files of existing code;
-see \ref(#introduction).
+see \ref("#introduction").
 We have to permit implementations to keep their current extensions,
 without requiring them to support more than is reasonable.
 We either have to continue treating anything other than the supported set of types
@@ -206,11 +202,11 @@ optional support extended floating-point types.
 Supporting use of character types
 (e.g. \tcode{char}, \tcode{char32_t}, etc.)
 is not motivated by this paper and
-outside the scope of \ref(RU-272).
+outside the scope of \ref("RU-272").
 It is not proposed,
 despite character types being integral types,
 despite seeming vaguely useful, and
-despite GCC having support for this already (see \ref(#implementation-experience)).
+despite GCC having support for this already (see \ref("#implementation-experience")).
 Such an extension could be proposed in a future paper targeting C++29.
 
 Supporting only \tcode{char} in addition to standard integer would also be strange,
@@ -252,7 +248,7 @@ but for \tcode{__int128}, 256-bit division would be required.
 However, \em{some} extended integer types ought to be supported;
 more on that in the following section.
 
-\h3(id=fixing-int-least){Drive-by-fix for \tt{std::uint_leastN_t} and \tt{std::uint_fastN_t}}
+\h3(id="fixing-int-least"){Drive-by-fix for \tt{std::uint_leastN_t} and \tt{std::uint_fastN_t}}
 
 Since we are changing the set of types
 that \tcode{IntType} and \tcode{UIntType} support,
@@ -290,7 +286,7 @@ and many other types are supported by \header{random},
 regardless of whether they are standard integer types,
 assuming they don't have an extreme width
 (which the user can easily test using \tcode{static_assert}).
-This compromise is also future-proof for bit-precise integers (see \ref(P3666R3)),
+This compromise is also future-proof for bit-precise integers (see \ref("P3666R3")),
 which could introduce extreme widths like \tcode{_BitInt(1)} or \tcode{_BitInt(1024)}
 that we may not want to support.
 
@@ -304,7 +300,7 @@ of the generated numbers would be extremely low anyway.
 That being said, using an 8-bit \tcode{linear_congruential_engine} to get \q{quick and dirty}
 random number generation on an 8-bit architecture is not inconceivable,
 and
-\ref(https://github.com/search?q=language%3AC%2B%2B+%2F(%3F-i)linear_congruential_engine%3C((unsigned+|signed+|)char|(std%3A%3A)%3Fu%3Fint8_t|i8|u8)%2F&type=code){GitHub code search}
+\ref("https://github.com/search?q=language%3AC%2B%2B+%2F(%3F-i)linear_congruential_engine%3C((unsigned+|signed+|)char|(std%3A%3A)%3Fu%3Fint8_t|i8|u8)%2F&type=code"){GitHub code search}
 finds uses of \tcode{linear_congruential_engine<uint8_t>}.
 
 I argue that \tcode{unsigned char} and \tcode{signed char} should be supported
@@ -365,7 +361,7 @@ libstdc++ supports any integral type as an extension; see:
 
 \h2{Wording}
 
-The changes are relative to \ref(N5032).
+The changes are relative to \ref("N5032").
 
 \editnote{
 No feature-test macro is provided because these changes are intended
@@ -468,48 +464,11 @@ on an instantiated template \math{\mi{T}}:}
 
 \h2{References}
 
-\bib(
-  id = N1932,
-  title = Random Number Generation in C++0X: A Comprehensive Proposal,
-  author = Walter E. Brown et al.,
-  date = 2006-02-23,
-  link = https://wg21.link/n1932,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2006/n1932.pdf,
-)\
-\bib(
-  id = N5032,
-  title = Working Draft\, Programming Languages — C++,
-  date = 2025-12-15,
-  author = Thomas Köppe,
-  link = https://wg21.link/n5032,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
-)\
-\bib(
-  id = LWG2326,
-  title = uniform_int_distribution<unsigned char> should be permitted,
-  author = Stephan T. Lavavej,
-  date = 2017-02-02,
-  link = https://cplusplus.github.io/LWG/issue2326,
-)\
-\bib(
-  id = LWG4109,
-  title = Instantiating templates in §[rand] with int8_t/uint8_t is undefined behavior,
-  author = Peter Dimov,
-  date = 2025-10-27,
-  link = https://cplusplus.github.io/LWG/issue4109,
-)\
-\bib(
-  id = RU-272,
-  title = [rand.req.genl] Prevent instantiation of uniform_int_distribution with std::uint8_t,
-  link = https://github.com/cplusplus/nbballot/issues/847,
-)\
-\bib(
-  id = P3666R3,
-  title = Bit-precise integers,
-  date = 2026-02-21,
-  author = Jan Schultke,
-  link = https://wg21.link/p3666r3,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r3.pdf,
-)\
+\bib(id="N1932", title="Random Number Generation in C++0X: A Comprehensive Proposal", author="Walter E. Brown et al.", date="2006-02-23", link="https://wg21.link/n1932", long_link="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2006/n1932.pdf")\
+\bib(id="N5032", title="Working Draft, Programming Languages — C++", date="2025-12-15", author="Thomas Köppe", link="https://wg21.link/n5032", long_link="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf")\
+\bib(id="LWG2326", title="uniform_int_distribution<unsigned char> should be permitted", author="Stephan T. Lavavej", date="2017-02-02", link="https://cplusplus.github.io/LWG/issue2326")\
+\bib(id="LWG4109", title="Instantiating templates in §[rand] with int8_t/uint8_t is undefined behavior", author="Peter Dimov", date="2025-10-27", link="https://cplusplus.github.io/LWG/issue4109")\
+\bib(id="RU-272", title="[rand.req.genl] Prevent instantiation of uniform_int_distribution with std::uint8_t", link="https://github.com/cplusplus/nbballot/issues/847")\
+\bib(id="P3666R3", title="Bit-precise integers", date="2026-02-21", author="Jan Schultke", link="https://wg21.link/p3666r3", long_link="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r3.pdf")\
 
 \make_bib

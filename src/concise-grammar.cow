@@ -1,17 +1,15 @@
-\: cowel 0.6.0
-\cowel_include{libwg21.cow}
+\: cowel 0.9.1
+\cowel_include("libwg21.cow")
 
-\wg21_head(
-  title = Improve readability of the C++ grammar by adding a syntax for groups and repetitions
-){
+\wg21_head(title={Improve readability of the C++ grammar by adding a syntax for groups and repetitions}){
 \dl{
   \dt{Document number:} \dd{\docnum{P3891R0}}
   \dt{Date:}            \dd{\tt{2025-11-22}}
   \dt{Audience:}        \dd{CWG, LWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3891/github)}
-  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/concise-grammar.cow)}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3891/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/concise-grammar.cow")}
 }
 \hr
 }
@@ -40,7 +38,7 @@ Two notably absent features are grouping and repetition.
 This leads to many cases of low expressiveness and grammatical bloat,
 like our many \gterm{X-seq} and \gterm{X-list} rules:
 
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{declaration-seq}:}
   \dd{declaration \opt{declaration-seq}}
 
@@ -98,14 +96,14 @@ and simplifies the specification in many places.
 
 With these new features, more concise grammar is possible:
 
-\table(id=tony-table){
+\table(id="tony-table"){
   \tr{
     \th{Before}
     \th{After}
   }
   \tr{
     \td{
-      \dl(class=grammar){
+      \dl(class="grammar"){
         \dt{\grammarterm{compound-statement}:}
         \dd{\tt{\N{LEFT CURLY BRACKET}} \opt{statement-seq} \opt{label-seq} \tt{\N{RIGHT CURLY BRACKET}}}
         \dt{\grammarterm{statement-seq}:}
@@ -115,15 +113,15 @@ With these new features, more concise grammar is possible:
       }
     }
     \td{
-      \dl(class=grammar){
+      \dl(class="grammar"){
         \dt{\grammarterm{compound-statement}:}
-        \dd{\tt{\N{LEFT CURLY BRACKET}} \seqopt{statement} \seqopt{label} \tt{\N{RIGHT CURLY BRACKET}}}
+        \dd{\tt{\N{LEFT CURLY BRACKET}} \seq{}opt{statement} \seq{}opt{label} \tt{\N{RIGHT CURLY BRACKET}}}
       }
     }
   }
   \comment{\tr{
     \td{
-      \dl(class=grammar){
+      \dl(class="grammar"){
         \dt{\grammarterm{selection-statement}:}
         \dd{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement}
         \dd{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \tcode{else} statement\br\br}
@@ -133,7 +131,7 @@ With these new features, more concise grammar is possible:
       }
     }
     \td{
-      \dl(class=grammar){
+      \dl(class="grammar"){
         \dt{\grammarterm{selection-statement}:}
         \dd{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \opt{\gramgroup{\tcode{else} statement}}\br\br}
         \dd{\tcode{if} \opt{\tt{!}} \tcode{consteval} compound-statement \opt{\gramgroup{\tcode{else} statement}}\br\br}
@@ -143,38 +141,38 @@ With these new features, more concise grammar is possible:
   }}
   \tr{
     \td{
-      \dl(class=grammar){
+      \dl(class="grammar"){
         \dt{\grammarterm{initializer-list}:}
         \dd{initializer-clause \opt{\tt{...}}}
         \dd{initializer-list \tt{,} initializer-clause \opt{\tt{...}}}
       }
     }
     \td{
-      \dl(class=grammar){
+      \dl(class="grammar"){
         \dt{\grammarterm{initializer-list}:}
-        \dd{initializer-clause \opt{\tt{...}} \seqopt{\gramgroup{\tt{,} initializer-clause \opt{\tt{...}}}}}
+        \dd{initializer-clause \opt{\tt{...}} \seq{}opt{\gramgroup{\tt{,} initializer-clause \opt{\tt{...}}}}}
       }
     }
   }
   \tr{
     \td{
-      \dl(class=grammar){
+      \dl(class="grammar"){
         \dt{\grammarterm{identifier}:}
         \dd{identifier-start}
         \dd{identifier identifier-continue}
       }
     }
     \td{
-      \dl(class=grammar){
+      \dl(class="grammar"){
         \dt{\grammarterm{identifier}:}
-        \dd{identifier-start \seqopt{identifier-continue}}
+        \dd{identifier-start \seq{}opt{identifier-continue}}
       }
     }
   }
 }
 
 \Bnote{
-See \ref(#core-wording) and \ref(#library-wording) for many more concrete examples.
+See \ref("#core-wording") and \ref("#library-wording") for many more concrete examples.
 }
 
 Notably, the boilerplate \grammarterm{X-seq} rules are eliminated.
@@ -217,24 +215,24 @@ The amount of recursion necessary is also greatly reduced.
 }
 
 \dl{
-  \dt(class=new-syntax){\seq{\grammarterm{X}}}
+  \dt(class="new-syntax"){\seq{\grammarterm{X}}}
   \dd{
     One or more repetitions of \grammarterm{X}.
     This replaces \grammarterm{X-seq}.
-    The new syntax is similar to \opt, so it is obviously feasible in the standard draft.
+    The new syntax is similar to \opt{}, so it is obviously feasible in the standard draft.
     Proposal authors can use subscript text.
     Screen readers would pronounce "seq" uninterrupted (ignoring subscript),
     which is fine as long as "seq" is \em{only} used in this operator form.
   }
-  \dt(class=new-syntax){\seqopt{\grammarterm{X}}}
+  \dt(class="new-syntax"){\seq{}opt{\grammarterm{X}}}
   \dd{
     Zero or more repetitions of \grammarterm{X}.
     This replaces \opt{\grammarterm{X-seq}}.
   }
-  \dt(class=new-syntax){\gramgroup{\grammarterm{X} \grammarterm{yyy}}}
+  \dt(class="new-syntax"){\gramgroup{\grammarterm{X} \grammarterm{yyy}}}
   \dd{
     Groups \grammarterm{X} and \grammarterm{yyy},
-    which allows applying \opt, \seq, and \seqopt to multiple elements.
+    which allows applying \opt{}, \seq{}, and \seq{}opt{} to multiple elements.
     The characters used here are
     U+27EA MATHEMATICAL LEFT DOUBLE ANGLE BRACKET and
     U+27EB MATHEMATICAL RIGHT DOUBLE ANGLE BRACKET.
@@ -244,42 +242,42 @@ The amount of recursion necessary is also greatly reduced.
     and \tt{<}.
     LaTeX packages like \tt{MnSymbol} provide these characters.
     Paper authors can copy and paste these Unicode characters,
-    use HTML character references such as \code(html){&#x27EA;},
+    use HTML character references such as \code("html"){&#x27EA;},
     or use text editor extensions like
-    \ref(https://marketplace.visualstudio.com/items?itemName=brunnerh.insert-unicode){Insert Unicode}
+    \ref("https://marketplace.visualstudio.com/items?itemName=brunnerh.insert-unicode"){Insert Unicode}
     for typing these.
   }
 }
 
 \h3{Alternatives considered}
 
-\h4{Alternative to \q{\seq} and \q{\seqopt}}
+\h4{Alternative to \q{\seq{}} and \q{\seq{}opt{}}}
 
-An alternatively syntax to \seq and \seqopt briefly considered
+An alternatively syntax to \seq{} and \seq{}opt{} briefly considered
 was superscript \q{\N{FULLWIDTH PLUS SIGN}} and superscript \q{\N{MEDIUM FIVE SPOKED ASTERISK}}
 for one-or-more and zero-or-more repetitions, respectively.
 These characters are widely used in regular expression with this meaning,
 and superscript asterisks denote the
-\ref(https://en.wikipedia.org/wiki/Kleene_star){Kleene Star} in computer science papers.
+\ref("https://en.wikipedia.org/wiki/Kleene_star"){Kleene Star} in computer science papers.
 However, these characters can be hard to distinguish based on font weight and font family.
 Replacing \grammarterm{X-seq} with \seq{\grammarterm{X}} also feels like a more natural
 transition for C++,
 and means that existing teaching resource referencing the C++ grammar
 would be easy to relate to the new format.
 
-\h4{\q{\seq \opt} vs. \q{\opt \seq}}
+\h4{\q{\seq{} \opt{}} vs. \q{\opt{} \seq{}}}
 
 Both notations are equivalent in the sense that the same inputs would be matched.
-\q{\opt \seq} could be argued to be "more natural"
+\q{\opt{} \seq{}} could be argued to be "more natural"
 because it translates to "optional sequence".
 
-However, if we consider \q{\seq} and \q{\opt} to be postfix unary operators,
-then \q{\opt{\grammarterm{X}} \seq} would be a sequence where every \grammarterm{X}
+However, if we consider \q{\seq{}} and \q{\opt{}} to be postfix unary operators,
+then \q{\opt{\grammarterm{X}} \seq{}} would be a sequence where every \grammarterm{X}
 is individually optional.
 This is more complex, and the parallel to our existing \opt{\grammarterm{X-seq}}
 uses in the grammar is less obvious.
 It also results in an infinitely ambiguous concrete syntax tree:
-is the \q{\opt{\grammarterm{declaration}} \seq}
+is the \q{\opt{\grammarterm{declaration}} \seq{}}
 \tcode{int x;} a \grammarterm{declaration} followed by an infinite sequence of
 absent \grammarterm{declaration}s,
 or is it one absent \grammarterm{declaration},
@@ -287,14 +285,14 @@ followed by one \grammarterm{declaration},
 followed by an infinite sequence of absent \grammarterm{declaration}s?
 The answer is:
 it doesn't matter because implementations will figure out how to match
-\q{\opt{\grammarterm{declaration}} \seq}
+\q{\opt{\grammarterm{declaration}} \seq{}}
 either way,
 but we should prefer the syntax that doesn't raise such questions in the first place.
 
 \h4{Alternative brackets for groups}
 
 There are many possible
-\ref(https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=[[%3ABidi_Paired_Bracket_Type%3DOpen%3A]|[%3ABidi_Paired_Bracket_Type%3DClose%3A]]){Unicode bracket characters}
+\ref("https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=[[%3ABidi_Paired_Bracket_Type%3DOpen%3A]|[%3ABidi_Paired_Bracket_Type%3DClose%3A]]"){Unicode bracket characters}
 \:]])
 that could have been used instead.
 However,
@@ -322,13 +320,13 @@ The chosen \gramgroup{MATHEMATICAL DOUBLE ANGLE BRACKETS}
 do not suffer from any of these issues,
 although they are visually similar to
 《 DOUBLE ANGLE BRACKETS 》
-used in \ref(https://en.wikipedia.org/wiki/Chinese_punctuation_for_proper_nouns){Chinese punctuation for proper nouns}.
+used in \ref("https://en.wikipedia.org/wiki/Chinese_punctuation_for_proper_nouns"){Chinese punctuation for proper nouns}.
 
 \h2{Core wording}
 
-The changes are relative to \ref(N5014).
+The changes are relative to \ref("N5014").
 
-\h3(show-number=false){[syntax]}
+\h3(show_number=false){[syntax]}
 
 Change \eelis{syntax} as follows:
 
@@ -350,21 +348,21 @@ the text is continued on subsequent lines indented from the first one.
 
 \ins{2} An optional \del{terminal or non-terminal symbol}
 \ins{syntactic element} is indicated
-by the \ins{postfix} subscript \q{\opt}\del{, so} \ins{.}
+by the \ins{postfix} subscript \q{\opt{}}\del{, so} \ins{.}
 
-\dl(class=grammar){
+\dl(class="grammar"){
   \dd{\del{\tt{\N{LEFT CURLY BRACKET}} \opt{expression} \tt{\N{RIGHT CURLY BRACKET}}}}
 }
 
 \del{indicates an optional expression enclosed in braces.}
 
 \ins{One or more repetitions of a syntactic element
-are indicated by the postfix subscript \q{\seq}.}
+are indicated by the postfix subscript \q{\seq{}}.}
 
 \ins{[\i{Example}:}
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\ins{\grammarterm{initializer-list}:}}
-  \dd{\ins{initializer-clause \opt{\tt{...}} \seqopt{\gramgroup{\tt{,} initializer-clause \opt{\tt{...}}}}}}
+  \dd{\ins{initializer-clause \opt{\tt{...}} \seq{}opt{\gramgroup{\tt{,} initializer-clause \opt{\tt{...}}}}}}
 }
 \ins{This notation means that the non-terminal symbol \grammarterm{initializer-list}
 is matched by an \grammarterm{initializer-clause},
@@ -398,7 +396,7 @@ Names for syntactic categories have generally been chosen according to the follo
 \ins{\N{EM DASH} \i{end note}]}
 }
 
-\h3(show-number=false){Bulk operations}
+\h3(show_number=false){Bulk operations}
 
 \Bimp{
 Please read the editorial notes below.
@@ -408,44 +406,44 @@ This diff looks small, but it's a \em{massive} change with huge implications for
 Replace the following non-terminals
 in the document with \seq{\grammarterm{X}} :
 
-\cowel_macro(replace){\
+\cowel_macro("replace"){\
 \del{\grammarterm{\cowel_put{0}-\cowel_put{1}}}
 \ins{\seq{\grammarterm{\cowel_put{0}}}}\
 }
 
 \Bdiff{
-\replace(n-char, sequence)\br
+\replace("n-char", "sequence")\br
 \del{\grammarterm{simple-hexadecimal-digit-sequence}}
 \ins{\seq{\grammarterm{hexadecimal-digit}}}\br
-\replace(h-char, sequence)\br
-\replace(q-char, sequence)\br
-\replace(c-char, sequence)\br
+\replace("h-char", "sequence")\br
+\replace("q-char", "sequence")\br
+\replace("c-char", "sequence")\br
 \del{\grammarterm{simple-octal-digit-sequence}}
 \ins{\seq{\grammarterm{octal-digit}}}\br
-\replace(s-char, sequence)\br
-\replace(r-char, sequence)\br
-\replace(d-char, sequence)\br
-\replace(declaration, seq)\br
-\replace(attribute-specifier, seq)\br
-\replace(function-contract-specifier, seq)\br
-\replace(lambda-specifier, seq)\br
-\replace(requirement, seq)\br
-\replace(statement, seq)\br
-\replace(label, seq)\br
-\replace(cv-qualifier, seq)\br
-\replace(virt-specifier, seq)\br
-\replace(balanced-token, seq)\br
-\replace(class-property-specifier, seq)\br
-\replace(handler, seq)\br
-\replace(embed-parameter, seq)\br
-\replace(pp-balanced-token, seq)\br
+\replace("s-char", "sequence")\br
+\replace("r-char", "sequence")\br
+\replace("d-char", "sequence")\br
+\replace("declaration", "seq")\br
+\replace("attribute-specifier", "seq")\br
+\replace("function-contract-specifier", "seq")\br
+\replace("lambda-specifier", "seq")\br
+\replace("requirement", "seq")\br
+\replace("statement", "seq")\br
+\replace("label", "seq")\br
+\replace("cv-qualifier", "seq")\br
+\replace("virt-specifier", "seq")\br
+\replace("balanced-token", "seq")\br
+\replace("class-property-specifier", "seq")\br
+\replace("handler", "seq")\br
+\replace("embed-parameter", "seq")\br
+\replace("pp-balanced-token", "seq")\br
 }
 
 Remove all definitions of the replaced non-terminals.
 These are all of the form:
 
 \Bdel{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{X-seq} :}
   \dd{X \opt{X-seq}}
 }
@@ -494,36 +492,36 @@ This would allow using (direct) \q{of} instead of (indirect) \q{in},
 if we wanted to.
 
 In my opinion, simply applying the bulk edit is fine;
-pointing out the indirection through \seq would be an optional and redundant wording choice,
+pointing out the indirection through \seq{} would be an optional and redundant wording choice,
 but it wouldn't be incorrect.
 
 Perhaps, CWG could decide on a consistent policy so that we
-\em{always} call out the \seq indirection,
+\em{always} call out the \seq{} indirection,
 or \em{never} do so.
 }
 
-\h3(show-number=false){[lex.name]}
+\h3(show_number=false){[lex.name]}
 
 Change \eelis{lex.name#nt:identifier} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{identifier}:}
-  \dd{identifier-start \ins{\seqopt{identifier-continue}}}
+  \dd{identifier-start \ins{\seq{}opt{identifier-continue}}}
   \dd{\del{identifier identifier-continue}}
 }
 }
 
-\h3(show-number=false){[lex.icon]}
+\h3(show_number=false){[lex.icon]}
 
-\cowel_macro(ins_gramgroup){\ins{\normal{⟪}} \cowel_put \ins{\normal{⟫}}}
+\cowel_macro("ins_gramgroup"){\ins{\normal{⟪}} \cowel_put \ins{\normal{⟫}}}
 
 Change \eelis{lex.icon#nt:binary-literal} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{binary-literal}:}
-  \dd{\ins{\normal{⟪ one of}} \tt{0b} \ins{\tt{0B} \normal{⟫}} binary-digit \ins{\seqopt{\gramgroup{\opt{\tcode{'}} binary-digit}}}}
+  \dd{\ins{\normal{⟪ one of}} \tt{0b} \ins{\tt{0B} \normal{⟫}} binary-digit \ins{\seq{}opt{\gramgroup{\opt{\tcode{'}} binary-digit}}}}
   \dd{\del{\tt{0B} binary-digit}}
   \dd{\del{binary-literal \opt{\tcode{'}} binary-digit}}
 }
@@ -532,9 +530,9 @@ Change \eelis{lex.icon#nt:binary-literal} as follows:
 Change \eelis{lex.icon#nt:octal-literal} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{octal-literal}:}
-  \dd{\tt{0} \ins{\seqopt{\gramgroup{\opt{\tcode{'}} octal-digit}}}}
+  \dd{\tt{0} \ins{\seq{}opt{\gramgroup{\opt{\tcode{'}} octal-digit}}}}
   \dd{\del{octal-literal \opt{\tcode{'}} octal-digit}}
 }
 }
@@ -542,9 +540,9 @@ Change \eelis{lex.icon#nt:octal-literal} as follows:
 Change \eelis{lex.icon#nt:decimal-literal} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{decimal-literal}:}
-  \dd{nonzero-digit \ins{\seqopt{\gramgroup{\opt{\tcode{'}} digit}}}}
+  \dd{nonzero-digit \ins{\seq{}opt{\gramgroup{\opt{\tcode{'}} digit}}}}
   \dd{\del{decimal-literal \opt{\tcode{'}} digit}}
 }
 }
@@ -552,7 +550,7 @@ Change \eelis{lex.icon#nt:decimal-literal} as follows:
 Do \u{not} change \eelis{lex.icon#nt:hexadecimal-literal}:
 
 \Bquote{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{hexadecimal-literal}:}
   \dd{hexadecimal-prefix hexadecimal-digit-sequence}
 }
@@ -561,9 +559,9 @@ Do \u{not} change \eelis{lex.icon#nt:hexadecimal-literal}:
 Change \eelis{lex.icon#nt:hexadecimal-digit-sequence} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{hexadecimal-digit-sequence}:}
-  \dd{hexadecimal-digit \ins{\seqopt{\gramgroup{\opt{\tt{'}} hexadecimal-digit}}}}
+  \dd{hexadecimal-digit \ins{\seq{}opt{\gramgroup{\opt{\tt{'}} hexadecimal-digit}}}}
   \dd{\del{hexadecimal-digit-sequence \opt{\tt{'}} hexadecimal-digit}}
 }
 }
@@ -575,12 +573,12 @@ is used in so many places that it would be inconvenient to expand it
 See also \eelis{lex.fcon}.
 }
 
-\h3(show-number=false){[lex.fcon]}
+\h3(show_number=false){[lex.fcon]}
 
 Change \eelis{lex.fcon#nt:exponent-part} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{exponent-part}:}
   \dd{\ins{\normal{⟪ one of}} \tt{e} \ins{\tt{E} \normal{⟫}} \opt{sign} digit-sequence}
   \dd{\del{\tt{E} \opt{sign} digit-sequence}}
@@ -590,7 +588,7 @@ Change \eelis{lex.fcon#nt:exponent-part} as follows:
 Change \eelis{lex.fcon#nt:binary-exponent-part} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{binary-exponent-part}:}
   \dd{\ins{\normal{⟪ one of}} \tt{p} \ins{\tt{P} \normal{⟫}} \opt{sign} digit-sequence}
   \dd{\del{\tt{P} \opt{sign} digit-sequence}}
@@ -600,22 +598,22 @@ Change \eelis{lex.fcon#nt:binary-exponent-part} as follows:
 Change \eelis{lex.fcon#nt:digit-sequence} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{digit-sequence}:}
-  \dd{digit \ins{\seqopt{\gramgroup{\opt{\tt{'}} digit}}}}
+  \dd{digit \ins{\seq{}opt{\gramgroup{\opt{\tt{'}} digit}}}}
   \dd{\del{digit-sequence \opt{\tt{'}} digit}}
 }
 }
 
-\h3(show-number=false){[lex.string]}
+\h3(show_number=false){[lex.string]}
 
 Change the grammar in \eelis{lex.string} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\etc}
   \dt{\grammarterm{raw-string}:}
-  \dd{\tt{"} d-char\del{-sequence} \ins{\seq} \opt \tt{(} r-char\del{-sequence} \ins{\seq} \opt d-char\del{-sequence} \ins{\seq} \opt \tt{)} \tt{"}}
+  \dd{\tt{"} d-char\del{-sequence} \ins{\seq{}} \opt{} \tt{(} r-char\del{-sequence} \ins{\seq{}} \opt{} d-char\del{-sequence} \ins{\seq{}} \opt{} \tt{)} \tt{"}}
 
   \dt{\del{\grammarterm{r-char-sequence}:}}
   \dd{\del{r-char \opt{r-char-sequence}}}
@@ -626,7 +624,7 @@ Change the grammar in \eelis{lex.string} as follows:
     except a U+0029 RIGHT PARENTHESIS
     followed by the initial
     \del{\grammarterm{d-char-sequence} (which may be empty)}
-    \ins{\seqopt{\grammarterm{d-char}}}
+    \ins{\seq{}opt{\grammarterm{d-char}}}
     followed by U+0022 QUOTATION MARK
   }}
 
@@ -635,7 +633,7 @@ Change the grammar in \eelis{lex.string} as follows:
 }
 
 \editnote{
-The are further changes in this area resulting from the \ref(#bulk-operations).
+The are further changes in this area resulting from the \ref("#bulk-operations").
 The important change in this area is the redefinition of \grammarterm{r-char}.
 
 The current "(which may be empty)" seems incorrect anyway;
@@ -653,14 +651,14 @@ followed by U+0022 QUOTATION MARK
 However, "initial optional" feels a bit clunky.
 }
 
-\h3(show-number=false){[dcl.spec.general]}
+\h3(show_number=false){[dcl.spec.general]}
 
 Change \eelis{dcl.spec.general#nt:decl-specifier-seq} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\del{\grammarterm{decl-specifier-seq}} \ins{\grammarterm{decl-specifiers-and-attributes}}:}
-  \dd{decl-specifier\ins{\seq} attribute-specifier\del{-seq} \ins{\seq} \opt{}}
+  \dd{decl-specifier\ins{\seq{}} attribute-specifier\del{-seq} \ins{\seq{}} \opt{}}
   \dd{\del{decl-specifier decl-specifier-seq}}
 }
 }
@@ -668,14 +666,14 @@ Change \eelis{dcl.spec.general#nt:decl-specifier-seq} as follows:
 Replace all occurrences of \del{\grammarterm{decl-specifier-seq}}
 with \ins{\grammarterm{decl-specifiers-and-attributes}}.
 
-\h3(show-number=false){[dcl.type.general]}
+\h3(show_number=false){[dcl.type.general]}
 
 Change \eelis{dcl.type.general#nt:type-specifier-seq} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\del{\grammarterm{type-specifier-seq}} \ins{\grammarterm{type-specifiers-and-attributes}}:}
-  \dd{type-specifier\ins{\seq} attribute-specifier\del{-seq} \ins{\seq} \opt{}}
+  \dd{type-specifier\ins{\seq{}} attribute-specifier\del{-seq} \ins{\seq{}} \opt{}}
   \dd{\del{type-specifier type-specifier-seq}}
 }
 }
@@ -686,9 +684,9 @@ with \ins{\grammarterm{type-specifiers-and-attributes}}.
 Change \eelis{dcl.type.general#nt:defining-type-specifier-seq} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\del{\grammarterm{defining-type-specifier-seq}} \ins{\grammarterm{defining-type-specifiers-and-attributes}}:}
-  \dd{defining-type-specifier\ins{\seq} attribute-specifier\del{-seq} \ins{\seq} \opt{}}
+  \dd{defining-type-specifier\ins{\seq{}} attribute-specifier\del{-seq} \ins{\seq{}} \opt{}}
   \dd{\del{defining-type-specifier type-specifier-seq}}
 }
 }
@@ -696,52 +694,52 @@ Change \eelis{dcl.type.general#nt:defining-type-specifier-seq} as follows:
 Replace all occurrences of \del{\grammarterm{defining-type-specifier-seq}}
 with \ins{\grammarterm{defining-type-specifiers-and-attributes}}.
 
-\h3(show-number=false){[dcl.decl.general]}
+\h3(show_number=false){[dcl.decl.general]}
 
 Change \eelis{dcl.decl.general#nt:ptr-declarator} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{ptr-declarator}:}
-  \dd{\ins{\seqopt{ptr-operator}} noptr-declarator}
+  \dd{\ins{\seq{}opt{ptr-operator}} noptr-declarator}
   \dd{\del{ptr-operator ptr-declarator}}
 }
 }
 
-\h3(show-number=false){[dcl.fct]}
+\h3(show_number=false){[dcl.fct]}
 
 Change \eelis{dcl.fct#nt:parameter-declaration-list} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{parameter-declaration-list}:}
-  \dd{parameter-declaration \ins{\seqopt{\gramgroup{\tt{,} parameter-declaration}}}}
+  \dd{parameter-declaration \ins{\seq{}opt{\gramgroup{\tt{,} parameter-declaration}}}}
   \dd{\del{parameter-declaration-list \tt{,} parameter-declaration}}
 }
 }
 
 \comment{
-\h3(show-number=false){[dcl.fct.def.general]}
+\h3(show_number=false){[dcl.fct.def.general]}
 
 Change \eelis{dcl.fct.def.general#nt:deleted-function-body} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{deleted-function-body}}
   \dd{\del{\tt{=} \tcode{delete} \tt{;}}}
-  \dd{\tt{=} \tcode{delete} \ins{\normal{⟪}} \tt{(} unevaluated-string \tt{)} \ins{\normal{⟫}\opt}}
+  \dd{\tt{=} \tcode{delete} \ins{\normal{⟪}} \tt{(} unevaluated-string \tt{)} \ins{\normal{⟫}\opt{}}}
 }
 }
 }
 
-\h3(show-number=false){[dcl.init.general]}
+\h3(show_number=false){[dcl.init.general]}
 
 Change \eelis{dcl.fct#nt:initializer-list} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{initializer-list}:}
-  \dd{initializer-clause \opt{\tt{...}} \ins{\seqopt{\gramgroup{\tt{,} initializer-clause \opt{\tt{...}}}}}}
+  \dd{initializer-clause \opt{\tt{...}} \ins{\seq{}opt{\gramgroup{\tt{,} initializer-clause \opt{\tt{...}}}}}}
   \dd{\del{initializer-list \tt{,} initializer-clause} \opt{\tt{...}}}
 }
 }
@@ -749,22 +747,22 @@ Change \eelis{dcl.fct#nt:initializer-list} as follows:
 Change \eelis{dcl.fct#nt:designated-initializer-list} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{designated-initializer-list}:}
-  \dd{designated-initializer-clause \ins{\seqopt{\gramgroup{\tt{,} designated-initializer-clause}}}}
+  \dd{designated-initializer-clause \ins{\seq{}opt{\gramgroup{\tt{,} designated-initializer-clause}}}}
   \dd{\del{designated-initializer-list \tt{,} designated-initializer-clause}}
 }
 }
 
-\h3(show-number=false){[dcl.enum]}
+\h3(show_number=false){[dcl.enum]}
 
 \comment{Change \eelis{dcl.enum#nt:enum-specifier} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{enum-specifier}:}
   \dd{\del{enum-head \tt{\N{LEFT CURLY BRACKET}} \opt{enumerator-list} \tt{\N{RIGHT CURLY BRACKET}}}}
-  \dd{enum-head \tt{\N{LEFT CURLY BRACKET}} \ins{\normal{⟪}} \opt{enumerator-list} \tt{,}\ins{\opt \normal{⟫}\opt} \tt{\N{RIGHT CURLY BRACKET}}}
+  \dd{enum-head \tt{\N{LEFT CURLY BRACKET}} \ins{\normal{⟪}} \opt{enumerator-list} \tt{,}\ins{\opt{} \normal{⟫}\opt{}} \tt{\N{RIGHT CURLY BRACKET}}}
 }
 }
 }
@@ -772,9 +770,9 @@ Change \eelis{dcl.fct#nt:designated-initializer-list} as follows:
 Change \eelis{dcl.enum#nt:enumerator-list} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{enumerator-list}:}
-  \dd{enumerator-definition \ins{\seqopt{\gramgroup{\tt{,} enumerator-definition}}}}
+  \dd{enumerator-definition \ins{\seq{}opt{\gramgroup{\tt{,} enumerator-definition}}}}
   \dd{\del{enumerator-list \tt{,} enumerator-definition}}
 }
 }
@@ -782,31 +780,31 @@ Change \eelis{dcl.enum#nt:enumerator-list} as follows:
 Change \eelis{dcl.enum#nt:enumerator-definition} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{enumerator-definition}:}
   \dd{\del{enumerator}}
   \dd{enumerator \ins{\normal{⟪}} \tt{=} constant-expression \ins{\opt{\normal{⟫}}}}
 }
 }
 
-\h3(show-number=false){[namespace.udecl]}
+\h3(show_number=false){[namespace.udecl]}
 
 Change \eelis{namespace.udecl#nt:using-declarator-list} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{using-declarator-list}:}
-  \dd{using-declarator \opt{\tt{...}} \ins{\seqopt{\gramgroup{\tt{,} using-declarator \opt{\tt{...}}}}}}
+  \dd{using-declarator \opt{\tt{...}} \ins{\seq{}opt{\gramgroup{\tt{,} using-declarator \opt{\tt{...}}}}}}
   \dd{\del{using-declarator-list \tt{,} using-declarator \opt{\tt{...}}}}
 }
 }
 
-\h3(show-number=false){[dcl.attr.grammar]}
+\h3(show_number=false){[dcl.attr.grammar]}
 
 Do \u{not} change \eelis{dcl.attr.grammar#nt:attribute-list}:
 
 \Bquote{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{attribute-list}:}
   \dd{\opt{attribute}}
   \dd{attribute-list \tt{,} \opt{attribute}}
@@ -829,19 +827,19 @@ We can always make that change later.
 Change \eelis{dcl.fct#nt:annotation-list} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{annotation-list}:}
-  \dd{annotation \opt{\tt{...}} \ins{\seqopt{\gramgroup{\tt{,} annotation \opt{\tt{...}}}}}}
+  \dd{annotation \opt{\tt{...}} \ins{\seq{}opt{\gramgroup{\tt{,} annotation \opt{\tt{...}}}}}}
   \dd{\del{annotation-list \tt{,} annotation \opt{\tt{...}}}}
 }
 }
 
-\h3(show-number=false){[stmt.select.general]}
+\h3(show_number=false){[stmt.select.general]}
 
 Change \eelis{stmt.select.general#selection-statement} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{selection-statement}:}
   \dd{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \ins{\opt{\gramgroup{\tcode{else} statement}}}}
   \dd{\del{\tcode{if} \opt{\tcode{constexpr}} \tt{(} \opt{init-statement} condition \tt{)} statement \tcode{else} statement}}
@@ -851,7 +849,7 @@ Change \eelis{stmt.select.general#selection-statement} as follows:
 }
 }
 
-\h3(show-number=false){[stmt.if]}
+\h3(show_number=false){[stmt.if]}
 
 Change \eelis{stmt.if#1} as follows:
 
@@ -883,14 +881,14 @@ as its first substatement.
 so this wording smells a bit fishy.
 }
 
-\h3(show-number=false){[dcl.pre]}
+\h3(show_number=false){[dcl.pre]}
 
 Change \eelis{dcl.pre#nt:sb-identifier-list} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{sb-identifier-list}:}
-  \dd{sb-identifier \ins{\seqopt{\gramgroup{\tt{,} sb-identifier}}}}
+  \dd{sb-identifier \ins{\seq{}opt{\gramgroup{\tt{,} sb-identifier}}}}
   \dd{\del{sb-identifier-list \tt{,} sb-identifier}}
 }
 }
@@ -898,7 +896,7 @@ Change \eelis{dcl.pre#nt:sb-identifier-list} as follows:
 Change \eelis{dcl.pre#nt:static_assert-declaration} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{static_assert-declaration}:}
   \dd{\tcode{static_assert} \tt{(} constant-expression \ins{\opt{\gramgroup{\tt{,} static_assert-message}}} \tt{)}}
   \dd{\del{\tcode{static_assert} \tt{(} constant-expression \tt{,} static_assert-message \tt{)}}}
@@ -907,32 +905,32 @@ Change \eelis{dcl.pre#nt:static_assert-declaration} as follows:
 
 \h2{Library wording}
 
-The changes are relative to \ref(N5014).
+The changes are relative to \ref("N5014").
 
-\h3(show-number=false){[locale.numpunct.general]}
+\h3(show_number=false){[locale.numpunct.general]}
 
 Change \eelis{locale.numpunct.general#2} as follows:
 
 \Bdiff{
 \etc
 Integer values have the format:
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{units}:}
   \dd{\del{digits}}
   \dd{\del{digits thousands-sep units}}
-  \dd{\ins{\seq{digit} \seqopt{\gramgroup{thousands-sep \seq{digit}}}}}
+  \dd{\ins{\seq{digit} \seq{}opt{\gramgroup{thousands-sep \seq{digit}}}}}
 
   \dt{\del{\grammarterm{digits}:}}
   \dd{\del{digit \opt{digits}}}
 }
 and floating-point values have:
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{floatval}:}
   \dd{\opt{sign} units \opt{fractional} \opt{exponent}}
   \dd{\opt{sign} decimal-point \del{digits} \ins{\seq{digit}} \opt{exponent}}
 
   \dt{\grammarterm{fractional}:}
-  \dd{decimal-point \del{digits} \ins{\seq{digit}} \opt}
+  \dd{decimal-point \del{digits} \ins{\seq{digit}} \opt{}}
 
   \dt{\grammarterm{exponent}:}
   \dd{\del{e} \ins{\gramgroup{\normal{one of} \tt{e} \tt{E}}} \opt{sign} \del{digits} \ins{\seq{digit}}}
@@ -950,33 +948,33 @@ contains no thousands-separators,
 no grouping constraint is applied.
 }
 
-\h3(show-number=false){[locale.moneypunct.general]}
+\h3(show_number=false){[locale.moneypunct.general]}
 
 Change \eelis{locale.moneypunct.general#3} as follows:
 
 \Bdiff{
 The format of the numeric monetary value is a decimal number:
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{value}:}
   \dd{units \opt{fractional}}
   \dd{decimal-point \del{digits} \ins{\seq{adigit}}}
 
   \dt{\grammarterm{fractional}:}
-  \dd{decimal-point \del{digits} \ins{\seq{adigit}} \opt}
+  \dd{decimal-point \del{digits} \ins{\seq{adigit}} \opt{}}
 }
 if \tt{frac_digits()} returns a positive value, or
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{value:}}
   \dd{units}
 }
 otherwise.
 The symbol \grammarterm{decimal-point} indicates the character returned by \tt{decimal_point()}.
 The other symbols are defined as follows:
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{units}:}
   \dd{\del{digits}}
   \dd{\del{digits thousands-sep units}}
-  \dd{\ins{\seq{adigit} \seqopt{\gramgroup{thousands-sep \seq{adigit}}}}}
+  \dd{\ins{\seq{adigit} \seq{}opt{\gramgroup{thousands-sep \seq{adigit}}}}}
 }
 
 In the syntax specification,
@@ -985,28 +983,28 @@ for \tt{c} in the range \tcode{'0'} through \tcode{'9'} (inclusive)
 and \tcode{ct} is a reference of type \tcode{const ctype<charT>&} \etc
 }
 
-\h3(show-number=false){[format.string.general]}
+\h3(show_number=false){[format.string.general]}
 
 Change the grammar in \eelis{format.string.general} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{positive-integer}:}
-  \dd{nonzero-digit \ins{\seqopt{digit}}}
+  \dd{nonzero-digit \ins{\seq{}opt{digit}}}
   \dd{\del{positive-integer digit}}
 
   \dt{\grammarterm{nonnegative-integer}:}
-  \dd{digit\ins{\seq}}
+  \dd{digit\ins{\seq{}}}
   \dd{\del{nonnegative-integer digit}}
 }
 }
 
-\h3(show-number=false){[time.format]}
+\h3(show_number=false){[time.format]}
 
 Do \u{not} change \eelis{time.format#nt:chrono-specs}:
 
 \Bquote{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\grammarterm{chrono-specs}:}
   \dd{conversion-spec}
   \dd{chrono-specs conversion-spec}
@@ -1022,18 +1020,18 @@ followed by zero or more \grammarterm{conversion-spec}s or \grammarterm{literal-
 There is no good way to express that on one line.
 }
 
-\h3(show-number=false){[fs.path.generic]}
+\h3(show_number=false){[fs.path.generic]}
 
 Change the grammar in \eelis{fs.path.generic} as follows:
 
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\etc}
   \dt{\grammarterm{relative-path}:}
   \dd{\del{filename}}
   \dd{\del{filename directory-separator relative-path}}
   \dd{\del{an empty path}}
-  \dd{\ins{\ins{\seqopt{\gramgroup{filename directory-separator}} \opt{filename}}}}
+  \dd{\ins{\ins{\seq{}opt{\gramgroup{filename directory-separator}} \opt{filename}}}}
   
   \dt{\grammarterm{filename}:}
   \dd{
@@ -1059,13 +1057,13 @@ so this would have massive blast radius.
 
 \comment{
 \Bdiff{
-\dl(class=grammar){
+\dl(class="grammar"){
   \dt{\etc}
   \dt{\grammarterm{relative-path}:}
   \dd{\del{filename}}
   \dd{\del{filename directory-separator relative-path}}
   \dd{\del{an empty path}}
-  \dd{\ins{\ins{\seqopt{\gramgroup{filename \seq{directory-separator-char}}} \opt{filename}}}}
+  \dd{\ins{\ins{\seq{}opt{\gramgroup{filename \seq{directory-separator-char}}} \opt{filename}}}}
   
   \dt{\grammarterm{filename}:}
   \dd{
@@ -1176,13 +1174,6 @@ which is said to be \dfn{normalized}.
 
 \h2{References}
 
-\bib(
-  id = N5014,
-  title = Working Draft\, Programming Languages — C++,
-  date = 2025-08-05,
-  author = Thomas Köppe,
-  link = https://wg21.link/n5014,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
-)\
+\bib(id="N5014", title="Working Draft, Programming Languages — C++", date="2025-08-05", author="Thomas Köppe", link="https://wg21.link/n5014", long_link="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf")\
 
 \make_bib

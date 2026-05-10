@@ -1,17 +1,15 @@
-\: cowel 0.6.0
-\cowel_include{libwg21.cow}
+\: cowel 0.9.1
+\cowel_include("libwg21.cow")
 
-\wg21_head(
-  title = \tcode{std::array} is a wrapper for an array!
-){
+\wg21_head(title={\tcode{std::array} is a wrapper for an array!}){
 \dl{
   \dt{Document number:} \dd{\docnum{P3737R3}}
   \dt{Date:}            \dd{\tt{2026-02-22}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3737/github)}
-  \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/array.cow)}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3737/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/Eisenwave/cpp-proposals/blob/master/src/array.cow")}
 }
 \hr
 }
@@ -32,28 +30,28 @@ and should be simplified.
 \h3{Changes since R2}
 
 \ul{
-  \li{Mentioned \tcode{data()} in \ref(#specification)}
-  \li{Expanded \ref(#motivation) with implicit object creation and providing storage}
+  \li{Mentioned \tcode{data()} in \ref("#specification")}
+  \li{Expanded \ref("#motivation") with implicit object creation and providing storage}
   \li{Simplified the specification of \tcode{data()}}
-  \li{Rebased \ref(#wording) on \ref(N5032)}
+  \li{Rebased \ref("#wording") on \ref("N5032")}
 }
 
 \h3{Changes since R1}
 
 \ul{
-  \li{Fixed a typo in \ref(#problematic-iterator-requirements-for-zero-length-arrays)}
-  \li{Updated discussion and wording based on \ref(LWG4276) being accepted in Kona}
+  \li{Fixed a typo in \ref("#problematic-iterator-requirements-for-zero-length-arrays")}
+  \li{Updated discussion and wording based on \ref("LWG4276") being accepted in Kona}
 }
 
 \h3{Changes since R0}
 
 \ul{
   \li{
-    Formulated an overall design strategy in \ref(#design-considerations).
+    Formulated an overall design strategy in \ref("#design-considerations").
   }
   \li{
     Removed any changes related to \tcode{array<T, 0>::front()} and \tcode{array<T, 0>::back()}.
-    Instead, R1 assumes that \ref(LWG4276) will be accepted.
+    Instead, R1 assumes that \ref("LWG4276") will be accepted.
   }
   \li{
     Excluded bit-field members from appearing in \tcode{std::array}.
@@ -61,10 +59,10 @@ and should be simplified.
   \li{
     Made trivial copyability and trivial default construction
     of \tcode{std::array<T,0>} unconditional;
-    see \ref(#zero-length-trivially-copyable).
+    see \ref("#zero-length-trivially-copyable").
   }
   \li{
-    Rebased \ref(#wording) on N5014 and made minor wording tweaks.
+    Rebased \ref("#wording") on N5014 and made minor wording tweaks.
   }
   \li{
     Minor editorial changes throughout the paper.
@@ -93,7 +91,7 @@ While this explanation is not correct for zero-length \tcode{std::array}s,
 it does match how the template is implemented in every standard library for \tcode{N != 0},
 and there is very little reason not to implement it in this obvious fashion.
 
-\h3(id=specification){What the standard says}
+\h3(id="specification"){What the standard says}
 
 The actual specification of \tcode{std::array} is not so simple,
 and is a combination of multiple constraints on the implementation:
@@ -147,7 +145,7 @@ The use of double braces in the \i{Returns} specification
 would be nonsensical if \tcode{std::array} was not
 "a wrapper for an array".
 
-\h3(id=unexpected){What the standard does not say}
+\h3(id="unexpected"){What the standard does not say}
 
 Notably, there are quite a couple of guarantees that are absent.
 
@@ -201,7 +199,7 @@ All list-initialization could be "gobbled up".
 It seems like the vagueness in the specification serves no practical purpose;
 it is unclear what implementations could do with the additional freedom,
 other than pranking their users.
-It would be beneficial to the C++ community if the simplified explanation in \ref(#introduction)
+It would be beneficial to the C++ community if the simplified explanation in \ref("#introduction")
 was what the standard actually said.
 
 A stricter specification would provide additional useful guarantees
@@ -222,7 +220,7 @@ and if it does, whether that behavior is portable and intended.
 \h3{Isn't this a waste of time?}
 
 While it could be argued that only a malicious implementation would violate our user
-expectations as in \ref(#unexpected) and it is therefore time-wasting to restrict
+expectations as in \ref("#unexpected") and it is therefore time-wasting to restrict
 \tcode{std::array} any further,
 it would be unusual for WG21 to shy away from standardizing universally existing practice
 and to recommend users to rely on non-standard implementation details,
@@ -244,11 +242,11 @@ even though \tcode{std::string} is not?
 
 Within \eelis{array.zero},
 there are some long-standing issues going back to 2012.
-LWG has visited this subclause many times in \ref(LWG2157),
+LWG has visited this subclause many times in \ref("LWG2157"),
 but never fully completed a solution.
-This work has been absorbed mostly unmodified into \ref(#wording).
+This work has been absorbed mostly unmodified into \ref("#wording").
 
-\h3(id=zero-length-status-quo){Zero-length \tcode{std::array} status quo}
+\h3(id="zero-length-status-quo"){Zero-length \tcode{std::array} status quo}
 
 The zero-length case is also where we see some implementation divergence in size and alignment
 of the array.
@@ -269,7 +267,7 @@ The following table shows how major standard libraries implement zero-length \tc
   }
 }
 
-\table(id=lib-table, class=center striped){
+\table(id="lib-table", class="center striped"){
   \tr{
     \th{Library}
     \th{Implementation}
@@ -278,21 +276,21 @@ The following table shows how major standard libraries implement zero-length \tc
     \th{Assignable}
   }
   \tr{
-    \td{\ref(https://github.com/microsoft/STL/blob/7841cf88ff9af837fb980f2d2d4ac0f267e714c7/stl/inc/array#L761-L763){MSVC STL}}
+    \td{\ref("https://github.com/microsoft/STL/blob/7841cf88ff9af837fb980f2d2d4ac0f267e714c7/stl/inc/array#L761-L763"){MSVC STL}}
     \td{contains \tcode{T} if \tcode{T} is default-constructible,\br{}otherwise \tcode{struct{}}}
     \td{\tcode{sizeof(T)} or \tcode{1}}
     \td{depends on \tcode{T}}
     \td{depends on \tcode{T}}
   }
   \tr{
-    \td{\ref(https://github.com/gcc-mirror/gcc/blob/e477e7cd104af96c55379f69125db3f1c350c9ed/libstdc\N{PERCENT SIGN}2B\N{PERCENT SIGN}2B-v3/include/std/array#L72-L81){libstdc++}}
+    \td{\ref("https://github.com/gcc-mirror/gcc/blob/e477e7cd104af96c55379f69125db3f1c350c9ed/libstdc\\N{PERCENT SIGN}2B\\N{PERCENT SIGN}2B-v3/include/std/array#L72-L81"){libstdc++}}
     \td{contains \tcode{struct{}}}
     \td{\tcode{1}}
     \td{always}
     \td{always}
   }
   \tr{
-    \td{\ref(https://github.com/gcc-mirror/gcc/blob/e477e7cd104af96c55379f69125db3f1c350c9ed/libstdc\N{PERCENT SIGN}2B\N{PERCENT SIGN}2B-v3/include/std/array#L72-L81){libc++}}
+    \td{\ref("https://github.com/gcc-mirror/gcc/blob/e477e7cd104af96c55379f69125db3f1c350c9ed/libstdc\\N{PERCENT SIGN}2B\\N{PERCENT SIGN}2B-v3/include/std/array#L72-L81"){libc++}}
     \td{contains (possibly const)\br{}\tcode{__empty[sizeof(T)]}}
     \td{\tcode{sizeof(T)}}
     \td{always}
@@ -307,10 +305,10 @@ Despite \tcode{std::array<T,0>} being a \em{zero-length} container with
 it actually holds one element (and call its constructors and destructors)
 as long as \tcode{T} is default-constructible.
 
-This bug has been reported, and fixing it would break ABI (\ref(STL5583)).
+This bug has been reported, and fixing it would break ABI (\ref("STL5583")).
 }
 
-\h4(id=conclusion-status-quo){Conclusion}
+\h4(id="conclusion-status-quo"){Conclusion}
 
 Generally speaking,
 it is desirable if a zero-length \tcode{std::array} behaves as similarly
@@ -343,7 +341,7 @@ struct array<T, 0> {
 };
 }
 
-\h3(id=zero-length-trivially-copyable){Trivial copyability of zero-length arrays}
+\h3(id="zero-length-trivially-copyable"){Trivial copyability of zero-length arrays}
 
 Both libc++ and libstdc++ provide a trivially copyable
 and trivially default-constructible \tcode{std::array<T, 0>}.
@@ -367,7 +365,7 @@ An empty base class would make the array as a whole an empty class,
 and this would be an ABI break,
 so it is out of the question.
 
-\h4(id=conclusion-double-brace-init){Conclusion}
+\h4(id="conclusion-double-brace-init"){Conclusion}
 
 Standardize the existing practice of having a non-static data member which enables
 double-brace initialization.
@@ -412,7 +410,7 @@ Changing the size of the type would break ABI.
 The only way to conjure up a \tcode{T*} out of thin air would be to use
 \tcode{reinterpret_cast}, but that would not work in constant expressions.
 
-\h4(id=conclusion-begin-end){Conclusion}
+\h4(id="conclusion-begin-end"){Conclusion}
 
 Delete the uniqueness requirement.
 Without specifying anything special for zero-length arrays,
@@ -429,13 +427,13 @@ with the proposed changes.
 The MSVC STL implements zero-length \tcode{std::array}s incorrectly
 and does not comply with C++26 (or any prior standard),
 and fixing this would require an ABI break.
-See (\ref(STL5583), \ref(#zero-length-status-quo)).
+See (\ref("STL5583"), \ref("#zero-length-status-quo")).
 If that ABI break ever happens,
 the implementation can simply be aligned with what is being proposed here.
 
 \h2{Wording}
 
-The following changes are relative to \ref(N5032).
+The following changes are relative to \ref("N5032").
 
 \h3{[array.overview]}
 
@@ -501,7 +499,7 @@ each pair of corresponding elements in \tcode{a1} and \tcode{a2}
 are template-argument-equivalent.
 }
 
-\cowel_macro(black_comment){\hl(sym-punc){//}\serif{\i{\hl(sym-punc){ \cowel_put}}}}
+\cowel_macro("black_comment"){\hl("sym-punc"){//}\serif{\i{\hl("sym-punc"){ \cowel_put}}}}
 
 Change \eelis{array.overview#5} as follows:
 
@@ -545,7 +543,7 @@ For a non-empty array, \tcode{data() == addressof(front())} is \tcode{true}.}
 
 Delete all paragraphs within \eelis{array.zero}:
 
-\Vset(pnum){0}
+\cowel_var_set("pnum", 0)
 
 \Bdel{
 \pnum
@@ -560,7 +558,7 @@ Member function \tcode{swap()} shall have a
 non-throwing exception specification.
 }
 
-\Vset(pnum){0}
+\cowel_var_set("pnum", 0)
 
 Insert new paragraphs within \eelis{array.zero}:
 
@@ -606,34 +604,9 @@ violates a hardened precondition\iref{structure.specifications}.
 
 \h2{References}
 
-\bib(
-  id = N5032,
-  title = Working Draft\, Programming Languages — C++,
-  date = 2025-12-15,
-  author = Thomas Köppe,
-  link = https://wg21.link/n5032,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
-)\
-\bib(
-  id = LWG2157,
-  title = How does std::array<T\,0> initialization work when T is not default-constructible?,
-  author = Daryle Walker,
-  date = 2012-05-08,
-  link = https://cplusplus.github.io/LWG/issue2157,
-)\
-\bib(
-  id = LWG4276,
-  title = front() and back() are not hardened for zero-length std::arrays,
-  author = Jan Schultke,
-  date = 2025-06-08,
-  link = https://cplusplus.github.io/LWG/issue4276,
-)\
-\bib(
-  id = STL5583,
-  title = <array>: std::array<T\,0> calls constructors and destructors of T,
-  author = Jan Schultke,
-  date = 2025-06-13,
-  link = https://github.com/microsoft/STL/issues/5583,
-)\
+\bib(id="N5032", title="Working Draft, Programming Languages — C++", date="2025-12-15", author="Thomas Köppe", link="https://wg21.link/n5032", long_link="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf")\
+\bib(id="LWG2157", title="How does std::array<T,0> initialization work when T is not default-constructible?", author="Daryle Walker", date="2012-05-08", link="https://cplusplus.github.io/LWG/issue2157")\
+\bib(id="LWG4276", title="front() and back() are not hardened for zero-length std::arrays", author="Jan Schultke", date="2025-06-08", link="https://cplusplus.github.io/LWG/issue4276")\
+\bib(id="STL5583", title="<array>: std::array<T,0> calls constructors and destructors of T", author="Jan Schultke", date="2025-06-13", link="https://github.com/microsoft/STL/issues/5583")\
 
 \make_bib
