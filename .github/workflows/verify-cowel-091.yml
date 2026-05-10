@@ -1,0 +1,38 @@
+name: Verify COWEL 0.9.1 docs
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install cowel 0.9.1
+        run: npm install -g cowel@0.9.1
+
+      - name: Build and verify COWEL 0.9.1 sources
+        run: |
+          set -e
+          failed=0
+          while IFS= read -r src; do
+            name=$(basename "$src" .cow)
+            expected="docs/${name}.html"
+            if [ ! -f "$expected" ]; then
+              echo "SKIP: $src (no corresponding $expected in docs/)"
+              continue
+            fi
+            actual=$(mktemp --suffix=.html)
+            cowel run "$src" "$actual"
+            if ! cmp -s "$expected" "$actual"; then
+              echo "MISMATCH: $src does not match $expected"
+              diff "$expected" "$actual" || true
+              failed=1
+            else
+              echo "OK: $src matches $expected"
+            fi
+          done < <(grep -rl '\\: cowel 0\.9\.1' src/)
+          exit $failed
