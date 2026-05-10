@@ -1,9 +1,9 @@
 <pre class='metadata'>
 Title: <code>break label;</code> and <code>continue label;</code>
 Shortname: P3568
-Revision: 1
+Revision: 2
 Status: P
-Date: 2025-03-13
+Date: 2026-05-10
 Group: WG21
 Audience: SG22, EWG
 Editor: Jan Schultke, janschultke@gmail.com
@@ -16,6 +16,11 @@ Abstract: Introduce `break label` and `continue label` to `break` and `continue`
 </pre>
 
 # Revision history # {#history}
+
+## Since R1 ## {#history-since-r1}
+
+- Added some more motivation in [[#expansion-statements]]
+- Rebased [[#proposed-wording]] on the post-Croydon working draft
 
 ## Since R0 ## {#history-since-r0}
 
@@ -89,7 +94,7 @@ outer: for (auto x : xs) {
     for (auto y : ys) {
         if (/* ... */) {
             continue outer; // OK, continue applies to outer for loop
-            break outer;    // OK, break applies to outer for loop  
+            break outer;    // OK, break applies to outer for loop
         }
     }
 }
@@ -534,6 +539,48 @@ Note: This language list is not exhaustive and the search only includes open-sou
 Some of the cells are N/A because the number isn't meaningful,
 or simply because I haven't gotten around to doing the code search yet.
 
+## Expansion statements ## {#expansion-statements}
+
+The proposed `break label` feature also has interesting interactions
+with C++26 expansion statements.
+
+<div class=example>
+`break label` makes it possible to `break` out of a loop
+that the expansion statement is nested within.
+
+```cpp
+outer: for (const auto& tuple : list_of_tuples) {
+    template for (const auto& e : tuple) {
+        if (/* ... */) {
+            break outer;
+        }
+    }
+}
+```
+A regular `break;` statement would instead apply to the expansion statement itself,
+meaning that neither `break` nor `continue` of loops is possible from expansion statements.
+</div>
+
+<div class=example>
+In the future, it may be possible to programmatically generate `case`s for a `switch`
+using expansion statements.
+If so, `break label` is needed to prevent fallthrough between cases:
+
+```cpp
+outer: switch (/* ... */) {
+    template for (constexpr int N : cases) {
+        case N: f<N>();
+        break outer;
+    }
+}
+```
+Without the `break outer`, the generated code would be:
+```cpp
+case 0: f<0>(); // fallthrough!
+case 1: f<1>();
+case 2: f<2>();
+```
+</div>
 
 ## C2y compatibility ## {#c2y-compatibility}
 
@@ -806,7 +853,8 @@ del {
 }
 </style>
 
-The wording is relative to [[!N5001]].
+The wording is relative to [[!N5032]]
+with changes from the 2026-03 Croydon meeting applied.
 
 Update
 <a href="https://eel.is/c++draft/stmt.label">[stmt.label]</a>
@@ -839,11 +887,11 @@ In
 <a href="https://eel.is/c++draft/stmt.label">[stmt.label]</a>
 insert a new paragraph after paragraph 1:
 <blockquote>
-<ins>A label **L** of the form *attribute-specifier-seq*<sub>opt</sub> *identifier* `:`
-*labels* the *statement* **S** of a *labeled-statement* **X** if
+<ins>A label <math><mi>L</mi></math> of the form *attribute-specifier-seq*<sub>opt</sub> *identifier* `:`
+*labels* the *statement* <math><mi>S</mi></math> of a *labeled-statement* <math><mi>X</mi></math> if
 <ul>
-    <li>**L** is the *label* of **X**, or</li>
-    <li>**L** labels **X** (recursively).</li>
+    <li><math><mi>L</mi></math> is the *label* of <math><mi>X</mi></math>, or</li>
+    <li><math><mi>L</mi></math> labels <math><mi>X</mi></math> (recursively).</li>
 </ul></ins>
 <div class="ins-block">
 [ *Example*:
@@ -864,15 +912,15 @@ Update
 <a href="https://eel.is/c++draft/stmt.label">[stmt.label]</a>
 paragraph 3 as follows:
 <blockquote>
-A *control-flow-limited statement* is a statement **S** for which:
+A *control-flow-limited statement* is a statement <math><mi>S</mi></math> for which:
 <ul>
     <li>
-        a `case` or `default` label appearing within **S**
-        shall be associated with a `switch` statement ([stmt.switch]) within **S**, and
+        a `case` or `default` label appearing within <math><mi>S</mi></math>
+        shall be associated with a `switch` statement ([stmt.switch]) within <math><mi>S</mi></math>, and
     </li>
     <li>
-        a label declared in **S** shall only be
-        referred to by a statement <del>([stmt.goto])</del> in **S**.
+        a label declared in <math><mi>S</mi></math> shall only be
+        referred to by a statement <del>([stmt.goto])</del> in <math><mi>S</mi></math>.
     </li>
 </ul>
 </blockquote>
@@ -897,6 +945,7 @@ Jump statements unconditionally transfer control.
             `break` <ins>*identifier*<sub>opt</sub></ins> `;`<br>
             `continue` <ins>*identifier*<sub>opt</sub></ins> `;`<br>
             `return` *expr-or-braced-init-list*<sub>opt</sub> `;`<br>
+            *coroutine-return-statement*
             <del>`goto` *identifier* `;`</del><br>
         </div>
 </div>
@@ -916,16 +965,16 @@ paragraph 1 as follows:
 
 <blockquote>
 <ins>A *breakable statement* is
-an *iteration-statement* ([stmt.iter]) or a `switch` statement ([stmt.switch]).</ins>
+an *iteration-statement* ([stmt.iter]), an *expansion-statement*, or a `switch` statement ([stmt.switch]).</ins>
 A `break` statement shall be enclosed by ([stmt.pre])
-<ins>a breakable statement</ins>
-<del>an *iteration-statement* ([stmt.iter]) or a `switch` statement ([stmt.switch])</del>.
-<ins>If present, the *identifier* shall be part of a label **L** which labels ([stmt.label]) an enclosing breakable statement.</ins> 
+<del>an *iteration-statement* ([stmt.iter]), an *expansion-statement*, or a `switch` statement ([stmt.switch])</del>
+<ins>a breakable statement</ins>.
+<ins>If present, the *identifier* shall be part of a label <math><mi>L</mi></math> which labels ([stmt.label]) an enclosing breakable statement.</ins>
 The `break` statement causes termination of<ins>:</ins>
 <del>the smallest such enclosing statement;</del>
 <ul>
     <li>
-        <ins>if an *identifier* is present, the smallest enclosing breakable statement labeled by **L**,</ins>
+        <ins>if an *identifier* is present, the smallest enclosing breakable statement labeled by <math><mi>L</mi></math>,</ins>
     </li>
     <li>
         <ins>otherwise, the smallest enclosing breakable statement.</ins>
@@ -957,54 +1006,26 @@ Update
 paragraph 1 as follows:
 
 <blockquote>
-A `continue` statement shall be enclosed by ([stmt.pre]) an *iteration-statement* ([stmt.iter]).
-<ins>If present, the *identifier* shall be part of a label **L** which labels ([stmt.label]) an enclosing *iteration-statement*.</ins> 
-The `continue` statement causes control to pass to the loop-continuation portion of<ins>:</ins>
-<del>the smallest such enclosing statement, that is, to the end of the loop.</del>
+<ins>A *continuable statement* is
+an *iteration-statement* ([stmt.iter]) or an *expansion-statement*.</ins>
+A `continue` statement shall be enclosed by ([stmt.pre])
+<del>an *iteration-statement* or *expansion-statement*</del>
+<ins>a continuable statement</ins>.
+<ins>If present, the *identifier* shall be part of a label <math><mi>L</mi></math> which labels ([stmt.label]) an enclosing continuable statement.
+The `continue` statement applies to a statement <math><mi>X</mi></math>,
+which is:</ins>
 <ul>
     <li>
-        <ins>if an *identifier* is present, the smallest enclosing *iteration-statement* labeled by **L**,</ins>
+        <ins>if an *identifier* is present, the smallest enclosing continuable statement labeled by <math><mi>L</mi></math>,</ins>
     </li>
     <li>
-        <ins>otherwise, the smallest enclosing *iteration-statement*.</ins>
+        <ins>otherwise, the smallest enclosing continuable statement.</ins>
     </li>
 </ul>
-More precisely, in each of the statements
-<pre>
-<ins>label: </ins>while (foo) {
-  {
-    // ...
-  }
-contin: ;
-}
-
-<ins>label: </ins>do {
-  {
-    // ...
-  }
-contin: ;
-} while (foo);
-
-<ins>label: </ins>for (;;) {
-  {
-    // ...
-  }
-contin: ;
-}
-</pre>
-<del>a `continue` not contained in an an enclosed iteration statement is equivalent to `goto contin`.</del>
-<ins>the following are equivalent to `goto contin`:
-<ul>
-    <li>A `continue` not contained in an an enclosed iteration statement.</li>
-    <li>A `continue label` not contained in an enclosed iteration statement labeled `label:`.</li>
-</ul>
-</ins>
+If the innermost enclosing such statement <math><mi>X</mi></math> is an *iteration-statement* ([stmt.iter]),
+the `continue` statement causes control to pass to the end of the *statement* of <math><mi>X</mi></math>.
+Otherwise, control passes to the end of the *compound-statement* of the current <math><msub><mi>X</mi><mi>i</mi></msub></math>.
 </blockquote>
-
-Note: The clarification "that is, to the end of the loop"
-was dropped entirely based on community feedback.
-"the end of the loop" is not all that much clearer either, and the whole `goto` equivalence portion
-should make it clear enough what the behavior is.
 
 ---
 
@@ -1016,7 +1037,7 @@ paragraph 1 as follows:
 The `goto` statement unconditionally transfers control to <del>the</del><ins>a</ins> statement
 labeled <ins>([stmt.label])</ins> by <del>the identifier</del>
 <ins>a *label* in the current function containing *identifier*</ins>.
-<del>The identifier shall be a label located in the current function.</del>
+<del>The identifier shall be a label ([stmt.label]) located in the current function.</del>
 <ins>There shall be exactly one such label.</ins>
 </blockquote>
 
@@ -1030,7 +1051,7 @@ a label ends with a `:`, and an *identifier* in itself would never match the *la
 
 ---
 
-Add a feature-test macro to 
+Add a feature-test macro to
 <a href="https://eel.is/c++draft/tab:cpp.predefined.ft">[tab:cpp.predefined.ft]</a>
 as follows:
 
@@ -1060,6 +1081,10 @@ An even more complete list may be available at
 
 I thank the
 [Together C & C++](https://discord.gg/tccpp) community for responding to my poll; see [[TCCPP]].
+
+I thank Matthias Wippich for explaining the interactions of `break label`
+with expansion statements;
+see [[#expansion-statements]].
 
 <pre class=biblio>
 {

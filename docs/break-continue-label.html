@@ -2,7 +2,7 @@
  <head>
   <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
   <meta content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport">
-  <title>P3568R1: break label; and continue label;</title>
+  <title>P3568R2: break label; and continue label;</title>
 <style data-fill-with="stylesheet">/******************************************************************************
  *                   Style sheet for the W3C specifications                   *
  *
@@ -1564,7 +1564,7 @@ Possible extra rowspan handling
   <meta content="Bikeshed version 4b8aed3f7, updated Thu Mar 6 12:35:01 2025 -0800" name="generator">
   <link href="https://eisenwave.github.io/cpp-proposals/break-continue-label.html" rel="canonical">
   <link href="https://isocpp.org/favicon.ico" rel="icon">
-  <meta content="5c8e90cc375ebae056edc88b280d30a0091b48a5" name="revision">
+  <meta content="af5ff9813ff8b7469fec6fa7a2478eecbfb330e6" name="revision">
   <meta content="dark light" name="color-scheme">
 <style>
 table, th, td {
@@ -2129,8 +2129,8 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
  <body class="h-entry">
   <div class="head">
    <p data-fill-with="logo"></p>
-   <h1 class="p-name no-ref" id="title">P3568R1<br><code class="highlight"><c- k>break</c-> <c- n>label</c-><c- p>;</c-></code> and <code class="highlight"><c- k>continue</c-> <c- n>label</c-><c- p>;</c-></code></h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Published Proposal, <time class="dt-updated" datetime="2025-03-13">2025-03-13</time></span></h2>
+   <h1 class="p-name no-ref" id="title">P3568R2<br><code class="highlight"><c- k>break</c-> <c- n>label</c-><c- p>;</c-></code> and <code class="highlight"><c- k>continue</c-> <c- n>label</c-><c- p>;</c-></code></h1>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Published Proposal, <time class="dt-updated" datetime="2026-05-10">2026-05-10</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt>This version:
@@ -2159,7 +2159,8 @@ and relax label restrictions.</p>
     <li>
      <a href="#history"><span class="secno">1</span> <span class="content">Revision history</span></a>
      <ol class="toc">
-      <li><a href="#history-since-r0"><span class="secno">1.1</span> <span class="content">Since R0</span></a>
+      <li><a href="#history-since-r1"><span class="secno">1.1</span> <span class="content">Since R1</span></a>
+      <li><a href="#history-since-r0"><span class="secno">1.2</span> <span class="content">Since R0</span></a>
      </ol>
     <li><a href="#introduction"><span class="secno">2</span> <span class="content">Introduction</span></a>
     <li>
@@ -2179,7 +2180,8 @@ and relax label restrictions.</p>
         <li><a href="#poll"><span class="secno">3.3.1</span> <span class="content">Poll</span></a>
         <li><a href="#how-common-is-break-continue-label"><span class="secno">3.3.2</span> <span class="content">How common is <code class="highlight"><c- k>break</c-></code>/<code class="highlight"><c- k>continue</c-></code> with labels?</span></a>
        </ol>
-      <li><a href="#c2y-compatibility"><span class="secno">3.4</span> <span class="content">C2y compatibility</span></a>
+      <li><a href="#expansion-statements"><span class="secno">3.4</span> <span class="content">Expansion statements</span></a>
+      <li><a href="#c2y-compatibility"><span class="secno">3.5</span> <span class="content">C2y compatibility</span></a>
      </ol>
     <li>
      <a href="#design-considerations"><span class="secno">4</span> <span class="content">Design Considerations</span></a>
@@ -2209,7 +2211,14 @@ and relax label restrictions.</p>
   </nav>
   <main>
    <h2 class="heading settled" data-level="1" id="history"><span class="secno">1. </span><span class="content">Revision history</span><a class="self-link" href="#history"></a></h2>
-   <h3 class="heading settled" data-level="1.1" id="history-since-r0"><span class="secno">1.1. </span><span class="content">Since R0</span><a class="self-link" href="#history-since-r0"></a></h3>
+   <h3 class="heading settled" data-level="1.1" id="history-since-r1"><span class="secno">1.1. </span><span class="content">Since R1</span><a class="self-link" href="#history-since-r1"></a></h3>
+   <ul>
+    <li data-md>
+     <p>Added some more motivation in <a href="#expansion-statements">§ 3.4 Expansion statements</a></p>
+    <li data-md>
+     <p>Rebased <a href="#proposed-wording">§ 7 Proposed wording</a> on the post-Croydon working draft</p>
+   </ul>
+   <h3 class="heading settled" data-level="1.2" id="history-since-r0"><span class="secno">1.2. </span><span class="content">Since R0</span><a class="self-link" href="#history-since-r0"></a></h3>
    <p>The paper was seen by EWGI and then by EWG at Hagenberg 2025,
 with the following polls:</p>
    <blockquote>
@@ -2295,7 +2304,7 @@ This feature is popular, simple, and quite useful:</p>
     <c- k>for</c-> <c- p>(</c-><c- k>auto</c-> <c- n>y</c-> <c- o>:</c-> <c- n>ys</c-><c- p>)</c-> <c- p>{</c->
         <c- k>if</c-> <c- p>(</c-><c- d>/* ... */</c-><c- p>)</c-> <c- p>{</c->
             <c- k>continue</c-> <c- n>outer</c-><c- p>;</c-> <c- c1>// OK, continue applies to outer for loop</c->
-            <c- k>break</c-> <c- n>outer</c-><c- p>;</c->    <c- c1>// OK, break applies to outer for loop  </c->
+            <c- k>break</c-> <c- n>outer</c-><c- p>;</c->    <c- c1>// OK, break applies to outer for loop</c->
         <c- p>}</c->
     <c- p>}</c->
 <c- p>}</c->
@@ -2355,7 +2364,7 @@ and to address concerns in a follow-up proposal <a data-link-type="biblio" href=
    </blockquote>
    <p>I believe that rejecting <code class="highlight"><c- k>break</c-> <c- n>label</c-></code> was a grave mistake at a time.
 Regardless, the WG21 sentiment towards the feature is now the opposite,
-even if just for C compatibility (see <a href="#history-since-r0">§ 1.1 Since R0</a>).</p>
+even if just for C compatibility (see <a href="#history-since-r0">§ 1.2 Since R0</a>).</p>
    <h2 class="heading settled" data-level="3" id="motivation"><span class="secno">3. </span><span class="content">Motivation</span><a class="self-link" href="#motivation"></a></h2>
    <p><code class="highlight"><c- k>break</c-> <c- n>label</c-></code> and <code class="highlight"><c- k>continue</c-> <c- n>label</c-></code> are largely motivated by the ability to control nested loops.
 This is a highly popular feature in other languages,
@@ -2693,7 +2702,40 @@ in the world which use labeled <code class="highlight"><c- k>break</c-></code>/<
    <p class="note" role="note"><span class="marker">Note:</span> This language list is not exhaustive and the search only includes open-source code bases on GitHub.
 Some of the cells are N/A because the number isn’t meaningful,
 or simply because I haven’t gotten around to doing the code search yet.</p>
-   <h3 class="heading settled" data-level="3.4" id="c2y-compatibility"><span class="secno">3.4. </span><span class="content">C2y compatibility</span><a class="self-link" href="#c2y-compatibility"></a></h3>
+   <h3 class="heading settled" data-level="3.4" id="expansion-statements"><span class="secno">3.4. </span><span class="content">Expansion statements</span><a class="self-link" href="#expansion-statements"></a></h3>
+   <p>The proposed <code class="highlight"><c- k>break</c-> <c- n>label</c-></code> feature also has interesting interactions
+with C++26 expansion statements.</p>
+   <div class="example" id="example-75567744">
+    <a class="self-link" href="#example-75567744"></a> <code class="highlight"><c- k>break</c-> <c- n>label</c-></code> makes it possible to <code class="highlight"><c- k>break</c-></code> out of a loop
+that the expansion statement is nested within. 
+<pre class="language-cpp highlight"><c- nl>outer</c-><c- p>:</c-> <c- k>for</c-> <c- p>(</c-><c- k>const</c-> <c- k>auto</c-><c- o>&amp;</c-> <c- n>tuple</c-> <c- o>:</c-> <c- n>list_of_tuples</c-><c- p>)</c-> <c- p>{</c->
+    <c- k>template</c-> <c- k>for</c-> <c- p>(</c-><c- k>const</c-> <c- k>auto</c-><c- o>&amp;</c-> <c- n>e</c-> <c- o>:</c-> <c- n>tuple</c-><c- p>)</c-> <c- p>{</c->
+        <c- k>if</c-> <c- p>(</c-><c- d>/* ... */</c-><c- p>)</c-> <c- p>{</c->
+            <c- k>break</c-> <c- n>outer</c-><c- p>;</c->
+        <c- p>}</c->
+    <c- p>}</c->
+<c- p>}</c->
+</pre>
+    <p>A regular <code class="highlight"><c- k>break</c-><c- p>;</c-></code> statement would instead apply to the expansion statement itself,
+meaning that neither <code class="highlight"><c- k>break</c-></code> nor <code class="highlight"><c- k>continue</c-></code> of loops is possible from expansion statements.</p>
+   </div>
+   <div class="example" id="example-079e3f35">
+    <a class="self-link" href="#example-079e3f35"></a> In the future, it may be possible to programmatically generate <code class="highlight"><c- k>case</c-></code>s for a <code class="highlight"><c- k>switch</c-></code> using expansion statements.
+If so, <code class="highlight"><c- k>break</c-> <c- n>label</c-></code> is needed to prevent fallthrough between cases: 
+<pre class="language-cpp highlight"><c- nl>outer</c-><c- p>:</c-> <c- k>switch</c-> <c- p>(</c-><c- d>/* ... */</c-><c- p>)</c-> <c- p>{</c->
+    <c- k>template</c-> <c- k>for</c-> <c- p>(</c-><c- k>constexpr</c-> <c- b>int</c-> <c- n>N</c-> <c- o>:</c-> <c- n>cases</c-><c- p>)</c-> <c- p>{</c->
+        <c- k>case</c-> <c- no>N</c-><c- p>:</c-> <c- n>f</c-><c- o>&lt;</c-><c- n>N</c-><c- o>></c-><c- p>();</c->
+        <c- k>break</c-> <c- n>outer</c-><c- p>;</c->
+    <c- p>}</c->
+<c- p>}</c->
+</pre>
+    <p>Without the <code class="highlight"><c- k>break</c-> <c- n>outer</c-></code>, the generated code would be:</p>
+<pre class="language-cpp highlight"><c- k>case</c-> <c- mi>0</c-><c- p>:</c-> <c- n>f</c-><c- o>&lt;</c-><c- mi>0</c-><c- o>></c-><c- p>();</c-> <c- c1>// fallthrough!</c->
+<c- k>case</c-> <c- mi>1</c-><c- p>:</c-> <c- n>f</c-><c- o>&lt;</c-><c- mi>1</c-><c- o>></c-><c- p>();</c->
+<c- k>case</c-> <c- mi>2</c-><c- p>:</c-> <c- n>f</c-><c- o>&lt;</c-><c- mi>2</c-><c- o>></c-><c- p>();</c->
+</pre>
+   </div>
+   <h3 class="heading settled" data-level="3.5" id="c2y-compatibility"><span class="secno">3.5. </span><span class="content">C2y compatibility</span><a class="self-link" href="#c2y-compatibility"></a></h3>
    <p>Last but not least, C++ should have <code class="highlight"><c- k>break</c-> <c- n>label</c-></code> and <code class="highlight"><c- k>continue</c-> <c- n>label</c-></code> to increase the amount of code that has a direct equivalent in C.
 Such compatibility is desirable for two reasons:</p>
    <ul>
@@ -2882,7 +2924,7 @@ and relaxes restrictions on the placement of labels.</p>
    <p>An LLVM implementation is W.I.P.</p>
    <p>A GCC implementation of <a data-link-type="biblio" href="#biblio-n3355" title="N3355: Named loops, v3">[N3355]</a> has also been committed at <a data-link-type="biblio" href="#biblio-gcc" title="c: Implement C2Y N3355 - Named Loops [PR117022]">[GCC]</a>.</p>
    <h2 class="heading settled" data-level="7" id="proposed-wording"><span class="secno">7. </span><span class="content">Proposed wording</span><a class="self-link" href="#proposed-wording"></a></h2>
-   <p>The wording is relative to <a data-link-type="biblio" href="#biblio-n5001" title="Working Draft, Programming Languages — C++">[N5001]</a>.</p>
+   <p>The wording is relative to <a data-link-type="biblio" href="#biblio-n5032" title="Working Draft, Standard for Programming Language C++">[N5032]</a> with changes from the 2026-03 Croydon meeting applied.</p>
    <p>Update <a href="https://eel.is/c++draft/stmt.label">[stmt.label]</a> paragraph 1 as follows:</p>
    <blockquote>
      A label can be added to a statement or used anywhere in a <em>compound-statement</em>. 
@@ -2904,10 +2946,38 @@ No two labels in a function shall have the same identifier.</del>
    <p>In <a href="https://eel.is/c++draft/stmt.label">[stmt.label]</a> insert a new paragraph after paragraph 1:</p>
    <blockquote>
     <ins>
-     A label <strong>L</strong> of the form <em>attribute-specifier-seq</em><sub>opt</sub> <em>identifier</em> <code class="highlight"><c- o>:</c-></code> <em>labels</em> the <em>statement</em> <strong>S</strong> of a <em>labeled-statement</em> <strong>X</strong> if 
+     A label 
+     <math>
+      <mi>L</mi>
+     </math>
+      of the form <em>attribute-specifier-seq</em><sub>opt</sub> <em>identifier</em> <code class="highlight"><c- o>:</c-></code> <em>labels</em> the <em>statement</em> 
+     <math>
+      <mi>S</mi>
+     </math>
+      of a <em>labeled-statement</em> 
+     <math>
+      <mi>X</mi>
+     </math>
+      if 
      <ul>
-      <li><strong>L</strong> is the <em>label</em> of <strong>X</strong>, or
-      <li><strong>L</strong> labels <strong>X</strong> (recursively).
+      <li>
+       <math>
+        <mi>L</mi>
+       </math>
+        is the <em>label</em> of 
+       <math>
+        <mi>X</mi>
+       </math>
+       , or
+      <li>
+       <math>
+        <mi>L</mi>
+       </math>
+        labels 
+       <math>
+        <mi>X</mi>
+       </math>
+        (recursively).
      </ul>
     </ins>
     <div class="ins-block">
@@ -2925,14 +2995,35 @@ We also don’t want <code class="highlight"><c- k>case</c-></code> or <code cla
 permit <code class="highlight"><c- k>break</c-> <c- n>i</c-></code> given <code class="highlight"><c- k>case</c-> <c- no>i</c-><c- p>:</c-></code>, considering how we word [stmt.break].</p>
    <p>Update <a href="https://eel.is/c++draft/stmt.label">[stmt.label]</a> paragraph 3 as follows:</p>
    <blockquote>
-     A <em>control-flow-limited statement</em> is a statement <strong>S</strong> for which: 
+     A <em>control-flow-limited statement</em> is a statement 
+    <math>
+     <mi>S</mi>
+    </math>
+     for which: 
     <ul>
-     <li> a <code class="highlight"><c- k>case</c-></code> or <code class="highlight"><c- k>default</c-></code> label appearing within <strong>S</strong> shall be associated with a <code class="highlight"><c- k>switch</c-></code> statement ([stmt.switch]) within <strong>S</strong>, and 
      <li>
-       a label declared in <strong>S</strong> shall only be
+       a <code class="highlight"><c- k>case</c-></code> or <code class="highlight"><c- k>default</c-></code> label appearing within 
+      <math>
+       <mi>S</mi>
+      </math>
+       shall be associated with a <code class="highlight"><c- k>switch</c-></code> statement ([stmt.switch]) within 
+      <math>
+       <mi>S</mi>
+      </math>
+      , and 
+     <li>
+       a label declared in 
+      <math>
+       <mi>S</mi>
+      </math>
+       shall only be
         referred to by a statement 
       <del>([stmt.goto])</del>
-       in <strong>S</strong>. 
+       in 
+      <math>
+       <mi>S</mi>
+      </math>
+      . 
     </ul>
    </blockquote>
    <p class="note" role="note"><span class="marker">Note:</span> While the restriction still primarily applies to <code class="highlight"><c- k>goto</c-></code> (preventing the user from e.g. jumping into an <code class="highlight"><c- k>if</c-> <c- k>constexpr</c-></code> statement),
@@ -2950,7 +3041,7 @@ if other statements can also refer to labels, it is misleading to say
       <ins><em>identifier</em><sub>opt</sub></ins>
        <code class="highlight"><c- p>;</c-></code><br> <code class="highlight"><c- k>continue</c-></code> 
       <ins><em>identifier</em><sub>opt</sub></ins>
-       <code class="highlight"><c- p>;</c-></code><br> <code class="highlight"><c- k>return</c-></code> <em>expr-or-braced-init-list</em><sub>opt</sub> <code class="highlight"><c- p>;</c-></code><br> 
+       <code class="highlight"><c- p>;</c-></code><br> <code class="highlight"><c- k>return</c-></code> <em>expr-or-braced-init-list</em><sub>opt</sub> <code class="highlight"><c- p>;</c-></code><br> <em>coroutine-return-statement</em> 
       <del><code class="highlight"><c- k>goto</c-></code> <em>identifier</em> <code class="highlight"><c- p>;</c-></code></del>
       <br> 
      </div>
@@ -2964,18 +3055,30 @@ defined as equivalent to <code class="highlight"><c- k>goto</c-></code> (in the 
    <p>Update <a href="https://eel.is/c++draft/stmt.break">[stmt.break]</a> paragraph 1 as follows:</p>
    <blockquote>
     <ins>A <em>breakable statement</em> is
-an <em>iteration-statement</em> ([stmt.iter]) or a <code class="highlight"><c- k>switch</c-></code> statement ([stmt.switch]).</ins>
+an <em>iteration-statement</em> ([stmt.iter]), an <em>expansion-statement</em>, or a <code class="highlight"><c- k>switch</c-></code> statement ([stmt.switch]).</ins>
      A <code class="highlight"><c- k>break</c-></code> statement shall be enclosed by ([stmt.pre]) 
+    <del>an <em>iteration-statement</em> ([stmt.iter]), an <em>expansion-statement</em>, or a <code class="highlight"><c- k>switch</c-></code> statement ([stmt.switch])</del>
     <ins>a breakable statement</ins>
-    <del>an <em>iteration-statement</em> ([stmt.iter]) or a <code class="highlight"><c- k>switch</c-></code> statement ([stmt.switch])</del>
     . 
-    <ins>If present, the <em>identifier</em> shall be part of a label <strong>L</strong> which labels ([stmt.label]) an enclosing breakable statement.</ins>
+    <ins>
+     If present, the <em>identifier</em> shall be part of a label 
+     <math>
+      <mi>L</mi>
+     </math>
+      which labels ([stmt.label]) an enclosing breakable statement.
+    </ins>
      The <code class="highlight"><c- k>break</c-></code> statement causes termination of
     <ins>:</ins>
     <del>the smallest such enclosing statement;</del>
     <ul>
      <li>
-      <ins>if an <em>identifier</em> is present, the smallest enclosing breakable statement labeled by <strong>L</strong>,</ins>
+      <ins>
+       if an <em>identifier</em> is present, the smallest enclosing breakable statement labeled by 
+       <math>
+        <mi>L</mi>
+       </math>
+       ,
+      </ins>
      <li>
       <ins>otherwise, the smallest enclosing breakable statement.</ins>
     </ul>
@@ -3001,52 +3104,56 @@ an <em>iteration-statement</em> ([stmt.iter]) or a <code class="highlight"><c- k
    <hr>
    <p>Update <a href="https://eel.is/c++draft/stmt.cont">[stmt.cont]</a> paragraph 1 as follows:</p>
    <blockquote>
-     A <code class="highlight"><c- k>continue</c-></code> statement shall be enclosed by ([stmt.pre]) an <em>iteration-statement</em> ([stmt.iter]). 
-    <ins>If present, the <em>identifier</em> shall be part of a label <strong>L</strong> which labels ([stmt.label]) an enclosing <em>iteration-statement</em>.</ins>
-     The <code class="highlight"><c- k>continue</c-></code> statement causes control to pass to the loop-continuation portion of
-    <ins>:</ins>
-    <del>the smallest such enclosing statement, that is, to the end of the loop.</del>
+    <ins>A <em>continuable statement</em> is
+an <em>iteration-statement</em> ([stmt.iter]) or an <em>expansion-statement</em>.</ins>
+     A <code class="highlight"><c- k>continue</c-></code> statement shall be enclosed by ([stmt.pre]) 
+    <del>an <em>iteration-statement</em> or <em>expansion-statement</em></del>
+    <ins>a continuable statement</ins>
+    . 
+    <ins>
+     If present, the <em>identifier</em> shall be part of a label 
+     <math>
+      <mi>L</mi>
+     </math>
+      which labels ([stmt.label]) an enclosing continuable statement.
+The <code class="highlight"><c- k>continue</c-></code> statement applies to a statement 
+     <math>
+      <mi>X</mi>
+     </math>
+     ,
+which is:
+    </ins>
     <ul>
      <li>
-      <ins>if an <em>identifier</em> is present, the smallest enclosing <em>iteration-statement</em> labeled by <strong>L</strong>,</ins>
+      <ins>
+       if an <em>identifier</em> is present, the smallest enclosing continuable statement labeled by 
+       <math>
+        <mi>L</mi>
+       </math>
+       ,
+      </ins>
      <li>
-      <ins>otherwise, the smallest enclosing <em>iteration-statement</em>.</ins>
+      <ins>otherwise, the smallest enclosing continuable statement.</ins>
     </ul>
-     More precisely, in each of the statements 
-<pre class="highlight"><ins><c- nl>label</c-><c- p>:</c-> </ins><c- k>while</c-> <c- p>(</c-><c- n>foo</c-><c- p>)</c-> <c- p>{</c->
-  <c- p>{</c->
-    <c- c1>// ...</c->
-  <c- p>}</c->
-<c- nl>contin</c-><c- p>:</c-> <c- p>;</c->
-<c- p>}</c->
-
-<ins><c- nl>label</c-><c- p>:</c-> </ins><c- k>do</c-> <c- p>{</c->
-  <c- p>{</c->
-    <c- c1>// ...</c->
-  <c- p>}</c->
-<c- nl>contin</c-><c- p>:</c-> <c- p>;</c->
-<c- p>}</c-> <c- k>while</c-> <c- p>(</c-><c- n>foo</c-><c- p>);</c->
-
-<ins><c- nl>label</c-><c- p>:</c-> </ins><c- k>for</c-> <c- p>(;;)</c-> <c- p>{</c->
-  <c- p>{</c->
-    <c- c1>// ...</c->
-  <c- p>}</c->
-<c- nl>contin</c-><c- p>:</c-> <c- p>;</c->
-<c- p>}</c->
-</pre>
-    <del>a <code class="highlight"><c- k>continue</c-></code> not contained in an an enclosed iteration statement is equivalent to <code class="highlight"><c- k>goto</c-> <c- n>contin</c-></code>.</del>
-    <ins>
-     the following are equivalent to <code class="highlight"><c- k>goto</c-> <c- n>contin</c-></code>: 
-     <ul>
-      <li>A <code class="highlight"><c- k>continue</c-></code> not contained in an an enclosed iteration statement.
-      <li>A <code class="highlight"><c- k>continue</c-> <c- n>label</c-></code> not contained in an enclosed iteration statement labeled <code class="highlight"><c- nl>label</c-><c- p>:</c-></code>.
-     </ul>
-    </ins>
+     If the innermost enclosing such statement 
+    <math>
+     <mi>X</mi>
+    </math>
+     is an <em>iteration-statement</em> ([stmt.iter]),
+the <code class="highlight"><c- k>continue</c-></code> statement causes control to pass to the end of the <em>statement</em> of 
+    <math>
+     <mi>X</mi>
+    </math>
+    .
+Otherwise, control passes to the end of the <em>compound-statement</em> of the current 
+    <math>
+     <msub>
+      <mi>X</mi>
+      <mi>i</mi>
+     </msub>
+    </math>
+    . 
    </blockquote>
-   <p class="note" role="note"><span class="marker">Note:</span> The clarification "that is, to the end of the loop"
-was dropped entirely based on community feedback.
-"the end of the loop" is not all that much clearer either, and the whole <code class="highlight"><c- k>goto</c-></code> equivalence portion
-should make it clear enough what the behavior is.</p>
    <hr>
    <p>Update <a href="https://eel.is/c++draft/stmt.goto">[stmt.goto]</a> paragraph 1 as follows:</p>
    <blockquote>
@@ -3060,7 +3167,7 @@ labeled
     <del>the identifier</del>
     <ins>a <em>label</em> in the current function containing <em>identifier</em></ins>
     . 
-    <del>The identifier shall be a label located in the current function.</del>
+    <del>The identifier shall be a label ([stmt.label]) located in the current function.</del>
     <ins>There shall be exactly one such label.</ins>
    </blockquote>
    <div class="note" role="note"> <span class="marker">Note:</span> This wording has always been defective and our proposal fixes this.
@@ -3088,6 +3195,8 @@ a label ends with a <code class="highlight"><c- o>:</c-></code>, and an <em>iden
    <p>I especially thank Arthur O’Dwyer for helping me expand the list in <a href="#how-common-is-break-continue-label">§ 3.3.2 How common is break/continue with labels?</a>.
 An even more complete list may be available at <a data-link-type="biblio" href="#biblio-arthurblog" title="Arthur O&apos; Dwyer">[ArthurBlog]</a>.</p>
    <p>I thank the <a href="https://discord.gg/tccpp">Together C &amp; C++</a> community for responding to my poll; see <a data-link-type="biblio" href="#biblio-tccpp" title="Poll at Together C &amp; C++ (discord.gg/tccpp)">[TCCPP]</a>.</p>
+   <p>I thank Matthias Wippich for explaining the interactions of <code class="highlight"><c- k>break</c-> <c- n>label</c-></code> with expansion statements;
+see <a href="#expansion-statements">§ 3.4 Expansion statements</a>.</p>
   </main>
 <script>
 (function() {
@@ -3221,8 +3330,8 @@ An even more complete list may be available at <a data-link-type="biblio" href="
   <h2 class="no-num no-ref heading settled" id="references"><span class="content">References</span><a class="self-link" href="#references"></a></h2>
   <h3 class="no-num no-ref heading settled" id="normative"><span class="content">Normative References</span><a class="self-link" href="#normative"></a></h3>
   <dl>
-   <dt id="biblio-n5001">[N5001]
-   <dd>Thomas Köppe. <a href="https://wg21.link/n5001"><cite>Working Draft, Programming Languages — C++</cite></a>. 17 December 2024. URL: <a href="https://wg21.link/n5001">https://wg21.link/n5001</a>
+   <dt id="biblio-n5032">[N5032]
+   <dd>Thomas Köppe. <a href="https://wg21.link/n5032"><cite>Working Draft, Standard for Programming Language C++</cite></a>. 15 December 2025. URL: <a href="https://wg21.link/n5032">https://wg21.link/n5032</a>
   </dl>
   <h3 class="no-num no-ref heading settled" id="informative"><span class="content">Informative References</span><a class="self-link" href="#informative"></a></h3>
   <dl>
