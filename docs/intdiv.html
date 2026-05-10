@@ -1624,7 +1624,7 @@ with other rounding modes.
 <div class=toc-num data-level=4>4.2.1</div>
 <a href=#isnt-std::div_-inconsistent-with-the-existing-std::div><h4>Isn't <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_</h-><h- data-h=sym_op>*</h-></code> inconsistent with the existing <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div</h-></code>?</h4></a>
 <div class=toc-num data-level=4>4.2.2</div>
-<a href=#should-it-be-std::div_floor-and-std::div_ceil><h4>Should it be <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_floor</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_ceil</h-></code>?</h4></a>
+<a href=#div-floor-and-div-ceil><h4>Should it be <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_floor</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_ceil</h-></code>?</h4></a>
 <div class=toc-num data-level=4>4.2.3</div>
 <a href=#div-to-inf><h4>Should it be <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_to_inf</h-></code>?</h4></a>
 <div class=toc-num data-level=4>4.2.4</div>
@@ -1689,6 +1689,9 @@ with other rounding modes.
   <li>
     added row separators to the tables in
     <a href=#language-support>§2.1.1. Language support for integer division</a> and <a href=#hardware-support-for-integer-division>§2.1.2. Hardware support for integer division</a>
+  </li>
+  <li>
+    expanded the naming discussion in <a href=#div-floor-and-div-ceil>§4.2.2. Should it be <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_floor</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_ceil</h-></code>?</a>
   </li>
   <li>
     repositioned the new <i>Constant-checked preconditions</i>
@@ -2376,27 +2379,34 @@ I found that almost every definition of these differently-rounded division funct
 uses <code><h- data-h=name>div_</h-><h- data-h=sym_op>*</h-></code> names.
 This naming scheme is <em>well-established</em> and <em>intuitive</em> for users.
 </p>
-<h4 id=should-it-be-std::div_floor-and-std::div_ceil><a class=para href=#should-it-be-std::div_floor-and-std::div_ceil></a>4.2.2. Should it be <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_floor</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_ceil</h-></code>?</h4>
+<h4 id=div-floor-and-div-ceil><a class=para href=#div-floor-and-div-ceil></a>4.2.2. Should it be <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_floor</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_ceil</h-></code>?</h4>
 
 <p>While the use of names like <code><h- data-h=name>floor</h-></code> and <code><h- data-h=name>ceil</h-></code> is common in various domains,
 including in <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>cmath</h-><h- data-h=sym_op>&gt;</h-></code>,
-I do not believe we should perpetuate this design because:
+I do not believe we should perpetuate this design for integer division.
+</p>
+<p>Anecdotally, during the LEWG telecon for P3724R3,
+there was visible confusion when the room was asked
+</p><blockquote><p>What does <code><h- data-h=name>div_floor</h-></code> do for negative numbers?</p></blockquote>
+<p>While the answer may be obvious to a mathematician,
+that does not apply to everyone.
+<b>The key benefit of the proposed naming scheme is that it is entirely self-documenting</b>.
+</p>
+<p>To provide some more rationale:
 </p>
 <ul>
   <li>
-    The scheme does not nicely extend to division with rounding away from zero;
+    The proposed scheme does not nicely extend to division with rounding away from zero;
     there is no established term for that.
   </li>
   <li>
     A hypothetical <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_round</h-></code> (for rounding to the nearest integer)
     would be somewhat perplexing because <em>all</em> proposed functions round,
     just towards different targets.
-  </li>
-  <li>
-    The scheme is needlessly hostile towards novices
-    who are not yet familiar with the fact that <math display=inline><mrow><mi>floor</mi><mo>(</mo><mi>x</mi><mo>)</mo></mrow></math>
-    rounds towards <math display=inline><mrow><mo>−</mo><mi>∞</mi></mrow></math>.
-    By comparison, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_to_neg_inf</h-></code> is self-documenting.
+    However, taking <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_floor</h-></code> as a counterpart to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>floor</h-></code>
+    strongly suggests that there should be a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_round</h-></code> function
+    as a counterpart to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>round</h-></code>,
+    which is not the case.
   </li>
 </ul>
 

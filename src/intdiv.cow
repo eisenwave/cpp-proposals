@@ -34,6 +34,9 @@ with other rounding modes.
     \ref("#language-support") and \ref("#hardware-support-for-integer-division")
   }
   \li{
+    expanded the naming discussion in \ref("#div-floor-and-div-ceil")
+  }
+  \li{
     repositioned the new \Fundescx{Constant-checked preconditions}
     element in \ref("#structure.specifications") following LWG reflector discussion,
     and added rationale
@@ -730,27 +733,34 @@ I found that almost every definition of these differently-rounded division funct
 uses \tcode{div_*} names.
 This naming scheme is \em{well-established} and \em{intuitive} for users.
 
-\h4{Should it be \tcode{std::div_floor} and \tcode{std::div_ceil}?}
+\h4(id="div-floor-and-div-ceil"){Should it be \tcode{std::div_floor} and \tcode{std::div_ceil}?}
 
 While the use of names like \tcode{floor} and \tcode{ceil} is common in various domains,
 including in \header{cmath},
-I do not believe we should perpetuate this design because:
+I do not believe we should perpetuate this design for integer division.
+
+Anecdotally, during the LEWG telecon for P3724R3,
+there was visible confusion when the room was asked
+\Bquote{What does \tcode{div_floor} do for negative numbers?}
+While the answer may be obvious to a mathematician,
+that does not apply to everyone.
+\b{The key benefit of the proposed naming scheme is that it is entirely self-documenting}.
+
+To provide some more rationale:
 
 \ul{
   \li{
-    The scheme does not nicely extend to division with rounding away from zero;
+    The proposed scheme does not nicely extend to division with rounding away from zero;
     there is no established term for that.
   }
   \li{
     A hypothetical \tcode{std::div_round} (for rounding to the nearest integer)
     would be somewhat perplexing because \em{all} proposed functions round,
     just towards different targets.
-  }
-  \li{
-    The scheme is needlessly hostile towards novices
-    who are not yet familiar with the fact that \math{\mrow{\mi{floor}\mo{(}\mi{x}\mo{)}}}
-    rounds towards \neg_inf{}.
-    By comparison, \tcode{std::div_to_neg_inf} is self-documenting.
+    However, taking \tcode{std::div_floor} as a counterpart to \tcode{std::floor}
+    strongly suggests that there should be a \tcode{std::div_round} function
+    as a counterpart to \tcode{std::round},
+    which is not the case.
   }
 }
 
