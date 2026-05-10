@@ -3,8 +3,8 @@
 
 \wg21_head(title={Carry-less product: \tt{std::clmul}}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3642R4}}
-  \dt{Date:}            \dd{\tt{2026-02-17}}
+  \dt{Document number:} \dd{\docnum{P3642R5}}
+  \dt{Date:}            \dd{\tt{2026-05-10}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -24,6 +24,14 @@ Add widening and non-widening carry-less multiplication functions.
 
 \h2{Revision history}
 
+\h3{Changes since R4}
+
+\ul{
+  \li{Rename \tcode{std::clmul_wide} to \tcode{std::widening_clmul}}
+  \li{Fix \tcode{std::simd::clmul} specified as a unary function (should be binary)}
+  \li{Rebase \ref("#wording") on \ref("N5032") with post-Croydon changes applied}
+}
+
 \h3{Changes since R3}
 
 \ul{
@@ -41,7 +49,7 @@ Add widening and non-widening carry-less multiplication functions.
 \ul{
   \li{Add missing \tt{<T>} for \tcode{operator<=>}}
   \li{Provide a \ref("#possible-implementation") better suited for SIMD parallelization}
-  \li{Rebase \ref("#wording") on \ref("N5014")}
+  \li{Rebase \ref("#wording") on N5014}
   \li{Improve \ref("#wording") editorially}
 }
 
@@ -111,7 +119,7 @@ struct wide_result {
 };
 
 template<class T>
-  constexpr wide_result<T> clmul_wide(T x, T y) noexcept;
+  constexpr wide_result<T> widening_clmul(T x, T y) noexcept;
 }
 
 \h2{Motivation}
@@ -403,13 +411,13 @@ and \tt{\N{MULTIPLICATION SIGN}N} denote the amount of operands that are process
 }
 
 \Bex{
-A limited x86_64 implementation of \tcode{clmul_wide} may look as follows:
+A limited x86_64 implementation of \tcode{widening_clmul} may look as follows:
 
 \cppblock{
 #include <immintrin.h>
 #include <cstdint>
 
-wide_result<uint64_t> clmul_wide(uint64_t x, uint64_t y) noexcept {
+wide_result<uint64_t> widening_clmul(uint64_t x, uint64_t y) noexcept {
   __m128i x_128 = _mm_set_epi64x(0, x);
   __m128i y_128 = _mm_set_epi64x(0, y);
   __m128i result_128 = _mm_clmulepi64_si128(x_128, y_128, 0);
@@ -437,7 +445,8 @@ Specifically,
 
 \h3{Naming}
 
-Carry-less multiplication is also commonly called "Galois Field Multiplication" or "Polynomial Multiplication".
+Carry-less multiplication is also commonly called
+"Galois Field Multiplication" or "Polynomial Multiplication".
 
 The name \tcode{clmul} was chosen because it carries no domain-specific connotation,
 and because it is widespread:
@@ -462,7 +471,7 @@ and because it is widespread:
 \h3(id="widening"){Widening operation}
 
 In addition to the \tcode{std::clmul} function template,
-there exists a \tcode{std::clmul_wide} function template:
+there exists a \tcode{std::widening_clmul} function template:
 
 \cppblock{
 template<class T>
@@ -476,19 +485,26 @@ struct wide_result {
 };
 
 template<class T>
-  constexpr wide_result<T> clmul_wide(T x, T y) noexcept;
+  constexpr wide_result<T> widening_clmul(T x, T y) noexcept;
 }
 
 Such a widening function is important in a various cryptographic use cases.
 There is universal \ref("#hardware-support") for obtaining all 128 bits
 of a multiplication for that reason.
 
-Most of the design choices take the design of \ref("P3161R4") into consideration:
+Most of the design choices take the design of \ref("P3161R4") and \ref("P4052R0")
+into consideration:
 
 \ul{
   \li{
-    The result type is deliberately not named \tcode{clmul_wide_result}
-    so that future \tcode{mul_wide} and other operations can use the same result type,
+    The function is named \tcode{widening_clmul} to be symmetrical
+    with \tcode{std::saturating_mul} from \ref("P4052R0") (merged into C++26).
+    That proposal broadly advocated for a naming scheme leaning on Rust,
+    and the Rust standard library has a \tcode{widening_mul} function.
+  }
+  \li{
+    The result type is deliberately not named \tcode{wide_clmul_result}
+    so that future \tcode{widening_mul} and other operations can use the same result type,
     which avoids creating an ever-growing set of equivalent (but distinct) types.
   }
   \li{
@@ -529,8 +545,9 @@ Therefore, this proposal provides non-widening SIMD carry-less multiplication
 with the following signature:
 
 \cppblock{
-template<\exposid{simd-type} V>
-  constexpr V clmul(const V& v) noexcept;
+template<class T, class Abi>
+  constexpr basic_vec<T, Abi> clmul(const basic_vec<T, Abi>& a,
+                                    const basic_vec<T, Abi>& b) noexcept;
 }
 
 \h4{SIMD widening operations are out of scope}
@@ -558,7 +575,8 @@ For \tcode{std::clmul}, designing SIMD widening operations would be scope creep.
 
 \h2(id="wording"){Proposed wording}
 
-The proposed changes are relative to \ref("N5014").
+The proposed changes are relative to \ref("N5032"),
+with the changes accepted during the 2026-02 Croydon meeting applied.
 
 \h3(show_number=false){[version.syn]}
 
@@ -599,7 +617,7 @@ struct wide_result {
 };
 
 template<class T>
-  constexpr wide_result<T> clmul_wide(T x, T y) noexcept;
+  constexpr wide_result<T> widening_clmul(T x, T y) noexcept;
 template<class T>
   constexpr T clmul(T x, T y) noexcept;
 }
@@ -626,7 +644,7 @@ constexpr auto operator<=>(const wide_result& x, const wide_result& y)
 
 \itemdecl{
 template<class T>
-  constexpr wide_result<T> clmul_wide(T x, T y) noexcept;
+  constexpr wide_result<T> widening_clmul(T x, T y) noexcept;
 }
 \itemdescr{
 \cowel_macro("alpha"){\N{GREEK SMALL LETTER ALPHA}}
@@ -718,7 +736,7 @@ template<class T>
 \itemdescr{
 \pnum
 \effects
-Equivalent to \tcode{clmul_wide(x, y).low_bits}.
+Equivalent to \tcode{widening_clmul(x, y).low_bits}.
 }
 }
 
@@ -760,7 +778,9 @@ namespace std::simd {
   \etc
 
 \ins{  // \serif{[simd.clmul], carry-less product}
-  template<\exposid{simd-vec-type} V> constexpr V clmul(const V& v) noexcept;}
+  template<class T, class Abi>
+    constexpr basic_vec<T, Abi> clmul(const basic_vec<T, Abi>& a,
+                                      const basic_vec<T, Abi>& b) noexcept;}
 
   // \serif{[simd.math], mathematical functions}
   template<\exposid{math-floating-point} V> constexpr \exposid{deduced-simd-t}<V> acos(const V& x);
@@ -777,7 +797,9 @@ append a subclause immediately preceding \eelis{simd.math}:
 \cowel_var_set("pnum", 0)
 
 \itemdecl{
-template<\exposid{simd-vec-type} V> constexpr V clmul(const V& v) noexcept;
+template<class T, class Abi>
+  constexpr basic_vec<T, Abi> clmul(const basic_vec<T, Abi>& a,
+                                    const basic_vec<T, Abi>& b) noexcept;
 }
 
 \itemdescr{
@@ -788,7 +810,8 @@ The type \tcode{V::value_type} is an unsigned integer type\iref{basic.fundamenta
 \pnum
 \returns
 A \tcode{basic_vec} object where the \math{\msup{\mi{i}\mtext{th}}} element is initialized
-to the result of \tcode{clmul(v[\math{\mi{i}}])}\iref{numeric.clmul}
+to the result of
+\tcode{std::clmul(a[\math{\mi{i}}], b[\math{\mi{i}}])}\iref{numeric.clmul}
 for all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}).
 }
 }
@@ -796,12 +819,12 @@ for all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}).
 \h2{References}
 
 \bib(
-  id = "N5014",
-  title = "Working Draft, Programming Languages — C++",
-  date = "2025-08-05",
+  id = "N5032",
+  title = "Working Draft Programming Languages — C++",
+  date = "2025-12-15",
   author = "Thomas Köppe",
-  link = "https://wg21.link/n5014",
-  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf",
+  link = "https://wg21.link/n5032",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf",
 )\
 \bib(
   id = "P0543R3",
@@ -841,6 +864,13 @@ for all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}).
   date = "2025-06-17",
   author = "Matthias Kretz et al.",
   link = "https://wg21.link/p3691r1",
+)\
+\bib(
+  id = "P4052R0",
+  title = "Renaming saturation arithmetic functions",
+  date = "2025-03-13",
+  author = "Jan Schultke, Corentin Jabot",
+  link = "https://wg21.link/p4052r0",
 )\
 \bib(
   id = "BitPermutations",
