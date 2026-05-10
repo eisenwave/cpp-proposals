@@ -1634,10 +1634,12 @@ with other rounding modes.
 <div class=toc-num data-level=4>4.3.1</div>
 <a href=#error-handling-noexcept><h4>Error handling and <code><h- data-h=kw>noexcept</h-></code></h4></a>
 <div class=toc-num data-level=4>4.3.2</div>
-<a href=#why-no-std::rounding-parameter><h4>Why no <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>rounding</h-></code> parameter?</h4></a>
+<a href=#why-no-std::rounding-runtime-parameter><h4>Why no <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>rounding</h-></code> runtime parameter?</h4></a>
 <div class=toc-num data-level=4>4.3.3</div>
-<a href=#div-result><h4><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code></h4></a>
+<a href=#rounding-template-parameter><h4>Why no <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>rounding</h-></code> template parameter?</h4></a>
 <div class=toc-num data-level=4>4.3.4</div>
+<a href=#div-result><h4><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code></h4></a>
+<div class=toc-num data-level=4>4.3.5</div>
 <a href=#div-rem-combined><h4>Do we really need the <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_rem_</h-><h- data-h=sym_op>*</h-></code> functions?</h4></a>
 <div class=toc-num data-level=3>4.4</div>
 <a href=#supported-rounding-modes><h3>Supported rounding modes</h3></a>
@@ -1692,6 +1694,9 @@ with other rounding modes.
   </li>
   <li>
     expanded the naming discussion in <a href=#div-floor-and-div-ceil>§4.2.2. Should it be <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_floor</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_ceil</h-></code>?</a>
+  </li>
+  <li>
+    added <a href=#rounding-template-parameter>§4.3.3. Why no <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>rounding</h-></code> template parameter?</a>
   </li>
   <li>
     repositioned the new <i>Constant-checked preconditions</i>
@@ -2493,7 +2498,7 @@ This can even be implemented without a single additional line of code:
 since we always perform a division in these functions,
 they naturally get disqualified from being core constant expressions when division is undefiend.
 </p>
-<h4 id=why-no-std::rounding-parameter><a class=para href=#why-no-std::rounding-parameter></a>4.3.2. Why no <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>rounding</h-></code> parameter?</h4>
+<h4 id=why-no-std::rounding-runtime-parameter><a class=para href=#why-no-std::rounding-runtime-parameter></a>4.3.2. Why no <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>rounding</h-></code> runtime parameter?</h4>
 
 <p>As compared to <a href="https://wg21%2elink/p0105r1">[P0105R1]</a>,
 I do not propose that the rounding mode is passed as a runtime parameter.
@@ -2551,7 +2556,30 @@ all we accomplish is making the user write
 <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>divide</h-><h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>rounding</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_neg_inf</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-></code> instead of
 <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-></code>.
 </p>
-<h4 id=div-result><a class=para href=#div-result></a>4.3.3. <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code></h4>
+<h4 id=rounding-template-parameter><a class=para href=#rounding-template-parameter></a>4.3.3. Why no <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>rounding</h-></code> template parameter?</h4>
+
+<p>Similar to the possibility of a runtime parameter,
+one could also imagine a template parameter for the rounding mode.
+This would add no runtime cost since the specific function can be dispatched to
+via <code><h- data-h=kw_ctrl>if</h-> <h- data-h=kw>constexpr</h-></code> or other means.
+</p>
+<p>However, this would dramatically increase verbosity only to benefit a small amount of use cases.
+Imagine if every use of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>floor</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-></code> was replaced with
+<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>round</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>rounding</h-><h- data-h=sym_op>::</h-><h- data-h=name>floor</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-></code>;
+this is basically what one is requesting if they want the template parameter,
+which would result in something like <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>rounding</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_neg_inf</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-></code>.
+</p>
+<p>Furthermore,
+there are very few scenarios where the user wants to
+generically dispatch to different rounding modes,
+since the choice of integer rounding depends on the specific problem
+rather than being a generic and customizable choice.
+For example, to compute how many buckets are needed to hold a certain amount of elements,
+the rounding mode is always towards <math display=inline><mrow><mo>+</mo><mi>∞</mi></mrow></math>.
+This is also among the reasons why there exists no generalized
+counterpart to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>floor</h-></code> or <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>ceil</h-></code> for floating-point numbers.
+</p>
+<h4 id=div-result><a class=para href=#div-result></a>4.3.4. <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code></h4>
 
 <p>As seen in in <a href=#interface>§4.3. Interface</a>,
 we define an additional class template <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_result</h-></code>:
@@ -2580,7 +2608,7 @@ the quotient and remainder to an existing pair of values in one go,
 or store results of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_rem</h-></code> functions in a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>set</h-></code>, etc.
 It would seem arbitrarily limiting to make <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_result</h-></code> incomparable.
 </p>
-<h4 id=div-rem-combined><a class=para href=#div-rem-combined></a>4.3.4. Do we really need the <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_rem_</h-><h- data-h=sym_op>*</h-></code> functions?</h4>
+<h4 id=div-rem-combined><a class=para href=#div-rem-combined></a>4.3.5. Do we really need the <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_rem_</h-><h- data-h=sym_op>*</h-></code> functions?</h4>
 
 <p>Yes, because it is non-trivial to compute the remainder without overflow
 for rounding modes other than towards zero.

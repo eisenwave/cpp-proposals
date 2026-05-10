@@ -37,6 +37,9 @@ with other rounding modes.
     expanded the naming discussion in \ref("#div-floor-and-div-ceil")
   }
   \li{
+    added \ref("#rounding-template-parameter")
+  }
+  \li{
     repositioned the new \Fundescx{Constant-checked preconditions}
     element in \ref("#structure.specifications") following LWG reflector discussion,
     and added rationale
@@ -849,7 +852,7 @@ This can even be implemented without a single additional line of code:
 since we always perform a division in these functions,
 they naturally get disqualified from being core constant expressions when division is undefiend.
 
-\h4{Why no \tcode{std::rounding} parameter?}
+\h4{Why no \tcode{std::rounding} runtime parameter?}
 
 As compared to \ref("P0105R1"),
 I do not propose that the rounding mode is passed as a runtime parameter.
@@ -910,6 +913,29 @@ If they don't (which is likely),
 all we accomplish is making the user write
 \tcode{std::divide(std::rounding::to_neg_inf, x, y)} instead of
 \tcode{std::div_to_neg_inf(x, y)}.
+
+\h4(id="rounding-template-parameter"){Why no \tcode{std::rounding} template parameter?}
+
+Similar to the possibility of a runtime parameter,
+one could also imagine a template parameter for the rounding mode.
+This would add no runtime cost since the specific function can be dispatched to
+via \tcode{if constexpr} or other means.
+
+However, this would dramatically increase verbosity only to benefit a small amount of use cases.
+Imagine if every use of \tcode{std::floor(x)} was replaced with
+\tcode{std::round<std::rounding::floor>(x)};
+this is basically what one is requesting if they want the template parameter,
+which would result in something like \tcode{std::div<std::rounding::to_neg_inf>(x, y)}.
+
+Furthermore,
+there are very few scenarios where the user wants to
+generically dispatch to different rounding modes,
+since the choice of integer rounding depends on the specific problem
+rather than being a generic and customizable choice.
+For example, to compute how many buckets are needed to hold a certain amount of elements,
+the rounding mode is always towards \pos_inf.
+This is also among the reasons why there exists no generalized
+counterpart to \tcode{std::floor} or \tcode{std::ceil} for floating-point numbers.
 
 \h4(id="div-result"){\tcode{std::div_result<T>}}
 
