@@ -100,9 +100,17 @@ function findTopLevelEquals(arg) {
 }
 
 function quoteAsStr(raw) {
-  const normalized = raw.replace(/\\,/g, ",").trim();
+  const normalized = normalizeUrlEscapes(raw.replace(/\\,/g, ",").trim());
   const escaped = normalized.replace(/\"/g, "\\\"");
   return `\"${escaped}\"`;
+}
+
+function normalizeUrlEscapes(value) {
+  if (!/^https?:\/\//i.test(value)) return value;
+  return value
+    .replace(/\\+N\{PERCENT SIGN\}/g, "%")
+    .replace(/\\%/g, "%")
+    .replace(/%[0-9a-fA-F]{2}/g, (m) => m.toUpperCase());
 }
 
 function normalizeQuoted(v) {
@@ -127,6 +135,8 @@ function normalizeValue(value) {
   if (v === "...") return v;
   if (v.startsWith('"') && v.endsWith('"')) return normalizeQuoted(v);
   if (v.startsWith("{") || v.startsWith("[") || v.startsWith("(")) return v;
+  if (/\\[A-Za-z_][A-Za-z0-9_]*(?:\{|\()/.test(v)) return v;
+  if (/\^\^\{|\?|:/.test(v)) return v;
   if (v === "true" || v === "false" || v === "null") return v;
   if (looksNumeric(v)) return v;
   if (/^[A-Za-z_][A-Za-z0-9_]*\s*\(/.test(v)) return v;
@@ -214,6 +224,13 @@ function migrateDirectiveGroups(text) {
   return out;
 }
 
+function normalizeQuotedUrls(text) {
+  return text.replace(/"https?:\/\/[^"\n]*"/g, (q) => {
+    const inner = q.slice(1, -1);
+    return quoteAsStr(inner);
+  });
+}
+
 const files = fs.readdirSync(srcDir)
   .map((f) => path.join(srcDir, f))
   .filter((p) => fs.statSync(p).isFile());
@@ -225,6 +242,7 @@ for (const filePath of files) {
 
   let text = original;
   text = migrateDirectiveGroups(text);
+  text = normalizeQuotedUrls(text);
 
   if (text !== original) {
     fs.writeFileSync(filePath, text, "utf8");

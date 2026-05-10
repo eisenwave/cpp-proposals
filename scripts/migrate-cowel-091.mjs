@@ -16,9 +16,17 @@ function isTarget(filePath, text) {
 }
 
 function quoteAsStr(raw) {
-  const normalized = raw.replace(/\\,/g, ",").trim();
+  const normalized = normalizeUrlEscapes(raw.replace(/\\,/g, ",").trim());
   const escaped = normalized.replace(/\\/g, "\\\\").replace(/\"/g, "\\\"");
   return `\"${escaped}\"`;
+}
+
+function normalizeUrlEscapes(value) {
+  if (!/^https?:\/\//i.test(value)) return value;
+  return value
+    .replace(/\\+N\{PERCENT SIGN\}/g, "%")
+    .replace(/\\%/g, "%")
+    .replace(/%[0-9a-fA-F]{2}/g, (m) => m.toUpperCase());
 }
 
 function splitArgs(argText) {
@@ -82,7 +90,10 @@ function migrateCowelMacroArgs(text) {
 function migrateRefCalls(text) {
   return text.replace(/\\ref\(([^()\n]*)\)/g, (_m, arg) => {
     const trimmed = arg.trim();
-    if (trimmed.startsWith('"') && trimmed.endsWith('"')) return `\\ref(${trimmed})`;
+    if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+      const inner = trimmed.slice(1, -1);
+      return `\\ref(${quoteAsStr(inner)})`;
+    }
     return `\\ref(${quoteAsStr(trimmed)})`;
   });
 }
@@ -99,8 +110,15 @@ function migrateBibBlocks(text) {
       const value = rawValue.trim();
 
       if (value.startsWith('"') && value.endsWith('"')) {
+        const inner = value.slice(1, -1);
+        return `${indent}${key}${eq}${quoteAsStr(inner)}${comma}`;
+      }
+
+      // Keep directive-rich / expression values unquoted.
+      if (/\\[A-Za-z_][A-Za-z0-9_]*(?:\{|\()/.test(value) || /\^\^\{|\?|:/.test(value)) {
         return `${indent}${key}${eq}${value}${comma}`;
       }
+
       return `${indent}${key}${eq}${quoteAsStr(value)}${comma}`;
     });
     return `\\bib(${out.join("\n")})\\`;
@@ -124,6 +142,13 @@ function migrateIncludes(text) {
   });
 }
 
+function normalizeQuotedUrls(text) {
+  return text.replace(/"https?:\/\/[^"\n]*"/g, (q) => {
+    const inner = q.slice(1, -1);
+    return quoteAsStr(inner);
+  });
+}
+
 const files = fs.readdirSync(srcDir)
   .map((f) => path.join(srcDir, f))
   .filter((p) => fs.statSync(p).isFile());
@@ -140,6 +165,7 @@ for (const filePath of files) {
   text = migrateRefCalls(text);
   text = migrateBibBlocks(text);
   text = migrateWg21Head(text);
+  text = normalizeQuotedUrls(text);
 
   if (text !== original) {
     fs.writeFileSync(filePath, text, "utf8");

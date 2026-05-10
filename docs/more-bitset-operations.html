@@ -1632,8 +1632,6 @@ and to enable efficient iteration over the one-bits or zero-bits.
 <a href=#implementation-experience><h2>Implementation experience</h2></a>
 <div class=toc-num data-level=2>7</div>
 <a href=#proposed-wording><h2>Proposed wording</h2></a>
-<div class=toc-num data-level=3>7.1</div>
-<a href=#template%2ebitset%2egeneral><h3>template.bitset.general</h3></a>
 <div class=toc-num data-level=2>8</div>
 <a href=#references><h2>References</h2></a>
 <div class=toc-num data-level=2>9</div>
@@ -1981,97 +1979,6 @@ implementations.
 
 <p>The proposed changes are relative to the working draft of the standard as of <a href="https://wg21%2elink/n5014">[N5014]</a>.
 </p>
-<h3 id=template.bitset.general><a class=para href=#template%2ebitset%2egeneral></a>template.bitset.general</h3>
-
-<p>In <a href=https://eel.is/c++draft/template.bitset.general>[template.bitset.general]</a>,
-change the synopsis as follows:
-</p>
-<diff-block>
-<code-block class=borderless><h- data-h=kw>namespace</h-> <h- data-h=name>std</h-> <h- data-h=sym_brac>{</h->
-  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>class</h-> <h- data-h=name>bitset</h-> <h- data-h=sym_brac>{</h->
-  <h- data-h=kw>public</h-><h- data-h=sym_punc>:</h->
-    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> bit reference</h->
-    <h- data-h=kw>class</h-> <h- data-h=name>reference</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=kw>public</h-><h- data-h=sym_punc>:</h->
-      <h- data-h=kw>constexpr</h-> <h- data-h=name>reference</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>reference</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw>default</h-><h- data-h=sym_punc>;</h->
-      <h- data-h=kw>constexpr</h-> <h- data-h=sym_op>~</h-><h- data-h=name>reference</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-      <h- data-h=kw>constexpr</h-> <h- data-h=name>reference</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>=</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>bool</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->              <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> for b[i] = x;</h->
-      <h- data-h=kw>constexpr</h-> <h- data-h=name>reference</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>=</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>reference</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> for b[i] = b[j];</h->
-      <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>~</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->                    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> flips the bit</h->
-      <h- data-h=kw>constexpr</h-> <h- data-h=kw>operator</h-> <h- data-h=kw_type>bool</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->                     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> for x = b[i];</h->
-      <h- data-h=kw>constexpr</h-> <h- data-h=name>reference</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>flip</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->                         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> for b[i].flip();</h->
-    <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
-
-    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> [bitset.cons], constructors</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>bitset</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>bitset</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=name>val</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>traits</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>Allocator</h-><h- data-h=sym_op>&gt;</h->
-      <h- data-h=kw>constexpr</h-> <h- data-h=kw>explicit</h-> <h- data-h=name>bitset</h-><h- data-h=sym_par>(</h->
-        <h- data-h=kw>const</h-> <h- data-h=name>basic_string</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>traits</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>Allocator</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>str</h-><h- data-h=sym_punc>,</h->
-        <h- data-h=kw>typename</h-> <h- data-h=name>basic_string</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>traits</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>Allocator</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>size_type</h-> <h- data-h=name>pos</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>,</h->
-        <h- data-h=kw>typename</h-> <h- data-h=name>basic_string</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>traits</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>Allocator</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>size_type</h-> <h- data-h=name>n</h->
-          <h- data-h=sym_op>=</h-> <h- data-h=name>basic_string</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>traits</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>Allocator</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>npos</h-><h- data-h=sym_punc>,</h->
-        <h- data-h=name>charT</h-> <h- data-h=name>zero</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>charT</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>'</h-><h- data-h=str>0</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h->
-        <h- data-h=name>charT</h-> <h- data-h=name>one</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>charT</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>'</h-><h- data-h=str>1</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>traits</h-><h- data-h=sym_op>&gt;</h->
-      <h- data-h=kw>constexpr</h-> <h- data-h=kw>explicit</h-> <h- data-h=name>bitset</h-><h- data-h=sym_par>(</h->
-        <h- data-h=name>basic_string_view</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>traits</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>str</h-><h- data-h=sym_punc>,</h->
-        <h- data-h=kw>typename</h-> <h- data-h=name>basic_string_view</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>traits</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>size_type</h-> <h- data-h=name>pos</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>,</h->
-        <h- data-h=kw>typename</h-> <h- data-h=name>basic_string_view</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>traits</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>size_type</h-> <h- data-h=name>n</h->
-          <h- data-h=sym_op>=</h-> <h- data-h=name>basic_string_view</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>traits</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>npos</h-><h- data-h=sym_punc>,</h->
-        <h- data-h=name>charT</h-> <h- data-h=name>zero</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>charT</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>'</h-><h- data-h=str>0</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h->
-        <h- data-h=name>charT</h-> <h- data-h=name>one</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>charT</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>'</h-><h- data-h=str>1</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>&gt;</h->
-      <h- data-h=kw>constexpr</h-> <h- data-h=kw>explicit</h-> <h- data-h=name>bitset</h-><h- data-h=sym_par>(</h->
-        <h- data-h=kw>const</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>str</h-><h- data-h=sym_punc>,</h->
-        <h- data-h=kw>typename</h-> <h- data-h=name>basic_string_view</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>size_type</h-> <h- data-h=name>n</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>basic_string_view</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>npos</h-><h- data-h=sym_punc>,</h->
-        <h- data-h=name>charT</h-> <h- data-h=name>zero</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>charT</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>'</h-><h- data-h=str>0</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h->
-        <h- data-h=name>charT</h-> <h- data-h=name>one</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>charT</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>'</h-><h- data-h=str>1</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-
-    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> [bitset.members], bitset operations</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>bitset</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&amp;=</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>bitset</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>rhs</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>bitset</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>|=</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>bitset</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>rhs</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>bitset</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>^=</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>bitset</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>rhs</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>bitset</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;&lt;=</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>pos</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>bitset</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&gt;&gt;=</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>pos</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>bitset</h->  <h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;&lt;</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>pos</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>bitset</h->  <h- data-h=kw>operator</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>pos</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>bitset</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>set</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>bitset</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>set</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>pos</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>val</h-> <h- data-h=sym_op>=</h-> <h- data-h=bool>true</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>bitset</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>reset</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>bitset</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>reset</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>pos</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>bitset</h->  <h- data-h=kw>operator</h-><h- data-h=sym_op>~</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>bitset</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>flip</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>bitset</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>flip</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>pos</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-
-    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> element access</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=kw>operator</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>pos</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>reference</h-> <h- data-h=kw>operator</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>pos</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-
-    <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=name>to_ulong</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=name>to_ullong</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>charT</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_punc>,</h->
-             <h- data-h=kw>class</h-> <h- data-h=name>traits</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>char_traits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>,</h->
-             <h- data-h=kw>class</h-> <h- data-h=name>Allocator</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>allocator</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_op>&gt;&gt;</h->
-      <h- data-h=kw>constexpr</h-> <h- data-h=name>basic_string</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>traits</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>Allocator</h-><h- data-h=sym_op>&gt;</h->
-        <h- data-h=name>to_string</h-><h- data-h=sym_par>(</h-><h- data-h=name>charT</h-> <h- data-h=name>zero</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>charT</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>'</h-><h- data-h=str>0</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>charT</h-> <h- data-h=name>one</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>charT</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>'</h-><h- data-h=str>1</h-><h- data-h=str_dlim>'</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-><h- data-h=sym_punc>;</h->
-
-    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> observers</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name_type>size_t</h-> <h- data-h=name>count</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name_type>size_t</h-> <h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>==</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>bitset</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>rhs</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>test</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>pos</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>all</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>any</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>none</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
-
-  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> [bitset.hash], hash support</h->
-  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>hash</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>bitset</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>N</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_punc>;</h->
-<h- data-h=sym_brac>}</h-></code-block>
-</diff-block>
-
 <h2 id=references><a class=para href=#references></a>8. References</h2>
 
 
