@@ -1,17 +1,15 @@
-\: cowel 0.6.0
-\cowel_include{libwg21.cow}
+\: cowel 0.9.1
+\cowel_include("libwg21-9.cow")
 
-\wg21_head(
-  title = Integer division
-){
+\wg21_head(title={Integer division}){
 \dl{
   \dt{Document number:} \dd{\docnum{P3724R3}}
   \dt{Date:}            \dd{\tt{2026-02-20}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-To:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3724/github)}
-  \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/intdiv.cow)}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3724/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/Eisenwave/cpp-proposals/blob/master/src/intdiv.cow")}
 }
 \hr
 }
@@ -31,19 +29,19 @@ with other rounding modes.
 \h3{Changes since R2}
 
 \ul{
-  \li{added missing Julia rounding modes in \ref(#language-support)}
+  \li{added missing Julia rounding modes in \ref("#language-support")}
   \li{
     added explanation and motivation for each tie-breaking rounding mode
-    to \ref(#to-nearest-rounding-division-and-tie-breaking)
+    to \ref("#to-nearest-rounding-division-and-tie-breaking")
   }
-  \li{added roundTiesTowardZero to \ref(#iso-iec-60559-rounding-modes)}
-  \li{rebased \ref(#wording) on \ref(N5032)}
+  \li{added roundTiesTowardZero to \ref("#iso-iec-60559-rounding-modes")}
+  \li{rebased \ref("#wording") on \ref("N5032")}
 }
 
 \h3{Changes since R1}
 
 R1 of this paper was
-\ref(https://github.com/cplusplus/papers/issues/2354#issuecomment-3506783900){seen by SG6}.
+\ref("https://github.com/cplusplus/papers/issues/2354#issuecomment-3506783900"){seen by SG6}.
 Several polls were taken, with one consensus for change:
 
 \Bquote{
@@ -63,21 +61,21 @@ Consequently, the following changes were made:
     removed \tcode{div_to_even}, \tcode{div_to_odd},
     \tcode{div_rem_to_even}, and \tcode{div_rem_to_odd}
   }
-  \li{added \ref(#iso-iec-60559-rounding-modes)}
+  \li{added \ref("#iso-iec-60559-rounding-modes")}
 }
 
 Irrespective of SG6 feedback, the following changes were made:
 
 \ul{
-  \li{renamed \tcode{div_to_inf} to \tcode{div_to_pos_inf} (\ref(#div-to-inf))}
-  \li{fixed \tcode{div_neg_inf} (wrong name) in \ref(#wording)}
+  \li{renamed \tcode{div_to_inf} to \tcode{div_to_pos_inf} (\ref("#div-to-inf"))}
+  \li{fixed \tcode{div_neg_inf} (wrong name) in \ref("#wording")}
 }
 
 \h3{Changes since R0}
 
 \ul{
-  \li{added discussion \ref(#simd-overloads)}
-  \li{rebased \ref(#wording) on N5014}
+  \li{added discussion \ref("#simd-overloads")}
+  \li{rebased \ref("#wording") on N5014}
 }
 
 \h2{Introduction}
@@ -97,17 +95,17 @@ and a negative remainder may be surprising in general.
 
 Therefore, I propose a set of standard library functions
 which implement a variety of rounding modes when computing quotients and remainders.
-Such a feature was previously part of \ref(P0105R1) and the Numerics TS \ref(P1889R1),
+Such a feature was previously part of \ref("P0105R1") and the Numerics TS \ref("P1889R1"),
 but was eventually abandoned by the author.
 
 \Bnote{
 Terminology refresher for division, where
-\math{\mi(style=font-style:italic){round}}
+\math{\mi(style="font-style:italic"){round}}
 is some rounding function:
 \mathblock{\mrow{
   \mi{quotient}
   \mo{=}
-  \mi(style=font-style:italic){round}
+  \mi(style="font-style:italic"){round}
   \mo{(}
   \mfrac{\mi{dividend}\mi{divisor}}
   \mo{)}
@@ -153,12 +151,12 @@ and hardware.
   }
 }
 
-\cowel_macro(neg_inf){\math{\mrow{\mo{\N{MINUS SIGN}}\mi{\N{INFINITY}}}}}
-\cowel_macro(pos_inf){\math{\mrow{\mo{+}\mi{\N{INFINITY}}}}}
+\cowel_macro("neg_inf"){\math{\mrow{\mo{\N{MINUS SIGN}}\mi{\N{INFINITY}}}}}
+\cowel_macro("pos_inf"){\math{\mrow{\mo{+}\mi{\N{INFINITY}}}}}
 
-\h4(id=language-support){Language support for integer division}
+\h4(id="language-support"){Language support for integer division}
 
-\table(id=lang-comparison, class=center striped){
+\table(id="lang-comparison", class="center striped"){
   \tr{
     \th{Language} \th{Quotient} \th{Remainder} \th{Rounding}
   }
@@ -335,7 +333,7 @@ the remainder has the divisor (right operand) sign.
 
 \h4{Hardware support for integer division}
 
-\table(id=hw-comparison, class = center striped){
+\table(id="hw-comparison", class="center striped"){
   \tr{
     \th{Architecture} \th{Type} \th{Quotient} \th{Remainder} \th{Rounding}
   }
@@ -443,7 +441,7 @@ the remainder of the division is equal to
   \mi{y}
   \mo{\N{MULTIPLICATION SIGN}}
   \mi{q}
-}}\N{ZERO-WIDTH NO-BREAK SPACE}.
+}}\N{ZERO WIDTH NO-BREAK SPACE}.
 
 \em{Only} if the division rounds towards zero can this also be translated literally
 into a multiplication and subtraction,
@@ -457,7 +455,7 @@ and it is no coincidence that every architecture implements it.
 Rounding modes other than rounding towards zero are commonly useful.
 An extremely common alternative is rounding towards \neg_inf,
 which is the rounding mode of the division operator in some other languages
-(\ref(#language-support)).
+(\ref("#language-support")).
 See below for some motivating examples.
 
 \Bex{
@@ -499,7 +497,7 @@ to hold a certain amount of bytes,
 do interval arithmetic,
 fixed-point arithmetic with rounding of choice, etc. etc.
 
-\h3(id=trivial-for-user){Is this not trivial for the user to do?}
+\h3(id="trivial-for-user"){Is this not trivial for the user to do?}
 
 At first glance,
 it would seem trivial to change rounding modes by making slight adjustments to \tcode{/}.
@@ -513,11 +511,11 @@ A few droplets are listed below.
 \Bug{
 At the time of writing,
 the \em{first} Google search result for "c++ ceiling integer division"
-yields \ref(StackOverflowCeil).
+yields \ref("StackOverflowCeil").
 Almost every answer does not permit signed integers,
 gives wrong results,
 or has undefined behavior for certain inputs
-(not counting division by zero or \tcode{\hl(macro){INT_MIN} / -1}).
+(not counting division by zero or \tcode{\hl("macro"){INT_MIN} / -1}).
 
 For example, one answer with 67 upvotes (at the time of writing)
 attempts to implement ceiling (rounded towards \pos_inf)
@@ -536,7 +534,7 @@ However, the answer contains no disclaimer that clarifies this.
 
 \Bug{
 In the question "Rounding integer division (instead of truncating)" for C
-(\ref(StackOverflowRound)),
+(\ref("StackOverflowRound")),
 OP expresses that they want to divide with rounding to the nearest integer,
 rather than rounding towards zero.
 
@@ -564,11 +562,11 @@ When compiled with Clang,
 a possible path of execution would go through four conditional jumps
 depending on \tcode{(r > d>>1)}, \tcode{(r == d>>1)}, \tcode{(q&1)}, and \tcode{!(d&1)},
 where all but \tcode{(r == d>>1)} are extremely unpredictable (basically coin flips).
-See \ref(https://godbolt.org/z/ax6hr1r53).
+See \ref("https://godbolt.org/z/ax6hr1r53").
 }
 
 \Bug{
-These division functions taken from \ref(BuggyDivisions) have several problems:
+These division functions taken from \ref("BuggyDivisions") have several problems:
 \cppblock{
 static int div_floor(int a, int b) {
   return (a ^ b) < 0 && a ? (1 - abs(a)) / abs(b) - 1 : a / b;
@@ -585,7 +583,7 @@ static int div_ceil(int a, int b) {
 \ul{
   \li{
     \tcode{abs(a)} and \tcode{abs(b)} have undefined behavior
-    given \tcode{\hl(macro){INT_MIN}} input
+    given \tcode{\hl("macro"){INT_MIN}} input
   }
   \li{
     \tcode{div_round} overflows on large inputs in \tcode{a - b} and \tcode{a + b}
@@ -597,13 +595,13 @@ static int div_ceil(int a, int b) {
 }
 }
 
-\Bnote{See \ref(#implementation) for proper implementations.}
+\Bnote{See \ref("#implementation") for proper implementations.}
 
 Users sometimes also implement these functions using \tcode{std::floor} or \tcode{std::ceil},
 but this can equally yield incorrect results,
 and use of floating-point numbers is unnecessary for this task.
 
-\h3(id=computing-remainders-is-hard){Computing remainders is hard, actually}
+\h3(id="computing-remainders-is-hard"){Computing remainders is hard, actually}
 
 There exist various use cases (modular arithmetic, integer-to-string conversion, etc.)
 where we need both the quotient and remainder at the same time.
@@ -632,8 +630,8 @@ std::div_t div_rem_ceil(int x, int y) {
   return { quotient, remainder };
 }
 }
-If we now call \tcode{div_rem_ceil(\hl(macro){INT_MAX}, 2)},
-where \tcode{\hl(macro){INT_MAX}} is \tcode{2'147'483'647},
+If we now call \tcode{div_rem_ceil(\hl("macro"){INT_MAX}, 2)},
+where \tcode{\hl("macro"){INT_MAX}} is \tcode{2'147'483'647},
 then \tcode{quotient} is \tcode{1'073'741'824}.
 The multiplication \tcode{y * quotient} has undefined behavior
 because it results in \tcode{2'147'483'648}, which cannot be represented as \tcode{int}.
@@ -658,24 +656,24 @@ which are useful \em{in practice}.
 
 \Bimp{
 As a rule of thumb, the proposed functionality should be a drop-in replacement
-for the various bad implementations that users have written themselves (\ref(#trivial-for-user)),
-and it should take the underlying implementation (\ref(#implementation)) into consideration.
+for the various bad implementations that users have written themselves (\ref("#trivial-for-user")),
+and it should take the underlying implementation (\ref("#implementation")) into consideration.
 This rule of thumb influences \em{every} design choice.
 }
 
 \Bnote{
 You may find a complete list of functions in
-\ref(#try-it-yourself),
-\ref(#wording), and
-\ref(#implementation).
+\ref("#try-it-yourself"),
+\ref("#wording"), and
+\ref("#implementation").
 }
 
 \h3{Relation to P0105R1}
 
-The design somewhat leans on \ref(P0105R1)
+The design somewhat leans on \ref("P0105R1")
 (which first proposed division functions with custom rounding),
 but heavily deviates from it.
-In general, \ref(P0105R1) was a proposal with overly broad scope,
+In general, \ref("P0105R1") was a proposal with overly broad scope,
 and some questionable design choices, such as:
 
 \ul{
@@ -707,7 +705,7 @@ which contains the quotient and remainder.
 The proposal does not aim for consistency because the facilities are an unnecessary
 and rarely-used C relic for the most part.
 
-On the contrary, when investigating existing practice in \ref(#trivial-for-user),
+On the contrary, when investigating existing practice in \ref("#trivial-for-user"),
 I found that almost every definition of these differently-rounded division functions
 uses \tcode{div_*} names.
 This naming scheme is \em{well-established} and \em{intuitive} for users.
@@ -740,7 +738,7 @@ Regardless whether the functions end up called \tcode{std::div_floor}
 or \tcode{std::div_to_neg_inf}, the names should remain somewhat brief so they take up
 a reasonable amount of space in C++ expressions.
 
-\h4(id=div-to-inf){Should it be \tcode{std::div_to_inf}?}
+\h4(id="div-to-inf"){Should it be \tcode{std::div_to_inf}?}
 
 Earlier revisions of this paper used the name \tcode{std::div_to_inf},
 which is slightly shorter than \tcode{std::div_to_pos_inf},
@@ -751,10 +749,10 @@ However, the name is ambiguous between
   \li{rounding toward \math{\mo{±}\mi{∞}}, i.e. away from zero.}
 }
 
-\h4(id=naming-mod){Why is it \tcode{std::mod}?}
+\h4(id="naming-mod"){Why is it \tcode{std::mod}?}
 
 \Bnote{
-See \ref(#mod).
+See \ref("#mod").
 }
 
 Despite the fact that \tt{mod} is somewhat of a misnomer
@@ -766,7 +764,7 @@ it is arguably the best name because:
   \li{
     It follows the conventions of Haskell, Ada, CSS, and many more languages,
     where \tt{mod} rounds towards \neg_inf (unlike \tt{\N{PERCENT SIGN}}, \tt{rem}, etc.).
-    See \ref(#language-support).
+    See \ref("#language-support").
   }
   \li{
     It matches the notation of the modulo operator in mathematical literature.
@@ -778,7 +776,7 @@ it is arguably the best name because:
       \mn{5}
       \mo{=}
       \mn{3}
-    }}\N{ZERO-WIDTH NO-BREAK SPACE}.
+    }}\N{ZERO WIDTH NO-BREAK SPACE}.
   }
 }
 
@@ -786,7 +784,7 @@ it is arguably the best name because:
 
 The functions generally match the style of similar features in \header{numeric},
 like \eelis{numeric.sat} or \eelis{numeric.ops.gcd}.
-The design also follows \ref(P3161R4).
+The design also follows \ref("P3161R4").
 
 \Bex{
 For rounding to zero, the following functions exist:
@@ -806,12 +804,12 @@ template<class T>
 It is constrained to accept only signed or unsigned integer types.
 }
 
-\h4(id=error-handling-noexcept){Error handling and \tcode{noexcept}}
+\h4(id="error-handling-noexcept"){Error handling and \tcode{noexcept}}
 
 These functions are not \tcode{noexcept} because they could not have a wide contract;
 they naturally have undefined behavior for cases like \tcode{div_to_zero(x, 0)}
-or \tcode{div_to_zero(\hl(macro){INT_MIN}, -1)}.
-Looking at \ref(#implementation),
+or \tcode{div_to_zero(\hl("macro"){INT_MIN}, -1)}.
+Looking at \ref("#implementation"),
 it would require additional effort to perform error handling such as throwing exceptions,
 so it seems best to leave these functions undefined if and only if division is undefined too.
 
@@ -823,7 +821,7 @@ they naturally get disqualified from being core constant expressions when divisi
 
 \h4{Why no \tcode{std::rounding} parameter?}
 
-As compared to \ref(P0105R1),
+As compared to \ref("P0105R1"),
 I do not propose that the rounding mode is passed as a runtime parameter.
 
 In virtually every case, the rounding mode for an integer division is a fixed choice.
@@ -883,9 +881,9 @@ all we accomplish is making the user write
 \tcode{std::divide(std::rounding::to_neg_inf, x, y)} instead of
 \tcode{std::div_to_neg_inf(x, y)}.
 
-\h4(id=div-result){\tcode{std::div_result<T>}}
+\h4(id="div-result"){\tcode{std::div_result<T>}}
 
-As seen in in \ref(#interface),
+As seen in in \ref("#interface"),
 we define an additional class template \tcode{std::div_result}:
 
 \cppblock{
@@ -898,7 +896,7 @@ struct div_result {
 }
 
 This generally matches standard library style,
-including the active proposal \ref(P3161R4),
+including the active proposal \ref("P3161R4"),
 and including the "legacy types" \tcode{std::div_t},
 \tcode{std::ldiv_t}.
 That is, we should not use reference output parameters,
@@ -914,15 +912,15 @@ the quotient and remainder to an existing pair of values in one go,
 or store results of \tcode{std::div_rem} functions in a \tcode{std::set}, etc.
 It would seem arbitrarily limiting to make \tcode{std::div_result} incomparable.
 
-\h4(id=div-rem-combined){Do we really need the \tcode{std::div_rem_*} functions?}
+\h4(id="div-rem-combined"){Do we really need the \tcode{std::div_rem_*} functions?}
 
 Yes, because it is non-trivial to compute the remainder without overflow
 for rounding modes other than towards zero.
-See \ref(#computing-remainders-is-hard).
+See \ref("#computing-remainders-is-hard").
 
 Furthermore,
 it is relatively cheap to obtain the remainder as a side product of any division function
-(see \ref(#implementation)).
+(see \ref("#implementation")).
 On extremely feature-starved hardware with no instructions for division and multiplication,
 computing the remainder via multiplication may be more expensive
 than producing it "directly" during division (implemented in software).
@@ -938,8 +936,8 @@ It is therefore valid to ask:
 All proposed "top-level rounding modes" have practical applications.
 For consistency, the same set of "tie-breaking rounding modes" is provided.
 In any case, the implementation of these modes is all fairly similar,
-and there is neither any significant implementation cost (\ref(#implementation))
-nor wording cost (\ref(#wording))
+and there is neither any significant implementation cost (\ref("#implementation"))
+nor wording cost (\ref("#wording"))
 to having a few extra functions.
 This would be a much different discussion for floating-point numbers.
 
@@ -954,7 +952,7 @@ but no division to the nearest integer with tie breaks away from zero.
 The "trivial" functions \tcode{std::div_to_zero}
 and \tcode{std::rem_dividend_sign} exist solely for consistency and enhanced expressiveness.
 Note that not every has a truncating integer division like C++.
-For example, the \tt{\hl(sym-op){//}} operator in Python rounds towards \neg_inf.
+For example, the \tt{\hl("sym-op"){//}} operator in Python rounds towards \neg_inf.
 A team of developers with primarily Python experience/habits
 may thus benefit from always expressing
 rounding mode explicitly with \tcode{std::div_to_zero} to avoid confusion.
@@ -975,7 +973,7 @@ simply because they don't expect a mode as exotic as "top-level to-even" to exis
 so they assume \tcode{div_to_even} to be a shorthand rather than a distinct mode.
 
 \Bnote{
-\ref(P0105R1) provides additional motivation for and explanation of
+\ref("P0105R1") provides additional motivation for and explanation of
 rounding to even/odd as tie-breakers.
 }
 
@@ -996,7 +994,7 @@ which is what this proposal offers.
 }
 }
 
-\table(id=ties-table, class=center){
+\table(id="ties-table", class="center"){
   \tr{
     \th{Function}
     \th{Tie-breaking}
@@ -1075,13 +1073,13 @@ which is what this proposal offers.
   }
 }
 
-\h4(id=iso-iec-60559-rounding-modes){ISO/IEC 60559 rounding modes}
+\h4(id="iso-iec-60559-rounding-modes"){ISO/IEC 60559 rounding modes}
 
 Of the proposed functions,
 the following match a rounding mode that is standardized in ISO/IEC 60559
 for floating-point numbers:
 
-\table(class=center){
+\table(class="center"){
   \tr{
     \th{Function}
     \th{Rounding operation}
@@ -1131,7 +1129,7 @@ Some software uses fixed-point numbers instead of floating-point numbers
 Fixed-point arithmetic also requires rounding (with such modes),
 so ISO/IEC 60559 rounding modes are useful to have in integer division.
 
-\h3(id=mod){\tcode{std::mod}}
+\h3(id="mod"){\tcode{std::mod}}
 
 In addition to the quotient (\tcode{std::div_*})
 and quotient/remainder functions (\tcode{std::div_rem_*}),
@@ -1150,7 +1148,7 @@ The other rounding modes have more chaotic remainder signs,
 and thus it is rarely useful to compute the remainder in isolation,
 not in conjunction with the quotient.
 
-\Bnote{See \ref(#naming-mod).}
+\Bnote{See \ref("#naming-mod").}
 
 \h3{SIMD overloads}
 
@@ -1160,7 +1158,7 @@ operating on \tcode{std::simd::basic_vec}.
 \tcode{basic_vec} already supports parallel integer division (rounding towards zero),
 and if that is deemed useful,
 then parallel division with other rounding modes is useful too.
-\ref(#implementation) demonstrates that a branchless implementation is possible,
+\ref("#implementation") demonstrates that a branchless implementation is possible,
 making the SIMD overloads especially attractive.
 
 However, adding SIMD overloads is quite a complicated issue with several design questions,
@@ -1193,9 +1191,9 @@ parallel floating-point division may be available.
 
 \h2{Implementation experience}
 
-A reference implementation can be found on \ref(GitHub).
+A reference implementation can be found on \ref("GitHub").
 A simplified version of that, for educational purposes,
-can be found at \ref(#implementation).
+can be found at \ref("#implementation").
 
 Generally speaking,
 a portable strategy is to implement all divisions by performing a division
@@ -1214,7 +1212,7 @@ unsigned div_to_pos_inf(unsigned x, unsigned y) {
 }
 }
 On x86_64, Clang compiles this as follows:
-\codeblock(asm){
+\codeblock("asm"){
 div_to_zero:               ; edi = x, esi = y
         mov     eax, edi   ; eax = edi
         xor     edx, edx   ; edx = 0 (clear upper 32 bits of divided)
@@ -1230,7 +1228,7 @@ div_to_pos_inf:            ; edi = x, esi = y
         ret                ; return eax
 }
 Note that even on architectures where the remainder is not computed
-simultaneously with the quotient like for \code(asm){div},
+simultaneously with the quotient like for \code("asm"){div},
 only one division is necessary;
 the remainder can be obtained from the quotient.
 }
@@ -1238,7 +1236,7 @@ the remainder can be obtained from the quotient.
 Consequently, the implementation effort for all of these functions is close to zero.
 None of them require intrinsics or much architecture-specific knowledge;
 if any, rounding towards zero is supported in hardware
-(\ref(#hardware-support-for-integer-division)),
+(\ref("#hardware-support-for-integer-division")),
 and even if it isn't,
 \tcode{/} has to exist and the other rounding modes can be implemented in terms of it,
 exactly the same.
@@ -1262,26 +1260,26 @@ There is no implementation experience for the SIMD overloads.
 If you have JavaScript enabled,
 you can play around with the following code block.
 \cppblock{
-int x = \cowel_html_element(input, (id=x-input, class=int-input, type=number, value=-12));
-int y = \cowel_html_element(input, (id=y-input, class=int-input, type=number, value=5));
+int x = \cowel_html_element("input", (id="x-input", class="int-input", type="number", value="-12"));
+int y = \cowel_html_element("input", (id="y-input", class="int-input", type="number", value="5"));
 
 // input expression             \N{RIGHTWARDS ARROW}  output
-double(x) / double(y)           \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-double){-2.4}}
+double(x) / double(y)           \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-double"){-2.4}}
 
-std::div_to_zero(x, y)          \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-trunc){-2}} // x / y
-std::div_away_zero(x, y)        \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-mag){-3}}
-std::div_to_pos_inf(x, y)       \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-ceil){-2}}
-std::div_to_neg_inf(x, y)       \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-floor){-3}}
+std::div_to_zero(x, y)          \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-trunc"){-2}} // x / y
+std::div_away_zero(x, y)        \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-mag"){-3}}
+std::div_to_pos_inf(x, y)       \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-ceil"){-2}}
+std::div_to_neg_inf(x, y)       \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-floor"){-3}}
 
-std::div_ties_to_zero(x, y)     \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-ties-trunc){-2}}
-std::div_ties_away_zero(x, y)   \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-ties-mag){-2}}
-std::div_ties_to_pos_inf(x, y)  \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-ties-ceil){-2}}
-std::div_ties_to_neg_inf(x, y)  \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-ties-floor){-2}}
-std::div_ties_to_odd(x, y)      \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-ties-odd){-2}}
-std::div_ties_to_even(x, y)     \N{RIGHTWARDS ARROW}  \hl(number){\span(id=quo-ties-even){-2}}
+std::div_ties_to_zero(x, y)     \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-ties-trunc"){-2}}
+std::div_ties_away_zero(x, y)   \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-ties-mag"){-2}}
+std::div_ties_to_pos_inf(x, y)  \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-ties-ceil"){-2}}
+std::div_ties_to_neg_inf(x, y)  \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-ties-floor"){-2}}
+std::div_ties_to_odd(x, y)      \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-ties-odd"){-2}}
+std::div_ties_to_even(x, y)     \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-ties-even"){-2}}
 
-x \N{PERCENT SIGN} y                           \N{RIGHTWARDS ARROW}  \hl(number){\span(id=rem-trunc){-2}} // sign matches x
-std::mod(x, y)                  \N{RIGHTWARDS ARROW}  \hl(number){\span(id=rem-floor){3}} // sign matches y
+x \N{PERCENT SIGN} y                           \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="rem-trunc"){-2}} // sign matches x
+std::mod(x, y)                  \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="rem-floor"){3}} // sign matches y
 }
 
 \Bnote{
@@ -1289,18 +1287,18 @@ This demonstration conveniently ignores that \tcode{int} has finite size.
 Under the hood, calculations are performed using JavaScript's \tt{BigInt}.
 }
 
-\script{\cowel_include_text{intdiv.js}}
+\script{\cowel_include_text("intdiv.js")}
 
 \h2{Wording}
 
-All changes are relative to \ref(N5032).
+All changes are relative to \ref("N5032").
 
-\h3(show-number=false){[structure.specifications]}
+\h3(show_number=false){[structure.specifications]}
 
 In \eelis{structure.specifications#3},
 add a bullet immediately following bullet 3.4:
 
-\cowel_macro(constexpects){\Fundesc{Constant-checked preconditions}}
+\cowel_macro("constexpects"){\Fundesc{Constant-checked preconditions}}
 
 \Bdiff{
 \ul{
@@ -1351,7 +1349,7 @@ If \tcode{F}'s semantics contains a \Fundescx{Throws},
 then that supersedes any occurrences of that element in the code sequence.
 }
 
-\h3(show-number=false){[version.syn]}
+\h3(show_number=false){[version.syn]}
 
 Change the synopsis in \eelis{version.syn} as follows:
 
@@ -1363,7 +1361,7 @@ Change the synopsis in \eelis{version.syn} as follows:
 }
 }
 
-\h3(show-number=false){[bit.pow.two]}
+\h3(show_number=false){[bit.pow.two]}
 
 Change \eelis{bit.pow.two#5} as follows:
 
@@ -1380,7 +1378,7 @@ A function call expression that violates the precondition in the \expects elemen
 is not a core constant expression\iref{expr.const}.
 }
 
-\h3(show-number=false){[numeric.ops.overview]}
+\h3(show_number=false){[numeric.ops.overview]}
 
 Change the synopsis in \eelis{numeric.ops.overview} as follows:
 
@@ -1457,7 +1455,7 @@ namespace std {
 }
 }
 
-\h3(show-number=false){[numeric.sat.func]}
+\h3(show_number=false){[numeric.sat.func]}
 
 Change \eelis{numeric.sat.func#9} as follows:
 
@@ -1474,22 +1472,22 @@ A function call expression that violates the precondition in the \expects elemen
 is not a core constant expression\iref{expr.const}.   
 }
 
-\h3(id=new-subclause, show-number=false){[numeric.int.div]}
+\h3(id="new-subclause", show_number=false){[numeric.int.div]}
 
-\cowel_macro(div_returns){\returns \math{\mfrac{\mi{x}\mi{y}}}, rounded \cowel_put.}
-\cowel_macro(div_returns_nearest){
+\cowel_macro("div_returns"){\returns \math{\mfrac{\mi{x}\mi{y}}}, rounded \cowel_put.}
+\cowel_macro("div_returns_nearest"){
 \returns \math{\mfrac{\mi{x}\mi{y}}}, rounded towards the nearest integer.
 If two integers are equidistant, the result is \cowel_put.
 }
-\cowel_macro(div_constraints){\constraints
+\cowel_macro("div_constraints"){\constraints
 \tcode{T} is a signed or unsigned integer type\iref{basic.fundamental}.}
 
 Append a new subclause to \eelis{numeric.ops},
 following \eelis{numeric.sat}:
 
 \Bins{
-\cowel_html_element(h2){Integer division \stable_ref{numeric.int.div}}
-\Vset(pnum){0}
+\cowel_html_element("h2"){Integer division \stable_ref{numeric.int.div}}
+\cowel_var_set("pnum", 0)
 
 \itemdecl{
 template<class T>
@@ -1680,7 +1678,7 @@ template<class T>
 \pnum
 \returns
 A result object where
-\ul(style=margin:0){
+\ul(style="margin:0"){
   \li{
     \tcode{quotient} is the quotient \math{\mi{q}}
     returned by \tcode{div_\exposid{rounding}(x, y)} and
@@ -1698,10 +1696,10 @@ It is possible for \tcode{div_rem_\exposid{rounding}(x, y)}
 to have well-defined behavior even when
 \tcode{x - quotient * y} has undefined behavior.
 \br\example{
-Assume that \tcode{\hl(macro){INT_MAX}} equals \tcode{2'147'483'647}.
+Assume that \tcode{\hl("macro"){INT_MAX}} equals \tcode{2'147'483'647}.
 \itemdecl{
-const auto q_to_zero = \hl(macro){INT_MAX} / 2;                  // \serif{\tcode{q_to_zero} is \tcode{1'073'741'823}.}
-const auto [q, r] = div_rem_to_pos_inf(\hl(macro){INT_MAX}, 2);  // \serif{\tcode{q} is \tcode{1'073'741'824} and \tcode{r} is \tcode{-1}.}
+const auto q_to_zero = \hl("macro"){INT_MAX} / 2;                  // \serif{\tcode{q_to_zero} is \tcode{1'073'741'823}.}
+const auto [q, r] = div_rem_to_pos_inf(\hl("macro"){INT_MAX}, 2);  // \serif{\tcode{q} is \tcode{1'073'741'824} and \tcode{r} is \tcode{-1}.}
 int r2 = x - q * 2;                                  // \serif{This multiplication has undefined behavior.}
 }
 }}
@@ -1729,7 +1727,7 @@ you are using an old browser with no MathML support.
 Please open the document in a recent version of Firefox or Chrome.
 }
 
-\h3(show-number=false){[simd.bit]}
+\h3(show_number=false){[simd.bit]}
 
 Change \eelis{simd.bit#4} as follows:
 
@@ -1748,7 +1746,7 @@ is not a core constant expression\iref{expr.const}.
 
 \h2{Acknowledgements}
 
-I sincerely thank Lawrence Crowl (the author of the predecessor paper \ref(P0105R1))
+I sincerely thank Lawrence Crowl (the author of the predecessor paper \ref("P0105R1"))
 for reviewing this paper in great detail,
 providing detailed feedback.
 The choice to include combined quotient/remainder functions was only made
@@ -1757,73 +1755,73 @@ after his feedback.
 \h2{References}
 
 \bib(
-  id = N5032,
-  title = Working Draft\, Programming Languages — C++,
-  date = 2025-12-15,
-  author = Thomas Köppe,
-  link = https://wg21.link/n5032,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
+  id = "N5032",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2025-12-15",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5032",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf",
 )\
 \bib(
-  id = P0105R1,
-  title = Rounding and Overflow in C++,
-  date = 2017-02-05,
-  author = Lawrence Crowl,
-  link = https://wg21.link/p0105r1,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0105r1.html,
+  id = "P0105R1",
+  title = "Rounding and Overflow in C++",
+  date = "2017-02-05",
+  author = "Lawrence Crowl",
+  link = "https://wg21.link/p0105r1",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0105r1.html",
 )\
 \bib(
-  id = P1889R1,
-  title = C++ Numerics Work In Progress,
-  date = 2019-12-27,
-  author = Alexander Zaitsev,
-  link = https://wg21.link/p1889r1,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p1889r1.pdf,
+  id = "P1889R1",
+  title = "C++ Numerics Work In Progress",
+  date = "2019-12-27",
+  author = "Alexander Zaitsev",
+  link = "https://wg21.link/p1889r1",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p1889r1.pdf",
 )\
 \bib(
-  id = P3161R4,
-  title = Unified integer overflow arithmetic,
-  date = 2025-03-26,
-  author = Tiago Freire,
-  link = https://wg21.link/p3161r4,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3161r4.html,
+  id = "P3161R4",
+  title = "Unified integer overflow arithmetic",
+  date = "2025-03-26",
+  author = "Tiago Freire",
+  link = "https://wg21.link/p3161r4",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3161r4.html",
 )\
 \bib(
-  id = StackOverflowCeil,
-  title = Fast ceiling of an integer division in C / C++,
-  link = https://stackoverflow.com/q/2745074/5740428,
+  id = "StackOverflowCeil",
+  title = "Fast ceiling of an integer division in C / C++",
+  link = "https://stackoverflow.com/q/2745074/5740428",
 )\
 \bib(
-  id = StackOverflowRound,
-  title = Rounding integer division (instead of truncating),
-  link = https://stackoverflow.com/q/2422712/5740428,
+  id = "StackOverflowRound",
+  title = "Rounding integer division (instead of truncating)",
+  link = "https://stackoverflow.com/q/2422712/5740428",
 )\
 \bib(
-  id = BuggyDivisions,
-  author = njohnny84,
-  title = Rounding Modes For Integer Division,
-  link = https://blog.demofox.org/2022/07/21/rounding-modes-for-integer-division/
+  id = "BuggyDivisions",
+  author = "njohnny84",
+  title = "Rounding Modes For Integer Division",
+  link = "https://blog.demofox.org/2022/07/21/rounding-modes-for-integer-division/",
 )\
 \bib(
-  id = GitHub,
-  author = Jan Schultke,
-  title = integer-division GitHub repository,
-  link = https://github.com/Eisenwave/integer-division
+  id = "GitHub",
+  author = "Jan Schultke",
+  title = "integer-division GitHub repository",
+  link = "https://github.com/Eisenwave/integer-division",
 )\
 
 \make_bib
 
-\h2(id=implementation, show-number=false){Appendix A \N{EM DASH} Reference implementation}
+\h2(id="implementation", show_number=false){Appendix A \N{EM DASH} Reference implementation}
 
 See below a simplified implementation for educational purposes,
 which works exclusively with \tcode{int}.
-See \ref(GitHub) for the full implementation.
+See \ref("GitHub") for the full implementation.
 
-\cppblock{\cowel_include_text{intdiv.cpp}}
+\cppblock{\cowel_include_text("intdiv.cpp")}
 
 \Bnote{
 Since integer division occurs unconditionally in these functions,
-they also trivially satisfy the \ref(#wording) requirement that invocations of these functions
+they also trivially satisfy the \ref("#wording") requirement that invocations of these functions
 are not constant expressions when the result is not representable.
 }
 

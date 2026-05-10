@@ -1,9 +1,7 @@
-\: cowel 0.6.0
-\cowel_include{libwg21.cow}
+\: cowel 0.9.1
+\cowel_include("libwg21-9.cow")
 
-\wg21_head(
-  title = Renaming saturation arithmetic functions
-){
+\wg21_head(title={Renaming saturation arithmetic functions}){
 \dl{
   \dt{Document number:} \dd{\docnum{P4052R0}}
   \dt{Date:}            \dd{\tt{2026-03-13}}
@@ -11,15 +9,15 @@
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
                         \dd{Corentin Jabot <\mail{corentin.jabot@gmail.com}>}
-  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P4052/github)}
-  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/rename-sat.cow)}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P4052/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/rename-sat.cow")}
 }
 \hr
 }
 
 \Babstract{
 Saturation arithmetic functions should be renamed.
-This paper resolves NB comment \ref(FR-026-265).
+This paper resolves NB comment \ref("FR-026-265").
 }
 
 \h2(listed=false){Contents}
@@ -28,7 +26,7 @@ This paper resolves NB comment \ref(FR-026-265).
 
 \h2{Introduction}
 
-NB comment \ref(FR-026-265) states the following:
+NB comment \ref("FR-026-265") states the following:
 
 \Bquote{
 The names \tcode{add_sat}, \tcode{sub_sat}, \tcode{mul_sat}
@@ -41,10 +39,10 @@ Rename to \tcode{add_saturate} / \tcode{sub_saturate} / \tcode{mul_saturate} /
 \tcode{div_saturate}.
 }
 
-\ref(P0543R3) provides the following rationale for the status quo:
+\ref("P0543R3") provides the following rationale for the status quo:
 
 \Bquote{
-\cowel_html_element(h3){Naming}
+\cowel_html_element("h3"){Naming}
 Considerations:
 \ul{
   \li{These are basic low-level operations. Names should be short.}
@@ -67,7 +65,7 @@ The last choice is taken.
 
 The NB comment is right in the sense that to a novice,
 the abbreviation \tcode{sat} does not have obvious meaning.
-It can also be argued not to match the recommendation of the \ref(LEWGDesignGuidelines):
+It can also be argued not to match the recommendation of the \ref("LEWGDesignGuidelines"):
 
 \Bquote{
 Avoid abbreviations except for common words: \tcode{_ptr}, \tcode{std}, etc.
@@ -75,10 +73,10 @@ Avoid abbreviations except for common words: \tcode{_ptr}, \tcode{std}, etc.
 }
 
 While conciseness is generally desirable in numeric context,
-it may have been given too much importance in \ref(P0543R3).
+it may have been given too much importance in \ref("P0543R3").
 Several arguments speak against the status quo:
 
-\cowel_macro(regex){\code(c){\cowel_highlight_phantom{'}\cowel_put}}
+\cowel_macro("regex"){\code("c"){\cowel_highlight_phantom{'}\cowel_put}}
 
 \style{
   #search-table td:nth-child(2) {
@@ -92,9 +90,9 @@ Several arguments speak against the status quo:
     \tcode{add_sat} has a heavily abbreviated name,
     whereas \tcode{saturate_cast} is unabbreviated.
     By comparison, there is a
-    \ref(https://docs.rs/saturating_cast/latest/saturating_cast/){Rust crate \tt{saturating_cast}},
+    \ref("https://docs.rs/saturating_cast/latest/saturating_cast/"){Rust crate \tt{saturating_cast}},
     which is internally consistent with
-    \ref(https://doc.rust-lang.org/std/intrinsics/fn.saturating_add.html){\tt{saturating_add} in the Rust standard library}.
+    \ref("https://doc.rust-lang.org/std/intrinsics/fn.saturating_add.html"){\tt{saturating_add} in the Rust standard library}.
   }
   \li{
     Many other libraries do not abbreviate \tcode{sat}:
@@ -123,9 +121,9 @@ Several arguments speak against the status quo:
   }
   \li{
     At the time of writing,
-    \ref(https://github.com/search?q=%2F%5Cbsaturating_add%5Cb%2F&type=code){GitHub code search}
+    \ref("https://github.com/search?q=%2F%5Cbsaturating_add%5Cb%2F&type=code"){GitHub code search}
     yields the following results:
-    \table(id=search-table){
+    \table(id="search-table"){
       \tr{
         \th{Search Reg. Exp.}
         \th{# Files}
@@ -201,7 +199,7 @@ For example, Rust supports a large amount of variations of multiplication:
   }
 }
 
-\table(class=fun-table center){
+\table(class="fun-table center"){
   \tr{
     \th{Rust function}
     \th{Meaning}
@@ -216,7 +214,7 @@ For example, Rust supports a large amount of variations of multiplication:
     \td{\tcode{overflowing_mul}}
     \td{Returns product, as well as \tcode{bool} indicating overflow}
     \td{
-      \ref(P3161R4) \tcode{std::mul_overflow},\br
+      \ref("P3161R4") \tcode{std::mul_overflow},\br
       C++26 and C23: \tcode{ckd_mul},\br
       GCC: \tcode{__builtin_mul_overflow}
     }
@@ -224,7 +222,7 @@ For example, Rust supports a large amount of variations of multiplication:
   \tr{
     \td{\tcode{widening_mul}}
     \td{Returns low and high bits of product}
-    \td{\ref(P3161R4) \tcode{std::mul_wide}}
+    \td{\ref("P3161R4") \tcode{std::mul_wide}}
   }
   \tr{
     \td{\tcode{wrapping_mul}}
@@ -246,7 +244,7 @@ some or all of these variations of multiplication could be available in C++.
 We thus need a sustainable naming scheme that can handle all such variations.
 
 \Bnote{
-Also related is \ref(P3642R4),
+Also related is \ref("P3642R4"),
 which proposes \tcode{std::clmul_wide} as the widening variation of \tcode{std::clmul}.
 Note that the naming scheme here deliberately imitates that of \tcode{std::mul_sat};
 it is not \q{convergent evolution}.
@@ -277,12 +275,12 @@ This should be done for the following reasons:
 }
 
 Furthermore, LEWG should commit to the Rust naming scheme for future proposals,
-such as \ref(P3161R4) and \ref(P3642R4),
+such as \ref("P3161R4") and \ref("P3642R4"),
 which propose \tcode{std::mul_wide} and \tcode{std::clmul_wide}, respectively.
 
 \h2{Wording}
 
-The changes are relative to \ref(N5032).
+The changes are relative to \ref("N5032").
 
 Bump the feature-test macro in \eelis{version.syn} as follows:
 
@@ -325,48 +323,48 @@ Rename the declarations in \eelis{numeric.sat} analogously.
 \h2{References}
 
 \bib(
-  id = N5032,
-  title = Working Draft\, Programming Languages — C++,
-  date = 2025-12-15,
-  author = Thomas Köppe,
-  link = https://wg21.link/n5032,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
+  id = "N5032",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2025-12-15",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5032",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf",
 )\
 \bib(
-  id = P0543R3,
-  title = Saturation arithmetic,
-  date = 2023-07-19,
-  author = Jens Maurer,
-  link = https://wg21.link/p0543r3,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p0543r3.html,
+  id = "P0543R3",
+  title = "Saturation arithmetic",
+  date = "2023-07-19",
+  author = "Jens Maurer",
+  link = "https://wg21.link/p0543r3",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p0543r3.html",
 )\
 \bib(
-  id = P3161R4,
-  title = Unified integer overflow arithmetic,
-  date = 2026-03-12,
-  author = Tiago Freire,
-  link = https://wg21.link/p3161r4,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3161r4.html,
+  id = "P3161R4",
+  title = "Unified integer overflow arithmetic",
+  date = "2026-03-12",
+  author = "Tiago Freire",
+  link = "https://wg21.link/p3161r4",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3161r4.html",
 )\
 \bib(
-  id = P3642R4,
-  title = Carry-less product: std::clmul,
-  date = 2026-02-17,
-  author = Jan Schulte,
-  link = https://wg21.link/p3642r4,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3642r4.html,
+  id = "P3642R4",
+  title = "Carry-less product: std::clmul",
+  date = "2026-02-17",
+  author = "Jan Schulte",
+  link = "https://wg21.link/p3642r4",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3642r4.html",
 )\
 \bib(
-  id = FR-026-265,
-  title = Confusing names add_sat\, sub_sat\, mul_sat,
-  date = 2025-10-03,
-  author = AFNOR,
-  link = https://github.com/cplusplus/nbballot/issues/840,
+  id = "FR-026-265",
+  title = "Confusing names add_sat, sub_sat, mul_sat",
+  date = "2025-10-03",
+  author = "AFNOR",
+  link = "https://github.com/cplusplus/nbballot/issues/840",
 )\
 \bib(
-  id = LEWGDesignGuidelines,
-  date = 2018-04-16,
-  link = https://github.com/cplusplus/LEWG/blob/archive/library-design-guidelines.md,
+  id = "LEWGDesignGuidelines",
+  date = "2018-04-16",
+  link = "https://github.com/cplusplus/LEWG/blob/archive/library-design-guidelines.md",
 )\
 
 \make_bib

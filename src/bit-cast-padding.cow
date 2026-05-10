@@ -1,17 +1,15 @@
-\: cowel 0.6.0
-\cowel_include{libwg21.cow}
+\: cowel 0.9.1
+\cowel_include("libwg21-9.cow")
 
-\wg21_head(
-  title = Fixing \tcode{std::bit_cast} of types\br{}with padding bits
-){
+\wg21_head(title={Fixing \tcode{std::bit_cast} of types\br{}with padding bits}){
 \dl{
   \dt{Document number:} \dd{\docnum{P3969R0}}
   \dt{Date:}            \dd{\tt{2026-02-20}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3969/github)}
-  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/bit-cast-padding.cow)}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3969/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/bit-cast-padding.cow")}
 }
 \hr
 }
@@ -70,7 +68,7 @@ After all, reinterpreting floating-point types and integer types
 is part and parcel of implementing mathematical functions like those in \header{cmath}.
 It would also be useful if this could be done portably in constant expressions.
 Another case where the degenerate form may arise frequently is bit-casting \tcode{_BitInt}
-(supported by Clang as an extension and proposed in \ref(P3666R2)),
+(supported by Clang as an extension and proposed in \ref("P3666R2")),
 considering that most \tcode{_BitInt} types (at least 7/8) have padding bits.
 
 \Bnote{
@@ -175,7 +173,7 @@ it only requires a single \tcode{__builtin_bit_cast} intrinsic to be maintained.
 In the discussion of this proposal prior to publication,
 it was suggested to clear the padding \em{before} bit-casting.
 That is, standardizing
-\ref(https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html#index-_005f_005fbuiltin_005fclear_005fpadding){\tt{__builtin_clear_padding}}
+\ref("https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html#index-_005f_005fbuiltin_005fclear_005fpadding"){\tt{__builtin_clear_padding}}
 and using an idiom such as:
 
 \cppblock{
@@ -332,9 +330,7 @@ due to sizes matching and types being trivially copyable,
 whereas \i{Mandates} should catch misuses such as passing
 consteval-only types or types that result in the degenerate form.
 
-\h3(
-  id=bit-cast-constant-evaluation-undefined-behavior
-){Requiring \tt{std::bit_cast} UB to be diagnosed in constant expressions}
+\h3(id="bit-cast-constant-evaluation-undefined-behavior"){Requiring \tt{std::bit_cast} UB to be diagnosed in constant expressions}
 
 \eelis{bit.cast#4.2} explicitly makes indeterminate result bits undefined behavior
 \em{inside} \tcode{std::bit_cast},
@@ -349,7 +345,7 @@ and just acts as a portable spelling for the underlying
 \tcode{__builtin_bit_cast} intrinsic in compilers.
 Core language UB is generally diagnosed as per \eelis{expr.const}.
 
-It should be noted that \ref(P0476R1) never motivated this lack of diagnostics,
+It should be noted that \ref("P0476R1") never motivated this lack of diagnostics,
 and it is likely wording defect.
 After all, in the cases where \tcode{std::bit_cast} has library UB,
 it also produces an indeterminate result,
@@ -413,7 +409,7 @@ These false positives make it not suitable for detecting the presence of padding
 
 \h2{Wording}
 
-The changes are relative to \ref(N5032).
+The changes are relative to \ref("N5032").
 
 \Bdecision{
 Based on LEWG feedback,
@@ -422,7 +418,7 @@ one of the following two sections should be chosen.
 
 \h3{Two-function solution}
 
-\h4(show-number=false){[version.syn]}
+\h4(show_number=false){[version.syn]}
 
 Bump the feature-test macro in \eelis{version.syn} as follows:
 
@@ -432,7 +428,7 @@ Bump the feature-test macro in \eelis{version.syn} as follows:
 }
 }
 
-\h4(show-number=false){[bit.syn]}
+\h4(show_number=false){[bit.syn]}
 
 Change \eelis{bit.syn} as follows:
 
@@ -451,12 +447,12 @@ namespace std {
 }
 }
 
-\h4(show-number=false){[bit.cast]}
+\h4(show_number=false){[bit.cast]}
 
 Change \eelis{bit.cast} as follows:
 
 \Bdiff{
-\cowel_html_element(h3){\del{Function template \tcode{bit_cast}} \ins{Bit-casting} \stable_ref{bit.cast}}
+\cowel_html_element("h3"){\del{Function template \tcode{bit_cast}} \ins{Bit-casting} \stable_ref{bit.cast}}
 
 \itemdecl{
 template<class To, class From>
@@ -572,7 +568,7 @@ void f() {
 
 \h3{Single-function solution}
 
-\h4(id=single-functin-version-syn-wording, show-number=false){[version.syn]}
+\h4(id="single-functin-version-syn-wording", show_number=false){[version.syn]}
 
 Bump the feature-test macro in \eelis{version.syn} as follows:
 
@@ -582,12 +578,12 @@ Bump the feature-test macro in \eelis{version.syn} as follows:
 }
 }
 
-\h4(id=single-functin-bit-cast-wording, show-number=false){[bit.cast]}
+\h4(id="single-functin-bit-cast-wording", show_number=false){[bit.cast]}
 
 Change \eelis{bit.cast} as follows:
 
 \Bdiff{
-\cowel_html_element(h3){Function template \tcode{bit_cast} \stable_ref{bit.cast}}
+\cowel_html_element("h3"){Function template \tcode{bit_cast} \stable_ref{bit.cast}}
 
 \itemdecl{
 template<class To, class From>
@@ -666,28 +662,28 @@ is not a core constant expression\iref{expr.const}.
 \h2{References}
 
 \bib(
-  id = N5032,
-  title = Working Draft\, Programming Languages — C++,
-  date = 2025-12-15,
-  author = Thomas Köppe,
-  link = https://wg21.link/n5032,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
+  id = "N5032",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2025-12-15",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5032",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf",
 )\
 \bib(
-  id = P0476R1,
-  title = Bit-casting object representations,
-  date = 2016-11-11,
-  author = JF Bastien,
-  link = https://wg21.link/p0476r1,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0476r1.html,
+  id = "P0476R1",
+  title = "Bit-casting object representations",
+  date = "2016-11-11",
+  author = "JF Bastien",
+  link = "https://wg21.link/p0476r1",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0476r1.html",
 )\
 \bib(
-  id = P3666R2,
-  title = Bit-precise integers,
-  date = 2025-12-14,
-  author = Jan Schultke,
-  link = https://wg21.link/p3666r2,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3666r2.pdf,
+  id = "P3666R2",
+  title = "Bit-precise integers",
+  date = "2025-12-14",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3666r2",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3666r2.pdf",
 )\
 
 \make_bib

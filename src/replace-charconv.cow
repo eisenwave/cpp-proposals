@@ -1,17 +1,15 @@
-\: cowel 0.6.0
-\cowel_include{libwg21.cow}
+\: cowel 0.9.1
+\cowel_include("libwg21-9.cow")
 
-\wg21_head(
-  title = Provide a better replacement for \tt{std::to_chars} and \tt{std::from_chars}
-){
+\wg21_head(title={Provide a better replacement for \tt{std::to_chars} and \tt{std::from_chars}}){
 \dl{
   \dt{Document number:} \dd{\docnum{D3944R0}}
   \dt{Date:}            \dd{\tt{2025-12-12}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3688/github)}
-  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/replace-charconv.cow)}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3688/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/replace-charconv.cow")}
 }
 \hr
 }
@@ -34,14 +32,14 @@ to the \header{charconv} API:
 
 \ol{
   \li{
-    \ref(P2584R0) points out that \tcode{std::from_chars} isn't composable.
+    \ref("P2584R0") points out that \tcode{std::from_chars} isn't composable.
     The APIs neither return a range in the result
     nor do they take a range, but a pair of pointers.
     The paper proposes new overloads that accept \tcode{std::string_view}
     and return a different result type.
   }
   \li{
-    \ref(P3666R2) wants to add \tcode{std::from_chars} and \tcode{std::to_chars}
+    \ref("P3666R2") wants to add \tcode{std::from_chars} and \tcode{std::to_chars}
     support for the new bit-precise integers.
     However, the current interface has an overload
     for each \tcode{\placeholder{integer-type}} placeholder,
@@ -49,14 +47,14 @@ to the \header{charconv} API:
     The paper proposes a new template overload instead.
   }
   \li{
-    \ref(P3876R0) wants to add \tcode{std::from_chars} and \tcode{std::to_chars}
+    \ref("P3876R0") wants to add \tcode{std::from_chars} and \tcode{std::to_chars}
     for character types other than \tcode{char}.
     Since the functions aren't templates and \tcode{std::to_chars_result}
     isn't a template either, this is quite difficult to do.
     The paper also proposes function templates to avoid a huge overload set.
   }
   \li{
-    \ref(P2827R1) points out that there is no way to detect floating-point
+    \ref("P2827R1") points out that there is no way to detect floating-point
     overflow and underflow in \tcode{std::from_chars}.
     In fact, the wording for \tcode{std::from_chars} always relied on the term
     \q{range of representable values} which didn't have a definition in the C++ standard
@@ -66,7 +64,7 @@ to the \header{charconv} API:
     \q{Fixing} the API is not possible without breaking some user code.
   }
   \li{
-    \ref(P3652R1) wants the floating-point overloads to be \tcode{constexpr}.
+    \ref("P3652R1") wants the floating-point overloads to be \tcode{constexpr}.
   }
 }
 
@@ -96,7 +94,7 @@ among other issues.
 
 The specification of \tcode{std::from_chars} for floating-point overloads
 is currently in a broken state.
-To provide some more context beyond \ref(P2827R1),
+To provide some more context beyond \ref("P2827R1"),
 here is a list of issues:
 
 \ol{
@@ -104,14 +102,14 @@ here is a list of issues:
     \tcode{from_chars} is required to set \tcode{from_chars_result::ec}
     to \tcode{errc::result_out_of_range} if
     \q{the parsed value is not in the range representable by the type of \tcode{value}}\iref{charconv}.
-    This wording existed since its introduction by \ref(P0067R5),
+    This wording existed since its introduction by \ref("P0067R5"),
     but it was never clear what it meant because there existed no definition of
     \q{range of representable value} for floating-point types at the time,
     at least not in the C++ standard.
     The design discussion and recorded minutes for the paper offer no clarification.
   }
   \li{
-    \ref(CWG2723) added a definition of
+    \ref("CWG2723") added a definition of
     \q{range of representable values},
     which created the current error handling design,
     but neither LEWG nor LWG polled that design.
@@ -160,7 +158,7 @@ There are too many problems with the old API,
 and the problems are too severe as that the issue could be fixed
 by simply adding an overload here and making am minor adjustment there.
 Any new overloads would compete with a large amount of candidates
-(\ref(#too-many-overloads)).
+(\ref("#too-many-overloads")).
 There already exists user code that relies on the implemented behavior,
 whether it complies or not.
 
@@ -545,17 +543,17 @@ Nobody knows.
 
 \ul{
   \li{
-    \ref(P2584R0) wants an API that works with \tcode{std::span},
+    \ref("P2584R0") wants an API that works with \tcode{std::span},
     and the API above provides that.
     There are no more raw pointers in the API.
   }
   \li{
-    \ref(P3666R2) wants to provide additional overloads for bit-precise integers,
+    \ref("P3666R2") wants to provide additional overloads for bit-precise integers,
     which becomes a no-op if the functions are already templates
     that support all integer types.
   }
   \li{
-    \ref(P3876R0) wants to provide additional overloads
+    \ref("P3876R0") wants to provide additional overloads
     for character types other than \tcode{char}.
     Since the base set of overloads is manageable (4×\tcode{std::to_characters},
     2×\tcode{std::from_characters}),
@@ -571,11 +569,11 @@ Nobody knows.
     works for any character type.
   }
   \li{
-    \ref(P2827R1) wants to detect underflow and overflow,
+    \ref("P2827R1") wants to detect underflow and overflow,
     which is implemented by the more granular \tcode{from_characters_status}.
   }
   \li{
-    \ref(P3652R1) wants the floating-point overloads to be \tcode{constexpr},
+    \ref("P3652R1") wants the floating-point overloads to be \tcode{constexpr},
     which is done for the API above.
   }
 }
@@ -606,70 +604,70 @@ There are two questions that need to be answered:
 \h2{References}
 
 \bib(
-  id = N5014,
-  title = Working Draft\, Programming Languages — C++,
-  date = 2025-08-05,
-  author = Thomas Köppe,
-  link = https://wg21.link/n5014,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+  id = "N5014",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2025-08-05",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5014",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf",
 )\
 \bib(
-  id = P0067R5,
-  title = Elementary string conversions\, revision 5,
-  date =  2016-11-11,
-  author = Jens Maurer,
-  link = https://wg21.link/p0067r5,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0067r5.html,
+  id = "P0067R5",
+  title = "Elementary string conversions, revision 5",
+  date = "2016-11-11",
+  author = "Jens Maurer",
+  link = "https://wg21.link/p0067r5",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0067r5.html",
 )\
 \bib(
-  id = P2584R0,
-  title = A More Composable from_chars,
-  date = 2022-05-12,
-  author = Corentin Jabot,
-  link = https://wg21.link/p2584r0,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2584r0.pdf,
+  id = "P2584R0",
+  title = "A More Composable from_chars",
+  date = "2022-05-12",
+  author = "Corentin Jabot",
+  link = "https://wg21.link/p2584r0",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2584r0.pdf",
 )\
 \bib(
-  id = P3666R2,
-  title = Bit-precise integers,
-  author = Jan Schultke,
-  link = https://isocpp.org/files/papers/P3666R2.html,
+  id = "P3666R2",
+  title = "Bit-precise integers",
+  author = "Jan Schultke",
+  link = "https://isocpp.org/files/papers/P3666R2.html",
 )\
 \bib(
-  id = P3876R0,
-  title = Extending <charconv> support to more character types,
-  author = Jan Schultke\, Peter Bindels,
-  link = https://isocpp.org/files/papers/P3876R0.html,
+  id = "P3876R0",
+  title = "Extending <charconv> support to more character types",
+  author = "Jan Schultke, Peter Bindels",
+  link = "https://isocpp.org/files/papers/P3876R0.html",
 )\
 \bib(
-  id = P2827R1,
-  title = Floating-point overflow and underflow in from_chars (LWG 3081),
-  date = 2023-11-20,
-  author = Zhihao Yan,
-  link = https://wg21.link/p2827r1,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2827r1.html,
+  id = "P2827R1",
+  title = "Floating-point overflow and underflow in from_chars (LWG 3081)",
+  date = "2023-11-20",
+  author = "Zhihao Yan",
+  link = "https://wg21.link/p2827r1",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2827r1.html",
 )\
 \bib(
-  id = P3652R1,
-  title = Constexpr floating-point <charconv> functions,
-  date = 2025-04-16,
-  author = Lénárd Szolnoki,
-  link = https://wg21.link/p3652r1,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3652r1.html,
+  id = "P3652R1",
+  title = "Constexpr floating-point <charconv> functions",
+  date = "2025-04-16",
+  author = "Lénárd Szolnoki",
+  link = "https://wg21.link/p3652r1",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3652r1.html",
 )\
 \bib(
-  id = CWG2723,
-  title = Range of representable values for floating-point types,
-  date = 2023-04-21,
-  author = Jiang An,
-  link = https://wg21.link/CWG2723,
+  id = "CWG2723",
+  title = "Range of representable values for floating-point types",
+  date = "2023-04-21",
+  author = "Jiang An",
+  link = "https://wg21.link/CWG2723",
 )\
 \bib(
-  id = LWG3081,
-  title = Floating point \tcode{from_chars} API does not distinguish between overflow and underflow,
-  date = 2018-03-12,
-  author = Jiang An,
-  link = https://wg21.link/LWG3081,
+  id = "LWG3081",
+  title={Floating point \tcode{from_chars} API does not distinguish between overflow and underflow},
+  date = "2018-03-12",
+  author = "Jiang An",
+  link = "https://wg21.link/LWG3081",
 )\
 
 \make_bib

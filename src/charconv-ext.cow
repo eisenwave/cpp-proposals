@@ -1,9 +1,7 @@
-\: cowel 0.6.0
-\cowel_include{libwg21.cow}
+\: cowel 0.9.1
+\cowel_include("libwg21-9.cow")
 
-\wg21_head(
-  title = Extending \tcode{<charconv>} support to more character types
-){
+\wg21_head(title={Extending \tcode{<charconv>} support to more character types}){
 \dl{
   \dt{Document number:} \dd{\docnum{P3876R1}}
   \dt{Date:}            \dd{\tt{2026-02-22}}
@@ -11,8 +9,8 @@
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{Co-authors:}      \dd{Peter Bindels <\mail{dascandy@gmail.com}>}
-  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3876/github)}
-  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/charconv-ext.cow)}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3876/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/charconv-ext.cow")}
 }
 \hr
 }
@@ -43,20 +41,20 @@ Consequently, only some minor improvements were made:
   \li{expanded abstract}
   \li{
     considered floating-point overloads when counting the size of the
-    \tcode{to_chars} overload set in \ref(#function-signature-and-result-types)
+    \tcode{to_chars} overload set in \ref("#function-signature-and-result-types")
   }
   \li{fixed wrong claim that libc++ only supports ASCII}
   \li{fixed hallucinated \tcode{from_string} in example (should have been \tcode{from_chars})}
-  \li{filed \ref(LWG4522) and removed updates to \eelis{diff.cpp26.format}}
+  \li{filed \ref("LWG4522") and removed updates to \eelis{diff.cpp26.format}}
   \li{
-    changed \ref(#fixing-format-for-wide-strings) from "fixing" \tcode{std::format}
+    changed \ref("#fixing-format-for-wide-strings") from "fixing" \tcode{std::format}
     to merely "re-specifying" it
   }
   \li{
-    explained in \ref(#charconv.from.chars) why using "code unit" is correct
+    explained in \ref("#charconv.from.chars") why using "code unit" is correct
     (and effectively the status quo)
   }
-  \li{rebased \ref(#wording) on \ref(N5032)}
+  \li{rebased \ref("#wording") on \ref("N5032")}
 }
 
 \h2{Introduction}
@@ -138,8 +136,8 @@ Find rationale for each type below.
 
 Due to how common UTF-8 is and due to \tcode{char8_t} now regularly being used
 to represent UTF-8 text in C++ software,
-the motivation in \ref(#introduction) mostly refers to \tcode{char8_t}.
-In fact, there is a dedicated \ref(SG16-Issue) for \tcode{char8_t}.
+the motivation in \ref("#introduction") mostly refers to \tcode{char8_t}.
+In fact, there is a dedicated \ref("SG16-Issue") for \tcode{char8_t}.
 
 \h4{\tcode{char16_t} and \tcode{char32_t}}
 
@@ -212,17 +210,17 @@ This means that simply treating greater code units as not part of the \tcode{std
 pattern (which any implementation for ASCII-based \tcode{char} does already)
 is a proper way of Unicode error handling.
 
-\h3(id=fixing-format-for-wide-strings){Re-specifying \tcode{std::format(std::wformat_string)}}
+\h3(id="fixing-format-for-wide-strings"){Re-specifying \tcode{std::format(std::wformat_string)}}
 
 Since this proposal argues for \tcode{wchar_t} support in \tcode{std::to_chars},
 it makes sense to re-specify \tcode{std::format} to call \tcode{std::to_chars} "directly".
-The current wording in \ref(N5032) uses the \tcode{char} overload,
+The current wording in \ref("N5032") uses the \tcode{char} overload,
 and is intended to transcode the output
-(although it arguably doesn't transcode without \ref(LWG4522)).
+(although it arguably doesn't transcode without \ref("LWG4522")).
 
 Once \tcode{std::to_chars} supports \tcode{wchar_t},
 \tcode{std::format} should simply call that overload directly, without transcoding.
-Assuming \ref(LWG4522) is accepted and transcoding already happens,
+Assuming \ref("LWG4522") is accepted and transcoding already happens,
 this results in no change to the current behavior.
 
 \h3{Function signature and result types}
@@ -362,7 +360,7 @@ template<\exposid{character-type} T, \exposid{integer-type-concept} U>
 
 \h3{\tcode{constexpr} floating-point overloads}
 
-If \ref(P3652R1) "Constexpr floating-point <charconv> functions" is accepted,
+If \ref("P3652R1") "Constexpr floating-point <charconv> functions" is accepted,
 all new templated overloads should be made \tcode{constexpr}.
 There is no good reason why only the \tcode{char} overload should be \tcode{constexpr}.
 
@@ -374,15 +372,15 @@ overload and to transcode from the ordinary literal encoding to the desired enco
 \h3{More composable interface taking \tcode{std::span} or \tcode{std::string_view}}
 
 It is worth noting that there is a stale proposal
-\ref(P2584R0) "A More Composable \tcode{from_chars}"
+\ref("P2584R0") "A More Composable \tcode{from_chars}"
 which proposes additional overloads taking \tcode{std::span},
 superseding the even more stale
-\ref(P2007R0) "\tcode{std::from_chars} should work with \tcode{std::string_view}".
+\ref("P2007R0") "\tcode{std::from_chars} should work with \tcode{std::string_view}".
 
 Such changes are orthogonal to what is proposed here.
 However it needs to be considered what impact such new overloads would have
 on the functions added here.
-In particular, \ref(P2584R0) proposes an interface such as:
+In particular, \ref("P2584R0") proposes an interface such as:
 
 \cppblock{
 template<class T>
@@ -432,27 +430,27 @@ when supporting additional character types.
   }
   \tr{
     \td{\tcode{to_chars} (integer)}
-    \td{\ref(https://github.com/gcc-mirror/gcc/blob/788fa7c613177b35e6c1e5098b8931480b4f0853/libstdc++-v3/include/std/charconv){std/charconv}}
-    \td{\ref(https://github.com/llvm/llvm-project/blob/eeffaf110e991791a8ff7e9b7bb40b5317c70bad/libcxx/include/__charconv/to_chars_integral.h){to_chars_integral.h}}
-    \td{\ref(https://github.com/microsoft/STL/blob/7f60cfbf379dd64ca0d5f17f3c21f5f3ee146f9d/stl/inc/charconv){inc/charconv}}
+    \td{\ref("https://github.com/gcc-mirror/gcc/blob/788fa7c613177b35e6c1e5098b8931480b4f0853/libstdc++-v3/include/std/charconv"){std/charconv}}
+    \td{\ref("https://github.com/llvm/llvm-project/blob/eeffaf110e991791a8ff7e9b7bb40b5317c70bad/libcxx/include/__charconv/to_chars_integral.h"){to_chars_integral.h}}
+    \td{\ref("https://github.com/microsoft/STL/blob/7f60cfbf379dd64ca0d5f17f3c21f5f3ee146f9d/stl/inc/charconv"){inc/charconv}}
   }
   \tr{
     \td{\tcode{to_chars} (floating-point)}
-    \td{\ref(https://github.com/gcc-mirror/gcc/blob/788fa7c613177b35e6c1e5098b8931480b4f0853/libstdc++-v3/src/c++17/floating_to_chars.cc){floating_to_chars.cc}}
-    \td{\ref(https://github.com/llvm/llvm-project/blob/eeffaf110e991791a8ff7e9b7bb40b5317c70bad/libcxx/src/include/to_chars_floating_point.h){to_chars_floating_point.h}}
-    \td{\ref(https://github.com/microsoft/STL/blob/7f60cfbf379dd64ca0d5f17f3c21f5f3ee146f9d/stl/inc/charconv){inc/charconv}}
+    \td{\ref("https://github.com/gcc-mirror/gcc/blob/788fa7c613177b35e6c1e5098b8931480b4f0853/libstdc++-v3/src/c++17/floating_to_chars.cc"){floating_to_chars.cc}}
+    \td{\ref("https://github.com/llvm/llvm-project/blob/eeffaf110e991791a8ff7e9b7bb40b5317c70bad/libcxx/src/include/to_chars_floating_point.h"){to_chars_floating_point.h}}
+    \td{\ref("https://github.com/microsoft/STL/blob/7f60cfbf379dd64ca0d5f17f3c21f5f3ee146f9d/stl/inc/charconv"){inc/charconv}}
   }
   \tr{
     \td{\tcode{from_chars} (integer)}
-    \td{\ref(https://github.com/gcc-mirror/gcc/blob/788fa7c613177b35e6c1e5098b8931480b4f0853/libstdc++-v3/include/std/charconv){std/charconv}}
-    \td{\ref(https://github.com/llvm/llvm-project/blob/eeffaf110e991791a8ff7e9b7bb40b5317c70bad/libcxx/include/__charconv/from_chars_integral.h){to_chars_integral.h}}
-    \td{\ref(https://github.com/microsoft/STL/blob/7f60cfbf379dd64ca0d5f17f3c21f5f3ee146f9d/stl/inc/charconv){inc/charconv}}
+    \td{\ref("https://github.com/gcc-mirror/gcc/blob/788fa7c613177b35e6c1e5098b8931480b4f0853/libstdc++-v3/include/std/charconv"){std/charconv}}
+    \td{\ref("https://github.com/llvm/llvm-project/blob/eeffaf110e991791a8ff7e9b7bb40b5317c70bad/libcxx/include/__charconv/from_chars_integral.h"){to_chars_integral.h}}
+    \td{\ref("https://github.com/microsoft/STL/blob/7f60cfbf379dd64ca0d5f17f3c21f5f3ee146f9d/stl/inc/charconv"){inc/charconv}}
   }
   \tr{
     \td{\tcode{from_chars} (floating-point)}
-    \td{\ref(https://github.com/gcc-mirror/gcc/blob/788fa7c613177b35e6c1e5098b8931480b4f0853/libstdc++-v3/src/c++17/floating_from_chars.cc){floating_from_chars.cc}}
-    \td{\ref(https://github.com/llvm/llvm-project/blob/eeffaf110e991791a8ff7e9b7bb40b5317c70bad/libcxx/src/include/from_chars_floating_point.h){from_chars_floating_point.h}}
-    \td{\ref(https://github.com/microsoft/STL/blob/7f60cfbf379dd64ca0d5f17f3c21f5f3ee146f9d/stl/inc/charconv){inc/charconv}}
+    \td{\ref("https://github.com/gcc-mirror/gcc/blob/788fa7c613177b35e6c1e5098b8931480b4f0853/libstdc++-v3/src/c++17/floating_from_chars.cc"){floating_from_chars.cc}}
+    \td{\ref("https://github.com/llvm/llvm-project/blob/eeffaf110e991791a8ff7e9b7bb40b5317c70bad/libcxx/src/include/from_chars_floating_point.h"){from_chars_floating_point.h}}
+    \td{\ref("https://github.com/microsoft/STL/blob/7f60cfbf379dd64ca0d5f17f3c21f5f3ee146f9d/stl/inc/charconv"){inc/charconv}}
   }
 }
 
@@ -478,7 +476,7 @@ but that is only correct in an ASCII-only implementation.
 libc++ supports EBCDIC and is used on z/OS (see \url{https://reviews.llvm.org/D114813}).
 Another library with EBCDIC support is the IBM XL C++ for z/OS,
 but according to
-\ref(https://www.ibm.com/docs/en/zos/3.1.0?topic=files-xl-c-header){IBM's documentation},
+\ref("https://www.ibm.com/docs/en/zos/3.1.0?topic=files-xl-c-header"){IBM's documentation},
 no \header{charconv} implementation exists yet.
 Even if \tcode{char} is non-ASCII,
 the "fix" is not much harder than a \tcode{static_cast}:
@@ -529,9 +527,9 @@ More traditional alternatives like \tcode{std::conditional_t} also work.
 
 \h2{Wording}
 
-The following changes are relative to \ref(N5032).
+The following changes are relative to \ref("N5032").
 
-\h3(show-number=false){[version.syn]}
+\h3(show_number=false){[version.syn]}
 
 In \eelis{version.syn},
 bump the feature-test macro:
@@ -547,7 +545,7 @@ The \tcode{__cpp_lib_constexpr_charconv} and \tcode{__cpp_lib_freestanding_charc
 macros are not bumped.
 }
 
-\h3(show-number=false){[charconv.syn]}
+\h3(show_number=false){[charconv.syn]}
 
 In \eelis{charconv.syn},
 modify the synopsis as follows:
@@ -685,7 +683,7 @@ The exposition-only concept \tcode{\exposid{character-type}}
 is modeled by any character type\iref{basic.fundamental}.
 }
 
-\h3(show-number=false){[charconv.to.chars]}
+\h3(show_number=false){[charconv.to.chars]}
 
 Immediately following \eelis{charconv.to.chars#1},
 insert the following paragraph:
@@ -762,7 +760,7 @@ Nothing.
 }
 
 \editnote{
-This change has a merge conflict with \ref(LWG4421).
+This change has a merge conflict with \ref("LWG4421").
 
 The "(inclusive)" is removed because the range notation "A..B"
 is universally inclusive,
@@ -845,7 +843,7 @@ Nothing.
 }
 
 \editnote{
-See \ref(N3047-fprintf) for C23 wording.
+See \ref("N3047-fprintf") for C23 wording.
 To give an example,
 the output format for \tcode{printf} is worded as follows:
 
@@ -867,7 +865,7 @@ and decoupled from C wording,
 but this would take considerable effort and isn't necessary for this proposal.
 }
 
-If \ref(P3652R1) has been accepted
+If \ref("P3652R1") has been accepted
 or a later paper marked the existing \tcode{\exposid{floating-point}}
 overloads \tcode{constexpr},
 modify all the added overloads as follows:
@@ -879,7 +877,7 @@ template<class charT, class V>
 }
 }
 
-\h3(show-number=false){[charconv.from.chars]}
+\h3(show_number=false){[charconv.from.chars]}
 
 Modify \eelis{charconv.from.chars#1} as follows:
 
@@ -915,10 +913,10 @@ The current use of "character" in the wording is unclear
 because it could equally mean that the \tcode{from_chars}
 operates on the decoded code points or on the code units of the string.
 \tcode{from_chars} leans on the "subject sequence" of \tcode{strtol} for wording
-(see \ref(https://cigix.me/c23#7.24.1.7){C23 §7.24.1.7}),
+(see \ref("https://cigix.me/c23#7.24.1.7"){C23 §7.24.1.7}),
 which is worded in terms of "characters",
 presumably referring to "character" as in "single-byte character"
-(see \ref(https://cigix.me/c23#3.10.1){C23 §3.10.1}).
+(see \ref("https://cigix.me/c23#3.10.1"){C23 §3.10.1}).
 This means that \tcode{from_chars} is already intended to operate on bytes or code units.
 }
 
@@ -1019,14 +1017,14 @@ Nothing.
 
 \editnote{
 By the time this wording is reviewed,
-\ref(LWG4430) will most likely have been merged,
+\ref("LWG4430") will most likely have been merged,
 which additionally ignores \tcode{"0b"} and \tcode{"0B"} base prefixes.
 This has no impact on the proposed change
 because the \effects are rewritten from scratch.
 
 It would be possible to keep basing the wording on \tcode{strtol},
 but this is quite problematic.
-\ref(LWG4430) already fixed the accidental parsing of \tcode{"0b"}
+\ref("LWG4430") already fixed the accidental parsing of \tcode{"0b"}
 prefixes in \tcode{from_chars},
 and additional changes will be required for \tcode{"0o"},
 which is added to C2y for octal prefixes.
@@ -1083,14 +1081,14 @@ Nothing.
 }
 
 \editnote{
-This change includes a drive-by fix which supersedes \ref(EDIT6848).
+This change includes a drive-by fix which supersedes \ref("EDIT6848").
 }
 
-\h3(show-number=false){[format.string.std]}
+\h3(show_number=false){[format.string.std]}
 
-The following change is relative to the proposed resolution of \ref(LWG4522),
+The following change is relative to the proposed resolution of \ref("LWG4522"),
 and reverts that resolution.
-If \ref(LWG4522) has not yet been approved,
+If \ref("LWG4522") has not yet been approved,
 close it.
 
 Modify \eelis{format.string.std#20} as follows:
@@ -1128,70 +1126,70 @@ so additional transcoding becomes unnecessary.
 \h2{References}
 
 \bib(
-  id = N5032,
-  title = Working Draft\, Programming Languages — C++,
-  date = 2025-12-15,
-  author = Thomas Köppe,
-  link = https://wg21.link/n5032,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
+  id = "N5032",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2025-12-15",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5032",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf",
 )\
 \bib(
-  id = P2007R0,
-  title = std::from_chars should work with std::string_view,
-  date = 2020-01-10,
-  author = Mateusz Pusz,
-  link = https://wg21.link/p2007r0,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2007r0.html,
+  id = "P2007R0",
+  title = "std::from_chars should work with std::string_view",
+  date = "2020-01-10",
+  author = "Mateusz Pusz",
+  link = "https://wg21.link/p2007r0",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2007r0.html",
 )\
 \bib(
-  id = P2584R0,
-  title = A More Composable from_chars,
-  date = 2022-05-12,
-  author = Corentin Jabot,
-  link = https://wg21.link/p2584r0,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2584r0.pdf,
+  id = "P2584R0",
+  title = "A More Composable from_chars",
+  date = "2022-05-12",
+  author = "Corentin Jabot",
+  link = "https://wg21.link/p2584r0",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2584r0.pdf",
 )\
 \bib(
-  id = P3652R1,
-  title = Constexpr floating-point <charconv> functions,
-  date  = 2025-04-16,
-  author = Lénárd Szolnoki,
-  link = https://wg21.link/p3652r1,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3652r1.html,
+  id = "P3652R1",
+  title = "Constexpr floating-point <charconv> functions",
+  date = "2025-04-16",
+  author = "Lénárd Szolnoki",
+  link = "https://wg21.link/p3652r1",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3652r1.html",
 )\
 \bib(
-  id = LWG4421,
-  title = Clarify the output encoding of to_chars for integers,
-  author = Jan Schultke,
-  link = https://cplusplus.github.io/LWG/issue4421,
+  id = "LWG4421",
+  title = "Clarify the output encoding of to_chars for integers",
+  author = "Jan Schultke",
+  link = "https://cplusplus.github.io/LWG/issue4421",
 )\
 \bib(
-  id = LWG4430,
-  title = from_chars should not parse "0b" base prefixes,
-  author = Jan Schultke,
-  link = https://cplusplus.github.io/LWG/issue4430,
+  id = "LWG4430",
+  title = "from_chars should not parse \"0b\" base prefixes",
+  author = "Jan Schultke",
+  link = "https://cplusplus.github.io/LWG/issue4430",
 )\
 \bib(
-  id = LWG4522,
-  title = Clarify that std::format transcodes for std::wformat_strings,
-  author = Jan Schultke,
-  link = https://cplusplus.github.io/LWG/issue4522,
+  id = "LWG4522",
+  title = "Clarify that std::format transcodes for std::wformat_strings",
+  author = "Jan Schultke",
+  link = "https://cplusplus.github.io/LWG/issue4522",
 )\
 \bib(
-  id = SG16-Issue,
-  title = std::to_chars/std::from_chars overloads for char8_t (#38),
-  link = https://github.com/sg16-unicode/sg16/issues/38,
+  id = "SG16-Issue",
+  title = "std::to_chars/std::from_chars overloads for char8_t (#38)",
+  link = "https://github.com/sg16-unicode/sg16/issues/38",
 )\
 \bib(
-  id = EDIT6848,
-  author = Jan Schultke,
-  title = [charconv.from.chars] Clarify the role of a 0x prefix in from_chars,
-  link = https://github.com/cplusplus/draft/pull/6848,
+  id = "EDIT6848",
+  author = "Jan Schultke",
+  title = "[charconv.from.chars] Clarify the role of a 0x prefix in from_chars",
+  link = "https://github.com/cplusplus/draft/pull/6848",
 )\
 \bib(
-  id = N3047-fprintf,
-  title = N3047 7.23.6.1 [The fprintf function],
-  link = https://www.iso-9899.info/n3047.html#7.23.6.1,
+  id = "N3047-fprintf",
+  title = "N3047 7.23.6.1 [The fprintf function]",
+  link = "https://www.iso-9899.info/n3047.html#7.23.6.1",
 )\
 
 \make_bib

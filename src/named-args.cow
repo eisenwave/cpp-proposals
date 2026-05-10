@@ -1,9 +1,7 @@
-\: cowel 0.6.0
-\cowel_include{libwg21.cow}
+\: cowel 0.9.1
+\cowel_include("libwg21-9.cow")
 
-\wg21_head(
-  title = Named function arguments
-){
+\wg21_head(title={Named function arguments}){
 \dl{
   \dt{Document number:} \dd{\docnum{D3777R0}}
   \dt{Date:}            \dd{\tt{2026-04-06}}
@@ -17,8 +15,8 @@ Lénárd Szolnoki <\mail{cpp@lenardszolnoki.com}>\br
 Ville Voutilainen <\mail{ville.voutilainen@gmail.com}>\br
 Bengt Gustafsson <\mail{bengt.gustafsson@beamways.com}>\br
 }
-  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3777/github)}
-  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/named-args.cow)}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3777/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/named-args.cow")}
 }
 \hr
 }
@@ -47,14 +45,14 @@ f(.x = 0, .z = 2, .y = 1);
 }
 
 A call syntax like this has been suggested multiple times historically
-in \ref(N4172), \ref(P0671R2), and \ref(P1229R0),
+in \ref("N4172"), \ref("P0671R2"), and \ref("P1229R0"),
 but never in a way that found consensus in WG21.
 Nonetheless, this shows that there is interest in the feature,
 and perhaps,
 if approached the right way,
 the idea could succeed.
 
-\h3(id=why-no-struct){Why not just use a \tt{struct} and designated initializers?}
+\h3(id="why-no-struct"){Why not just use a \tt{struct} and designated initializers?}
 
 A common criticism of the idea is that rather than using named arguments,
 one could use a \tcode{struct}.
@@ -97,7 +95,7 @@ this happens at a later stage:
 when forming implicit conversion sequences.
 
 \Bnote{
-See also \ref(#simplifying-overload-resolution).
+See also \ref("#simplifying-overload-resolution").
 }
 
 \h4{Complexity and inconvenience}
@@ -149,10 +147,10 @@ double lerp(lerp_args args) {
 The second overload is not only clunkier to write,
 it also results in worse \tt{-O2} codegen with Clang 21 (targeting the x86-64 psABI):
 
-\codeblock(asm){
+\codeblock("asm"){
 .LCPI0_0:
         .quad   0x3ff0000000000000
-\hl(id-label){lerp(double, double, double)}:
+\hl("id-label"){lerp(double, double, double)}:
         movsd   xmm3, qword ptr [rip + .LCPI0_0] ; load 1.0 rip-relative
         subsd   xmm3, xmm2
         mulsd   xmm1, xmm2
@@ -162,7 +160,7 @@ it also results in worse \tt{-O2} codegen with Clang 21 (targeting the x86-64 ps
 
 .LCPI1_0:
         .quad   0x3ff0000000000000
-\hl(id-label){lerp(lerp_args)}:
+\hl("id-label"){lerp(lerp_args)}:
         movsd   xmm1, qword ptr [rsp + 24]       ; load t from stack
         movsd   xmm0, qword ptr [rip + .LCPI1_0] ; load 1.0 rip-relative
         subsd   xmm0, xmm1
@@ -186,7 +184,7 @@ This is especially unfortunate considering that functions such as
 argument names at the call site.
 
 \Bnote{
-See also \ref(#preventing-common-bugs).
+See also \ref("#preventing-common-bugs").
 }
 
 \h4{Freezing API}
@@ -223,13 +221,13 @@ lerp{}
 lerp(Range{50, 100}, 0.5);
 }
 
-In short, \ref(https://en.wikipedia.org/wiki/Fluent_interface){Fluent Interfaces}
+In short, \ref("https://en.wikipedia.org/wiki/Fluent_interface"){Fluent Interfaces}
 use member function chaining so that each argument is provided individually
 to some kind of "builder class".
 The parameter types technique involves various parameter-specific types
 rather than working with scalar values,
 which often makes misuse of functions less likely thanks to the type system.
-These workarounds share most of the problems described in \ref(#why-no-struct).
+These workarounds share most of the problems described in \ref("#why-no-struct").
 Situationally, they can be quite reasonable.
 For example, bundling the \tcode{a} and \tcode{b} parameters of \tcode{lerp}
 in a \tcode{Range} class does make it unlikely that the function is misused,
@@ -259,14 +257,14 @@ A side-by-side comparison should make it obvious why these techniques are undesi
   }
 }
 
-\table(class=center){
+\table(class="center"){
   \tr{
     \th{Parameter types}
     \th{Named arguments}
   }
   \tr{
   \td{
-    \codeblock(cpp,borders=false){
+    \codeblock("cpp", borders=false){
 struct size_arg {
   size_t value;
 };
@@ -280,7 +278,7 @@ cout << string(size_arg{100}, char_arg{'a'});
 }
   }
   \td{
-    \codeblock(cpp,borders=false){
+    \codeblock("cpp", borders=false){
 string(size_t size, char c);
 // ...
 cout << string(.size = 100, .c = 'a');
@@ -303,7 +301,7 @@ rather than working with simple \tcode{struct}s.
 
 \h3{N4172 "Named arguments"}
 
-\ref(N4172) proposed the following syntax:
+\ref("N4172") proposed the following syntax:
 
 \cppblock{
 void draw_rect(int left, int top, int width, int height, bool fill_rect = false);
@@ -315,7 +313,7 @@ int main()
 }
 }
 
-Functionally, our proposal is almost identical to \ref(N4172),
+Functionally, our proposal is almost identical to \ref("N4172"),
 with a few key differences:
 
 \ul{
@@ -324,7 +322,7 @@ with a few key differences:
     N4172 forfeits the possibility of perfect forwarding because the authors
     "are not aware of a way to make this work without making parameter names part of a function's type".
     We have a plausible solution,
-    described in \ref(#forwarding-named-arguments).
+    described in \ref("#forwarding-named-arguments").
   }
 }
 
@@ -351,7 +349,7 @@ and the perspective on many of these issues changed.
 
 \h3{P0671R2 "Self-explanatory function arguments"}
 
-\ref(P0671R2) proposes the following syntax:
+\ref("P0671R2") proposes the following syntax:
 
 \cppblock{
 double Gauss(double x, double mean, double width, double height);
@@ -364,15 +362,15 @@ R2 was never seen by the committee,
 and to our knowledge, it "died" in SG17.
 
 However, R0 was seen in EWG at Toronto 2017, with largely negative feedback;
-see \ref(MinutesP0671R0).
+see \ref("MinutesP0671R0").
 R0 has a syntax such as \tcode{double !mean} which is incompatible
 with existing declarations, so it is unclear how relevant the negative feedback still is.
 Much of the feedback revolved around API design and possible library workarounds,
-something that we address in great detail in \ref(#introduction).
+something that we address in great detail in \ref("#introduction").
 
 \h3{P1229R0 "Labelled Parameters"}
 
-\ref(P1229R0) takes a dramatically different approach to the previous parameters.
+\ref("P1229R0") takes a dramatically different approach to the previous parameters.
 In essence, it adds the syntax:
 
 \cppblock{
@@ -397,7 +395,7 @@ memcpy(std::labelled<std::label<char, 't', 'o'>>(buf),
 
 Unsurprisingly, this idea did not find consensus.
 The paper was seen in SG17 at San Diego 2018 with negative feedback;
-see \ref(MinutesP1229R0)
+see \ref("MinutesP1229R0")
 (though we don't have record of polls):
 
 \Bquote{
@@ -419,7 +417,7 @@ These things weren't addressed in the paper,
 and I would want to see extensive exploration of these things. 
 }
 
-We see further problems with \ref(P1229R0):
+We see further problems with \ref("P1229R0"):
 
 \ul{
   \li{
@@ -428,7 +426,7 @@ We see further problems with \ref(P1229R0):
   }
   \li{
     Crucial benefits of our proposal such as
-    \ref(#simplifying-overload-resolution)
+    \ref("#simplifying-overload-resolution")
     cannot function as a quasi-library solution.
   }
   \li{
@@ -511,7 +509,7 @@ S s(100);
 
 Clang 21 (similar to EDG 6.7) outputs the following error:
 
-\codeblock(text){
+\codeblock("text"){
 <source>:6:3: error: no matching constructor for initialization of 'S'
     6 | S s(100);
       |   ^ ~~~
@@ -540,7 +538,7 @@ GCC 15 is even worse
 because it does not even mention the constructor the user intended to call;
 it speculates that we tried to call \tcode{S(void*)}, which is wrong:
 
-\codeblock(text){
+\codeblock("text"){
 <source>:6:5: error: invalid conversion from 'int' to 'void*' [-fpermissive]
     6 | S s(100);
       |     ^~~
@@ -554,7 +552,7 @@ it speculates that we tried to call \tcode{S(void*)}, which is wrong:
 MSVC 19.43 combines the worst of Clang and GCC;
 it lists every constructor \em{except} the relevant one:
 
-\codeblock(text){
+\codeblock("text"){
 <source>(6): error C2665: 'S::S': no overloaded function could convert all the argument types
 <source>(4): note: could be 'S::S(S &&)'
 <source>(6): note: 'S::S(S &&)': cannot convert argument 1 from 'int' to 'S &&'
@@ -579,7 +577,7 @@ S s(.x = 100);
 
 This could hypothetically give us the following output:
 
-\codeblock(text){
+\codeblock("text"){
 <source>:6:3: error: no matching constructor for initialization of 'S'
     6 | S s(.x = 100);
       |   ^ ~~~
@@ -743,7 +741,7 @@ would be a bad place compared to all these other alternatives.
 There are certain use cases where
 we would want to support a large set of "flags", "attributes", or "keyword arguments"
 in our functions.
-This is clearly illustrated by proposals such as \ref(P2019R8),
+This is clearly illustrated by proposals such as \ref("P2019R8"),
 which proposes the following syntax:
 
 \cppblock{
@@ -757,7 +755,7 @@ and may include implementation-defined attributes,
 we cannot simply use a \tcode{struct} aggregate that bundles up the attributes.
 Otherwise, future changes would be an ABI break.
 
-With named arguments, and with the hypothetical syntax in \ref(#forwarding-named-arguments)
+With named arguments, and with the hypothetical syntax in \ref("#forwarding-named-arguments")
 (not yet proposed),
 we could solve this issue as follows:
 
@@ -1104,7 +1102,7 @@ f(.y = 1, .x = 0); // OK, deduces first parameter to int.y,
 
 \h3{Disqualifying overloads early}
 
-As explained in \ref(#simplifying-overload-resolution),
+As explained in \ref("#simplifying-overload-resolution"),
 cutting down the number of candidate overloads via argument names
 is an important design goal.
 To do this,
@@ -1201,7 +1199,7 @@ We merely add some policies in library wording.
 
 \h3{Integration into the standard library}
 
-None of the proposals in \ref(#prior-art) discuss
+None of the proposals in \ref("#prior-art") discuss
 how named arguments could be integrated into the C++ standard library,
 despite this being an extremely important point of motivation and an important design aspect.
 There are a few key observations:
@@ -1248,7 +1246,7 @@ no standard library code would need to be changed.
 
 \h2{Implementation experience}
 
-See \ref(ClangFork) for an experimental implementation.
+See \ref("ClangFork") for an experimental implementation.
 
 \h2{Wording}
 
@@ -1259,65 +1257,65 @@ once some design aspects have settled.
 \h2{References}
 
 \bib(
-  id = N4172,
-  title = Named arguments,
-  date = 2014-10-07,
-  author = Ehsan Akhgari\, Botond Ballo,
-  link = https://wg21.link/n4172,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4172.htm,
+  id = "N4172",
+  title = "Named arguments",
+  date = "2014-10-07",
+  author = "Ehsan Akhgari, Botond Ballo",
+  link = "https://wg21.link/n4172",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4172.htm",
 )\
 \bib(
-  id = N5014,
-  title = Working Draft\, Programming Languages — C++,
-  date = 2025-08-05,
-  author = Thomas Köppe,
-  link = https://wg21.link/n5014,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+  id = "N5014",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2025-08-05",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5014",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf",
 )\
 \bib(
-  id = P0671R2,
-  title = Self-explanatory Function Arguments,
-  date = 2018-05-07,
-  author = Axel Naumann,
-  link = https://wg21.link/p0671r2,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0671r2.html,
+  id = "P0671R2",
+  title = "Self-explanatory Function Arguments",
+  date = "2018-05-07",
+  author = "Axel Naumann",
+  link = "https://wg21.link/p0671r2",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0671r2.html",
 )\
 \bib(
-  id = P1229R0,
-  title = Labelled Parameters,
-  date = 2018-10-08,
-  author = Jorg Brown,
-  link = https://wg21.link/p1229r0,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1229r0.html,
+  id = "P1229R0",
+  title = "Labelled Parameters",
+  date = "2018-10-08",
+  author = "Jorg Brown",
+  link = "https://wg21.link/p1229r0",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1229r0.html",
 )\
 \bib(
-  id = P2019R8,
-  title = Thread attributes,
-  date = 2025-01-23,
-  author = Corentin Jabot,
-  link = https://wg21.link/P2019R8,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2019r8.pdf,
+  id = "P2019R8",
+  title = "Thread attributes",
+  date = "2025-01-23",
+  author = "Corentin Jabot",
+  link = "https://wg21.link/P2019R8",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2019r8.pdf",
 )\
 \bib(
-  id = MinutesN4172,
-  title = N4172 EWG Minutes from Urbana-Champaign 2014,
-  link = https://wiki.edg.com/bin/view/Wg21urbanachampaign/FunctionFacilities,
+  id = "MinutesN4172",
+  title = "N4172 EWG Minutes from Urbana-Champaign 2014",
+  link = "https://wiki.edg.com/bin/view/Wg21urbanachampaign/FunctionFacilities",
 )\
 \bib(
-  id = MinutesP0671R0,
-  title = P0671R0 EWG Minutes from Toronto 2017,
-  link = https://wiki.edg.com/bin/view/Wg21toronto2017/P0671R0,
+  id = "MinutesP0671R0",
+  title = "P0671R0 EWG Minutes from Toronto 2017",
+  link = "https://wiki.edg.com/bin/view/Wg21toronto2017/P0671R0",
 )\
 \bib(
-  id = MinutesP1229R0,
-  title = P1229R0 SG17 Minutes from San Diego 2018,
-  link = https://wiki.edg.com/bin/view/Wg21sandiego2018/P1229R0,
+  id = "MinutesP1229R0",
+  title = "P1229R0 SG17 Minutes from San Diego 2018",
+  link = "https://wiki.edg.com/bin/view/Wg21sandiego2018/P1229R0",
 )\
 \bib(
-  id = ClangFork,
-  title = named-args branch of term-est/llvm-project repository,
-  author = Murat Can Çağrı,
-  link = https://github.com/term-est/llvm-project/tree/named-args,
+  id = "ClangFork",
+  title = "named-args branch of term-est/llvm-project repository",
+  author = "Murat Can Çağrı",
+  link = "https://github.com/term-est/llvm-project/tree/named-args",
 )\
 
 \make_bib

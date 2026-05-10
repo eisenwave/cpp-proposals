@@ -1,25 +1,23 @@
-\: cowel 0.6.0
-\cowel_include{libwg21.cow}
+\: cowel 0.9.1
+\cowel_include("libwg21-9.cow")
 
-\wg21_head(
-  title = Fix defects in floating-point \tcode{std::from_chars}\br
-  (LWG3081\, LWG3082\, LWG3456)
-){
+\wg21_head(title={Fix defects in floating-point \tcode{std::from_chars}\br
+  (LWG3081, LWG3082, LWG3456)}){
 \dl{
   \dt{Document number:} \dd{\docnum{P4168R0}}
   \dt{Date:}            \dd{\tt{2026-04-05}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P4168/github)}
-  \dt{Source:}          \dd{\ref(https://github.com/eisenwave/cpp-proposals/blob/master/src/fix-floating-from-chars.cow)}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P4168/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/fix-floating-from-chars.cow")}
 }
 \hr
 }
 
 \Babstract{
-This paper supersedes \ref(P2827R1)
-and fixes \ref(LWG3081), \ref(LWG3082), and \ref(LWG3456).
+This paper supersedes \ref("P2827R1")
+and fixes \ref("LWG3081"), \ref("LWG3082"), and \ref("LWG3456").
 It is intended as a defect report for C++17.
 The handling of floating-point overflow and underflow in \tcode{std::from_chars}
 is inconsistent;
@@ -33,7 +31,7 @@ and every implementation diverges from the wording in the standard.
 
 \h2{Introduction}
 
-In 2018, \ref(LWG3081) pointed out that the \tcode{from_chars} API
+In 2018, \ref("LWG3081") pointed out that the \tcode{from_chars} API
 does not give the user a means of distinguishing floating-point overflow and underflow.
 The perceived defect is a loss of functionality compared to \tcode{std::strtod}.
 This issue remains open to this day despite having Priority 2.
@@ -52,16 +50,16 @@ that \tcode{ec} is value-initialized,
 which no one implements.
 }
 
-In 2023, \ref(P2827R1) attempted to solve this issue,
+In 2023, \ref("P2827R1") attempted to solve this issue,
 but died in LEWG eventually.
 Lack of motivation within the paper was among the feedback given.
-Perplexingly, \ref(P2827R1) does not mention the implementation divergence
+Perplexingly, \ref("P2827R1") does not mention the implementation divergence
 between libstdc++ and MSVC STL, which already existed at the time;
 mentioning it surely would have added motivation.
 
 The issue is much more severe than the LWG issue and paper make it out to be.
 The wording is defective, implementations diverge, and users suffer from it
-to the point where \tcode{boost::from_chars_erange} (\ref(BoostCharConv))
+to the point where \tcode{boost::from_chars_erange} (\ref("BoostCharConv"))
 should arguably be recommended to users over the standard feature;
 at least it is portable and well-specified.
 
@@ -103,7 +101,7 @@ as well as the returned \tcode{std::errc} value.
   }
 }
 
-\table(id=divergence){
+\table(id="divergence"){
   \tr{
     \th{Input}
     \th{libstdc++}
@@ -179,7 +177,7 @@ and the member \tcode{ec} is value-initialized.
 The problem is that for several years while \tcode{std::from_chars} existed,
 there was no definition of \q{range of representable values} (\mark{marked} above)
 in the standard.
-That definition was only added recently in 2023 via \ref(CWG2723);
+That definition was only added recently in 2023 via \ref("CWG2723");
 the definition in \eelis{basic.fundamental#13} includes \em{all real numbers}
 in that range,
 meaning that every standard library is incorrect
@@ -189,7 +187,7 @@ Ergo, not only is underflow indistinguishable from overflow via error code,
 overflow, underflow, and exact rounding are all indistinguishable
 if the wording is implemented (which it isn't).
 
-\h4(id=non-iso-60559-types){No handling of non-ISO/IEC 60559 types}
+\h4(id="non-iso-60559-types"){No handling of non-ISO/IEC 60559 types}
 
 Another problem with the wording is that it does not account for types
 that do not have a representation of infinity or NaN.
@@ -223,9 +221,9 @@ but this is not stated anywhere;
 only the syntax of the matched pattern is specified,
 not the interpretation of the pattern.
 The description of the matched pattern is also deemed underspecified,
-as explained in \ref(LWG3456).
+as explained in \ref("LWG3456").
 
-\h4(id=signaling-nans){Signaling NaNs make \tt{std::from_chars} unimplementable}
+\h4(id="signaling-nans"){Signaling NaNs make \tt{std::from_chars} unimplementable}
 
 Yet another problem is that \tcode{std::from_chars}
 cannot be implemented for types that can represent signaling NaNs;
@@ -299,7 +297,7 @@ There seem to be only two plausible options with sufficiently low impact:
 I argue that the libc++ behavior is strictly better because
 \ul{
   \li{
-    the behavior resolves \ref(LWG3081) by making underflow distinguishable from overflow,
+    the behavior resolves \ref("LWG3081") by making underflow distinguishable from overflow,
   }
   \li{
     users may actually want to ignore \tcode{result_out_of_range} and simply
@@ -324,7 +322,7 @@ to signal underflow and overflow is far from arbitrary;
 \tcode{strtod} has that design,
 and correctly implements the ISO/IEC 60559 (or IEEE-754) operation
 \q{convertFromDecimalCharacter} for floating-point types
-(see \ref(https://cigix.me/c23#F.3){C23\N{NO-BREAK SPACE}§F.3}).
+(see \ref("https://cigix.me/c23#F.3"){C23\N{NO-BREAK SPACE}§F.3}).
 
 \tcode{std::from_chars} should have that same behavior to increase ISO/IEC 60559
 conformance.
@@ -332,7 +330,7 @@ conformance.
 corresponding to \q{roundTiesToEven} already,
 which makes it extremely similar to the ISO/IEC 60559 operation.
 
-As mentioned in \ref(#signaling-nans),
+As mentioned in \ref("#signaling-nans"),
 it is also necessary to handle signaling NaNs in some way,
 as part of the \q{convertFromDecimalCharacter} operation.
 The easiest way to do so would be to double down on the practice
@@ -363,7 +361,7 @@ standardizing the GCC behavior appears more risky.
 
 \h3{Alternatives considered}
 
-Neither \ref(LWG3081) nor \ref(P2827R1) fully resolve the defects in the wording.
+Neither \ref("LWG3081") nor \ref("P2827R1") fully resolve the defects in the wording.
 Each proposes a different value that should be written for overflow;
 the LWG issue proposes \tcode{numeric_limits<T>::max()}, and
 the paper proposes \tcode{1}.
@@ -376,7 +374,7 @@ error and use the value.
 
 \h3{Further edge cases}
 
-As explained in \ref(#non-iso-60559-types),
+As explained in \ref("#non-iso-60559-types"),
 there are various edge cases such as parsing the string \tcode{"INFINITY"}
 and attempting to store it in a floating-point type
 that does not have a representation of infinity.
@@ -387,7 +385,7 @@ meaning that negative and positive infinity and NaN are also supported.
 
 The proposed solution is to handle these cases
 as closely as possible to \tcode{std::strtod},
-as specified in \ref(https://cigix.me/c23#7.24.1.5){C23 §7.24.1.5}.
+as specified in \ref("https://cigix.me/c23#7.24.1.5"){C23 §7.24.1.5}.
 For example, this means that when \tcode{"inf"} is parsed but not representable in the type,
 the greatest finite value is returned instead, and
 the error code is \tcode{errc::result_out_of_range}.
@@ -395,11 +393,11 @@ the error code is \tcode{errc::result_out_of_range}.
 \h2{Implementation experience}
 
 The proposed behavior has been released in MSVC STL and libc++,
-except that the behavior in \ref(#further-edge-cases) does not need to be implemented
+except that the behavior in \ref("#further-edge-cases") does not need to be implemented
 and only exists on paper for these implementations.
 
 The proposed behavior has also been implemented as
-\tcode{boost::from_chars_erange} (\ref(BoostCharConv)).
+\tcode{boost::from_chars_erange} (\ref("BoostCharConv")).
 
 \h2{Editorial problems}
 
@@ -437,7 +435,7 @@ closest to the value of the string matching the pattern.
 
 We don't actually get to understand what the pattern is here,
 just that we should look at \tcode{strtod} and make mental changes relative to that.
-\ref(https://cigix.me/c23#7.24.1.5.p3){C23 §7.24.1.5 paragraph 3}
+\ref("https://cigix.me/c23#7.24.1.5.p3"){C23 §7.24.1.5 paragraph 3}
 then describes the sequence partially using a mixture of prose and grammar,
 containing descriptions such as
 \Bquote{
@@ -457,16 +455,16 @@ of \q{excluding} and \q{except that}.
 This is an ineffective way to communicate the behavior of \tcode{std::from_chars}
 and should be rewritten so that the accepted pattern can be understood
 solely through \eelis{charconv.from.chars}.
-\ref(LWG3456) performs such a rewrite,
+\ref("LWG3456") performs such a rewrite,
 but does not fully decouple \tcode{std::from_chars} from the C wording.
 
-A proper rewrite can also fix the lack of clarity pointed out in \ref(LWG3082).
+A proper rewrite can also fix the lack of clarity pointed out in \ref("LWG3082").
 
 \h2{Wording}
 
-The changes are relative to \ref(N5032).
+The changes are relative to \ref("N5032").
 
-\h3(show-number=false){[version.syn]}
+\h3(show_number=false){[version.syn]}
 
 Bump the feature-test macro in \eelis{version.syn} as follows:
 
@@ -482,7 +480,7 @@ There is no separate macro for \tcode{std::from_chars}.
 for all of \header{charconv}.
 }
 
-\h3(show-number=false){[charconv.to.chars]}
+\h3(show_number=false){[charconv.to.chars]}
 
 Change \eelis{charconv.to.chars#2} as follows:
 
@@ -507,7 +505,7 @@ resolving any remaining ties using rounding
 according to \tcode{round_to_nearest}\iref{round.style}.
 }
 
-\h3(show-number=false){[charconv.from.chars]}
+\h3(show_number=false){[charconv.from.chars]}
 
 \style{
   .spaced-words {
@@ -556,7 +554,7 @@ matches a \grammarterm{from-chars-signed-integer-pattern}
 if \tcode{value} is of a signed type, and
 matches a \grammarterm{from-chars-unsigned-integer-pattern} otherwise.
 
-\dl(class=grammar spaced-words){
+\dl(class="grammar spaced-words"){
   \dt{\grammarterm{from-chars-signed-integer-pattern}:}
   \dd{\opt{\tt{-}} from-chars-unsigned-integer-pattern}
 
@@ -578,7 +576,7 @@ represent digit characters with value 10..35, respectively.
 \editnote{
 The description deliberately uses code points
 to avoid ever spelling a character literal,
-in preparation for \ref(P3876R1),
+in preparation for \ref("P3876R1"),
 which adds support for \tcode{char8_t} and other character types.
 }
 
@@ -632,7 +630,7 @@ from_chars_result from_chars(const char* first, const char* last,
 Let the pattern be the maximal sequence of characters starting with \tcode{*first}
 that matches a \grammarterm{from-chars-floating-pattern}.
 
-\dl(class=grammar spaced-words){
+\dl(class="grammar spaced-words"){
   \dt{\grammarterm{from-chars-floating-pattern}:}
   \dd{\opt{\tt{-}} from-chars-unsigned-floating-pattern}
 
@@ -848,60 +846,60 @@ Nothing.
 \h2{References}
 
 \bib(
-  id = N5032,
-  title = Working Draft\, Programming Languages — C++,
-  date = 2025-12-15,
-  author = Thomas Köppe,
-  link = https://wg21.link/n5032,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf,
+  id = "N5032",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2025-12-15",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5032",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf",
 )\
 \bib(
-  id = P2827R1,
-  title = Floating-point overflow and underflow in from_chars (LWG 3081),
-  date = 2023-11-20,
-  author = Zhihao Yan,
-  link = https://wg21.link/p2827r1,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2827r1.html,
+  id = "P2827R1",
+  title = "Floating-point overflow and underflow in from_chars (LWG 3081)",
+  date = "2023-11-20",
+  author = "Zhihao Yan",
+  link = "https://wg21.link/p2827r1",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2023/p2827r1.html",
 )\
 \bib(
-  id = P3876R1,
-  title = Extending <charconv> support to more character types,
-  author = Jan Schultke\, Peter Bindels,
-  link = https://wg21.link/p3876r1,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3876r1.html,
+  id = "P3876R1",
+  title = "Extending <charconv> support to more character types",
+  author = "Jan Schultke, Peter Bindels",
+  link = "https://wg21.link/p3876r1",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3876r1.html",
 )\
 \bib(
-  id = LWG3081,
-  title = Floating point from_chars API does not distinguish between overflow and underflow,
-  date = 2018-03-12,
-  author = Jiang An,
-  link = https://wg21.link/LWG3081,
+  id = "LWG3081",
+  title = "Floating point from_chars API does not distinguish between overflow and underflow",
+  date = "2018-03-12",
+  author = "Jiang An",
+  link = "https://wg21.link/LWG3081",
 )\
 \bib(
-  id = LWG3082,
-  title = from_chars specification regarding floating point rounding is inconsistent,
-  date = 2018-03-12,
-  author = Greg Falcon,
-  link = https://wg21.link/LWG3082,
+  id = "LWG3082",
+  title = "from_chars specification regarding floating point rounding is inconsistent",
+  date = "2018-03-12",
+  author = "Greg Falcon",
+  link = "https://wg21.link/LWG3082",
 )\
 \bib(
-  id = LWG3456,
-  title = Pattern used by std::from_chars is underspecified,
-  date = 2020-06-23,
-  author = Jonathan Wakely,
-  link = https://wg21.link/LWG3456,
+  id = "LWG3456",
+  title = "Pattern used by std::from_chars is underspecified",
+  date = "2020-06-23",
+  author = "Jonathan Wakely",
+  link = "https://wg21.link/LWG3456",
 )\
 \bib(
-  id = CWG2723,
-  title = Range of representable values for floating-point types,
-  date = 2023-04-21,
-  author = Jiang An,
-  link = https://cplusplus.github.io/CWG/issues/2723.html,
+  id = "CWG2723",
+  title = "Range of representable values for floating-point types",
+  date = "2023-04-21",
+  author = "Jiang An",
+  link = "https://cplusplus.github.io/CWG/issues/2723.html",
 )\
 \bib(
-  id = BoostCharConv,
-  title = CharConv: An Implementation of <charconv> in C++11,
-  link = https://www.boost.org/doc/libs/latest/libs/charconv/doc/html/charconv.html,
+  id = "BoostCharConv",
+  title = "CharConv: An Implementation of <charconv> in C++11",
+  link = "https://www.boost.org/doc/libs/latest/libs/charconv/doc/html/charconv.html",
 )\
 
 \make_bib

@@ -1,9 +1,7 @@
-\: cowel 0.6.0
-\cowel_include{libwg21.cow}
+\: cowel 0.9.1
+\cowel_include("libwg21-9.cow")
 
-\wg21_head(
-    title = Better shifting
-){
+\wg21_head(title={Better shifting}){
 \dl{
   \dt{Document number:} \dd{\docnum{P3793R1}}
   \dt{Date:}            \dd{\tt{2025-11-19}}
@@ -11,8 +9,8 @@
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Brian Bi <\mail{bbi5291@gmail.com}>}
   \dt{Co-authors:}      \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-  \dt{GitHub Issue:}    \dd{\ref(https://wg21.link/P3793/github)}
-  \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/better-shifting.cow)}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3793/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/Eisenwave/cpp-proposals/blob/master/src/better-shifting.cow")}
 }
 \hr
 }
@@ -30,7 +28,7 @@ following advantages over the built-in shift operators:
 }
 }
 
-\h2(listed = false){Contents}
+\h2(listed=false){Contents}
 
 \make_contents
 
@@ -44,10 +42,10 @@ following advantages over the built-in shift operators:
     instead of \tcode{int}
   }
   \li{changed behavior for negative shift amounts to "shift in the opposite direction"}
-  \li{added \ref(#shl-behavior-emulation)}
-  \li{added \ref(#shl-benchmarks)}
-  \li{added \ref(#possible-implementation)}
-  \li{rebased \ref(#wording) on \ref(N5014)}
+  \li{added \ref("#shl-behavior-emulation")}
+  \li{added \ref("#shl-benchmarks")}
+  \li{added \ref("#possible-implementation")}
+  \li{rebased \ref("#wording") on \ref("N5014")}
   \li{fixed various minor typos and wording issues}
 }
 
@@ -84,7 +82,7 @@ correct result.
 For these reasons, we are instead proposing to solve the problems with shifting in C++
 by introducing new Standard Library facilities in the \header{bit} header.
 
-\h2(id=motivation){Motivation \N{EM DASH} Why are overlong shifts needed?}
+\h2(id="motivation"){Motivation \N{EM DASH} Why are overlong shifts needed?}
 
 We consider the undefined behavior of overlong shifts to be gratuitous.
 Unlike other arithmetic operators, which produce undefined behavior only when the result is
@@ -110,7 +108,7 @@ Consider the task of implementing the following function:
 
 \cppblock{
 /// \serif{Return the value of \tcode{x} with the least significant \tcode{num_bits} bits masked out.}
-/// \serif{\tcode{num_bits} shall be nonnegative and \N{LESS THAN OR EQUAL TO} \tcode{32}.}
+/// \serif{\tcode{num_bits} shall be nonnegative and \N{LESS-THAN OR EQUAL TO} \tcode{32}.}
 std::uint32_t mask_lsb(std::uint32_t x, int num_bits);
 }
 
@@ -210,7 +208,7 @@ unsigned int shl2(unsigned int x, unsigned int amount) {
 }
 }
 
-\codeblock(asm){
+\codeblock("asm"){
 shl1:
         mov     ecx, esi
         xor     eax, eax
@@ -254,7 +252,7 @@ possibly by inserting a cast that will be optimized out.
 Conversely, the deliberate choice to use a signed type for the left operand of
 a right shift indicates intent to perform an arithmetic shift.
 The proposed \tcode{std::to_signed} and \tcode{std::to_unsigned}
-functions in \ref(P3643R0) would make such conversions convenient,
+functions in \ref("P3643R0") would make such conversions convenient,
 even in generic code.
 
 A survey of popular programming languages supports this design direction:
@@ -313,15 +311,15 @@ However, we now believe we've identified the right direction for the following r
     whereas \tcode{<<} is as unsafe and cheap as possible.
   }
   \li{
-    All other behaviors can be obtained by modifying the call site (\ref(#shl-behavior-emulation)).
+    All other behaviors can be obtained by modifying the call site (\ref("#shl-behavior-emulation")).
   }
   \li{
     The performance cost of shifting in the opposite direction was measured to be acceptable
-    (\ref(#shl-benchmarks)).
+    (\ref("#shl-benchmarks")).
   }
 }
 
-\h4(id=shl-behavior-emulation){Emulating possible behaviors using \tcode{std::shl}}
+\h4(id="shl-behavior-emulation"){Emulating possible behaviors using \tcode{std::shl}}
 
 \Bex{
 See below various different ways to use \tcode{std::shl},
@@ -352,12 +350,12 @@ int32_t r = std::shl(x, s);
 }
 }
 
-\h4(id=shl-benchmarks){Benchmarks of \tcode{std::shl} variants}
+\h4(id="shl-benchmarks"){Benchmarks of \tcode{std::shl} variants}
 
 To make an educated choice about which behavior would be appropriate for negative
 shifts in \tcode{std::shl},
 find a comparison of the following functions below
-(\ref(QuickBench), \ref(CompilerExplorer)):
+(\ref("QuickBench"), \ref("CompilerExplorer")):
 
 \Bnote{
 The latter functions described as "bidirectional"
@@ -387,7 +385,7 @@ but "works in practice".
   }
 }
 
-\table(class=tony-table){
+\table(class="tony-table"){
 \tr{
   \th{Function}
   \th{Assembly\br{}(\tt{clang++-21 -O2 -march=x86-64-v4})}
@@ -395,12 +393,12 @@ but "works in practice".
 }
 
 \tr{
-\td{\codeblock(cpp, borders=false){
+\td{\codeblock("cpp", borders=false){
 unsigned shl_unsafe(unsigned x, int s) {
     return x << s;
 }
 }}
-\td{\codeblock(nasm, borders=false){
+\td{\codeblock("nasm", borders=false){
 shl_unsafe:
         shlx    eax, edi, esi
         ret
@@ -409,14 +407,14 @@ shl_unsafe:
 }
 
 \tr{
-\td{\codeblock(cpp, borders=false){
+\td{\codeblock("cpp", borders=false){
 unsigned shl_branchless(
   unsigned x, int s
 ) {
     return (s < 32) * (x << s);
 }
 }}
-\td{\codeblock(nasm, borders=false){
+\td{\codeblock("nasm", borders=false){
 shl_branchless:
         xor     ecx, ecx
         cmp     esi, 32
@@ -428,7 +426,7 @@ shl_branchless:
 }
 
 \tr{
-\td{\codeblock(cpp, borders=false){
+\td{\codeblock("cpp", borders=false){
 unsigned shl_branching(
   unsigned x, int s
 ) {
@@ -436,7 +434,7 @@ unsigned shl_branching(
     else return 0;
 }
 }}
-\td{\codeblock(nasm, borders=false){
+\td{\codeblock("nasm", borders=false){
 shl_branching:
         xor     ecx, ecx
         cmp     esi, 32
@@ -448,7 +446,7 @@ shl_branching:
 }
 
 \tr{
-\td{\codeblock(cpp, borders=false){
+\td{\codeblock("cpp", borders=false){
 // Bidirectional (proposed behavior).
 unsigned shl_bi_branching(
   unsigned x, int s
@@ -462,7 +460,7 @@ unsigned shl_bi_branching(
     }
 }
 }}
-\td{\codeblock(nasm, borders=false){
+\td{\codeblock("nasm", borders=false){
 shl_bi_branching:
         test    esi, esi
         js      .LBB4_2
@@ -484,7 +482,7 @@ shl_bi_branching:
 }
 
 \tr{
-\td{\codeblock(cpp, borders=false){
+\td{\codeblock("cpp", borders=false){
 // Bidirectional (proposed behavior).
 unsigned shl_bi_semi_branchless(
   unsigned x, int s
@@ -496,7 +494,7 @@ unsigned shl_bi_semi_branchless(
     }
 }
 }}
-\td{\codeblock(nasm, borders=false){
+\td{\codeblock("nasm", borders=false){
 shl_bi_semi_branchless:
         test    esi, esi
         js      .LBB5_2
@@ -518,7 +516,7 @@ shl_bi_semi_branchless:
 }
 
 \tr{
-\td{\codeblock(cpp, borders=false){
+\td{\codeblock("cpp", borders=false){
 // Bidirectional (proposed behavior).
 unsigned shl_bi_branchless(
   unsigned x, int s
@@ -529,7 +527,7 @@ unsigned shl_bi_branchless(
     return (mask & neg) | (~mask & pos);
 }
 }}
-\td{\codeblock(nasm, borders=false){
+\td{\codeblock("nasm", borders=false){
 shl_bi_branchless:
         xor     ecx, ecx
         cmp     edi, 32
@@ -642,7 +640,7 @@ The rationale for these signature is as follows:
 
 \h3{SIMD support}
 
-Following \ref(P2933R4),
+Following \ref("P2933R4"),
 almost all \header{bit} functions have a corresponding overload in \header{simd},
 including \tcode{std::rotl} and \tcode{std::rotr}.
 
@@ -680,12 +678,12 @@ constexpr T shr(T x, S s) noexcept {
 }
 }
 
-See also \ref(Cxx26BitPermutations) for a reference implementation and test code.
+See also \ref("Cxx26BitPermutations") for a reference implementation and test code.
 
 \tcode{simd::shl} and \tcode{simd::shr} may be implemented (naively)
 by performing the operation for each element.
 A less naive implementation would be based on the \tcode{branchless} variants
-shown in \ref(#shl-benchmarks).
+shown in \ref("#shl-benchmarks").
 
 \Bnote{
 Conveniently, the underlying instructions for comparing integers yield bit masks
@@ -696,12 +694,12 @@ This makes it easy to implement \tcode{(s < 32) * (x << s)} in terms of e.g.
 
 \h2{Wording}
 
-The following changes are relative to \ref(N5014).
+The following changes are relative to \ref("N5014").
 
 \Bnote{
 The \tcode{shl} and \tcode{shr} functions should immediately precede the
 \tcode{rotl} and \tcode{rotr} functions in the wording. Therefore, if this paper
-and \ref(P3764R0) are adopted in the same meeting, the \tcode{shl} and \tcode{shr}
+and \ref("P3764R0") are adopted in the same meeting, the \tcode{shl} and \tcode{shr}
 functions should be inserted between the \tcode{msb_to_mask} and \tcode{rotl}
 functions.
 }
@@ -745,10 +743,10 @@ namespace std {
 
 In \eelis{bit}, add a new subclause immediately preceding \eelis{bit.rotate}:
 
-\Vset(pnum){0}
+\cowel_var_set("pnum", 0)
 
 \Bins{
-\cowel_html_element(h3){Shifting \stable_ref{bit.shift}}
+\cowel_html_element("h3"){Shifting \stable_ref{bit.shift}}
 
 \pnum
 In the following descriptions,
@@ -861,7 +859,7 @@ In \eelis{simd.bit}, immediately preceding the first declaration of
 \tcode{rotl}, insert the following:
 
 
-\Vset(pnum){10}
+\cowel_var_set("pnum", 10)
 
 \Bins{
 \itemdecl{
@@ -921,51 +919,51 @@ for all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}), where
 \h2{References}
 
 \bib(
-  id = N5014,
-  title = Working Draft\, Programming Languages — C++,
-  date = 2025-08-05,
-  author = Thomas Köppe,
-  link = https://wg21.link/n5014,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf,
+  id = "N5014",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2025-08-05",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5014",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf",
 )\
 \bib(
-  id = P2933R4,
-  title = Extend <bit> header function with overloads  for std::simd,
-  author = Daniel Towner\, Ruslan Arutyunyan,
-  date = 2025-02-13,
-  link = https://wg21.link/p2933r4,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2933r4.html,
+  id = "P2933R4",
+  title = "Extend <bit> header function with overloads  for std::simd",
+  author = "Daniel Towner, Ruslan Arutyunyan",
+  date = "2025-02-13",
+  link = "https://wg21.link/p2933r4",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2933r4.html",
 )\
 \bib(
-  id = P3643R0,
-  title = \tcode{std::to_signed} and \tcode{std::to_unsigned},
-  date = 2025-03-13,
-  author = Jan Schultke,
-  link = https://wg21.link/p3643r0,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3643r0.html,
+  id = "P3643R0",
+  title={\tcode{std::to_signed} and \tcode{std::to_unsigned}},
+  date = "2025-03-13",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3643r0",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3643r0.html",
 )\
 \bib(
-  id = P3764R0,
-  title = A utility function for propagating the most significant bit,
-  date = 2025-07-15,
-  author = Jan Schultke,
-  link = https://wg21.link/p3764r0,
-  long-link = https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3764r0.html,
+  id = "P3764R0",
+  title = "A utility function for propagating the most significant bit",
+  date = "2025-07-15",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3764r0",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3764r0.html",
 )\
 \bib(
-  id = QuickBench,
-  title = Benchmark for various ways of handling negative shift amounts,
-  link = https://quick-bench.com/q/HcAUoOoGFHnm5nx1G_rJs52oLaY,
+  id = "QuickBench",
+  title = "Benchmark for various ways of handling negative shift amounts",
+  link = "https://quick-bench.com/q/HcAUoOoGFHnm5nx1G_rJs52oLaY",
 )\
 \bib(
-  id = CompilerExplorer,
-  title = Assembly comparison for various ways of handling negative shift amounts,
-  link = https://godbolt.org/z/1Won5qjo9,
+  id = "CompilerExplorer",
+  title = "Assembly comparison for various ways of handling negative shift amounts",
+  link = "https://godbolt.org/z/1Won5qjo9",
 )\
 \bib(
-  id = Cxx26BitPermutations,
-  author = Jan Schultke,
-  link = https://github.com/Eisenwave/cxx26-bit-permutations,
+  id = "Cxx26BitPermutations",
+  author = "Jan Schultke",
+  link = "https://github.com/Eisenwave/cxx26-bit-permutations",
 )\
 
 \make_bib
