@@ -28,6 +28,33 @@ with other rounding modes.
 
 \h3{Changes since R3}
 
+The paper was seen during the 2026-03-03 LEWG telecon,
+with the following poll results:
+
+\Bquote{
+POLL: In P3724R3 rename div_to_pos_inf/div_to_neg_inf into div_ceil/div_floor
+\five_way_poll(2, 6, 6, 2, 2)
+\ul{
+  \li{\b{Author position}: SA}
+  \li{\b{Outcome}: No consensus}
+}
+
+POLL: In P3724R3 take the rounding mode as a parameter
+(either template or function)
+(the name std::div is already taken, but might not conflict)
+\five_way_poll(3, 5, 4, 4, 1)
+\ul{
+  \li{\b{Author position}: WA}
+  \li{\b{Outcome}: No consensus}
+}
+}
+
+While neither poll reached a consensus,
+additional discussion was encouraged for both topics.
+Also, Euclidean division was discussed positively on the reflector
+immediately after the telecon.
+The following changes were applied subsequently:
+
 \ul{
   \li{
     added row separators to the tables in
@@ -38,6 +65,9 @@ with other rounding modes.
   }
   \li{
     added \ref("#rounding-template-parameter")
+  }
+  \li{
+    added \ref("#euclidean-division")
   }
   \li{
     repositioned the new \Fundescx{Constant-checked preconditions}
@@ -782,37 +812,6 @@ However, the name is ambiguous between
   \li{rounding toward \math{\mo{±}\mi{∞}}, i.e. away from zero.}
 }
 
-\h4(id="naming-mod"){Why is it \tcode{std::mod}?}
-
-\Bnote{
-See \ref("#mod").
-}
-
-Despite the fact that \tt{mod} is somewhat of a misnomer
-("remainder" and "modulo" are synonyms),
-and despite that it is inconsistent with \tcode{std::div_rem},
-it is arguably the best name because:
-
-\ul{
-  \li{
-    It follows the conventions of Haskell, Ada, CSS, and many more languages,
-    where \tt{mod} rounds towards \neg_inf (unlike \tt{\N{PERCENT SIGN}}, \tt{rem}, etc.).
-    See \ref("#language-support").
-  }
-  \li{
-    It matches the notation of the modulo operator in mathematical literature.
-    That is,
-    \math{\mrow{
-      \mo{\N{MINUS SIGN}}
-      \mn{2}
-      \mo{mod}
-      \mn{5}
-      \mo{=}
-      \mn{3}
-    }}\N{ZERO WIDTH NO-BREAK SPACE}.
-  }
-}
-
 \h3{Interface}
 
 The functions generally match the style of similar features in \header{numeric},
@@ -990,7 +989,9 @@ It is therefore valid to ask:
 \blockquote{Do we really need all these rounding modes?}
 
 All proposed "top-level rounding modes" have practical applications.
-For consistency, the same set of "tie-breaking rounding modes" is provided.
+For consistency,
+the same set of "tie-breaking rounding modes" is provided for to-nearest division,
+not including Euclidean division.
 In any case, the implementation of these modes is all fairly similar,
 and there is neither any significant implementation cost (\ref("#implementation"))
 nor wording cost (\ref("#wording"))
@@ -1007,11 +1008,48 @@ but no division to the nearest integer with tie breaks away from zero.
 
 The "trivial" functions \tcode{std::div_to_zero}
 and \tcode{std::rem_dividend_sign} exist solely for consistency and enhanced expressiveness.
-Note that not every has a truncating integer division like C++.
+Note that not every language has a truncating integer division like C++.
 For example, the \tt{\hl("sym-op"){//}} operator in Python rounds towards \neg_inf.
 A team of developers with primarily Python experience/habits
 may thus benefit from always expressing
 rounding mode explicitly with \tcode{std::div_to_zero} to avoid confusion.
+
+\h4{Euclidean division}
+
+Euclidean division defines the remainder to be non-negative,
+regardless of the sign of the divisor.
+Concretely, \tcode{std::rem_euclid(x, y)} is always in the interval
+\math{\mrow{
+  \mo{[}
+  \mn{0}
+  \mo{,}
+  \mi{abs}
+  \mo(stretchy="false"){(}
+  \mi{y}
+  \mo(stretchy="false"){)}
+  \mo{)}
+}}
+for nonzero \tcode{y}.
+
+This is especially useful for modular arithmetic,
+where representative values are commonly expected to be non-negative.
+Unlike division to \neg_inf,
+this remains true even for negative divisors.
+
+\Bnote{
+While division to \neg_inf can almost always be used as well
+since the divisor is typically positive in modular arithmetic
+(this is common practice in Python),
+Euclidean division is more widely known as the mode that yields
+remainders suitable for modular arithmetic.
+\tcode{std::rem_euclid} is widely used in Rust.
+}
+
+Since the remainder of Euclidean division is so uniquely important,
+the proposal even includes a dedicated \tcode{std::rem_euclid} function
+for obtaining the remainder directly, without the quotient.
+For other rounding modes,
+the remainder is typically only obtained in combination with the quotient.
 
 \h4{Rounding to even/odd}
 
@@ -1038,7 +1076,7 @@ rounding to even/odd as tie-breakers.
 Saying "round to nearest" is not clear enough in itself
 because ties (where the fractional part of the quotient is exactly \tcode{.5})
 could also be resolved in multiple ways.
-Any of the "top-level rounding modes" could plausibly be chosen
+Several of the "top-level rounding modes" could plausibly be chosen
 as a "tie-breaking rounding mode" as well,
 which is what this proposal offers.
 
@@ -1186,27 +1224,6 @@ Some software uses fixed-point numbers instead of floating-point numbers
 Fixed-point arithmetic also requires rounding (with such modes),
 so ISO/IEC 60559 rounding modes are useful to have in integer division.
 
-\h3(id="mod"){\tcode{std::mod}}
-
-In addition to the quotient (\tcode{std::div_*})
-and quotient/remainder functions (\tcode{std::div_rem_*}),
-we also define a single function \tcode{std::mod}
-which specifically computes the remainder of the division rounding towards \neg_inf.
-
-Unlike the other rounding modes,
-the remainder of division rounding to \neg_inf is uniquely useful for modular arithmetic
-because the sign of the remainder is the sign of the divisor.
-In other words, if we divide by a positive number, the remainder is always positive.
-This is why it has a dedicated function.
-
-Division rounding to zero, where the sign of the remainder is that of the divisor,
-already has \tcode{\N{PERCENT SIGN}}, so no dedicated function is required.
-The other rounding modes have more chaotic remainder signs,
-and thus it is rarely useful to compute the remainder in isolation,
-not in conjunction with the quotient.
-
-\Bnote{See \ref("#naming-mod").}
-
 \h3{SIMD overloads}
 
 In the long run,
@@ -1327,6 +1344,7 @@ std::div_to_zero(x, y)          \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="qu
 std::div_away_zero(x, y)        \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-mag"){-3}}
 std::div_to_pos_inf(x, y)       \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-ceil"){-2}}
 std::div_to_neg_inf(x, y)       \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-floor"){-3}}
+std::div_euclid(x, y)           \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-euclid"){-3}}
 
 std::div_ties_to_zero(x, y)     \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-ties-trunc"){-2}}
 std::div_ties_away_zero(x, y)   \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-ties-mag"){-2}}
@@ -1335,8 +1353,9 @@ std::div_ties_to_neg_inf(x, y)  \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="qu
 std::div_ties_to_odd(x, y)      \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-ties-odd"){-2}}
 std::div_ties_to_even(x, y)     \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="quo-ties-even"){-2}}
 
-x \N{PERCENT SIGN} y                           \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="rem-trunc"){-2}} // sign matches x
-std::mod(x, y)                  \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="rem-floor"){3}} // sign matches y
+x % y                                   \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="rem-trunc"){-2}} // sign matches x
+std::div_rem_to_neg_inf(x, y).remainder \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="rem-floor"){3}} // sign matches y
+std::rem_euclid(x, y)                   \N{RIGHTWARDS ARROW}  \hl("number"){\span(id="rem-euclid"){3}} // sign positive
 }
 
 \Bnote{
@@ -1482,6 +1501,8 @@ namespace std {
   template<class T>
     constexpr T div_to_neg_inf(T x, T y);
   template<class T>
+    constexpr T div_euclid(T x, T y);
+  template<class T>
     constexpr T div_ties_to_zero(T x, T y);
   template<class T>
     constexpr T div_ties_away_zero(T x, T y);
@@ -1503,6 +1524,8 @@ namespace std {
   template<class T>
     constexpr div_result<T> div_rem_to_neg_inf(T x, T y);
   template<class T>
+    constexpr div_result<T> div_rem_euclid(T x, T y);
+  template<class T>
     constexpr div_result<T> div_rem_ties_to_zero(T x, T y);
   template<class T>
     constexpr div_result<T> div_rem_ties_away_zero(T x, T y);
@@ -1516,7 +1539,7 @@ namespace std {
     constexpr div_result<T> div_rem_ties_to_even(T x, T y);
 
   template<class T>
-    constexpr T mod(T x, T y);}
+    constexpr T rem_euclid(T x, T y);}
 }
 }
 }
@@ -1535,7 +1558,7 @@ Delete \eelis{numeric.sat.func#11}:
 \Bdel{
 \remarks
 A function call expression that violates the precondition in the \expects element
-is not a core constant expression\iref{expr.const}.   
+is not a core constant expression\iref{expr.const}.
 }
 
 \h3(id="new-subclause", show_number=false){[numeric.int.div]}
@@ -1624,6 +1647,26 @@ template<class T>
 
 \pnum
 \div_returns{towards negative infinity}
+}
+
+\itemdecl{
+template<class T>
+  constexpr T div_euclid(T x, T y);
+}
+
+\itemdescr{
+\pnum
+\div_constraints
+
+\pnum
+\constexpects
+\tcode{x / y} is well-defined.
+
+\pnum
+\returns
+If \tcode{x} is positive, \tcode{x / y}.
+Otherwise, if \tcode{y} is positive, \tcode{x / y - 1}.
+Otherwise, \tcode{x / y + 1}.
 }
 
 \itemdecl{
@@ -1773,18 +1816,33 @@ int r2 = x - q * 2;                                  // \serif{This multiplicati
 
 \itemdecl{
 template<class T>
-  constexpr T mod(T x, T y);
+  constexpr T rem_euclid(T x, T y);
 }
 
 \itemdescr{
 \pnum
 \effects
-Equivalent to \tcode{div_rem_to_neg_inf(x, y).remainder}.
+Equivalent to \tcode{div_rem_euclid(x, y).remainder}.
 \br\note{
-The result is negative if and only if \tcode{y} is negative and \tcode{x} is nonzero.
+The result is in the range
+\math{\mrow{
+  \mo{[}
+  \mn{0}
+  \mo{,}
+  \mi{abs}
+  \mo(stretchy="false"){(}
+  \mi{y}
+  \mo(stretchy="false"){)}
+  \mo{)}
+}}.
+}
 }
 }
 
+\editnote{
+Using math font for the range in the \tcode{rem_euclid} note is actually important
+because it bypasses the edge case of
+\tcode{y} being \tcode{INT_MIN} and thus \tcode{abs(y)} being undefined.
 }
 
 \Bwarn{

@@ -7,6 +7,7 @@ const quo_trunc = document.getElementById("quo-trunc");
 const quo_mag = document.getElementById("quo-mag");
 const quo_floor = document.getElementById("quo-floor");
 const quo_ceil = document.getElementById("quo-ceil");
+const quo_euclid = document.getElementById("quo-euclid");
 const quo_ties_trunc = document.getElementById("quo-ties-trunc");
 const quo_ties_mag = document.getElementById("quo-ties-mag");
 const quo_ties_floor = document.getElementById("quo-ties-floor");
@@ -15,11 +16,12 @@ const quo_ties_odd = document.getElementById("quo-ties-odd");
 const quo_ties_even = document.getElementById("quo-ties-even");
 const rem_trunc = document.getElementById("rem-trunc");
 const rem_floor = document.getElementById("rem-floor");
+const rem_euclid = document.getElementById("rem-euclid");
 
 const outputs = [
-    quo_trunc, quo_mag, quo_floor, quo_ceil,
+    quo_trunc, quo_mag, quo_floor, quo_ceil, quo_euclid,
     quo_ties_trunc, quo_ties_mag, quo_ties_floor, quo_ties_ceil, quo_ties_odd, quo_ties_even,
-    rem_trunc, rem_floor
+    rem_trunc, rem_floor, rem_euclid,
 ];
 
 for (const input of inputs) {
@@ -46,12 +48,14 @@ function compute_outputs() {
         const mag = trunc + BigInt(x % y !== 0n) * quotient_sign;
         const floor = trunc - BigInt(x % y !== 0n && quotient_negative);
         const ceil = trunc + BigInt(x % y !== 0n && !quotient_negative);
+        const euclid = trunc - BigInt(x % y < 0n) * sgn(y);
 
         quo_double.innerText = String(double);
         quo_trunc.innerText = String(trunc);
         quo_mag.innerText = String(mag);
         quo_floor.innerText = String(floor);
         quo_ceil.innerText = String(ceil);
+        quo_euclid.innerText = String(euclid);
 
         const abs_rem2 = (2n * x % (2n * y)) * sgn(x);
         const abs_y = y * sgn(y);
@@ -72,9 +76,11 @@ function compute_outputs() {
 
         const r_trunc = x % y;
         const r_floor = x - floor * y;
+        const r_euclid = r_trunc < 0n ? r_trunc + (y * sgn(y)) : r_trunc;
 
         rem_trunc.innerText = String(r_trunc);
         rem_floor.innerText = String(r_floor);
+        rem_euclid.innerText = String(r_euclid);
     } catch (e) {
         on_error("SYNTAX ERROR");
     }

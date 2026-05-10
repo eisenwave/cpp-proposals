@@ -1627,8 +1627,6 @@ with other rounding modes.
 <a href=#div-floor-and-div-ceil><h4>Should it be <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_floor</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_ceil</h-></code>?</h4></a>
 <div class=toc-num data-level=4>4.2.3</div>
 <a href=#div-to-inf><h4>Should it be <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_to_inf</h-></code>?</h4></a>
-<div class=toc-num data-level=4>4.2.4</div>
-<a href=#naming-mod><h4>Why is it <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>mod</h-></code>?</h4></a>
 <div class=toc-num data-level=3>4.3</div>
 <a href=#interface><h3>Interface</h3></a>
 <div class=toc-num data-level=4>4.3.1</div>
@@ -1646,14 +1644,14 @@ with other rounding modes.
 <div class=toc-num data-level=4>4.4.1</div>
 <a href=#rounding-to-zero><h4>Rounding to zero</h4></a>
 <div class=toc-num data-level=4>4.4.2</div>
-<a href=#rounding-to-evenodd><h4>Rounding to even/odd</h4></a>
+<a href=#euclidean-division><h4>Euclidean division</h4></a>
 <div class=toc-num data-level=4>4.4.3</div>
-<a href=#to-nearest-rounding-division-and-tie-breaking><h4>To-nearest-rounding division and tie breaking</h4></a>
+<a href=#rounding-to-evenodd><h4>Rounding to even/odd</h4></a>
 <div class=toc-num data-level=4>4.4.4</div>
+<a href=#to-nearest-rounding-division-and-tie-breaking><h4>To-nearest-rounding division and tie breaking</h4></a>
+<div class=toc-num data-level=4>4.4.5</div>
 <a href=#iso-iec-60559-rounding-modes><h4>ISO/IEC 60559 rounding modes</h4></a>
 <div class=toc-num data-level=3>4.5</div>
-<a href=#mod><h3><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>mod</h-></code></h3></a>
-<div class=toc-num data-level=3>4.6</div>
 <a href=#simd-overloads><h3>SIMD overloads</h3></a>
 <div class=toc-num data-level=2>5</div>
 <a href=#implementation-experience><h2>Implementation experience</h2></a>
@@ -1687,6 +1685,39 @@ with other rounding modes.
 
 <h3 id=changes-since-r3><a class=para href=#changes-since-r3></a>1.1. Changes since R3</h3>
 
+<p>The paper was seen during the 2026-03-03 LEWG telecon,
+with the following poll results:
+</p>
+<blockquote>
+<p>POLL: In P3724R3 rename div_to_pos_inf/div_to_neg_inf into div_ceil/div_floor
+</p><table class=five-way-poll>
+<tr><th>SF</th><th>F</th><th>N</th><th>A</th><th>SA</th></tr>
+<tr><td>2</td><td>6</td><td>6</td><td>2</td><td>2</td></tr>
+</table>
+<ul>
+  <li><b>Author position</b>: SA</li>
+  <li><b>Outcome</b>: No consensus</li>
+</ul>
+
+<p>POLL: In P3724R3 take the rounding mode as a parameter
+(either template or function)
+(the name std::div is already taken, but might not conflict)
+</p><table class=five-way-poll>
+<tr><th>SF</th><th>F</th><th>N</th><th>A</th><th>SA</th></tr>
+<tr><td>3</td><td>5</td><td>4</td><td>4</td><td>1</td></tr>
+</table>
+<ul>
+  <li><b>Author position</b>: WA</li>
+  <li><b>Outcome</b>: No consensus</li>
+</ul>
+</blockquote>
+
+<p>While neither poll reached a consensus,
+additional discussion was encouraged for both topics.
+Also, Euclidean division was discussed positively on the reflector
+immediately after the telecon.
+The following changes were applied subsequently:
+</p>
 <ul>
   <li>
     added row separators to the tables in
@@ -1697,6 +1728,9 @@ with other rounding modes.
   </li>
   <li>
     added <a href=#rounding-template-parameter>§4.3.3. Why no <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>rounding</h-></code> template parameter?</a>
+  </li>
+  <li>
+    added <a href=#euclidean-division>§4.4.2. Euclidean division</a>
   </li>
   <li>
     repositioned the new <i>Constant-checked preconditions</i>
@@ -1714,9 +1748,9 @@ with other rounding modes.
   <li>added missing Julia rounding modes in <a href=#language-support>§2.1.1. Language support for integer division</a></li>
   <li>
     added explanation and motivation for each tie-breaking rounding mode
-    to <a href=#to-nearest-rounding-division-and-tie-breaking>§4.4.3. To-nearest-rounding division and tie breaking</a>
+    to <a href=#to-nearest-rounding-division-and-tie-breaking>§4.4.4. To-nearest-rounding division and tie breaking</a>
   </li>
-  <li>added roundTiesTowardZero to <a href=#iso-iec-60559-rounding-modes>§4.4.4. ISO/IEC 60559 rounding modes</a></li>
+  <li>added roundTiesTowardZero to <a href=#iso-iec-60559-rounding-modes>§4.4.5. ISO/IEC 60559 rounding modes</a></li>
   <li>rebased <a href=#wording>§7. Wording</a> on <a href="https://wg21%2elink/n5032">[N5032]</a></li>
 </ul>
 
@@ -1746,7 +1780,7 @@ Several polls were taken, with one consensus for change:
     removed <code><h- data-h=name>div_to_even</h-></code>, <code><h- data-h=name>div_to_odd</h-></code>,
     <code><h- data-h=name>div_rem_to_even</h-></code>, and <code><h- data-h=name>div_rem_to_odd</h-></code>
   </li>
-  <li>added <a href=#iso-iec-60559-rounding-modes>§4.4.4. ISO/IEC 60559 rounding modes</a></li>
+  <li>added <a href=#iso-iec-60559-rounding-modes>§4.4.5. ISO/IEC 60559 rounding modes</a></li>
 </ul>
 
 <p>Irrespective of SG6 feedback, the following changes were made:
@@ -1759,7 +1793,7 @@ Several polls were taken, with one consensus for change:
 <h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.4. Changes since R0</h3>
 
 <ul>
-  <li>added discussion <a href=#simd-overloads>§4.6. SIMD overloads</a></li>
+  <li>added discussion <a href=#simd-overloads>§4.5. SIMD overloads</a></li>
   <li>rebased <a href=#wording>§7. Wording</a> on N5014</li>
 </ul>
 
@@ -2430,37 +2464,6 @@ However, the name is ambiguous between
   <li>rounding toward <math display=inline><mo>±</mo><mi>∞</mi></math>, i.e. away from zero.</li>
 </ul>
 
-<h4 id=naming-mod><a class=para href=#naming-mod></a>4.2.4. Why is it <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>mod</h-></code>?</h4>
-
-<note-block><p><intro-></intro-> 
-See <a href=#mod>§4.5. <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>mod</h-></code></a>.
-</p></note-block>
-
-<p>Despite the fact that <tt->mod</tt-> is somewhat of a misnomer
-("remainder" and "modulo" are synonyms),
-and despite that it is inconsistent with <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_rem</h-></code>,
-it is arguably the best name because:
-</p>
-<ul>
-  <li>
-    It follows the conventions of Haskell, Ada, CSS, and many more languages,
-    where <tt->mod</tt-> rounds towards <math display=inline><mrow><mo>−</mo><mi>∞</mi></mrow></math> (unlike <tt->%</tt->, <tt->rem</tt->, etc.).
-    See <a href=#language-support>§2.1.1. Language support for integer division</a>.
-  </li>
-  <li>
-    It matches the notation of the modulo operator in mathematical literature.
-    That is,
-    <math display=inline><mrow>
-      <mo>−</mo>
-      <mn>2</mn>
-      <mo>mod</mo>
-      <mn>5</mn>
-      <mo>=</mo>
-      <mn>3</mn>
-    </mrow></math>﻿.
-  </li>
-</ul>
-
 <h3 id=interface><a class=para href=#interface></a>4.3. Interface</h3>
 
 <p>The functions generally match the style of similar features in <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>numeric</h-><h- data-h=sym_op>&gt;</h-></code>,
@@ -2630,7 +2633,9 @@ It is therefore valid to ask:
 <blockquote><p>Do we really need all these rounding modes?</p></blockquote>
 
 <p>All proposed "top-level rounding modes" have practical applications.
-For consistency, the same set of "tie-breaking rounding modes" is provided.
+For consistency,
+the same set of "tie-breaking rounding modes" is provided for to-nearest division,
+not including Euclidean division.
 In any case, the implementation of these modes is all fairly similar,
 and there is neither any significant implementation cost (<a href=#implementation>§ Appendix A — Reference implementation</a>)
 nor wording cost (<a href=#wording>§7. Wording</a>)
@@ -2647,13 +2652,50 @@ but no division to the nearest integer with tie breaks away from zero.
 
 <p>The "trivial" functions <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_to_zero</h-></code>
 and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>rem_dividend_sign</h-></code> exist solely for consistency and enhanced expressiveness.
-Note that not every has a truncating integer division like C++.
+Note that not every language has a truncating integer division like C++.
 For example, the <tt->//</tt-> operator in Python rounds towards <math display=inline><mrow><mo>−</mo><mi>∞</mi></mrow></math>.
 A team of developers with primarily Python experience/habits
 may thus benefit from always expressing
 rounding mode explicitly with <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_to_zero</h-></code> to avoid confusion.
 </p>
-<h4 id=rounding-to-evenodd><a class=para href=#rounding-to-evenodd></a>4.4.2. Rounding to even/odd</h4>
+<h4 id=euclidean-division><a class=para href=#euclidean-division></a>4.4.2. Euclidean division</h4>
+
+<p>Euclidean division defines the remainder to be non-negative,
+regardless of the sign of the divisor.
+Concretely, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>rem_euclid</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-></code> is always in the interval
+<math display=inline><mrow>
+  <mo>[</mo>
+  <mn>0</mn>
+  <mo>,</mo>
+  <mi>abs</mi>
+  <mo stretchy=false>(</mo>
+  <mi>y</mi>
+  <mo stretchy=false>)</mo>
+  <mo>)</mo>
+</mrow></math>
+for nonzero <code><h- data-h=name>y</h-></code>.
+</p>
+<p>This is especially useful for modular arithmetic,
+where representative values are commonly expected to be non-negative.
+Unlike division to <math display=inline><mrow><mo>−</mo><mi>∞</mi></mrow></math>,
+this remains true even for negative divisors.
+</p>
+<note-block><p><intro-></intro-> 
+While division to <math display=inline><mrow><mo>−</mo><mi>∞</mi></mrow></math> can almost always be used as well
+since the divisor is typically positive in modular arithmetic
+(this is common practice in Python),
+Euclidean division is more widely known as the mode that yields
+remainders suitable for modular arithmetic.
+<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>rem_euclid</h-></code> is widely used in Rust.
+</p></note-block>
+
+<p>Since the remainder of Euclidean division is so uniquely important,
+the proposal even includes a dedicated <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>rem_euclid</h-></code> function
+for obtaining the remainder directly, without the quotient.
+For other rounding modes,
+the remainder is typically only obtained in combination with the quotient.
+</p>
+<h4 id=rounding-to-evenodd><a class=para href=#rounding-to-evenodd></a>4.4.3. Rounding to even/odd</h4>
 
 <p>The proposal has <code><h- data-h=name>div_ties_to_even</h-></code> but not <code><h- data-h=name>div_to_even</h-></code>.
 A <code><h- data-h=name>div_to_even</h-></code> function was proposed in R0 and R1 of the paper,
@@ -2673,12 +2715,12 @@ so they assume <code><h- data-h=name>div_to_even</h-></code> to be a shorthand r
 rounding to even/odd as tie-breakers.
 </p></note-block>
 
-<h4 id=to-nearest-rounding-division-and-tie-breaking><a class=para href=#to-nearest-rounding-division-and-tie-breaking></a>4.4.3. To-nearest-rounding division and tie breaking</h4>
+<h4 id=to-nearest-rounding-division-and-tie-breaking><a class=para href=#to-nearest-rounding-division-and-tie-breaking></a>4.4.4. To-nearest-rounding division and tie breaking</h4>
 
 <p>Saying "round to nearest" is not clear enough in itself
 because ties (where the fractional part of the quotient is exactly <code><h- data-h=num_dlim>.</h-><h- data-h=num>5</h-></code>)
 could also be resolved in multiple ways.
-Any of the "top-level rounding modes" could plausibly be chosen
+Several of the "top-level rounding modes" could plausibly be chosen
 as a "tie-breaking rounding mode" as well,
 which is what this proposal offers.
 </p>
@@ -2770,7 +2812,7 @@ which is what this proposal offers.
   </tr>
 </table>
 
-<h4 id=iso-iec-60559-rounding-modes><a class=para href=#iso-iec-60559-rounding-modes></a>4.4.4. ISO/IEC 60559 rounding modes</h4>
+<h4 id=iso-iec-60559-rounding-modes><a class=para href=#iso-iec-60559-rounding-modes></a>4.4.5. ISO/IEC 60559 rounding modes</h4>
 
 <p>Of the proposed functions,
 the following match a rounding mode that is standardized in ISO/IEC 60559
@@ -2826,28 +2868,7 @@ and where roundTiesToEven (i.e. "Banker's Rounding") is the default.
 Fixed-point arithmetic also requires rounding (with such modes),
 so ISO/IEC 60559 rounding modes are useful to have in integer division.
 </p>
-<h3 id=mod><a class=para href=#mod></a>4.5. <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>mod</h-></code></h3>
-
-<p>In addition to the quotient (<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_</h-><h- data-h=sym_op>*</h-></code>)
-and quotient/remainder functions (<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_rem_</h-><h- data-h=sym_op>*</h-></code>),
-we also define a single function <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>mod</h-></code>
-which specifically computes the remainder of the division rounding towards <math display=inline><mrow><mo>−</mo><mi>∞</mi></mrow></math>.
-</p>
-<p>Unlike the other rounding modes,
-the remainder of division rounding to <math display=inline><mrow><mo>−</mo><mi>∞</mi></mrow></math> is uniquely useful for modular arithmetic
-because the sign of the remainder is the sign of the divisor.
-In other words, if we divide by a positive number, the remainder is always positive.
-This is why it has a dedicated function.
-</p>
-<p>Division rounding to zero, where the sign of the remainder is that of the divisor,
-already has <code><h- data-h=sym_op>%</h-></code>, so no dedicated function is required.
-The other rounding modes have more chaotic remainder signs,
-and thus it is rarely useful to compute the remainder in isolation,
-not in conjunction with the quotient.
-</p>
-<note-block><p><intro-></intro-> See <a href=#naming-mod>§4.2.4. Why is it <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>mod</h-></code>?</a>.</p></note-block>
-
-<h3 id=simd-overloads><a class=para href=#simd-overloads></a>4.6. SIMD overloads</h3>
+<h3 id=simd-overloads><a class=para href=#simd-overloads></a>4.5. SIMD overloads</h3>
 
 <p>In the long run,
 each of the proposed functions probably should have a corresponding overload
@@ -2962,6 +2983,7 @@ you can play around with the following code block.
 <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_away_zero</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h->        →  <span id=quo-mag><h- data-h=sym_op>-</h-><h- data-h=num>3</h-></span>
 <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_to_pos_inf</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h->       →  <span id=quo-ceil><h- data-h=sym_op>-</h-><h- data-h=num>2</h-></span>
 <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h->       →  <span id=quo-floor><h- data-h=sym_op>-</h-><h- data-h=num>3</h-></span>
+<h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_euclid</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h->           →  <span id=quo-euclid><h- data-h=sym_op>-</h-><h- data-h=num>3</h-></span>
 
 <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_ties_to_zero</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h->     →  <span id=quo-ties-trunc><h- data-h=sym_op>-</h-><h- data-h=num>2</h-></span>
 <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_ties_away_zero</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h->   →  <span id=quo-ties-mag><h- data-h=sym_op>-</h-><h- data-h=num>2</h-></span>
@@ -2970,8 +2992,9 @@ you can play around with the following code block.
 <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_ties_to_odd</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h->      →  <span id=quo-ties-odd><h- data-h=sym_op>-</h-><h- data-h=num>2</h-></span>
 <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_ties_to_even</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h->     →  <span id=quo-ties-even><h- data-h=sym_op>-</h-><h- data-h=num>2</h-></span>
 
-<h- data-h=name>x</h-> <h- data-h=sym_op>%</h-> <h- data-h=name>y</h->                           →  <span id=rem-trunc><h- data-h=sym_op>-</h-><h- data-h=num>2</h-></span> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> sign matches x</h->
-<h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>mod</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h->                  →  <span id=rem-floor><h- data-h=num>3</h-></span> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> sign matches y</h-></code-block>
+<h- data-h=name>x</h-> <h- data-h=sym_op>%</h-> <h- data-h=name>y</h->                                   →  <span id=rem-trunc><h- data-h=sym_op>-</h-><h- data-h=num>2</h-></span> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> sign matches x</h->
+<h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>div_rem_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>.</h-><h- data-h=name>remainder</h-> →  <span id=rem-floor><h- data-h=num>3</h-></span> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> sign matches y</h->
+<h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>rem_euclid</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h->                   →  <span id=rem-euclid><h- data-h=num>3</h-></span> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> sign positive</h-></code-block>
 
 <note-block><p><intro-></intro-> 
 This demonstration conveniently ignores that <code><h- data-h=kw_type>int</h-></code> has finite size.
@@ -2987,6 +3010,7 @@ const quo_trunc = document.getElementById("quo-trunc");
 const quo_mag = document.getElementById("quo-mag");
 const quo_floor = document.getElementById("quo-floor");
 const quo_ceil = document.getElementById("quo-ceil");
+const quo_euclid = document.getElementById("quo-euclid");
 const quo_ties_trunc = document.getElementById("quo-ties-trunc");
 const quo_ties_mag = document.getElementById("quo-ties-mag");
 const quo_ties_floor = document.getElementById("quo-ties-floor");
@@ -2995,11 +3019,12 @@ const quo_ties_odd = document.getElementById("quo-ties-odd");
 const quo_ties_even = document.getElementById("quo-ties-even");
 const rem_trunc = document.getElementById("rem-trunc");
 const rem_floor = document.getElementById("rem-floor");
+const rem_euclid = document.getElementById("rem-euclid");
 
 const outputs = [
-    quo_trunc, quo_mag, quo_floor, quo_ceil,
+    quo_trunc, quo_mag, quo_floor, quo_ceil, quo_euclid,
     quo_ties_trunc, quo_ties_mag, quo_ties_floor, quo_ties_ceil, quo_ties_odd, quo_ties_even,
-    rem_trunc, rem_floor
+    rem_trunc, rem_floor, rem_euclid,
 ];
 
 for (const input of inputs) {
@@ -3026,12 +3051,14 @@ function compute_outputs() {
         const mag = trunc + BigInt(x % y !== 0n) * quotient_sign;
         const floor = trunc - BigInt(x % y !== 0n && quotient_negative);
         const ceil = trunc + BigInt(x % y !== 0n && !quotient_negative);
+        const euclid = trunc - BigInt(x % y < 0n) * sgn(y);
 
         quo_double.innerText = String(double);
         quo_trunc.innerText = String(trunc);
         quo_mag.innerText = String(mag);
         quo_floor.innerText = String(floor);
         quo_ceil.innerText = String(ceil);
+        quo_euclid.innerText = String(euclid);
 
         const abs_rem2 = (2n * x % (2n * y)) * sgn(x);
         const abs_y = y * sgn(y);
@@ -3052,9 +3079,11 @@ function compute_outputs() {
 
         const r_trunc = x % y;
         const r_floor = x - floor * y;
+        const r_euclid = r_trunc < 0n ? r_trunc + (y * sgn(y)) : r_trunc;
 
         rem_trunc.innerText = String(r_trunc);
         rem_floor.innerText = String(r_floor);
+        rem_euclid.innerText = String(r_euclid);
     } catch (e) {
         on_error("SYNTAX ERROR");
     }
@@ -3213,6 +3242,8 @@ is not a core constant expression (<a href=https://eel.is/c++draft/expr.const>[e
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
     <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>div_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
+    <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>div_euclid</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
     <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>div_ties_to_zero</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
     <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>div_ties_away_zero</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
@@ -3234,6 +3265,8 @@ is not a core constant expression (<a href=https://eel.is/c++draft/expr.const>[e
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
     <h- data-h=kw>constexpr</h-> <h- data-h=name>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>div_rem_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
+    <h- data-h=kw>constexpr</h-> <h- data-h=name>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>div_rem_euclid</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
     <h- data-h=kw>constexpr</h-> <h- data-h=name>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>div_rem_ties_to_zero</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
     <h- data-h=kw>constexpr</h-> <h- data-h=name>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>div_rem_ties_away_zero</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
@@ -3247,7 +3280,7 @@ is not a core constant expression (<a href=https://eel.is/c++draft/expr.const>[e
     <h- data-h=kw>constexpr</h-> <h- data-h=name>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>div_rem_ties_to_even</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>mod</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
+    <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>rem_euclid</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
 <h- data-h=sym_brac>}</h-></code-block>
 </diff-block>
 
@@ -3265,7 +3298,7 @@ is not a core constant expression (<a href=https://eel.is/c++draft/expr.const>[e
 <del-block>
 <p><i>Remarks</i>:
 A function call expression that violates the precondition in the <i>Preconditions</i>: element
-is not a core constant expression (<a href=https://eel.is/c++draft/expr.const>[expr.const]</a>).   
+is not a core constant expression (<a href=https://eel.is/c++draft/expr.const>[expr.const]</a>).
 </p></del-block>
 
 <h3 id=new-subclause><a class=para href=#new-subclause></a>[numeric.int.div]</h3>
@@ -3349,7 +3382,7 @@ The result equals <code><h- data-h=name>x</h-> <h- data-h=sym_op>/</h-> <h- data
 </p></div>
 
 <code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>div_ties_to_zero</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>div_euclid</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>13
@@ -3361,14 +3394,14 @@ The result equals <code><h- data-h=name>x</h-> <h- data-h=sym_op>/</h-> <h- data
 <code><h- data-h=name>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=name>y</h-></code> is well-defined.
 </p>
 <p>15
-
-<i>Returns</i>: <math display=inline><mfrac><mi>x</mi><mi>y</mi></mfrac></math>, rounded towards the nearest integer.
-If two integers are equidistant, the result is the integer with lower magnitude.
-</p>
-</div>
+<i>Returns</i>:
+If <code><h- data-h=name>x</h-></code> is positive, <code><h- data-h=name>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=name>y</h-></code>.
+Otherwise, if <code><h- data-h=name>y</h-></code> is positive, <code><h- data-h=name>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=name>y</h-> <h- data-h=sym_op>-</h-> <h- data-h=num>1</h-></code>.
+Otherwise, <code><h- data-h=name>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=name>y</h-> <h- data-h=sym_op>+</h-> <h- data-h=num>1</h-></code>.
+</p></div>
 
 <code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>div_ties_away_zero</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>div_ties_to_zero</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>16
@@ -3382,12 +3415,12 @@ If two integers are equidistant, the result is the integer with lower magnitude.
 <p>18
 
 <i>Returns</i>: <math display=inline><mfrac><mi>x</mi><mi>y</mi></mfrac></math>, rounded towards the nearest integer.
-If two integers are equidistant, the result is the integer with greater magnitude.
+If two integers are equidistant, the result is the integer with lower magnitude.
 </p>
 </div>
 
 <code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>div_ties_to_pos_inf</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>div_ties_away_zero</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>19
@@ -3401,12 +3434,12 @@ If two integers are equidistant, the result is the integer with greater magnitud
 <p>21
 
 <i>Returns</i>: <math display=inline><mfrac><mi>x</mi><mi>y</mi></mfrac></math>, rounded towards the nearest integer.
-If two integers are equidistant, the result is the greater integer.
+If two integers are equidistant, the result is the integer with greater magnitude.
 </p>
 </div>
 
 <code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>div_ties_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>div_ties_to_pos_inf</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>22
@@ -3420,12 +3453,12 @@ If two integers are equidistant, the result is the greater integer.
 <p>24
 
 <i>Returns</i>: <math display=inline><mfrac><mi>x</mi><mi>y</mi></mfrac></math>, rounded towards the nearest integer.
-If two integers are equidistant, the result is the lower integer.
+If two integers are equidistant, the result is the greater integer.
 </p>
 </div>
 
 <code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>div_ties_to_odd</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>div_ties_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>25
@@ -3439,12 +3472,12 @@ If two integers are equidistant, the result is the lower integer.
 <p>27
 
 <i>Returns</i>: <math display=inline><mfrac><mi>x</mi><mi>y</mi></mfrac></math>, rounded towards the nearest integer.
-If two integers are equidistant, the result is the odd integer.
+If two integers are equidistant, the result is the lower integer.
 </p>
 </div>
 
 <code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>div_ties_to_even</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>div_ties_to_odd</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>28
@@ -3458,12 +3491,12 @@ If two integers are equidistant, the result is the odd integer.
 <p>30
 
 <i>Returns</i>: <math display=inline><mfrac><mi>x</mi><mi>y</mi></mfrac></math>, rounded towards the nearest integer.
-If two integers are equidistant, the result is the even integer.
+If two integers are equidistant, the result is the odd integer.
 </p>
 </div>
 
 <code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>div_rem_</h-><i><h- data-h=name>rounding</h-></i><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>div_ties_to_even</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>31
@@ -3475,6 +3508,25 @@ If two integers are equidistant, the result is the even integer.
 <code><h- data-h=name>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=name>y</h-></code> is well-defined.
 </p>
 <p>33
+
+<i>Returns</i>: <math display=inline><mfrac><mi>x</mi><mi>y</mi></mfrac></math>, rounded towards the nearest integer.
+If two integers are equidistant, the result is the even integer.
+</p>
+</div>
+
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>div_rem_</h-><i><h- data-h=name>rounding</h-></i><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p>34
+<i>Constraints</i>:
+<code><h- data-h=name>T</h-></code> is a signed or unsigned integer type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>).</p>
+
+<p>35
+<i>Constant-checked preconditions</i>:
+<code><h- data-h=name>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=name>y</h-></code> is well-defined.
+</p>
+<p>36
 <i>Returns</i>:
 A result object where
 </p><ul style=margin:0>
@@ -3503,18 +3555,33 @@ Assume that <code><h- data-h=name>INT_MAX</h-></code> equals <code><h- data-h=nu
 </p></div>
 
 <code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>mod</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>rem_euclid</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
-<p>34
+<p>37
 <i>Effects</i>:
-Equivalent to <code><h- data-h=name>div_rem_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>.</h-><h- data-h=name>remainder</h-></code>.
+Equivalent to <code><h- data-h=name>div_rem_euclid</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>.</h-><h- data-h=name>remainder</h-></code>.
 <br/>[<i>Note</i>: 
-The result is negative if and only if <code><h- data-h=name>y</h-></code> is negative and <code><h- data-h=name>x</h-></code> is nonzero.
+The result is in the range
+<math display=inline><mrow>
+  <mo>[</mo>
+  <mn>0</mn>
+  <mo>,</mo>
+  <mi>abs</mi>
+  <mo stretchy=false>(</mo>
+  <mi>y</mi>
+  <mo stretchy=false>)</mo>
+  <mo>)</mo>
+</mrow></math>.
  — <i>end note</i>]
 </p></div>
-
 </ins-block>
+
+<note-block class=edit><p><intro-></intro-> 
+Using math font for the range in the <code><h- data-h=name>rem_euclid</h-></code> note is actually important
+because it bypasses the edge case of
+<code><h- data-h=name>y</h-></code> being <code><h- data-h=name>INT_MIN</h-></code> and thus <code><h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=name>y</h-><h- data-h=sym_par>)</h-></code> being undefined.
+</p></note-block>
 
 <warning-block><p><intro-></intro-> 
 If the mathematical notation in the block above does not render for you,
@@ -3606,7 +3673,7 @@ See <a href="https://github%2ecom/Eisenwave/integer-division">[GitHub]</a> for t
 <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>__sgn2</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
     <h- data-h=kw_ctrl>if</h-> <h- data-h=kw>constexpr</h-> <h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_signed_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Equivalent to: (x &gt;&gt; (width_of_T - 1)) | 1</h->
-        <h- data-h=kw_ctrl>return</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1</h-> <h- data-h=sym_punc>:</h-> <h- data-h=num>1</h-><h- data-h=sym_punc>;</h->    
+        <h- data-h=kw_ctrl>return</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1</h-> <h- data-h=sym_punc>:</h-> <h- data-h=num>1</h-><h- data-h=sym_punc>;</h->
     <h- data-h=sym_brac>}</h-> <h- data-h=kw_ctrl>else</h-> <h- data-h=sym_brac>{</h->
         <h- data-h=kw_ctrl>return</h-> <h- data-h=num>1</h-><h- data-h=sym_punc>;</h->
     <h- data-h=sym_brac>}</h->
@@ -3630,7 +3697,7 @@ See <a href="https://github%2ecom/Eisenwave/integer-division">[GitHub]</a> for t
             <h- data-h=sym_op>.</h-><h- data-h=name>remainder</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>T</h-><h- data-h=sym_par>(</h-><h- data-h=name>U</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-> <h- data-h=sym_op>%</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>-</h-> <h- data-h=name>U</h-><h- data-h=sym_par>(</h-><h- data-h=name>d</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=name>U</h-><h- data-h=sym_par>(</h-><h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h->
         <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
     <h- data-h=sym_brac>}</h-> <h- data-h=kw_ctrl>else</h-> <h- data-h=sym_brac>{</h->
-        <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_brac>{</h-> 
+        <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_brac>{</h->
             <h- data-h=sym_op>.</h-><h- data-h=name>quotient</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=name>y</h-> <h- data-h=sym_op>+</h-> <h- data-h=name>d</h-><h- data-h=sym_punc>,</h->
             <h- data-h=sym_op>.</h-><h- data-h=name>remainder</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>%</h-> <h- data-h=name>y</h-> <h- data-h=sym_op>-</h-> <h- data-h=name>d</h-> <h- data-h=sym_op>*</h-> <h- data-h=name>y</h->
         <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
@@ -3689,6 +3756,20 @@ See <a href="https://github%2ecom/Eisenwave/integer-division">[GitHub]</a> for t
 
 <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>div_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
     <h- data-h=kw_ctrl>return</h-> <h- data-h=name>div_rem_to_neg_inf</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>.</h-><h- data-h=name>quotient</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h->
+
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Idea: Euclidean division guarantees a non-negative remainder.</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       If the remainder is negative,</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       we increase the quotient magnitude (magnify) by 1,</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       which also results in a positive remainder.</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=name>div_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>div_rem_euclid</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw_type>int</h-> <h- data-h=name>rem</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>%</h-> <h- data-h=name>y</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw_type>bool</h-> <h- data-h=name>adjust</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>rem</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=name>__div_rem_offset_quotient</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-><h- data-h=sym_par>(</h-><h- data-h=name>adjust</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=name>__sgn2</h-><h- data-h=sym_par>(</h-><h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h->
+
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>div_euclid</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=name>div_rem_euclid</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>.</h-><h- data-h=name>quotient</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h->
 
 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Idea: same as div_away_zero,</h->
@@ -3786,19 +3867,12 @@ See <a href="https://github%2ecom/Eisenwave/integer-division">[GitHub]</a> for t
     <h- data-h=kw_ctrl>return</h-> <h- data-h=name>div_rem_ties_to_even</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>.</h-><h- data-h=name>quotient</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h->
 
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Idea: if the there is a mismatch between the x and y being negative,</h->
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       the result sign would be wrong, and we need to flip it;</h->
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       If they match (i.e. if the quotient is positive),</h->
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       we already have the right result.</h->
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       If the mismatch is caused by the dividend being negative,</h->
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       the remainder is also negative and we should add the (positive) divisor.</h->
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       If the mismatch is caused by the divisor being negative,</h->
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       we should add the (negative) divisor to get a negative remainder.</h->
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       In either case, adding the divisor is the right thing to do.</h->
-<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>mod</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=kw_type>bool</h-> <h- data-h=name>quotient_negative</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_par>(</h-><h- data-h=name>x</h-> <h- data-h=sym_op>^</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Idea: Euclidean remainder is always in [0, abs(y)).</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       Only negative remainders need fixing.</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>rem_euclid</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
     <h- data-h=kw_type>int</h-> <h- data-h=name>rem</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>%</h-> <h- data-h=name>y</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw_ctrl>return</h-> <h- data-h=name>rem</h-> <h- data-h=sym_op>+</h-> <h- data-h=name>y</h-> <h- data-h=sym_op>*</h-> <h- data-h=kw_type>int</h-><h- data-h=sym_par>(</h-><h- data-h=name>rem</h-> <h- data-h=sym_op>!=</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>quotient_negative</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw_type>unsigned</h-> <h- data-h=name>abs_y</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>y</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=sym_op>-</h-><h- data-h=kw_type>unsigned</h-><h- data-h=sym_par>(</h-><h- data-h=name>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_punc>:</h-> <h- data-h=kw_type>unsigned</h-><h- data-h=sym_par>(</h-><h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=kw_type>int</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>unsigned</h-><h- data-h=sym_par>(</h-><h- data-h=name>rem</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>+</h-> <h- data-h=kw_type>unsigned</h-><h- data-h=sym_par>(</h-><h- data-h=name>rem</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=name>abs_y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h-></code-block>
 
 <note-block><p><intro-></intro-> 

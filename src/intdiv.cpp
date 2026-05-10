@@ -12,7 +12,7 @@ template<class T>
 constexpr T __sgn2(T x) {
     if constexpr (std::is_signed_v<T>) {
         // Equivalent to: (x >> (width_of_T - 1)) | 1
-        return x < 0 ? -1 : 1;    
+        return x < 0 ? -1 : 1;
     } else {
         return 1;
     }
@@ -36,7 +36,7 @@ constexpr div_result<T> __div_rem_offset_quotient(T x, T y, T d) {
             .remainder = T(U(x % y) - U(d) * U(y))
         };
     } else {
-        return { 
+        return {
             .quotient = x / y + d,
             .remainder = x % y - d * y
         };
@@ -95,6 +95,20 @@ constexpr div_result<int> div_rem_to_neg_inf(int x, int y) {
 
 constexpr int div_to_neg_inf(int x, int y) {
     return div_rem_to_neg_inf(x, y).quotient;
+}
+
+// Idea: Euclidean division guarantees a non-negative remainder.
+//       If the remainder is negative,
+//       we increase the quotient magnitude (magnify) by 1,
+//       which also results in a positive remainder.
+constexpr div_result<int> div_rem_euclid(int x, int y) {
+    int rem = x % y;
+    bool adjust = rem < 0;
+    return __div_rem_offset_quotient(x, y, int(adjust) * __sgn2(y));
+}
+
+constexpr int div_euclid(int x, int y) {
+    return div_rem_euclid(x, y).quotient;
 }
 
 // Idea: same as div_away_zero,
@@ -192,17 +206,10 @@ constexpr int div_ties_to_even(int x, int y) {
     return div_rem_ties_to_even(x, y).quotient;
 }
 
-// Idea: if the there is a mismatch between the x and y being negative,
-//       the result sign would be wrong, and we need to flip it;
-//       If they match (i.e. if the quotient is positive),
-//       we already have the right result.
-//       If the mismatch is caused by the dividend being negative,
-//       the remainder is also negative and we should add the (positive) divisor.
-//       If the mismatch is caused by the divisor being negative,
-//       we should add the (negative) divisor to get a negative remainder.
-//       In either case, adding the divisor is the right thing to do.
-constexpr int mod(int x, int y) {
-    bool quotient_negative = (x ^ y) < 0;
+// Idea: Euclidean remainder is always in [0, abs(y)).
+//       Only negative remainders need fixing.
+constexpr int rem_euclid(int x, int y) {
     int rem = x % y;
-    return rem + y * int(rem != 0 && quotient_negative);
+    unsigned abs_y = y < 0 ? -unsigned(y) : unsigned(y);
+    return int(unsigned(rem) + unsigned(rem < 0) * abs_y);
 }
