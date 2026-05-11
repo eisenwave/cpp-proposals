@@ -3,9 +3,9 @@
 
 \wg21_head(title={Rebasing \tt{<cmath>} on C23}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3935R0}}
-  \dt{Date:}            \dd{\tt{2025-12-13}}
-  \dt{Audience:}        \dd{SG6, SG22}
+  \dt{Document number:} \dd{\docnum{P3935R1}}
+  \dt{Date:}            \dd{\tt{2026-05-11}}
+  \dt{Audience:}        \dd{SG22}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3935/github")}
@@ -23,6 +23,14 @@ There are many useful C23 \header{math.h} features that should be provided in C+
 \h2(listed=false){Contents}
 
 \make_contents
+
+\h2{Revision history}
+
+\ul{
+  \li{Removed \tcode{noexcept} from \tcode{std::fadd} and other proposed templates}
+}
+
+\h3{Changes since R0}
 
 \h2{Introduction}
 
@@ -557,17 +565,17 @@ add function templates for these rounding functions:
 
 \cppblock{
 template<class T, class F1, class F2>
-  constexpr T fadd(F1 x, F2 y) noexcept;
+  constexpr T fadd(F1 x, F2 y);
 template<class T, class F1, class F2>
-  constexpr T fsub(F1 x, F2 y) noexcept;
+  constexpr T fsub(F1 x, F2 y);
 template<class T, class F1, class F2>
-  constexpr T fmul(F1 x, F2 y) noexcept;
+  constexpr T fmul(F1 x, F2 y);
 template<class T, class F1, class F2>
-  constexpr T fdiv(F1 x, F2 y) noexcept;
+  constexpr T fdiv(F1 x, F2 y);
 template<class T, class F1, class F2, class F3>
-  constexpr T ffma(F1 x, F2 y, F3 z) noexcept;
+  constexpr T ffma(F1 x, F2 y, F3 z);
 template<class T, class F1>
-  constexpr T fsqrt(F1 x) noexcept;
+  constexpr T fsqrt(F1 x);
 }
 
 While the prefix \q{\tt{f}} is a bit inappropriate
@@ -590,6 +598,14 @@ There is also a non-template \tcode{std::fadd} function
 which is meant to emulate the behavior of the \header{tgmath.h} macro
 by selecting between the \tcode{long double}→\tcode{float} and \tcode{double}→\tcode{float}
 overloads.
+
+\Bnote{
+These templates are not \tcode{noexcept}
+because they dispatch to underlying C functions that are not \tcode{noexcept}.
+We also traditionally don't make new C++ overloads of C functions \tcode{noexcept},
+such as in the case of the three-parameter \tcode{std::lerp} overload.
+Despite that, they are not intended to throw.
+}
 
 \h4{Canonical floating-point representations and canonicalization}
 
@@ -1313,7 +1329,7 @@ namespace std {
 \ins{  constexpr float\placeholder{N}_t            fmaf\placeholder{N}(float\placeholder{N}_t x, float\placeholder{N}_t y, float\placeholder{N}_t z);
 
   //\serif{ [c.math.narrow], narrowing operations}
-  template<class T, class F> constexpr T fadd(F x, F y) noexcept;
+  template<class T, class F> constexpr T fadd(F x, F y);
   constexpr float      fadd(\exposid{double-type} x, \exposid{double-type} y);
   constexpr float      faddl(long double x, long double y);
   constexpr double     dadd(long double x, long double y);
@@ -1321,7 +1337,7 @@ namespace std {
   constexpr float\placeholder{N}_t   f\placeholder{N}add(\seebelow x, \seebelow y);
   constexpr float\placeholder{N}_t   f\placeholder{N}addf\placeholder{M}(float\placeholder{M}_t x, float\placeholder{M}_t y);
 
-  template<class T, class F> constexpr T fsub(F x, F y) noexcept;
+  template<class T, class F> constexpr T fsub(F x, F y);
   constexpr float      fsub(\exposid{double-type} x, \exposid{double-type} y);
   constexpr float      fsubl(long double x, long double y);
   constexpr double     dsub(long double x, long double y);
@@ -1329,7 +1345,7 @@ namespace std {
   constexpr float\placeholder{N}_t   f\placeholder{N}sub(\seebelow x, \seebelow y);
   constexpr float\placeholder{N}_t   f\placeholder{N}subf\placeholder{M}(float\placeholder{M}_t x, float\placeholder{M}_t y);
 
-  template<class T, class F> constexpr T fmul(F x, F y) noexcept;
+  template<class T, class F> constexpr T fmul(F x, F y);
   constexpr float      fmul(\exposid{double-type} x, \exposid{double-type} y);
   constexpr float      fmull(long double x, long double y);
   constexpr double     dmul(long double x, long double y);
@@ -1337,7 +1353,7 @@ namespace std {
   constexpr float\placeholder{N}_t   f\placeholder{N}mul(\seebelow x, \seebelow y);
   constexpr float\placeholder{N}_t   f\placeholder{N}mulf\placeholder{M}(float\placeholder{M}_t x, float\placeholder{M}_t y);
 
-  template<class T, class F> constexpr T fdiv(F x, F y) noexcept;
+  template<class T, class F> constexpr T fdiv(F x, F y);
   constexpr float      fdiv(\exposid{double-type} x, \exposid{double-type} y);
   constexpr float      fdivl(long double x, long double y);
   constexpr double     ddiv(long double x, long double y);
@@ -1345,7 +1361,7 @@ namespace std {
   constexpr float\placeholder{N}_t   f\placeholder{N}div(\seebelow x, \seebelow y);
   constexpr float\placeholder{N}_t   f\placeholder{N}divf\placeholder{M}(float\placeholder{M}_t x, float\placeholder{M}_t y);
 
-  template<class T, class F> constexpr T ffma(F x, F y, F z) noexcept;
+  template<class T, class F> constexpr T ffma(F x, F y, F z);
   constexpr float      ffma(\exposid{double-type} x, \exposid{double-type} y, \exposid{double-type} z);
   constexpr float      ffmal(long double x, long double y, long double z);
   constexpr double     dfma(long double x, long double y, long double z);
@@ -1353,7 +1369,7 @@ namespace std {
   constexpr float\placeholder{N}_t   f\placeholder{N}fma(\seebelow x, \seebelow y, \seebelow z);
   constexpr float\placeholder{N}_t   f\placeholder{N}fmaf\placeholder{M}(float\placeholder{M}_t x, float\placeholder{M}_t y, float\placeholder{M}_t z);
 
-  template<class T, class F> constexpr T fsqrt(F x) noexcept;
+  template<class T, class F> constexpr T fsqrt(F x);
   constexpr float      fsqrt(\exposid{double-type} x);
   constexpr float      fsqrtl(long double x);
   constexpr double     dsqrt(long double x);
@@ -1785,17 +1801,17 @@ where \tcode{\placeholder{op}} is \tcode{sqrt}.
 
 \itemdecl{
 template<class T, class F1, class F2>
-  constexpr T fadd(F1 x, F2 y) noexcept;
+  constexpr T fadd(F1 x, F2 y);
 template<class T, class F1, class F2>
-  constexpr T fsub(F1 x, F2 y) noexcept;
+  constexpr T fsub(F1 x, F2 y);
 template<class T, class F1, class F2>
-  constexpr T fmul(F1 x, F2 y) noexcept;
+  constexpr T fmul(F1 x, F2 y);
 template<class T, class F1>
-  constexpr T fdiv(F1 x, F2 y) noexcept;
+  constexpr T fdiv(F1 x, F2 y);
 template<class T, class F1, class F2, class F3>
-  constexpr T ffma(F1 x, F2 y, F3 z) noexcept;
+  constexpr T ffma(F1 x, F2 y, F3 z);
 template<class T, class F1>
-  constexpr T fsqrt(F1 x) noexcept;
+  constexpr T fsqrt(F1 x);
 }
 
 \itemdescr{
