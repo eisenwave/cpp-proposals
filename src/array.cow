@@ -1,10 +1,10 @@
 \: cowel 0.9.1
 \cowel_include("libwg21-9.cow")
 
-\wg21_head(title={\tcode{std::array} is a wrapper for an array!}){
+\wg21_head(title = {\tcode{std::array} is a wrapper for an array!}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3737R3}}
-  \dt{Date:}            \dd{\tt{2026-02-22}}
+  \dt{Document number:} \dd{\docnum{P3737R4}}
+  \dt{Date:}            \dd{\tt{2026-05-11}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -26,6 +26,15 @@ and should be simplified.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R3}
+
+\ul{
+  \li{
+    Improved \ref("#wording") with Jonathan Wakely's suggestions;
+    see also \url{https://github.com/eisenwave/cpp-proposals/issues/154}
+  }
+}
 
 \h3{Changes since R2}
 
@@ -435,7 +444,7 @@ the implementation can simply be aligned with what is being proposed here.
 
 The following changes are relative to \ref("N5032").
 
-\h3{[array.overview]}
+\h3(show_number=false){[array.overview]}
 
 Change \eelis{array.overview#1} as follows:
 
@@ -520,7 +529,7 @@ namespace std {
 }
 }
 
-\h3{[array.members]}
+\h3(show_number=false){[array.members]}
 
 Change \eelis{array.members} as follows:
 
@@ -539,7 +548,7 @@ For a non-empty array, \tcode{data() == addressof(front())} is \tcode{true}.}
 }
 }
 
-\h3{[array.zero]}
+\h3(show_number=false){[array.zero]}
 
 Delete all paragraphs within \eelis{array.zero}:
 
@@ -564,13 +573,14 @@ Insert new paragraphs within \eelis{array.zero}:
 
 \Bins{
 \pnum
-A specialization \tcode{array<T, 0>} does not have an \placeholder{arr} data member.
-Instead, it has a non-static data member of
-unspecified, trivially copyable, standard-layout, empty aggregate \tcode{U}
-with no base classes
-and with the same cv-qualification as \tcode{T}.
-The size and alignment of \tcode{U} is an implementation-defined choice between \tcode{1} and
-the size and alignment of \tcode{T}.
+A specialization \tcode{array<T, 0>} does not have an \tcode{\exposid{arr}} data member.
+Instead, it has a single non-static data member
+with the same cv-qualification as \tcode{T},
+of unspecified class type \tcode{U} with no base classes.
+\tcode{std::is_empty_v<U>} is \tcode{true}.
+It is implementation-defined whether \tcode{U} has
+the same size and alignment as \tcode{T} or
+the same size and alignment as \tcode{char}.
 
 \pnum
 The value representation of a specialization \tcode{array<T, 0>} is empty.
