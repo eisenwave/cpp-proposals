@@ -1572,8 +1572,8 @@ if (theme !== null) {
 <div class=wg21-head><h1>Improve readability of the C++ grammar by adding a syntax for groups and repetitions</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3891R0>P3891R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2025-11-22</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3891R1>P3891R1</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-05-11</tt-></dd>
   <dt>Audience:</dt>        <dd>CWG, LWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1591,76 +1591,91 @@ such as adding a syntax for groups and repetitions.
 <h2 id=contents><a class=para href=#contents></a>Contents</h2>
 
 <div class=toc><div class=toc-num data-level=2>1</div>
-<a href=#introduction><h2>Introduction</h2></a>
+<a href=#revision-history><h2>Revision history</h2></a>
+<div class=toc-num data-level=3>1.1</div>
+<a href=#changes-since-r0><h3>Changes since R0</h3></a>
 <div class=toc-num data-level=2>2</div>
-<a href=#motivating-example><h2>Motivating example</h2></a>
+<a href=#introduction><h2>Introduction</h2></a>
 <div class=toc-num data-level=2>3</div>
-<a href=#design><h2>Design</h2></a>
-<div class=toc-num data-level=3>3.1</div>
-<a href=#design-constraints><h3>Design constraints</h3></a>
-<div class=toc-num data-level=3>3.2</div>
-<a href=#new-syntax><h3>New syntax</h3></a>
-<div class=toc-num data-level=3>3.3</div>
-<a href=#alternatives-considered><h3>Alternatives considered</h3></a>
-<div class=toc-num data-level=4>3.3.1</div>
-<a href=#alternative-to-seq-and-seq-opt><h4>Alternative to <q><sub class=opt>seq</sub></q> and <q><sub class=opt>seq opt</sub></q></h4></a>
-<div class=toc-num data-level=4>3.3.2</div>
-<a href=#seq-opt-vs%2e-opt-seq><h4><q><sub class=opt>seq</sub> <sub class=opt>opt</sub></q> vs. <q><sub class=opt>opt</sub> <sub class=opt>seq</sub></q></h4></a>
-<div class=toc-num data-level=4>3.3.3</div>
-<a href=#alternative-brackets-for-groups><h4>Alternative brackets for groups</h4></a>
+<a href=#motivating-example><h2>Motivating example</h2></a>
 <div class=toc-num data-level=2>4</div>
-<a href=#core-wording><h2>Core wording</h2></a>
+<a href=#design><h2>Design</h2></a>
 <div class=toc-num data-level=3>4.1</div>
-<a href=#syntax><h3>[syntax]</h3></a>
+<a href=#design-constraints><h3>Design constraints</h3></a>
 <div class=toc-num data-level=3>4.2</div>
-<a href=#bulk-operations><h3>Bulk operations</h3></a>
+<a href=#new-syntax><h3>New syntax</h3></a>
 <div class=toc-num data-level=3>4.3</div>
-<a href=#lex%2ename><h3>[lex.name]</h3></a>
-<div class=toc-num data-level=3>4.4</div>
-<a href=#lex%2eicon><h3>[lex.icon]</h3></a>
-<div class=toc-num data-level=3>4.5</div>
-<a href=#lex%2efcon><h3>[lex.fcon]</h3></a>
-<div class=toc-num data-level=3>4.6</div>
-<a href=#lex%2estring><h3>[lex.string]</h3></a>
-<div class=toc-num data-level=3>4.7</div>
-<a href=#dcl%2espec%2egeneral><h3>[dcl.spec.general]</h3></a>
-<div class=toc-num data-level=3>4.8</div>
-<a href=#dcl%2etype%2egeneral><h3>[dcl.type.general]</h3></a>
-<div class=toc-num data-level=3>4.9</div>
-<a href=#dcl%2edecl%2egeneral><h3>[dcl.decl.general]</h3></a>
-<div class=toc-num data-level=3>4.10</div>
-<a href=#dcl%2efct><h3>[dcl.fct]</h3></a>
-<div class=toc-num data-level=3>4.11</div>
-<a href=#dcl%2einit%2egeneral><h3>[dcl.init.general]</h3></a>
-<div class=toc-num data-level=3>4.12</div>
-<a href=#dcl%2eenum><h3>[dcl.enum]</h3></a>
-<div class=toc-num data-level=3>4.13</div>
-<a href=#namespace%2eudecl><h3>[namespace.udecl]</h3></a>
-<div class=toc-num data-level=3>4.14</div>
-<a href=#dcl%2eattr%2egrammar><h3>[dcl.attr.grammar]</h3></a>
-<div class=toc-num data-level=3>4.15</div>
-<a href=#stmt%2eselect%2egeneral><h3>[stmt.select.general]</h3></a>
-<div class=toc-num data-level=3>4.16</div>
-<a href=#stmt%2eif><h3>[stmt.if]</h3></a>
-<div class=toc-num data-level=3>4.17</div>
-<a href=#dcl%2epre><h3>[dcl.pre]</h3></a>
+<a href=#alternatives-considered><h3>Alternatives considered</h3></a>
+<div class=toc-num data-level=4>4.3.1</div>
+<a href=#alternative-to-seq-and-seq-opt><h4>Alternative to <q><sub class=opt>seq</sub></q> and <q><sub class=opt>seq opt</sub></q></h4></a>
+<div class=toc-num data-level=4>4.3.2</div>
+<a href=#seq-opt-vs%2e-opt-seq><h4><q><sub class=opt>seq</sub> <sub class=opt>opt</sub></q> vs. <q><sub class=opt>opt</sub> <sub class=opt>seq</sub></q></h4></a>
+<div class=toc-num data-level=4>4.3.3</div>
+<a href=#alternative-brackets-for-groups><h4>Alternative brackets for groups</h4></a>
 <div class=toc-num data-level=2>5</div>
-<a href=#library-wording><h2>Library wording</h2></a>
+<a href=#core-wording><h2>Core wording</h2></a>
 <div class=toc-num data-level=3>5.1</div>
-<a href=#locale%2enumpunct%2egeneral><h3>[locale.numpunct.general]</h3></a>
+<a href=#syntax><h3>[syntax]</h3></a>
 <div class=toc-num data-level=3>5.2</div>
-<a href=#locale%2emoneypunct%2egeneral><h3>[locale.moneypunct.general]</h3></a>
+<a href=#bulk-operations><h3>Bulk operations</h3></a>
 <div class=toc-num data-level=3>5.3</div>
-<a href=#format%2estring%2egeneral><h3>[format.string.general]</h3></a>
+<a href=#lex%2ename><h3>[lex.name]</h3></a>
 <div class=toc-num data-level=3>5.4</div>
-<a href=#time%2eformat><h3>[time.format]</h3></a>
+<a href=#lex%2eicon><h3>[lex.icon]</h3></a>
 <div class=toc-num data-level=3>5.5</div>
-<a href=#fs%2epath%2egeneric><h3>[fs.path.generic]</h3></a>
+<a href=#lex%2efcon><h3>[lex.fcon]</h3></a>
+<div class=toc-num data-level=3>5.6</div>
+<a href=#lex%2estring><h3>[lex.string]</h3></a>
+<div class=toc-num data-level=3>5.7</div>
+<a href=#dcl%2espec%2egeneral><h3>[dcl.spec.general]</h3></a>
+<div class=toc-num data-level=3>5.8</div>
+<a href=#dcl%2etype%2egeneral><h3>[dcl.type.general]</h3></a>
+<div class=toc-num data-level=3>5.9</div>
+<a href=#dcl%2edecl%2egeneral><h3>[dcl.decl.general]</h3></a>
+<div class=toc-num data-level=3>5.10</div>
+<a href=#dcl%2efct><h3>[dcl.fct]</h3></a>
+<div class=toc-num data-level=3>5.11</div>
+<a href=#dcl%2einit%2egeneral><h3>[dcl.init.general]</h3></a>
+<div class=toc-num data-level=3>5.12</div>
+<a href=#dcl%2eenum><h3>[dcl.enum]</h3></a>
+<div class=toc-num data-level=3>5.13</div>
+<a href=#namespace%2eudecl><h3>[namespace.udecl]</h3></a>
+<div class=toc-num data-level=3>5.14</div>
+<a href=#dcl%2eattr%2egrammar><h3>[dcl.attr.grammar]</h3></a>
+<div class=toc-num data-level=3>5.15</div>
+<a href=#stmt%2eselect%2egeneral><h3>[stmt.select.general]</h3></a>
+<div class=toc-num data-level=3>5.16</div>
+<a href=#stmt%2eif><h3>[stmt.if]</h3></a>
+<div class=toc-num data-level=3>5.17</div>
+<a href=#dcl%2epre><h3>[dcl.pre]</h3></a>
 <div class=toc-num data-level=2>6</div>
+<a href=#library-wording><h2>Library wording</h2></a>
+<div class=toc-num data-level=3>6.1</div>
+<a href=#locale%2enumpunct%2egeneral><h3>[locale.numpunct.general]</h3></a>
+<div class=toc-num data-level=3>6.2</div>
+<a href=#locale%2emoneypunct%2egeneral><h3>[locale.moneypunct.general]</h3></a>
+<div class=toc-num data-level=3>6.3</div>
+<a href=#format%2estring%2egeneral><h3>[format.string.general]</h3></a>
+<div class=toc-num data-level=3>6.4</div>
+<a href=#time%2eformat><h3>[time.format]</h3></a>
+<div class=toc-num data-level=3>6.5</div>
+<a href=#fs%2epath%2egeneric><h3>[fs.path.generic]</h3></a>
+<div class=toc-num data-level=2>7</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
-<h2 id=introduction><a class=para href=#introduction></a>1. Introduction</h2>
+<h2 id=revision-history><a class=para href=#revision-history></a>1. Revision history</h2>
+
+<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.1. Changes since R0</h3>
+
+<ul>
+  <li>
+    In <a href=#alternative-brackets-for-groups>§4.3.3. Alternative brackets for groups</a>,
+    also mentioned DOUBLE ANGLE QUOTATION MARK characters
+  </li>
+</ul>
+
+<h2 id=introduction><a class=para href=#introduction></a>2. Introduction</h2>
 
 <p>The current C++ syntax notation as specified in <a href=https://eel.is/c++draft/syntax>[syntax]</a>
 and summarized in <a href=https://eel.is/c++draft/gram>[gram]</a>
@@ -1711,7 +1726,7 @@ separated by a comma token.
 which obsoletes all <g-term>X-seq</g-term> nonterminals
 and simplifies the specification in many places.
 </p>
-<h2 id=motivating-example><a class=para href=#motivating-example></a>2. Motivating example</h2>
+<h2 id=motivating-example><a class=para href=#motivating-example></a>3. Motivating example</h2>
 
 <style>
   #tony-table {
@@ -1790,15 +1805,15 @@ and simplifies the specification in many places.
 </table>
 
 <note-block><p><intro-></intro-> 
-See <a href=#core-wording>§4. Core wording</a> and <a href=#library-wording>§5. Library wording</a> for many more concrete examples.
+See <a href=#core-wording>§5. Core wording</a> and <a href=#library-wording>§6. Library wording</a> for many more concrete examples.
 </p></note-block>
 
 <p>Notably, the boilerplate <g-term>X-seq</g-term> rules are eliminated.
 The amount of recursion necessary is also greatly reduced.
 </p>
-<h2 id=design><a class=para href=#design></a>3. Design</h2>
+<h2 id=design><a class=para href=#design></a>4. Design</h2>
 
-<h3 id=design-constraints><a class=para href=#design-constraints></a>3.1. Design constraints</h3>
+<h3 id=design-constraints><a class=para href=#design-constraints></a>4.1. Design constraints</h3>
 
 <ul>
   <li>
@@ -1822,7 +1837,7 @@ The amount of recursion necessary is also greatly reduced.
   </li>
 </ul>
 
-<h3 id=new-syntax><a class=para href=#new-syntax></a>3.2. New syntax</h3>
+<h3 id=new-syntax><a class=para href=#new-syntax></a>4.2. New syntax</h3>
 
 <style>
   .new-syntax {
@@ -1867,9 +1882,9 @@ The amount of recursion necessary is also greatly reduced.
   </dd>
 </dl>
 
-<h3 id=alternatives-considered><a class=para href=#alternatives-considered></a>3.3. Alternatives considered</h3>
+<h3 id=alternatives-considered><a class=para href=#alternatives-considered></a>4.3. Alternatives considered</h3>
 
-<h4 id=alternative-to-seq-and-seq-opt><a class=para href=#alternative-to-seq-and-seq-opt></a>3.3.1. Alternative to <q><sub class=opt>seq</sub></q> and <q><sub class=opt>seq opt</sub></q></h4>
+<h4 id=alternative-to-seq-and-seq-opt><a class=para href=#alternative-to-seq-and-seq-opt></a>4.3.1. Alternative to <q><sub class=opt>seq</sub></q> and <q><sub class=opt>seq opt</sub></q></h4>
 
 <p>An alternatively syntax to <sub class=opt>seq</sub> and <sub class=opt>seq opt</sub> briefly considered
 was superscript <q>＋</q> and superscript <q>🞰</q>
@@ -1883,7 +1898,7 @@ transition for C++,
 and means that existing teaching resource referencing the C++ grammar
 would be easy to relate to the new format.
 </p>
-<h4 id=seq-opt-vs.-opt-seq><a class=para href=#seq-opt-vs%2e-opt-seq></a>3.3.2. <q><sub class=opt>seq</sub> <sub class=opt>opt</sub></q> vs. <q><sub class=opt>opt</sub> <sub class=opt>seq</sub></q></h4>
+<h4 id=seq-opt-vs.-opt-seq><a class=para href=#seq-opt-vs%2e-opt-seq></a>4.3.2. <q><sub class=opt>seq</sub> <sub class=opt>opt</sub></q> vs. <q><sub class=opt>opt</sub> <sub class=opt>seq</sub></q></h4>
 
 <p>Both notations are equivalent in the sense that the same inputs would be matched.
 <q><sub class=opt>opt</sub> <sub class=opt>seq</sub></q> could be argued to be "more natural"
@@ -1907,7 +1922,7 @@ it doesn't matter because implementations will figure out how to match
 either way,
 but we should prefer the syntax that doesn't raise such questions in the first place.
 </p>
-<h4 id=alternative-brackets-for-groups><a class=para href=#alternative-brackets-for-groups></a>3.3.3. Alternative brackets for groups</h4>
+<h4 id=alternative-brackets-for-groups><a class=para href=#alternative-brackets-for-groups></a>4.3.3. Alternative brackets for groups</h4>
 
 <p>There are many possible
 <a href="https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=[[%3ABidi_Paired_Bracket_Type%3DOpen%3A]|[%3ABidi_Paired_Bracket_Type%3DClose%3A]]">Unicode bracket characters</a>
@@ -1930,6 +1945,12 @@ However,
     for bold font weight,
     like ⟬ MATHEMATICAL WHITE TORTOISE SHELL BRACKETS ⟭,
   </li>
+  <li>
+    some are too pointy in most fonts and
+    may be confused with bitwise shift operators, like
+    « LEFT-POINTING DOUBLE ANGLE QUOTATION MARK and
+    » RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK,
+  </li>
   <li>etc.</li>
 </ul>
 
@@ -1939,7 +1960,7 @@ although they are visually similar to
 《 DOUBLE ANGLE BRACKETS 》
 used in <a href=https://en.wikipedia.org/wiki/Chinese_punctuation_for_proper_nouns>Chinese punctuation for proper nouns</a>.
 </p>
-<h2 id=core-wording><a class=para href=#core-wording></a>4. Core wording</h2>
+<h2 id=core-wording><a class=para href=#core-wording></a>5. Core wording</h2>
 
 <p>The changes are relative to <a href="https://wg21%2elink/n5014">[N5014]</a>.
 </p>
@@ -2517,7 +2538,7 @@ so this wording smells a bit fishy.
 </dl>
 </diff-block>
 
-<h2 id=library-wording><a class=para href=#library-wording></a>5. Library wording</h2>
+<h2 id=library-wording><a class=para href=#library-wording></a>6. Library wording</h2>
 
 <p>The changes are relative to <a href="https://wg21%2elink/n5014">[N5014]</a>.
 </p>
@@ -2671,7 +2692,7 @@ so this would have massive blast radius.
 
 
 
-<h2 id=references><a class=para href=#references></a>6. References</h2>
+<h2 id=references><a class=para href=#references></a>7. References</h2>
 
 
 <div class=bib><div id=bib-item-N5014 class=bib-item>
