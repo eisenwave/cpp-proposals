@@ -553,12 +553,12 @@ and if bit-precise integers were a class type in C++.
 If bit-precise integers were class types in C++,
 this would cause a serious problem with a common spelling
 that can be used in both C and C++ headers,
-even if there was a \tcode{\hl("macro"){_BitInt}} compatibility macro.
+even if there was a \tcode{\hl("name-macro"){_BitInt}} compatibility macro.
 
 \cppblock{
 #define _BitInt(...) std::bit_int<__VA_ARGS__>
 
-unsigned \hl("macro"){_BitInt}(8) x; // error: cannot combine 'unsigned' with class type
+unsigned \hl("name-macro"){_BitInt}(8) x; // error: cannot combine 'unsigned' with class type
 }
 
 There are some workarounds to the problem,
@@ -578,14 +578,14 @@ but they all seem unattractive:
     This would be a highly unusual special case in the language.
   }
   \li{
-    Making \tcode{\hl("macro"){_BitInt(...)}} expand to an unspecified construct
+    Making \tcode{\hl("name-macro"){_BitInt(...)}} expand to an unspecified construct
     that can be combined with \tcode{signed} and \tcode{unsigned}.
     This means there needs to be a fundamental type,
     although that fundamental type only acts as a proxy for the \tcode{std::bit_int} class type.
     Once again, this comes off as an unusual special case.
   }
   \li{
-    Introducing a \tcode{\hl("macro"){_BitUint(...)}} macro for unsigned bit-precise integers,
+    Introducing a \tcode{\hl("name-macro"){_BitUint(...)}} macro for unsigned bit-precise integers,
     and insisting that both C and C++ developers use this for interoperability.
     This feels like an unnecessary burden for C developers
     considering that their spelling works perfectly fine
@@ -819,7 +819,7 @@ unsigned div10(unsigned x) {
 For this operation, Clang emits the following assembly:
 
 \codeblock("asm"){
-\hl("id-label"){div10(unsigned int)}:
+\hl("name-label"){div10(unsigned int)}:
         mov     ecx, edi
         mov     eax, 3435973837
         imul    rax, rcx
@@ -889,14 +889,14 @@ which is taught to C++ developers.
 See also \ref("#teaching-principles").
 
 While a similar approach could be taken
-as with the \tcode{\hl("macro"){_Atomic}} compatibility macro,
+as with the \tcode{\hl("name-macro"){_Atomic}} compatibility macro,
 macros cannot be exported from modules,
 and macros needlessly complicate the problem compared to a keyword.
 Furthermore, to enable compiling shared C and C++ headers, all of the spellings
 \tcode{_BitInt}, \tcode{signed _BitInt} and \tcode{unsigned _BitInt} need to be valid.
-This goes far beyond the capabilities that a compatibility macro like \tcode{\hl("macro"){_Atomic}}
+This goes far beyond the capabilities that a compatibility macro like \tcode{\hl("name-macro"){_Atomic}}
 can provide without language support.
-If the \tcode{\hl("macro"){_BitInt(...)}} macro simply expanded to \tcode{bit_int<__VA_ARGS__>},
+If the \tcode{\hl("name-macro"){_BitInt(...)}} macro simply expanded to \tcode{bit_int<__VA_ARGS__>},
 this may result in the ill-formed code \tcode{signed bit_int<N>}.
 
 The most plausible fix would be to create an exposition-only \tcode{\exposid{bit-int}}
@@ -1792,7 +1792,7 @@ I am under the impression that C's \header{tgmath.h} functions deliberately
 all integers types (including bit-precise integers),
 not just as the result of defective wording.
 Consequently, \tcode{_BitInt} can be passed both to
-the type-generic \tcode{\hl("macro"){sqrt}} macro
+the type-generic \tcode{\hl("name-macro"){sqrt}} macro
 as well as to the regular \tcode{sqrt(double)} function.
 
 \h3(id="random-support"){Lack of random number generation support}
@@ -3563,7 +3563,7 @@ respectively.
 \h4(show_number=false){[climits.syn]}
 
 In \eelis{climits.syn},
-add a new line below the definition of \tcode{\hl("macro"){ULLONG_WIDTH}}:
+add a new line below the definition of \tcode{\hl("name-macro"){ULLONG_WIDTH}}:
 
 \Bins{
 \itemdecl{

@@ -1745,7 +1745,7 @@ handling UTF-8 encoding errors in detail, etc. are out of the question.
 </p>
 <p>Most of the design choices are obvious,
 but unfortunately,
-<code><h- data-h=sym_op>&lt;</h-><h- data-h=name>charconv</h-><h- data-h=sym_op>&gt;</h-></code> functions have been designed as non-templates,
+<code><h- data-h=str>&lt;charconv&gt;</h-></code> functions have been designed as non-templates,
 which we cannot reasonably perpetuate.
 Most of the difficult design choices revolve around how to add the new overloads
 without breaking changes to code which uses <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_chars</h-></code>.
@@ -1863,7 +1863,7 @@ so function templates are necessary.
 </p>
 <note-block><p><intro-></intro-> 
 110 is also merely a lower bound.
-There could easily be 200 or 300 <code><h- data-h=name>to_chars</h-></code> overloads once <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>stdfloat</h-><h- data-h=sym_op>&gt;</h-></code> types
+There could easily be 200 or 300 <code><h- data-h=name>to_chars</h-></code> overloads once <code><h- data-h=str>&lt;stdfloat&gt;</h-></code> types
 and other extended arithmetic types are factored in.
 </p></note-block>
 
@@ -1903,7 +1903,7 @@ changes aggregate initialization.
 <p>In code, the design can be summarized as follows:
 </p>
 <code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>concept</h-> <i><h- data-h=name>character</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=sym_op>=</h-> <i><h- data-h=name>any</h-> <h- data-h=name>character</h-> <h- data-h=name>type</h-></i><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>concept</h-> <i><h- data-h=name>character-type</h-></i> <h- data-h=sym_op>=</h-> <i><h- data-h=name>any character type</h-></i><h- data-h=sym_punc>;</h->
 
 <h- data-h=kw>struct</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>ptr</h-><h- data-h=sym_punc>;</h->
@@ -1917,30 +1917,30 @@ changes aggregate initialization.
 <h- data-h=kw>struct</h-> <h- data-h=name>u16to_chars_result</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
 <h- data-h=kw>struct</h-> <h- data-h=name>u32to_chars_result</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
 
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>using</h-> <h- data-h=name_type>to_chars_result_t</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>one</h-> <h- data-h=name>of</h-> <h- data-h=name>the</h-> <h- data-h=name>result</h-> <h- data-h=name>types</h-> <h- data-h=name>above</h-></i><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character-type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>using</h-> <h- data-h=name_type>to_chars_result_t</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>one of the result types above</h-></i><h- data-h=sym_punc>;</h->
 
 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> pre-existing overload:</h->
 <h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h->
-  <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>integer</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>integer-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> new function template:</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>integer</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-><h- data-h=sym_op>-</h-><h- data-h=kw>concept</h-></i> <h- data-h=name>U</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character-type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>integer-type-concept</h-></i> <h- data-h=name>U</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=name_type>to_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>U</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> same approach for floating-point types:</h->
 <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->
-                         <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-><h- data-h=sym_op>-</h-><h- data-h=kw>concept</h-></i> <h- data-h=name>U</h-><h- data-h=sym_op>&gt;</h->
+                         <i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character-type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>floating-point-type-concept</h-></i> <h- data-h=name>U</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=name_type>to_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>U</h-> <h- data-h=name>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
 <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->
-                         <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-><h- data-h=sym_op>-</h-><h- data-h=kw>concept</h-></i> <h- data-h=name>U</h-><h- data-h=sym_op>&gt;</h->
+                         <i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character-type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>floating-point-type-concept</h-></i> <h- data-h=name>U</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=name_type>to_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>U</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
 <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->
-                         <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>precision</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-><h- data-h=sym_op>-</h-><h- data-h=kw>concept</h-></i> <h- data-h=name>U</h-><h- data-h=sym_op>&gt;</h->
+                         <i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>precision</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character-type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>floating-point-type-concept</h-></i> <h- data-h=name>U</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=name_type>to_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>U</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>precision</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <code-block><h- data-h=kw>struct</h-> <h- data-h=name>from_chars_result</h-> <h- data-h=sym_brac>{</h->
@@ -1955,21 +1955,21 @@ changes aggregate initialization.
 <h- data-h=kw>struct</h-> <h- data-h=name>u16from_chars_result</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
 <h- data-h=kw>struct</h-> <h- data-h=name>u32from_chars_result</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
 
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>using</h-> <h- data-h=name_type>from_chars_result_t</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>one</h-> <h- data-h=name>of</h-> <h- data-h=name>the</h-> <h- data-h=name>result</h-> <h- data-h=name>types</h-> <h- data-h=name>above</h-></i><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character-type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>using</h-> <h- data-h=name_type>from_chars_result_t</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>one of the result types above</h-></i><h- data-h=sym_punc>;</h->
 
 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> pre-existing overload:</h->
 <h- data-h=kw>constexpr</h-> <h- data-h=name>from_chars_result</h->
-  <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>integer</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>integer-type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> new function template:</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>integer</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-><h- data-h=sym_op>-</h-><h- data-h=kw>concept</h-></i> <h- data-h=name>U</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character-type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>integer-type-concept</h-></i> <h- data-h=name>U</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=name_type>from_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>U</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> same approach for floating-point types:</h->
 <h- data-h=name>from_chars_result</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->
-                             <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
+                             <i><h- data-h=name>floating-point-type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
                              <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>chars_format</h-><h- data-h=sym_op>::</h-><h- data-h=name>general</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>integer</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-><h- data-h=sym_op>-</h-><h- data-h=kw>concept</h-></i> <h- data-h=name>U</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character-type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>integer-type-concept</h-></i> <h- data-h=name>U</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=name_type>from_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>U</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
                                     <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>chars_format</h-><h- data-h=sym_op>::</h-><h- data-h=name>general</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
@@ -2088,7 +2088,7 @@ but that is only correct in an ASCII-only implementation.
 Another library with EBCDIC support is the IBM XL C++ for z/OS,
 but according to
 <a href="https://www.ibm.com/docs/en/zos/3.1.0?topic=files-xl-c-header">IBM's documentation</a>,
-no <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>charconv</h-><h- data-h=sym_op>&gt;</h-></code> implementation exists yet.
+no <code><h- data-h=str>&lt;charconv&gt;</h-></code> implementation exists yet.
 Even if <code><h- data-h=kw_type>char</h-></code> is non-ASCII,
 the "fix" is not much harder than a <code><h- data-h=kw>static_cast</h-></code>:
 </p>
@@ -2159,7 +2159,7 @@ modify the synopsis as follows:
 <code-block class=borderless><h- data-h=kw>namespace</h-> <h- data-h=name>std</h-> <h- data-h=sym_brac>{</h->
   <ins><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>exposition-only concepts</h-></f-serif>
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
-    <h- data-h=kw>concept</h-> <i><h- data-h=name>character</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=sym_op>=</h-> <i><h- data-h=name>see</h-> <h- data-h=name>below</h-></i><h- data-h=sym_punc>;</h->                                  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>exposition only</h-></f-serif></ins>
+    <h- data-h=kw>concept</h-> <i><h- data-h=name>character-type</h-></i> <h- data-h=sym_op>=</h-> <i><h- data-h=name>see below</h-></i><h- data-h=sym_punc>;</h->                                  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>exposition only</h-></f-serif></ins>
 
   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>floating-point format for primitive numerical conversion</h-></f-serif>
   <h- data-h=kw>enum</h-> <h- data-h=kw>class</h-> <h- data-h=name>chars_format</h-> <h- data-h=sym_brac>{</h->
@@ -2202,10 +2202,10 @@ modify the synopsis as follows:
   <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
   
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->                                                     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
-    <h- data-h=kw>using</h-> <h- data-h=name_type>to_chars_result_t</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>see</h-> <h- data-h=name>below</h-></i><h- data-h=sym_punc>;</h-></ins>
+    <h- data-h=kw>using</h-> <h- data-h=name_type>to_chars_result_t</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>see below</h-></i><h- data-h=sym_punc>;</h-></ins>
 
   <h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->           <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
-                                     <i><h- data-h=name>integer</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+                                     <i><h- data-h=name>integer-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <ins>  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->                                        <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
     <h- data-h=kw>constexpr</h-> <h- data-h=name_type>to_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->
                                                 <h- data-h=name>V</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
@@ -2213,16 +2213,16 @@ modify the synopsis as follows:
                            <h- data-h=kw_type>bool</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw>delete</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->                     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding-deleted</h-></f-serif>
-                           <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+                           <i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <ins>  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->                                        <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding-deleted</h-></f-serif>
     <h- data-h=name_type>to_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>V</h-> <h- data-h=name>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
   <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->                     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding-deleted</h-></f-serif>
-                           <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+                           <i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <ins>  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->                                        <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding-deleted</h-></f-serif>
     <h- data-h=name_type>to_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>V</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
                                       <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
   <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->                     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding-deleted</h-></f-serif>
-                           <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>precision</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+                           <i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>precision</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <ins>  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->                                        <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding-deleted</h-></f-serif>
     <h- data-h=name_type>to_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>V</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
                                       <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>precision</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
@@ -2260,16 +2260,16 @@ modify the synopsis as follows:
   <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->                                                     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
-    <h- data-h=kw>using</h-> <h- data-h=name_type>from_chars_result_t</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>see</h-> <h- data-h=name>below</h-></i><h- data-h=sym_punc>;</h-></ins>
+    <h- data-h=kw>using</h-> <h- data-h=name_type>from_chars_result_t</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>see below</h-></i><h- data-h=sym_punc>;</h-></ins>
 
   <h- data-h=kw>constexpr</h-> <h- data-h=name>from_chars_result</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
-                                         <i><h- data-h=name>integer</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+                                         <i><h- data-h=name>integer-type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <ins>  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->                                          <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
     <h- data-h=kw>constexpr</h-> <h- data-h=name_type>from_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->
                                                     <h- data-h=name>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
 
   <h- data-h=name>from_chars_result</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding-deleted</h-></f-serif>
-                               <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
+                               <i><h- data-h=name>floating-point-type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
                                <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>chars_format</h-><h- data-h=sym_op>::</h-><h- data-h=name>general</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <ins>  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->                                        <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding-deleted</h-></f-serif>
     <h- data-h=name_type>from_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->
@@ -2282,7 +2282,7 @@ modify the synopsis as follows:
 insert a paragraph as follows:
 </p>
 <ins-block>
-<p>The exposition-only concept <code><i><h- data-h=name>character</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i></code>
+<p>The exposition-only concept <code><i><h- data-h=name>character-type</h-></i></code>
 is modeled by any character type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>).
 </p></ins-block>
 
@@ -2304,8 +2304,8 @@ of the type of <code><h- data-h=sym_op>*</h-><h- data-h=name>first</h-></code>.
 insert the following item:
 </p>
 <ins-block>
-<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>using</h-> <h- data-h=name_type>to_chars_result_t</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>see</h-> <h- data-h=name>below</h-></i><h- data-h=sym_punc>;</h-></code-block>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character-type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>using</h-> <h- data-h=name_type>to_chars_result_t</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>see below</h-></i><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p><i>Result</i>:
@@ -2325,10 +2325,10 @@ but is permitted by <a href=https://eel.is/c++draft/structure.specifications>[st
 and has been done in various other places.
 </p></note-block>
 
-<p>Modify the overload for <code><i><h- data-h=name>integer</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i></code> as follows:
+<p>Modify the overload for <code><i><h- data-h=name>integer-type</h-></i></code> as follows:
 </p>
 <diff-block>
-<code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>integer</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>integer-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=name_type>to_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->
                                               <h- data-h=name>V</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins></code-block>
@@ -2368,10 +2368,10 @@ Such range notation is already used in <a href=https://eel.is/c++draft/lex.chars
 without any attempt at disambiguation.
 </p></note-block>
 
-<p>Modify the overloads for <code><i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i></code> as follows:
+<p>Modify the overloads for <code><i><h- data-h=name>floating-point-type</h-></i></code> as follows:
 </p>
 <diff-block>
-<code-block class=borderless><h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<code-block class=borderless><h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=name_type>to_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>V</h-> <h- data-h=name>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins></code-block>
 
@@ -2391,7 +2391,7 @@ a tie is resolved in favor of <code><h- data-h=name>f</h-></code>.
 Nothing.
 </p></div>
 
-<code-block class=borderless><h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<code-block class=borderless><h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=name_type>to_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>V</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins></code-block>
 
@@ -2411,7 +2411,7 @@ in the style of <code><h- data-h=name>printf</h-></code> in the <code><h- data-h
 Nothing.
 </p></div>
 
-<code-block class=borderless><h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
+<code-block class=borderless><h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
                          <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>precision</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=name_type>to_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>V</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
@@ -2459,7 +2459,7 @@ but this would take considerable effort and isn't necessary for this proposal.
 </p></note-block>
 
 <p>If <a href="https://wg21%2elink/p3652r1">[P3652R1]</a> has been accepted
-or a later paper marked the existing <code><i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-></i></code>
+or a later paper marked the existing <code><i><h- data-h=name>floating-point</h-></i></code>
 overloads <code><h- data-h=kw>constexpr</h-></code>,
 modify all the added overloads as follows:
 </p>
@@ -2547,8 +2547,8 @@ those code units are simply not part of the pattern.
 insert the following item:
 </p>
 <ins-block>
-<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>using</h-> <h- data-h=name_type>from_chars_result_t</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>see</h-> <h- data-h=name>below</h-></i><h- data-h=sym_punc>;</h-></code-block>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character-type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>using</h-> <h- data-h=name_type>from_chars_result_t</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>see below</h-></i><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p><i>Result</i>:
@@ -2562,11 +2562,11 @@ insert the following item:
 </div>
 </ins-block>
 
-<p>Modify the overload for <code><i><h- data-h=name>integer</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i></code> as follows:
+<p>Modify the overload for <code><i><h- data-h=name>integer-type</h-></i></code> as follows:
 </p>
 <diff-block>
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=name>from_chars_result</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->
-                                       <i><h- data-h=name>integer</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+                                       <i><h- data-h=name>integer-type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=name_type>from_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->
                                                   <h- data-h=name>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins></code-block>
@@ -2618,10 +2618,10 @@ which is added to C2y for octal prefixes.
 negative value to specify <code><h- data-h=name>to_chars</h-></code> in terms of it.
 </p></note-block>
 
-<p>Modify the overload for <code><i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i></code> as follows:
+<p>Modify the overload for <code><i><h- data-h=name>floating-point-type</h-></i></code> as follows:
 </p>
 <diff-block>
-<code-block class=borderless><h- data-h=name>from_chars_result</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
+<code-block class=borderless><h- data-h=name>from_chars_result</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>floating-point-type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
                              <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>chars_format</h-><h- data-h=sym_op>::</h-><h- data-h=name>general</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>charT</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=name_type>from_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>charT</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
