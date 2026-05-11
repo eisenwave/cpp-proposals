@@ -3,9 +3,9 @@
 
 \wg21_head(title={Fixing \tcode{std::bit_cast} of types\br{}with padding bits}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3969R0}}
-  \dt{Date:}            \dd{\tt{2026-02-20}}
-  \dt{Audience:}        \dd{LEWG}
+  \dt{Document number:} \dd{\docnum{P3969R1}}
+  \dt{Date:}            \dd{\tt{2026-05-11}}
+  \dt{Audience:}        \dd{LEWG, EWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3969/github")}
@@ -18,15 +18,25 @@
 When bit-casting a type containing padding bits to a type with no padding bits,
 \tcode{std::bit_cast} degenerates into an alternative spelling for \tcode{std::unreachable}
 (some exceptions apply).
-Two viable solutions to the problem are presented:
-diagnosing \tcode{std::bit_cast}
-and adding a \tcode{std::bit_cast_zero_padding} function with alternative behavior,
-or simply changing the current behavior of \tcode{std::bit_cast}.
+To prevent this inadvertent footgun,
+this proposal makes that degenerate form of \tcode{std::bit_cast} ill-formed.
 }
 
 \h2(listed=false){Contents}
 
 \make_contents
+
+\h2{Revision history}
+
+\h3{Changes since R0}
+
+\ul{
+  \li{Limited the scope of the paper to only expand the \i{Mandates} of \tcode{std::bit_cast}}
+  \li{Mentioned \ref("LWG4539")}
+  \li{Added \ref("#union-edge-case")}
+  \li{Expanded design discussion in various areas}
+  \li{Rebased \ref("#wording") on the post-Croydon motions}
+}
 
 \h2{Introduction}
 
@@ -52,27 +62,17 @@ the degenerate form of \tcode{std::bit_cast} does not violate the
 leaving the bug undetected.
 Compilers also have no warning for the degenerate form at the time of writing.
 
-\Bnote{
-If those padding paddings in \tcode{From} are all mapped onto
-\tcode{std::byte} or \tcode{unsigned char} objects within \tcode{To},
-the behavior is well-defined.
-}
-
 This behavior is a footgun, and is not very useful.
 If users wanted a function that always has UB,
-they should be writing \tcode{std::unreachable}, not \tcode{std::bit_cast}.
-
-Furthermore, it would be useful if bit-casting between \tcode{long double}
-and a 128-bit integer type was easily possible.
-After all, reinterpreting floating-point types and integer types
-is part and parcel of implementing mathematical functions like those in \header{cmath}.
-It would also be useful if this could be done portably in constant expressions.
-Another case where the degenerate form may arise frequently is bit-casting \tcode{_BitInt}
-(supported by Clang as an extension and proposed in \ref("P3666R2")),
-considering that most \tcode{_BitInt} types (at least 7/8) have padding bits.
+they should be writing \tcode{std::unreachable},
+not \tcode{std::bit_cast}.
 
 \Bnote{
-It is possible to implement a proper conversion from \tcode{long double}
+If the padding bits in \tcode{From} are all mapped onto
+\tcode{std::byte} or \tcode{unsigned char} objects within \tcode{To},
+the behavior is well-defined.
+
+That makes it possible to implement a proper conversion from \tcode{long double}
 to \tcode{__int128}, although it requires multiple steps:
 \cppblock{
 // OK because indeterminate bits go into unsigned char:
@@ -105,10 +105,18 @@ GCC compiles this code;
 Clang already rejects both assertions.
 }
 
+\Bnote{
+Another case where the degenerate form may arise frequently is bit-casting \tcode{_BitInt}
+(supported by Clang as an extension and proposed in \ref("P3666R3")),
+considering that most \tcode{_BitInt} types (at least 7/8) have padding bits.
+}
+
 \h2{Design}
 
-To address these issues with \tcode{std::bit_cast},
-there are two viable approaches:
+The proposed solution is to make the degenerate form of \tcode{std::bit_cast} ill-formed.
+
+However, R0 of this paper was more ambitious
+and presented two approaches:
 
 \ol{
   \li{
@@ -124,8 +132,283 @@ there are two viable approaches:
   }
 }
 
-These are referred to as the
-\dfn{two-function solution} and \dfn{single-function solution} below, respectively.
+LEWG and EWG gave contradictory feedback on which approach to choose.
+During the 2026-03-10 LEWG telecon, the following poll was taken:
+
+\Bquote{
+\b{POLL}: We think that changing the current undefined behaviour
+of bit_cast to silently zeroing padding bits is problematic.
+\five_way_poll(6, 6, 1, 0, 0)
+\b{Attendance}: 19\br
+\b{Author's position}: SF\br
+\b{Outcome}: Consensus in favor.
+}
+
+When EWG later saw the paper during the 2026-03 Croydon meeting,
+the following poll was taken:
+
+\Bquote{
+EWG prefers adding another flavor of bit_cast (padding zero-ing)
+in addition to existing bit_cast
+(which makes reading padding bits a library UB):
+\five_way_poll(4, 3, 7, 10, 3)
+\b{Result}: not consensus
+}
+
+If LEWG does not want to silently change the behavior of \tcode{std::bit_cast}
+and EWG does not want another function,
+then the only option is to make the degenerate form of \tcode{std::bit_cast} ill-formed
+without adding any new function.
+
+\h3{Can't you make \tcode{std::bit_cast} produce unspecified or erroneous values?}
+
+A possible approach would be to make \tcode{std::bit_cast} produce
+unspecified bit values instead of indeterminate bit values.
+That is, \tcode{std::bit_cast<__int128>(0.0L)} would create a \tcode{__int128}
+with 10 predictable bytes and 6 bytes with unspecified value.
+There are two problems with this idea:
+\ul{
+  \li{
+    Since the byte values are now unspecified,
+    UBSan (undefined behavior sanitizer) can no longer diagnose accessing/branching
+    based on the upper 6 bytes as a bug.
+    The bug (possibly CWE-908: Use of Uninitialized Resource) didn't go away,
+    it just became non-conforming to diagnose it with termination.
+  }
+  \li{
+    This approach should not work for constant evaluation
+    because it would add non-determinism at compile time.
+  }
+}
+
+Overall, this design \q{sweeps the problem under the rug}
+with little benefit to the user.
+However, it does enable certain uses where \tcode{std::bit_cast} is producing a
+type that is used like a bag of bits but isn't a byte array.
+
+\Bex{
+C APIs often accept \tcode{void*} as extra data,
+so it would be convenient to be able to bit-cast a padded type to \tcode{void*} without UB.
+This case is explained in more detail at
+\url{https://github.com/eisenwave/cpp-proposals/issues/175}
+}
+
+It is also possible to make the result have erroneous value.
+However, once again, this approach could not be used to portably
+bit-cast \tcode{long double} to \tcode{__int128},
+especially not during constant evaluation;
+the degenerate form of \tcode{std::bit_cast} would then always produce erroneous values,
+so it makes no sense to let it compile in the first place.
+This solution would only benefit the case of bit-casting to a byte array;
+perhaps that is worth pursuing,
+but the only way not to add cost to \tcode{std::bit_cast} (with no opt-out)
+would be to give the bytes an unspecified value
+that is considered an erroneous value.
+This provides minimal (if any) benefit,
+and could be explored in a separate paper;
+it is a separate issue from the one presented in this paper.
+
+\h3{\i{Constraints} vs \i{Mandates}}
+
+The degenerate form of \tcode{std::bit_cast} should be diagnosed using
+a \i{Mandates} element (that is, \tcode{static_assert}).
+That is because the condition for the degenerate form
+is relatively complicated and may change in the future.
+Also, \i{Constraints} tempts the user to test whether \tcode{bit_cast}
+is \q{safe} using \tcode{requires},
+but this test can have false positives.
+The detection of the degenerate form would only tell the user whether
+\em{all} possible arguments result in undefined behavior.
+
+Conceptually, \i{Constraints} for \tcode{std::bit_cast}
+should tell the user whether bit-casting is technically feasible
+due to sizes matching and types being trivially copyable,
+whereas \i{Mandates} should catch misuses such as passing
+consteval-only types or types that result in the degenerate form.
+
+Also, using \i{Mandates} makes the implementation strategy simpler;
+it only requires a modification of the \tcode{__builtin_bit_cast} intrinsic.
+
+\h3(
+  id="bit-cast-constant-evaluation-undefined-behavior"
+){Requiring \tt{std::bit_cast} UB to be diagnosed in constant expressions}
+
+\eelis{bit.cast#4.2} explicitly makes indeterminate result bits undefined behavior
+\em{inside} \tcode{std::bit_cast},
+which arguably makes it \q{library UB},
+which is generally not required to be diagnosed during constant evaluation.
+Another undiagnosed UB is forming invalid value representations,
+such as in the case of \tcode{bit_cast<bool>(char(2))}
+when \tcode{2} is not a valid representation of \tcode{bool}.
+
+During the 2026-03-10 LEWG telecon,
+LEWG expressed unanimously that UB in \tcode{std::bit_cast}
+should be diagnosed during constant evaluation.
+This defect is addressed in \ref("LWG4539"),
+and can be resolved independently of this paper.
+
+\h3{\tcode{union} edge case}
+
+When bit-casting bits that are enclosed by a union,
+it is unknown during translation whether the bits are padding bits or not.
+Similarly, when bit-casting padding bits and the corresponding
+bits in the destination are enclosed by a union,
+it is also unknown whether padding bits are mapped onto non-padding bits or not.
+Undefined behavior in those cases can only be caught by sanitizers;
+it cannot be diagnosed during translation.
+
+The solution is to simply allow such cases (which is the status quo).
+Disallowing them would mean that \tcode{std::bit_cast} of a \tcode{union}
+would have to be ill-formed,
+breaking existing code.
+
+\h3{Future direction}
+
+The proposed solution does not preclude the possibility
+of making \tcode{std::bit_cast} clear the padding bits in the future,
+nor does it preclude the possibility of adding a new function that does that,
+nor does it preclude the possibility of making the degenerate form of \tcode{std::bit_cast}
+produce unspecified or erroneous values instead of being ill-formed.
+
+All doors are left open;
+we are merely preventing unnecessary bugs.
+
+\h2{Impact on existing code}
+
+The proposed change only makes the degenerate form of \tcode{std::bit_cast} ill-formed,
+i.e. it raises an error in code that contained unconditional UB.
+
+\h2{Implementation experience}
+
+While compilers diagnose misuses of \tcode{std::bit_cast} during constant evaluation,
+the proposed compile-time check has not been implemented
+in any compiler at the time of writing.
+The most straight-forward implementation strategy is to add a check
+in the compiler's \tcode{__builtin_bit_cast} intrinsic
+for the degenerate form of \tcode{std::bit_cast}.
+
+\h2{Wording}
+
+The changes are relative to \ref("N5032")
+with the changes from the post-Croydon motions applied.
+
+\h3(id="single-function-version-syn-wording", show_number=false){[version.syn]}
+
+Bump the feature-test macro in \eelis{version.syn} as follows:
+
+\Bdiff{
+\itemdecl{
+#define __cpp_lib_bit_cast \del{201806L} \ins{20XXXXL} // \serif{freestanding, also in \tt{<bit>}}
+}
+}
+
+\h3(id="single-function-bit-cast-wording", show_number=false){[bit.cast]}
+
+Change \eelis{bit.cast} as follows:
+
+\Bdiff{
+\cowel_html_element("h3"){Function template \tcode{bit_cast} \stable_ref{bit.cast}}
+
+\itemdecl{
+template<class To, class From>
+  constexpr To bit_cast(const From& from) noexcept;
+}
+
+\itemdescr{
+\constraints
+\ul{
+  \li{\tcode{sizeof(To) == sizeof(From)} is \tcode{true};}
+  \li{\tcode{is_trivially_copyable_v<To>} is \tcode{true};}
+  \li{\tcode{is_trivially_copyable_v<From>} is \tcode{true}.}
+}
+
+\mandates
+\ul{
+  \li{Neither \tcode{To} nor \tcode{From} are consteval-only types\iref{basic.types.general}.}
+  \li{
+    \ins{For every bit \math{\msub{\mi{s}\mi{i}}} in the object representation
+    of a complete object \math{\mi{s}} of type \tcode{From} and
+    the corresponding bit \math{\msub{\mi{d}\mi{i}}} in the object representation
+    of a complete object \math{\mi{d}} of type \tcode{To},} \ul(style="margin-top:0"){
+      \li{
+        \ins{\math{\msub{\mi{s}\mi{i}}} is in the value representation of \math{\mi{s}},}
+      }
+      \li{
+        \ins{\math{\msub{\mi{s}\mi{i}}} is enclosed by a union,}
+      }
+      \li{
+        \ins{\math{\msub{\mi{d}\mi{i}}} is not in the value representation of \math{\mi{d}}, or}
+      }
+      \li{
+        \ins{\math{\msub{\mi{d}\mi{i}}} is enclosed by a union.}
+      }
+    }
+  }
+}
+
+\editnote{
+The strategy is to isolate the case where we know with certainty
+that a padding bit is being mapped onto a non-padding bit.
+
+It is important to say \q{complete object} because \q{enclosed}
+looks for an enclosing object recursively,
+and we cannot know if on some level \math{\mi{s}} itself is enclosed by a union or not.
+We are imposing a requirement here that has to apply universally to any possible objects
+\math{\mi{s}} and \math{\mi{d}}.
+}
+
+\constantwhen
+Neither \tcode{To} nor \tcode{From}
+has constexpr-unknown representation\iref{expr.const.core}.
+
+\returns
+An object of type \tcode{To}.
+Implicitly creates objects nested within the result\iref{intro.object}.
+Each bit of the value representation of the result
+is equal to the corresponding bit in the object representation of \tcode{from}.
+Padding bits of the result are unspecified.
+For the result and each object created within it,
+if there is no value of the object's type corresponding to the value representation produced,
+the behavior is undefined.
+If there are multiple such values,
+which value is produced is unspecified.
+A bit in the value representation of the result is indeterminate
+if it does not correspond to a bit in the value representation of \tcode{from}
+or
+corresponds to a bit for which the smallest enclosing object
+is not within its lifetime or has an indeterminate value\iref{basic.indet}.
+A bit in the value representation of the result is erroneous
+if it corresponds to a bit for which the smallest enclosing object has an erroneous value.
+For each bit \math{\mi{b}} in the value representation of the result
+that is indeterminate or erroneous,
+let \math{\mi{u}} be the smallest object containing that bit enclosing \math{\mi{b}}:
+\ul{
+  \li{
+    If \math{\mi{u}} is of unsigned ordinary character type or \tcode{std::byte} type,
+    \math{\mi{u}} has an indeterminate value
+    if any of the bits in its value representation are indeterminate,
+    or otherwise has an erroneous value.
+  }
+  \li{
+    Otherwise, if \math{\mi{b}} is indeterminate,
+    the behavior is undefined.
+  }
+  \li{
+    Otherwise, the behavior is erroneous,
+    and the result is as specified above.
+  }
+}
+The result does not otherwise contain any indeterminate or erroneous values.
+}
+}
+
+\h2{Appendix: Single-function solution vs. two-function solution}
+
+The following section covers the advantages and disadvantages of the two approaches
+presented in R0 of this paper,
+as introduced in \ref("#design").
+This discussion is interesting historically,
+but unnecessary to understand the design of this proposal.
 
 \h3{Advantages of the two-function solution}
 
@@ -274,391 +557,6 @@ void clear_padding(T& object) {
 }
 }
 
-\h3{Can't you make \tcode{std::bit_cast} produce unspecified or erroneous values?}
-
-A possible approach would be to make \tcode{std::bit_cast} produce
-unspecified bit values instead of indeterminate bit values.
-That is, \tcode{std::bit_cast<__int128>(0.0L)} would create a \tcode{__int128}
-with 10 predictable bytes and 6 bytes with unspecified value.
-There are two problems with this idea:
-\ul{
-  \li{
-    Since the byte values are now unspecified,
-    UBSan (undefined behavior sanitizer) can no longer diagnose accessing/branching
-    based on the upper 6 bytes as a bug.
-    The bug (possibly CWE-908: Use of Uninitialized Resource) didn't go away,
-    it just became non-conforming to diagnose it with termination.
-  }
-  \li{
-    This approach should not work for constant evaluation
-    because it would add non-determinism at compile time.
-  }
-}
-
-Overall, this design \q{sweeps the problem under the rug} with little to no benefit to the user.
-
-It is also possible to make the result have erroneous value.
-However, once again, this approach could not be used to portably
-bit-cast \tcode{long double} to \tcode{__int128},
-especially not during constant evaluation;
-the degenerate form of \tcode{std::bit_cast} would then always produce erroneous values,
-so it makes no sense to let it compile in the first place.
-This solution would only benefit the case of bit-casting to a byte array;
-perhaps that is worth pursuing,
-but the only way not to add cost to \tcode{std::bit_cast} (with no opt-out)
-would be to give the bytes an unspecified value
-that is considered an erroneous value.
-This provides minimal (if any) benefit,
-and could be explored in a separate paper;
-it is a separate issue from the one presented in this paper.
-
-\h3{\i{Constraints} vs \i{Mandates} for the two-function solution}
-
-The degenerate form of \tcode{std::bit_cast} should be diagnosed using
-a \i{Mandates} element (that is, \tcode{static_assert}).
-That is because the condition for the degenerate form
-is relatively complicated and may change in the future.
-Also, \i{Constraints} tempts the user to test whether \tcode{bit_cast}
-is \q{safe} using \tcode{requires},
-but this test can have false positives.
-The detection of the degenerate form would only tell the user whether
-\em{all} possible arguments result in undefined behavior.
-
-Conceptually, \i{Constraints} for \tcode{std::bit_cast}
-should tell the user whether bit-casting is technically feasible
-due to sizes matching and types being trivially copyable,
-whereas \i{Mandates} should catch misuses such as passing
-consteval-only types or types that result in the degenerate form.
-
-\h3(id="bit-cast-constant-evaluation-undefined-behavior"){Requiring \tt{std::bit_cast} UB to be diagnosed in constant expressions}
-
-\eelis{bit.cast#4.2} explicitly makes indeterminate result bits undefined behavior
-\em{inside} \tcode{std::bit_cast},
-which arguably makes it \q{library UB},
-which is generally not required to be diagnosed during constant evaluation.
-
-I argue that it should be diagnosed,
-both for the two-function and single-function solution.
-While \tcode{std::bit_cast} is \em{technically} a library feature,
-it is spiritually a core language feature,
-and just acts as a portable spelling for the underlying
-\tcode{__builtin_bit_cast} intrinsic in compilers.
-Core language UB is generally diagnosed as per \eelis{expr.const}.
-
-It should be noted that \ref("P0476R1") never motivated this lack of diagnostics,
-and it is likely wording defect.
-After all, in the cases where \tcode{std::bit_cast} has library UB,
-it also produces an indeterminate result,
-and constant expressions do not allow for indeterminate scalar prvalues
-(\eelis{expr.const#def:expression,constant}).
-However, crucially, the library UB taking place inside \tcode{std::bit_cast}
-precedes the \eelis{expr.const} policy on what how indeterminate
-results are treated once a function has returned.
-Once any library UB happens, everything is UB,
-so the policy in \eelis{expr.const} arguably does not apply.
-
-\h3{Bumping the feature-test macro}
-
-For both the two-function and single-function solution,
-the \tcode{__cpp_lib_bit_cast} macro should be bumped:
-\ul{
-  \li{
-    For the two-function solution,
-    this lets the user detect the presence of \tcode{std::bit_cast_zero_padding}.
-  }
-  \li{
-    For the single-function solution,
-    this lets the user detect whether they can evaluate
-    \tcode{std::bit_cast<__int128>(0.0L)} without undefined behavior.
-  }
-}
-
-\h2{Implementation experience}
-
-First, it should be noted that compilers behave radically differently.
-
-\Bex{
-\cppblock{
-#include <bit>
-struct alignas(4) empty { };
-constexpr auto x = std::bit_cast<int>(empty{});
-static_assert(x == 0);
-}
-
-At the time of writing, GCC and Clang reject the example
-because it is considered access of an uninitialized byte.
-MSVC accepts the example, and the assertion passes.
-}
-
-It appears that the proposed behavior of \tcode{std::bit_cast_zero_padding}
-(which is the behavior of \tcode{std::bit_cast} in the single-function solution)
-is already implemented by MSVC,
-and to a limited extent, by GCC.
-
-There is no implementation experience for the detection of the degenerate form
-in the two-function solution,
-and such detection would require compiler support
-because there exists no way to query which bits or bytes of a type are padding bits,
-or whether a type has padding bits in the first place.
-
-\Bnote{
-\tcode{std::has_unique_object_representations_v<float>} is \tcode{true}
-despite \tcode{float} not having padding bits.
-These false positives make it not suitable for detecting the presence of padding bits.
-}
-
-\h2{Wording}
-
-The changes are relative to \ref("N5032").
-
-\Bdecision{
-Based on LEWG feedback,
-one of the following two sections should be chosen.
-}
-
-\h3{Two-function solution}
-
-\h4(show_number=false){[version.syn]}
-
-Bump the feature-test macro in \eelis{version.syn} as follows:
-
-\Bins{
-\itemdecl{
-#define __cpp_lib_bit_cast \del{201806L} \ins{20XXXXL} // \serif{freestanding, also in \tt{<bit>}}
-}
-}
-
-\h4(show_number=false){[bit.syn]}
-
-Change \eelis{bit.syn} as follows:
-
-\Bdiff{
-\itemdecl{
-//\serif{ all freestanding}
-namespace std {
-  //\serif{ [bit.cast], \del{\tcode{bit_cast}} \ins{bit-casting}}
-  template<class To, class From>
-    constexpr To bit_cast(const From& from) noexcept;
-\ins{  template<class To, class From>
-    constexpr To bit_cast_zero_padding(const From& from) noexcept;}
-
-  \etc
-}
-}
-}
-
-\h4(show_number=false){[bit.cast]}
-
-Change \eelis{bit.cast} as follows:
-
-\Bdiff{
-\cowel_html_element("h3"){\del{Function template \tcode{bit_cast}} \ins{Bit-casting} \stable_ref{bit.cast}}
-
-\itemdecl{
-template<class To, class From>
-  constexpr To bit_cast(const From& from) noexcept;
-}
-
-\itemdescr{
-\constraints
-\ul{
-  \li{\tcode{sizeof(To) == sizeof(From)} is \tcode{true};}
-  \li{\tcode{is_trivially_copyable_v<To>} is \tcode{true};}
-  \li{\tcode{is_trivially_copyable_v<From>} is \tcode{true}.}
-}
-
-\mandates
-\ul{
-  \li{
-    Neither \tcode{To} nor \tcode{From} are consteval-only types\iref{basic.types.general}\del{.}
-    \ins{; and}
-  }
-  \li{\ins{
-    for some argument of type \tcode{From},
-    the result of the function call expression is well-defined.
-  }}
-}
-
-\constantwhen
-\tcode{To}, \tcode{From}, and the types of all subobjects of \tcode{To} and \tcode{From}
-are types \tcode{T} such that:
-\ul{
-  \li{\tcode{is_union_v<T>} is \tcode{false};}
-  \li{\tcode{is_pointer_v<T>} is \tcode{false};}
-  \li{\tcode{is_member_pointer_v<T>} is \tcode{false};}
-  \li{\tcode{is_volatile_v<T>} is \tcode{false};}
-  \li{\tcode{T} has no non-static data members of reference type.}
-}
-
-\returns
-An object of type \tcode{To}.
-Implicitly creates objects nested within the result\iref{intro.object}.
-Each bit of the value representation of the result
-is equal to the corresponding bit in the object representation of \tcode{from}.
-Padding bits of the result are unspecified.
-For the result and each object created within it,
-if there is no value of the object's type corresponding to the value representation produced,
-the behavior is undefined.
-If there are multiple such values,
-which value is produced is unspecified.
-A bit in the value representation of the result is indeterminate
-if it does not correspond to a bit in the value representation of \tcode{from}
-or corresponds to a bit for which the smallest enclosing object
-is not within its lifetime or has an indeterminate value\iref{basic.indet}.
-A bit in the value representation of the result is erroneous
-if it corresponds to a bit for which the smallest enclosing object has an erroneous value.
-For each bit \math{\mi{b}} in the value representation of the result
-that is indeterminate or erroneous,
-let \math{\mi{u}} be the smallest object containing that bit enclosing \math{\mi{b}}:
-\ul{
-  \li{
-    If \math{\mi{u}} is of unsigned ordinary character type or \tcode{std::byte} type,
-    \math{\mi{u}} has an indeterminate value
-    if any of the bits in its value representation are indeterminate,
-    or otherwise has an erroneous value.
-  }
-  \li{
-    Otherwise, if \math{\mi{b}} is indeterminate,
-    the behavior is undefined.
-  }
-  \li{
-    Otherwise, the behavior is erroneous,
-    and the result is as specified above.
-  }
-}
-The result does not otherwise contain any indeterminate or erroneous values.
-
-\ins{
-\remarks
-A function call expression whose behavior is undefined as per the \Fundescx{Returns} element
-is not a core constant expression\iref{expr.const}.
-}
-}
-}
-
-Append the following declaration to \eelis{bit.cast}:
-
-\Bins{
-\itemdecl{
-template<class To, class From>
-  constexpr To bit_cast_zero_padding(const From& from) noexcept;
-}
-
-\itemdescr{
-\effects
-Equivalent to \tcode{bit_cast<To>(from)},
-except that if a bit \math{\mi{b}} in the value representation of the result
-does not correspond to a bit in the value representation of \tcode{from},
-\math{\mi{b}} is zero, not indeterminate.
-
-\example{
-The following example assumes that
-\tcode{sizeof(S) == 1} is \tcode{true}.
-\itemdecl{
-struct S { };
-void f() {
-  bit_cast<char8_t>(S{});               //\serif{ error: \tcode{bit_cast<char8_t, S>} is always undefined}
-  bit_cast<unsigned char>(S{});         //\serif{ OK, returns indeterminate value}
-  bit_cast_zero_padding<char8_t>(S{});  //\serif{ OK, returns \tcode{char8_t{0}}}
-}
-}
-}
-}
-}
-
-\h3{Single-function solution}
-
-\h4(id="single-functin-version-syn-wording", show_number=false){[version.syn]}
-
-Bump the feature-test macro in \eelis{version.syn} as follows:
-
-\Bins{
-\itemdecl{
-#define __cpp_lib_bit_cast \del{201806L} \ins{20XXXXL} // \serif{freestanding, also in \tt{<bit>}}
-}
-}
-
-\h4(id="single-functin-bit-cast-wording", show_number=false){[bit.cast]}
-
-Change \eelis{bit.cast} as follows:
-
-\Bdiff{
-\cowel_html_element("h3"){Function template \tcode{bit_cast} \stable_ref{bit.cast}}
-
-\itemdecl{
-template<class To, class From>
-  constexpr To bit_cast(const From& from) noexcept;
-}
-
-\itemdescr{
-\constraints
-\ul{
-  \li{\tcode{sizeof(To) == sizeof(From)} is \tcode{true};}
-  \li{\tcode{is_trivially_copyable_v<To>} is \tcode{true};}
-  \li{\tcode{is_trivially_copyable_v<From>} is \tcode{true}.}
-}
-
-\mandates
-Neither \tcode{To} nor \tcode{From} are consteval-only types\iref{basic.types.general}.
-
-\constantwhen
-\tcode{To}, \tcode{From}, and the types of all subobjects of \tcode{To} and \tcode{From}
-are types \tcode{T} such that:
-\ul{
-  \li{\tcode{is_union_v<T>} is \tcode{false};}
-  \li{\tcode{is_pointer_v<T>} is \tcode{false};}
-  \li{\tcode{is_member_pointer_v<T>} is \tcode{false};}
-  \li{\tcode{is_volatile_v<T>} is \tcode{false};}
-  \li{\tcode{T} has no non-static data members of reference type.}
-}
-
-\returns
-An object of type \tcode{To}.
-Implicitly creates objects nested within the result\iref{intro.object}.
-Each bit of the value representation of the result
-is equal to the corresponding bit in the object representation of \tcode{from}.
-Padding bits of the result are unspecified.
-For the result and each object created within it,
-if there is no value of the object's type corresponding to the value representation produced,
-the behavior is undefined.
-If there are multiple such values,
-which value is produced is unspecified.
-A bit in the value representation of the result is \del{indeterminate} \ins{zero}
-if it does not correspond to a bit in the value representation of \tcode{from}
-\del{or}\ins{, and is indeterminate if it}
-corresponds to a bit for which the smallest enclosing object
-is not within its lifetime or has an indeterminate value\iref{basic.indet}.
-A bit in the value representation of the result is erroneous
-if it corresponds to a bit for which the smallest enclosing object has an erroneous value.
-For each bit \math{\mi{b}} in the value representation of the result
-that is indeterminate or erroneous,
-let \math{\mi{u}} be the smallest object containing that bit enclosing \math{\mi{b}}:
-\ul{
-  \li{
-    If \math{\mi{u}} is of unsigned ordinary character type or \tcode{std::byte} type,
-    \math{\mi{u}} has an indeterminate value
-    if any of the bits in its value representation are indeterminate,
-    or otherwise has an erroneous value.
-  }
-  \li{
-    Otherwise, if \math{\mi{b}} is indeterminate,
-    the behavior is undefined.
-  }
-  \li{
-    Otherwise, the behavior is erroneous,
-    and the result is as specified above.
-  }
-}
-The result does not otherwise contain any indeterminate or erroneous values.
-
-\ins{
-\remarks
-A function call expression whose behavior is undefined as per the \Fundescx{Returns} element
-is not a core constant expression\iref{expr.const}.
-}
-}
-}
-
 \h2{References}
 
 \bib(
@@ -678,12 +576,19 @@ is not a core constant expression\iref{expr.const}.
   long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0476r1.html",
 )\
 \bib(
-  id = "P3666R2",
+  id = "P3666R3",
   title = "Bit-precise integers",
-  date = "2025-12-14",
+  date = "2026-02-21",
   author = "Jan Schultke",
-  link = "https://wg21.link/p3666r2",
-  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3666r2.pdf",
+  link = "https://wg21.link/p3666r3",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r3.html",
+)\
+\bib(
+  id = "LWG4539",
+  title = "Undefined behavior in std::bit_cast should be diagnosed during constant evaluation",
+  date = "2026-03-10",
+  author = "Jan Schultke",
+  link = "https://wg21.link/lwg4539",
 )\
 
 \make_bib
