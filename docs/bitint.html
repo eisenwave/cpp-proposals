@@ -1835,7 +1835,7 @@ this proposal introduces a new set of fundamental types to C++.
     to <a href=#bitint-abs>§5.6. New <tt->abs</tt-> overload</a>
   </li>
   <li>updated reference from <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3699%2epdf">[N3699]</a> to <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3747%2epdf">[N3747]</a></li>
-  <li>also added <code><h- data-h=name>abs</h-></code> overloads to <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>cstdlib</h-><h- data-h=sym_op>&gt;</h-></code>, instead of just <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>cmath</h-><h- data-h=sym_op>&gt;</h-></code></li>
+  <li>also added <code><h- data-h=name>abs</h-></code> overloads to <code><h- data-h=str>&lt;cstdlib&gt;</h-></code>, instead of just <code><h- data-h=str>&lt;cmath&gt;</h-></code></li>
   <li>
     added changes to <a href=https://eel.is/c++draft/utility.intcmp>[utility.intcmp]</a>
     (adding support to <code><h- data-h=name>cmp_less</h-></code> was already intended, but potentially requires
@@ -2319,11 +2319,11 @@ and if bit-precise integers were a class type in C++.
 <p>If bit-precise integers were class types in C++,
 this would cause a serious problem with a common spelling
 that can be used in both C and C++ headers,
-even if there was a <code><h- data-h=kw_type>_BitInt</h-></code> compatibility macro.
+even if there was a <code><h- data-h=name_mac>_BitInt</h-></code> compatibility macro.
 </p>
 <code-block><h- data-h=name_mac>#define _BitInt(...) std::bit_int&lt;__VA_ARGS__&gt;</h->
 
-<h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>8</h-><h- data-h=sym_par>)</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> error: cannot combine 'unsigned' with class type</h-></code-block>
+<h- data-h=kw_type>unsigned</h-> <h- data-h=name_mac>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>8</h-><h- data-h=sym_par>)</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> error: cannot combine 'unsigned' with class type</h-></code-block>
 
 <p>There are some workarounds to the problem,
 but they all seem unattractive:
@@ -2342,14 +2342,14 @@ but they all seem unattractive:
     This would be a highly unusual special case in the language.
   </li>
   <li>
-    Making <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>...</h-><h- data-h=sym_par>)</h-></code> expand to an unspecified construct
+    Making <code><h- data-h=name_mac>_BitInt(...)</h-></code> expand to an unspecified construct
     that can be combined with <code><h- data-h=kw_type>signed</h-></code> and <code><h- data-h=kw_type>unsigned</h-></code>.
     This means there needs to be a fundamental type,
     although that fundamental type only acts as a proxy for the <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_int</h-></code> class type.
     Once again, this comes off as an unusual special case.
   </li>
   <li>
-    Introducing a <code><h- data-h=name>_BitUint</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>...</h-><h- data-h=sym_par>)</h-></code> macro for unsigned bit-precise integers,
+    Introducing a <code><h- data-h=name_mac>_BitUint(...)</h-></code> macro for unsigned bit-precise integers,
     and insisting that both C and C++ developers use this for interoperability.
     This feels like an unnecessary burden for C developers
     considering that their spelling works perfectly fine
@@ -2563,7 +2563,7 @@ which is much cheaper:
 
 <p>For this operation, Clang emits the following assembly:
 </p>
-<code-block><h- data-h=name_inst>div10</h-><h- data-h=sym_par>(</h-><h- data-h=name_var>unsigned</h-> <h- data-h=name_var>int</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>:</h->
+<code-block><h- data-h=name_labl>div10(unsigned int)</h-><h- data-h=sym_op>:</h->
         <h- data-h=name_inst>mov</h->     <h- data-h=name_var>ecx</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>edi</h->
         <h- data-h=name_inst>mov</h->     <h- data-h=name_var>eax</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>3435973837</h->
         <h- data-h=name_inst>imul</h->    <h- data-h=name_var>rax</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>rcx</h->
@@ -2632,18 +2632,18 @@ which is taught to C++ developers.
 See also <a href=#teaching-principles>§6.1. Teaching principles</a>.
 </p>
 <p>While a similar approach could be taken
-as with the <code><h- data-h=kw>_Atomic</h-></code> compatibility macro,
+as with the <code><h- data-h=name_mac>_Atomic</h-></code> compatibility macro,
 macros cannot be exported from modules,
 and macros needlessly complicate the problem compared to a keyword.
 Furthermore, to enable compiling shared C and C++ headers, all of the spellings
 <code><h- data-h=kw_type>_BitInt</h-></code>, <code><h- data-h=kw_type>signed</h-> <h- data-h=kw_type>_BitInt</h-></code> and <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>_BitInt</h-></code> need to be valid.
-This goes far beyond the capabilities that a compatibility macro like <code><h- data-h=kw>_Atomic</h-></code>
+This goes far beyond the capabilities that a compatibility macro like <code><h- data-h=name_mac>_Atomic</h-></code>
 can provide without language support.
-If the <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>...</h-><h- data-h=sym_par>)</h-></code> macro simply expanded to <code><h- data-h=name>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>__VA_ARGS__</h-><h- data-h=sym_op>&gt;</h-></code>,
+If the <code><h- data-h=name_mac>_BitInt(...)</h-></code> macro simply expanded to <code><h- data-h=name>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>__VA_ARGS__</h-><h- data-h=sym_op>&gt;</h-></code>,
 this may result in the ill-formed code <code><h- data-h=kw_type>signed</h-> <h- data-h=name>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>N</h-><h- data-h=sym_op>&gt;</h-></code>.
 </p>
-<p>The most plausible fix would be to create an exposition-only <code><i><h- data-h=name>bit</h-><h- data-h=sym_op>-</h-><h- data-h=kw_type>int</h-></i></code>
-spelling to enable <code><h- data-h=kw_type>signed</h-> <i><h- data-h=name>bit</h-><h- data-h=sym_op>-</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>N</h-><h- data-h=sym_op>&gt;</h-></i></code>,
+<p>The most plausible fix would be to create an exposition-only <code><i><h- data-h=name>bit-int</h-></i></code>
+spelling to enable <code><h- data-h=kw_type>signed</h-> <i><h- data-h=name>bit-int&lt;N&gt;</h-></i></code>,
 which makes our users beg the question:
 </p>
 <blockquote>
@@ -3239,7 +3239,7 @@ In any case, fixing the C preprocessor is not part of the MVP.
 <p>When discussing library design,
 it is important to understand that the vast majority of support for bit-precise integers
 "sneaks" into the standard without any explicit design changes or wording changes.
-Many existing facilities (e.g. <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>bit</h-><h- data-h=sym_op>&gt;</h-></code>) support any integer type;
+Many existing facilities (e.g. <code><h- data-h=str>&lt;bit&gt;</h-></code>) support any integer type;
 adding bit-precise integers to the core language silently adds library support.
 The following sections deal mostly with areas of the standard
 where some explicit design changes must be made.
@@ -3291,8 +3291,8 @@ there are several reasons to also provide an alias template in the standard libr
     "Pointy brackets" communicate this more clearly.
   </li>
   <li>
-    C23 doesn't provide anything like a <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>stdbitint</h-><h- data-h=sym_op>.</h-><h- data-h=name>h</h-><h- data-h=sym_op>&gt;</h-></code> header with a "nicer spelling"
-    in the style of <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>stdbool</h-><h- data-h=sym_op>.</h-><h- data-h=name>h</h-><h- data-h=sym_op>&gt;</h-></code>,
+    C23 doesn't provide anything like a <code><h- data-h=str>&lt;stdbitint.h&gt;</h-></code> header with a "nicer spelling"
+    in the style of <code><h- data-h=str>&lt;stdbool.h&gt;</h-></code>,
     so any name is still available.
     <code><h- data-h=name>bit_int</h-></code> is relatively short and in active use already,
     so it doesn't seem plausible that WG14 would attempt to standardize these names as macros
@@ -3490,11 +3490,11 @@ for an explanation as to why this signature is chosen.
 
 <p>This is done simply for consistency with C:
 after some consulting with WG14 members,
-I am under the impression that C's <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>tgmath</h-><h- data-h=sym_op>.</h-><h- data-h=name>h</h-><h- data-h=sym_op>&gt;</h-></code> functions deliberately
+I am under the impression that C's <code><h- data-h=str>&lt;tgmath.h&gt;</h-></code> functions deliberately
 all integers types (including bit-precise integers),
 not just as the result of defective wording.
 Consequently, <code><h- data-h=kw_type>_BitInt</h-></code> can be passed both to
-the type-generic <code><h- data-h=name>sqrt</h-></code> macro
+the type-generic <code><h- data-h=name_mac>sqrt</h-></code> macro
 as well as to the regular <code><h- data-h=name>sqrt</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>double</h-><h- data-h=sym_par>)</h-></code> function.
 </p>
 <h3 id=random-support><a class=para href=#random-support></a>5.8. Lack of random number generation support</h3>
@@ -3502,10 +3502,10 @@ as well as to the regular <code><h- data-h=name>sqrt</h-><h- data-h=sym_par>(</h
 <p>Support for random number generation is not added
 because too many design changes are required,
 with non-obvious decisions.
-Users can also live without bit-precise integer support in <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>random</h-><h- data-h=sym_op>&gt;</h-></code>
+Users can also live without bit-precise integer support in <code><h- data-h=str>&lt;random&gt;</h-></code>
 for a while, so this feature is not part of the MVP.
 </p>
-<p>Wording changes would be needed because <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>random</h-><h- data-h=sym_op>&gt;</h-></code>
+<p>Wording changes would be needed because <code><h- data-h=str>&lt;random&gt;</h-></code>
 specifically supports certain integer types specified in <a href=https://eel.is/c++draft/rand.req.genl>[rand.req.genl]</a>,
 rather than having blanket support for bit-precise integers.
 </p>
@@ -3527,7 +3527,7 @@ exposing that functionality through <code><h- data-h=name>std</h-><h- data-h=sym
 is not entirely trivial.
 One major issue is that the wording in <a href=https://eel.is/c++draft/atomics.types.int>[atomics.types.int]</a>
 states that the implementation provides a number of specializations of the form:
-</p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>atomic</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>integral</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i><h- data-h=sym_op>&gt;</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h-></code-block>
+</p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>atomic</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>integral-type</h-></i><h- data-h=sym_op>&gt;</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <p>However, this wording strategy is not suitable for bit-precise integers
 because providing a full specialization for each type is not feasible.
@@ -3542,7 +3542,7 @@ without breaking existing code.
 </p>
 <h3 id=simd-support><a class=para href=#simd-support></a>5.10. Lack of <tt->simd</tt-> support for bit-precise integers</h3>
 
-<p><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>simd</h-><h- data-h=sym_op>&gt;</h-></code> is one of the few parts in the standard library
+<p><code><h- data-h=str>&lt;simd&gt;</h-></code> is one of the few parts in the standard library
 where the implementation is highly specific to integer widths,
 at least if high implementation quality is needed.
 There are many important questions, such as:
@@ -3584,7 +3584,7 @@ this could be done in a follow-up proposal.
 <h3 id=valarray-support><a class=para href=#valarray-support></a>5.11. <tt->valarray</tt-> support for bit-precise integers</h3>
 
 <p>Bit-precise integer support in <code><h- data-h=name>valarray</h-></code> is required.
-While the same concerns as with <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>simd</h-><h- data-h=sym_op>&gt;</h-></code> apply <em>in theory</em>,
+While the same concerns as with <code><h- data-h=str>&lt;simd&gt;</h-></code> apply <em>in theory</em>,
 it is easy to provide a naive implementation,
 and the implementation in standard libraries is typically naive anyway,
 including for existing integers.
@@ -3674,7 +3674,7 @@ Examples include:
 </p>
 <ul>
   <li>
-    C headers such as <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>stdbit</h-><h- data-h=sym_op>.</h-><h- data-h=name>h</h-><h- data-h=sym_op>&gt;</h-></code> and <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>stdckdint</h-><h- data-h=sym_op>.</h-><h- data-h=name>h</h-><h- data-h=sym_op>&gt;</h-></code>
+    C headers such as <code><h- data-h=str>&lt;stdbit.h&gt;</h-></code> and <code><h- data-h=str>&lt;stdckdint.h&gt;</h-></code>
     receive the same degree of support as they have in C.
     This is the obvious design, and any deviation would need to be justified somehow.
   </li>
@@ -3782,7 +3782,7 @@ so it may not be able to represent such huge widths.
 </p>
 <p>The easiest solution is to ignore the problem;
 this is proposed.
-It would require substantial design changes to <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>bit</h-><h- data-h=sym_op>&gt;</h-></code>, <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>limits</h-><h- data-h=sym_op>&gt;</h-></code>,
+It would require substantial design changes to <code><h- data-h=str>&lt;bit&gt;</h-></code>, <code><h- data-h=str>&lt;limits&gt;</h-></code>,
 and more to fix the issue.
 Furthermore, the practical utility of <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>32</h-><h- data-h=num_dlim>'</h-><h- data-h=num>768</h-><h- data-h=sym_par>)</h-></code> and wider
 is somewhat questionable,
@@ -3797,7 +3797,7 @@ for bit-precise integers.
 In one case, there is a non-obvious choice between:
 </p>
 <code-block><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> template type parameter</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=kw_type>signed</h-><h- data-h=sym_op>-</h-><h- data-h=name>bit</h-><h- data-h=sym_op>-</h-><h- data-h=kw_type>int</h-></i> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>T</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>signed-bit-int</h-></i> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>T</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> constant template parameter</h->
 <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=name>bit_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
@@ -3917,7 +3917,7 @@ is explicitly added.
 </p>
 <p>Since this proposal does not explicitly remove support for bit-precise integers,
 support "sneaks" its way in, without any explicit wording changes.
-For example, use of bit-precise integers in <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>bit</h-><h- data-h=sym_op>&gt;</h-></code>, <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>valarray</h-><h- data-h=sym_op>&gt;</h-></code>,
+For example, use of bit-precise integers in <code><h- data-h=str>&lt;bit&gt;</h-></code>, <code><h- data-h=str>&lt;valarray&gt;</h-></code>,
 and many others is enabled.
 </p>
 <p>The addition of bit-precise integers means that (as in the core language),
@@ -3936,37 +3936,37 @@ the possible changes to container <code><h- data-h=name>size_type</h-></code>s a
     <th>See also</th>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>algorithm</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;algorithm&gt;</h-></code></td>
     <td>Relax some <i>Mandates</i> due to implementability problems.</td>
     <td><a href=#alg.foreach>§ [alg.foreach]</a></td>
     <td><a href=#misc-support>§5.14. Miscellaneous library support</a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>bit</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;bit&gt;</h-></code></td>
     <td>Expand blanket support for integers.</td>
     <td>None required</td>
     <td><a href=#misc-support>§5.14. Miscellaneous library support</a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>charconv</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;charconv&gt;</h-></code></td>
     <td>Add <code><h- data-h=name>to_chars</h-></code> and <code><h- data-h=name>from_chars</h-></code> overloads.</td>
     <td><a href=#charconv.syn>§ [charconv.syn]</a></td>
     <td><a href=#printing-support>§5.2. <tt->format</tt->, <tt->to_chars</tt->, and <tt->to_string</tt-> support for bit-precise integers</a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>chrono</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;chrono&gt;</h-></code></td>
     <td>Bit-precise integers can be used in e.g. <code><h- data-h=name>duration</h-></code>.</td>
     <td>None required</td>
     <td></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>climits</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;climits&gt;</h-></code></td>
     <td>Add <code><h- data-h=name>BITINT_MAXWIDTH</h-></code> macro.</td>
     <td><a href=#climits.syn>§ [climits.syn]</a></td>
     <td></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>cmath</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;cmath&gt;</h-></code></td>
     <td>
       Add <code><h- data-h=name>abs</h-></code> overload.
       Allow passing bit-precise integers to most math functions.
@@ -3975,31 +3975,31 @@ the possible changes to container <code><h- data-h=name>size_type</h-></code>s a
     <td><a href=#bitint-abs>§5.6. New <tt->abs</tt-> overload</a>,<br/><a href=#bitint-cmath>§5.7. Using bit-precise integers in <tt->&lt;cmath&gt;</tt-> functions</a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=kw>complex</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;complex&gt;</h-></code></td>
     <td>Expand blanket support for integers.</td>
     <td>None required</td>
     <td><a href=#misc-support>§5.14. Miscellaneous library support</a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>concepts</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;concepts&gt;</h-></code></td>
     <td>Some concepts broadened (e.g. <code><h- data-h=name>integral</h-></code>).</td>
     <td>None required</td>
     <td><a href=#broadening-type-traits>§5.12. Broadening <tt->is_integral</tt-></a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>cstdlib</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;cstdlib&gt;</h-></code></td>
     <td>Add <code><h- data-h=name>abs</h-></code> overload.</td>
     <td><a href=#cstdlib.syn>§ [cstdlib.syn]</a></td>
     <td><a href=#bitint-abs>§5.6. New <tt->abs</tt-> overload</a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>format</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;format&gt;</h-></code></td>
     <td>Expand blanket support for integers.</td>
     <td>None required</td>
     <td><a href=#printing-support>§5.2. <tt->format</tt->, <tt->to_chars</tt->, and <tt->to_string</tt-> support for bit-precise integers</a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>iterator</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;iterator&gt;</h-></code></td>
     <td>
       Change "integer-class type" to prevent ABI break
       when integer types are added.
@@ -4008,94 +4008,94 @@ the possible changes to container <code><h- data-h=name>size_type</h-></code>s a
     <td><a href=#preserving-integer-class-types>§5.4. Preserving integer-class types</a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>limits</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;limits&gt;</h-></code></td>
     <td><code><h- data-h=name>numeric_limits</h-></code> specializations required as blanket support.</td>
     <td>None required</td>
     <td></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>limits</h-><h- data-h=sym_op>.</h-><h- data-h=name>h</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;limits.h&gt;</h-></code></td>
     <td>Changed indirectly.</td>
     <td><a href=#climits.syn>§ [climits.syn]</a></td>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>climits</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;climits&gt;</h-></code></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>linalg</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;linalg&gt;</h-></code></td>
     <td>Expand blanket support for integers.</td>
     <td>None required</td>
     <td></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>mdspan</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;mdspan&gt;</h-></code></td>
     <td>Bit-precise integers may be used as an index type.</td>
     <td>None required</td>
     <td></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>meta</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;meta&gt;</h-></code></td>
     <td>Some queries broadened (e.g. <code><h- data-h=name>is_integral_type</h-></code>).</td>
     <td>None required</td>
     <td><a href=#broadening-type-traits>§5.12. Broadening <tt->is_integral</tt-></a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>numeric</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;numeric&gt;</h-></code></td>
     <td>Expand blanket support for integers (<code><h- data-h=name>gcd</h-></code>, saturating arithmetic, etc.)</td>
     <td>None required</td>
     <td></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>ranges</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;ranges&gt;</h-></code></td>
     <td>
-      Change <code><i><h- data-h=name>IOTA</h-><h- data-h=sym_op>-</h-><h- data-h=name>DIFF</h-><h- data-h=sym_op>-</h-><h- data-h=name>T</h-></i></code> to prevent ABI break
+      Change <code><i><h- data-h=name>IOTA-DIFF-T</h-></i></code> to prevent ABI break
       when integer types are added.
     </td>
     <td><a href=#range.iota.view>§ [range.iota.view]</a></td>
     <td><a href=#preventing-iota-view-abi-break>§5.3. Preventing <tt->ranges::iota_view</tt-> ABI break</a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>stdbit</h-><h- data-h=sym_op>.</h-><h- data-h=name>h</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;stdbit.h&gt;</h-></code></td>
     <td>Inherit bit-precise integer support from C.</td>
     <td><a href=#stdbit.h.syn>§ [stdbit.h.syn]</a></td>
     <td><a href=#misc-support>§5.14. Miscellaneous library support</a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>stdckdint</h-><h- data-h=sym_op>.</h-><h- data-h=name>h</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;stdckdint.h&gt;</h-></code></td>
     <td>Inherit bit-precise integer support from C.</td>
     <td><a href=#numerics.c.ckdint>§ [numerics.c.ckdint]</a></td>
     <td><a href=#misc-support>§5.14. Miscellaneous library support</a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>string</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;string&gt;</h-></code></td>
     <td>Add <code><h- data-h=name>to_string</h-></code> and <code><h- data-h=name>to_wstring</h-></code> overloads.</td>
     <td><a href=#string.conversions>§ [string.conversions]</a></td>
     <td><a href=#printing-support>§5.2. <tt->format</tt->, <tt->to_chars</tt->, and <tt->to_string</tt-> support for bit-precise integers</a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>tgmath</h-><h- data-h=sym_op>.</h-><h- data-h=name>h</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;tgmath.h&gt;</h-></code></td>
     <td>Changed indirectly.</td>
     <td>None required</td>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>cmath</h-><h- data-h=sym_op>&gt;</h-></code>, <code><h- data-h=sym_op>&lt;</h-><h- data-h=kw>complex</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;cmath&gt;</h-></code>, <code><h- data-h=str>&lt;complex&gt;</h-></code></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>type_traits</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;type_traits&gt;</h-></code></td>
     <td>Some traits broadened (e.g. <code><h- data-h=name>is_integral</h-></code>).</td>
     <td>None required</td>
     <td><a href=#broadening-type-traits>§5.12. Broadening <tt->is_integral</tt-></a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>utility</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;utility&gt;</h-></code></td>
     <td>Expand blanket support for integers (e.g. <code><h- data-h=name>to_integer</h-></code>, <code><h- data-h=name>cmp_less</h-></code>).</td>
     <td></td>
     <td><a href=#misc-support>§5.14. Miscellaneous library support</a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>valarray</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;valarray&gt;</h-></code></td>
     <td>Expand blanket support for integers.</td>
     <td>None required</td>
     <td><a href=#valarray-support>§5.11. <tt->valarray</tt-> support for bit-precise integers</a></td>
   </tr>
   <tr>
-    <td><code><h- data-h=sym_op>&lt;</h-><h- data-h=name>version</h-><h- data-h=sym_op>&gt;</h-></code></td>
+    <td><code><h- data-h=str>&lt;version&gt;</h-></code></td>
     <td>Add feature-test macros.</td>
     <td><a href=#version.syn>§ [version.syn]</a></td>
     <td></td>
@@ -4106,7 +4106,7 @@ the possible changes to container <code><h- data-h=name>size_type</h-></code>s a
 There are numerous other standard library facilities which now support bit-precise integers,
 but are not mentioned specially because they are not numeric in nature.
 For example, it is possible to store a <code><h- data-h=name>bit_int</h-></code> in <code><h- data-h=name>any</h-></code>,
-but <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>any</h-><h- data-h=sym_op>&gt;</h-></code> is not mentioned specially in the table above.
+but <code><h- data-h=str>&lt;any&gt;</h-></code> is not mentioned specially in the table above.
 </p></note-block>
 
 <note-block><p><intro-></intro-> 
@@ -4485,7 +4485,7 @@ unsigned integer types are collectively called the
 <ul>
   <li>
     No two signed integer types other than <code><h- data-h=kw_type>char</h-></code> and <code><h- data-h=kw_type>signed</h-> <h- data-h=kw_type>char</h-></code>
-    (if char is signed) have the same rank, even if they have the same representation.
+    (if <h- data-h=kw>char</h-> is signed) have the same rank, even if they have the same representation.
   </li>
   <li>
     The rank of a signed integer type is greater than the rank
@@ -5110,7 +5110,7 @@ The definitions are in <a href=#c.math.abs>§ [c.math.abs]</a>.
 <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                               <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
 <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
 <ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                           <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif></ins>
-<h- data-h=kw>constexpr</h-> <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
+<h- data-h=kw>constexpr</h-> <i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
 
 <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>labs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                              <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
 <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>llabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif></code-block>
@@ -5125,8 +5125,8 @@ update the header synopsis as follows:
 <code-block class=borderless><h- data-h=kw>namespace</h-> <h- data-h=name>std</h-> <h- data-h=sym_brac>{</h->
   […]
 
-  <h- data-h=kw>using</h-> <h- data-h=name_type>uintmax_t</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=kw_type>unsigned</h-> <h- data-h=name>integer</h-> <h- data-h=name>type</h-></i><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>using</h-> <h- data-h=name_type>uintptr_t</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=kw_type>unsigned</h-> <h- data-h=name>integer</h-> <h- data-h=name>type</h-></i><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>optional</h-></f-serif>
+  <h- data-h=kw>using</h-> <h- data-h=name_type>uintmax_t</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>unsigned integer type</h-></i><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>using</h-> <h- data-h=name_type>uintptr_t</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>unsigned integer type</h-></i><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>optional</h-></f-serif>
 
 <ins>  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>N</h-><h- data-h=sym_op>&gt;</h->
     <h- data-h=kw>using</h-> <h- data-h=name>bit_int</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
@@ -5177,10 +5177,10 @@ respectively.
 <h4 id=climits.syn><a class=para href=#climits%2esyn></a>[climits.syn]</h4>
 
 <p>In <a href=https://eel.is/c++draft/climits.syn>[climits.syn]</a>,
-add a new line below the definition of <code><h- data-h=name>ULLONG_WIDTH</h-></code>:
+add a new line below the definition of <code><h- data-h=name_mac>ULLONG_WIDTH</h-></code>:
 </p>
 <ins-block>
-<code-block class=borderless><h- data-h=name_mac>#define BITINT_MAXWIDTH </h-><i><h- data-h=name_mac>see below</h-></i></code-block>
+<code-block class=borderless><h- data-h=name_mac>#define BITINT_MAXWIDTH </h-><i><h- data-h=name>see below</h-></i></code-block>
 </ins-block>
 
 <p>Change the synopsis in <a href=https://eel.is/c++draft/climits.syn#1>[climits.syn] paragraph 1</a> as follows:
@@ -5342,22 +5342,22 @@ that of every <del>integral</del> <ins>standard integer</ins> type of the same s
 <p>Change <a href=https://eel.is/c++draft/range.iota.view#1>[range.iota.view] paragraph 1</a> as follows:
 </p>
 <diff-block>
-<p>Let <code><i><h- data-h=name>IOTA</h-><h- data-h=sym_op>-</h-><h- data-h=name>DIFF</h-><h- data-h=sym_op>-</h-><h- data-h=name>T</h-></i><h- data-h=sym_par>(</h-><h- data-h=name>W</h-><h- data-h=sym_par>)</h-></code> be defined as follows:
+<p>Let <code><i><h- data-h=name>IOTA-DIFF-T</h-></i><h- data-h=sym_par>(</h-><h- data-h=name>W</h-><h- data-h=sym_par>)</h-></code> be defined as follows:
 </p>
 <ul>
   <li>
     If <code><h- data-h=name>W</h-></code> is not an integral type,
     or if it is an integral type and <code><h- data-h=kw>sizeof</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>iter_difference_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>W</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>)</h-></code> is
     greater than <code><h- data-h=kw>sizeof</h-><h- data-h=sym_par>(</h-><h- data-h=name>W</h-><h- data-h=sym_par>)</h-></code>,
-    then <code><i><h- data-h=name>IOTA</h-><h- data-h=sym_op>-</h-><h- data-h=name>DIFF</h-><h- data-h=sym_op>-</h-><h- data-h=name>T</h-></i><h- data-h=sym_par>(</h-><h- data-h=name>W</h-><h- data-h=sym_par>)</h-></code> denotes <code><h- data-h=name_type>iter_difference_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>W</h-><h- data-h=sym_op>&gt;</h-></code>.
+    then <code><i><h- data-h=name>IOTA-DIFF-T</h-></i><h- data-h=sym_par>(</h-><h- data-h=name>W</h-><h- data-h=sym_par>)</h-></code> denotes <code><h- data-h=name_type>iter_difference_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>W</h-><h- data-h=sym_op>&gt;</h-></code>.
   </li>
   <li>
-    Otherwise, <code><i><h- data-h=name>IOTA</h-><h- data-h=sym_op>-</h-><h- data-h=name>DIFF</h-><h- data-h=sym_op>-</h-><h- data-h=name>T</h-></i><h- data-h=sym_par>(</h-><h- data-h=name>W</h-><h- data-h=sym_par>)</h-></code>
+    Otherwise, <code><i><h- data-h=name>IOTA-DIFF-T</h-></i><h- data-h=sym_par>(</h-><h- data-h=name>W</h-><h- data-h=sym_par>)</h-></code>
     is a <ins>standard</ins> signed integer type of width greater than the width of <code><h- data-h=name>W</h-></code>
     if such a type exists.
   </li>
   <li>
-    Otherwise, <code><i><h- data-h=name>IOTA</h-><h- data-h=sym_op>-</h-><h- data-h=name>DIFF</h-><h- data-h=sym_op>-</h-><h- data-h=name>T</h-></i><h- data-h=sym_par>(</h-><h- data-h=name>W</h-><h- data-h=sym_par>)</h-></code>
+    Otherwise, <code><i><h- data-h=name>IOTA-DIFF-T</h-></i><h- data-h=sym_par>(</h-><h- data-h=name>W</h-><h- data-h=sym_par>)</h-></code>
     is an unspecified signed-integer-like (<a href=https://eel.is/c++draft/iterator.concept.winc>[iterator.concept.winc]</a>) type
     of width not less than the width of <code><h- data-h=name>W</h-></code>.
   </li>
@@ -5469,15 +5469,15 @@ signed and unsigned integer types do not include any cv-qualified types.
 <p>Change <a href=https://eel.is/c++draft/charconv.syn#1>[charconv.syn] paragraph 1</a> as follows:
 </p>
 <diff-block>
-<p>When a function is specified with a type placeholder of <code><i><h- data-h=name>integer</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i></code>,
+<p>When a function is specified with a type placeholder of <code><i><h- data-h=name>integer-type</h-></i></code>,
 the implementation provides overloads for <code><h- data-h=kw_type>char</h-></code>
 and all <del>cv-unqualified signed and unsigned integer types</del>
 <ins>standard and extended integer types</ins>
-in lieu of <code><i><h- data-h=name>integer</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i></code>.
-When a function is specified with a type placeholder of <code><i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i></code>,
+in lieu of <code><i><h- data-h=name>integer-type</h-></i></code>.
+When a function is specified with a type placeholder of <code><i><h- data-h=name>floating-point-type</h-></i></code>,
 the implementation provides overloads for all
 cv-unqualified floating-point types (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>)
-in lieu of <code><i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i></code>.
+in lieu of <code><i><h- data-h=name>floating-point-type</h-></i></code>.
 </p>
 <code-block class=borderless><h- data-h=kw>namespace</h-> <h- data-h=name>std</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>floating-point format for primitive numerical conversion</h-></f-serif>
@@ -5497,7 +5497,7 @@ in lieu of <code><i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- dat
   <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->           <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
-                                     <i><h- data-h=name>integer</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+                                     <i><h- data-h=name>integer-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <ins>  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
     <h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
                                        <h- data-h=name>T</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
@@ -5505,11 +5505,11 @@ in lieu of <code><i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- dat
                            <h- data-h=kw_type>bool</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw>delete</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->                     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding-deleted</h-></f-serif>
-                           <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+                           <i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->                     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding-deleted</h-></f-serif>
-                           <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+                           <i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
   <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->                     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding-deleted</h-></f-serif>
-                           <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>precision</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+                           <i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>precision</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>[charconv.from.chars], primitive numerical input conversion</h-></f-serif>
   <h- data-h=kw>struct</h-> <h- data-h=name>from_chars_result</h-> <h- data-h=sym_brac>{</h->                                            <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
@@ -5520,13 +5520,13 @@ in lieu of <code><i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- dat
   <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=kw>constexpr</h-> <h- data-h=name>from_chars_result</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
-                                         <i><h- data-h=name>integer</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+                                         <i><h- data-h=name>integer-type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <ins>  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
     <h- data-h=kw>constexpr</h-> <h- data-h=name>from_chars_result</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
                                            <h- data-h=name>T</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
 
   <h- data-h=name>from_chars_result</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding-deleted</h-></f-serif>
-                               <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
+                               <i><h- data-h=name>floating-point-type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
                                <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>chars_format</h-><h- data-h=sym_op>::</h-><h- data-h=name>general</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h-></code-block>
 </diff-block>
@@ -5536,7 +5536,7 @@ in lieu of <code><i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- dat
 <p>Change <a href=https://eel.is/c++draft/charconv.to.chars#lib:to_chars>[charconv.to.chars] <tt->to_chars</tt-></a> as follows:
 </p>
 <diff-block>
-<code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>integer</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>integer-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins></code-block>
 
@@ -5565,7 +5565,7 @@ Nothing.
 </p>
 <diff-block>
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=name>from_chars_result</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->
-                                       <i><h- data-h=name>integer</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+                                       <i><h- data-h=name>integer-type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=name>from_chars_result</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->
                                          <h- data-h=name>T</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins></code-block>
@@ -5695,7 +5695,7 @@ See <a href=#bitint-cmath>§5.7. Using bit-precise integers in <tt->&lt;cmath&gt
 <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                               <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
 <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif>
 <ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                           <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif></ins>
-<h- data-h=kw>constexpr</h-> <i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><i><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-></i> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif></code-block>
+<h- data-h=kw>constexpr</h-> <i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding</h-></f-serif></code-block>
 </diff-block>
 
 
