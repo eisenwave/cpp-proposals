@@ -2,6 +2,7 @@
 # Verify that the HTML files in docs/ are bitwise identical to the output
 # produced by the currently installed cowel for every source file whose
 # version comment matches the installed version.
+# Also rejects trailing whitespace and literal tab characters in all .cow files.
 #
 # Usage: scripts/verify-docs.sh
 #   Run from the repository root.
@@ -10,6 +11,18 @@ set -e
 
 version=$(cowel --version)
 failed=0
+
+# Check all .cow sources for trailing whitespace and tab characters.
+while IFS= read -r src; do
+  if grep -Pq '\t' "$src"; then
+    echo "TABS: $src contains literal tab characters"
+    failed=1
+  fi
+  if grep -Pq ' +$' "$src"; then
+    echo "TRAILING_WS: $src contains trailing whitespace"
+    failed=1
+  fi
+done < <(find src/ -name '*.cow')
 
 while IFS= read -r src; do
   name=$(basename "$src" .cow)
