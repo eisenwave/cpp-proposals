@@ -4,8 +4,8 @@
 \wg21_head(title={Fix defects in floating-point \tcode{std::from_chars}\br
   (LWG3081, LWG3082, LWG3456)}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P4168R0}}
-  \dt{Date:}            \dd{\tt{2026-04-05}}
+  \dt{Document number:} \dd{\docnum{P4168R1}}
+  \dt{Date:}            \dd{\tt{2026-05-11}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -29,6 +29,19 @@ and every implementation diverges from the wording in the standard.
 
 \make_contents
 
+\h2{Revision history}
+
+\h3{Changes since R0}
+
+\ul{
+  \li{
+    Added \ref("#tininess-detection") to the design section
+  }
+  \li{
+    Removed permission to return \tcode{errc::result_out_of_range} on subnormal results
+  }
+}
+
 \h2{Introduction}
 
 In 2018, \ref("LWG3081") pointed out that the \tcode{from_chars} API
@@ -37,7 +50,7 @@ The perceived defect is a loss of functionality compared to \tcode{std::strtod}.
 This issue remains open to this day despite having Priority 2.
 
 \Bex{
-An example of code affected by this detect looks as follows:
+An example of code affected by this defect looks as follows:
 \cppblock{
 const char str[] = "1e100000";
 float x; // assuming float in binary32 ISO/IEC 60559 format
@@ -57,7 +70,7 @@ Perplexingly, \ref("P2827R1") does not mention the implementation divergence
 between libstdc++ and MSVC STL, which already existed at the time;
 mentioning it surely would have added motivation.
 
-The issue is much more severe than the LWG issue and paper make it out to be.
+The issue is much more severe than the LWG issue and the paper make it out to be.
 The wording is defective, implementations diverge, and users suffer from it
 to the point where \tcode{boost::from_chars_erange} (\ref("BoostCharConv"))
 should arguably be recommended to users over the standard feature;
@@ -82,9 +95,11 @@ There are three cases of interest where typical implementations likely diverge:
 }
 
 \Bnote{
-ISO/IEC 60559 leaves the definition of \q{tininess} up to the implementation.
-This means that it is unclear whether the \tcode{"1e-45"} case is analogous
-to floating-point underflow.
+ISO/IEC 60559 leaves detection of \q{tininess} up to the implementation;
+see \ref("#tininess-detection").
+This means that it is implementation-defined
+whether the \tcode{"1e-45"} case is analogous to floating-point underflow,
+but only detection after rounding is plausible for \tcode{std::from_chars}.
 }
 
 At the time of writing,
@@ -371,6 +386,22 @@ is particularly well-motivated,
 or matches the behavior of other functions such as \tcode{std::strtod}.
 Both alternatives make it difficult to simply ignore the \tcode{result_out_of_range}
 error and use the value.
+
+\h3{Tininess detection}
+
+It is worth noting that ISO/IEC 60559 allows the implementation to
+define tininess (i.e. the threshold for underflow) in two ways:
+before or after rounding.
+That is, if a value is mathematically less than the smallest normal value
+and is rounded up,
+that may not be detected as underflow.
+
+In the case of \tcode{std::from_chars},
+detecting tininess after rounding is the only plausible option because
+whether a value is mathematically less than the smallest normal value
+is sometimes only determined tens or hundreds of digits into the string.
+The usual implementation strategy is to parse only the significant digits of the string,
+which is e.g. 17 digits in the case of \tcode{std::float64_t}.
 
 \h3{Further edge cases}
 
@@ -809,28 +840,20 @@ closest to the value of the string matching the pattern.
     negated if the leading U+002D HYPHEN MINUS is present.
     \math{\mi{q}} is correctly rounded to a value \math{\mi{r}}
     according to \tcode{round_to_nearest}\iref{round.style}.
-    \tcode{value} is set to \math{\mi{r}}, and
-    the member \tcode{ec} of the result is
+    \tcode{value} is set to \math{\mi{r}}.
+    The member \tcode{ec} of the result is
+    \tcode{errc::result_out_of_range} if
     \ul{
       \li{
-        value-initialized if \tcode{isnormal(\math{\mi{r}})} is \tcode{true},
-      }
-      \li{
-        \tcode{errc::result_out_of_range}
-        if \math{\mi{r}} is negative or positive infinity or
+        \math{\mi{r}} is negative or positive infinity or
         \math{\mi{q}} is not in the range of values
         representable by the type of \tcode{value},
       }
       \li{
-        \tcode{errc::result_out_of_range}
-        if \math{\mi{r}} is zero but \math{\mi{q}} is not zero, or
-      }
-      \li{
-        an implementation-defined choice of either
-        \tcode{errc::result_out_of_range} or a value-initialized result
-        if \math{\mi{r}} is a subnormal.
+        \math{\mi{r}} is zero and \math{\mi{q}} is not zero.
       }
     }
+    Otherwise, the member \tcode{ec} of the result is value-initialized.
   }
 }
 }
