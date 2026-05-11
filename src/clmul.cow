@@ -200,7 +200,7 @@ A naive curve that fills a 4x4 square can be computed as follows:
 \cppblock{
 struct pos { uint32_t x, y; };
 
-pos naive_curve(uint32_t i) { return { i \N{PERCENT SIGN} 4, i / 4 }; }
+pos naive_curve(uint32_t i) { return { i \'PERCENT SIGN' 4, i / 4 }; }
 }
 When mapping the index \tcode{i = 0, 1, ..., 0xf} onto the returned 2D coordinates,
 we obtain the following pattern:
@@ -238,8 +238,8 @@ which may also be accelerated using \tcode{clmul}.
 \cppblock{
 pos hilbert_to_xy(uint32_t i) {
   // De-interleave the bits of i.
-  uint32_t i0 = std::bit_compress(i, 0x55555555u); // abcdefgh \N{RIGHTWARDS ARROW} bdfh
-  uint32_t i1 = std::bit_compress(i, 0xaaaaaaaau); // abcdefgh \N{RIGHTWARDS ARROW} aceg
+  uint32_t i0 = std::bit_compress(i, 0x55555555u); // abcdefgh \'RIGHTWARDS ARROW' bdfh
+  uint32_t i1 = std::bit_compress(i, 0xaaaaaaaau); // abcdefgh \'RIGHTWARDS ARROW' aceg
 
   // Undo the permutation that Hilbert curves apply on top of Z-order curves.
   uint32_t A = i0 & i1;
@@ -346,7 +346,7 @@ The implementation difficulty lies mostly in utilizing available hardware instru
 not in the naive fallback implementation.
 
 In the following table, let \tt{uN} denote \tt{N}-bit unsigned integer operands,
-and \tt{\N{MULTIPLICATION SIGN}N} denote the amount of operands that are processed in parallel.
+and \tt{\'MULTIPLICATION SIGN'N} denote the amount of operands that are processed in parallel.
 
 \style{
   #optable {
@@ -361,48 +361,48 @@ and \tt{\N{MULTIPLICATION SIGN}N} denote the amount of operands that are process
 }
 
 \tr{
-  \td{\tt{clmul u64\N{MULTIPLICATION SIGN}4 \N{RIGHTWARDS ARROW} u128\N{MULTIPLICATION SIGN}4}}
+  \td{\tt{clmul u64\'MULTIPLICATION SIGN'4 \'RIGHTWARDS ARROW' u128\'MULTIPLICATION SIGN'4}}
   \td{\tt{vpclmulqdq}\sup{VPCLMULQDQ}}
   \td{}
   \td{}
 }
 
 \tr{
-  \td{\tt{clmul u64\N{MULTIPLICATION SIGN}2 \N{RIGHTWARDS ARROW} u128\N{MULTIPLICATION SIGN}2}}
+  \td{\tt{clmul u64\'MULTIPLICATION SIGN'2 \'RIGHTWARDS ARROW' u128\'MULTIPLICATION SIGN'2}}
   \td{\tt{vpclmulqdq}\sup{VPCLMULQDQ}}
   \td{}
   \td{}
 }
 
 \tr{
-  \td{\tt{clmul u64 \N{RIGHTWARDS ARROW} u128}}
+  \td{\tt{clmul u64 \'RIGHTWARDS ARROW' u128}}
   \td{\tt{pclmulqdq}\sup{PCLMULQDQ}}
   \td{\tt{pmull}+\tt{pmull2}\sup{Neon}}
   \td{\tt{clmul}+\tt{clmulh}\sup{Zbc, Zbkc}}
 }
 
 \tr{
-  \td{\tt{clmul u64 \N{RIGHTWARDS ARROW} u128}}
+  \td{\tt{clmul u64 \'RIGHTWARDS ARROW' u128}}
   \td{\tt{pclmulqdq}\sup{PCLMULQDQ}}
   \td{\tt{pmull}+\tt{pmull2}\sup{Neon}}
   \td{\tt{clmul}+\tt{clmulh}\sup{Zbc, Zbkc}}
 }
 
 \tr{
-  \td{\tt{clmul u64 \N{RIGHTWARDS ARROW} u64}}
+  \td{\tt{clmul u64 \'RIGHTWARDS ARROW' u64}}
   \td{}
   \td{\tt{pmull}\sup{Neon}}
   \td{\tt{clmul}\sup{Zbc, Zbkc}}
 }
 
 \tr{
-  \td{\tt{clmul u8\N{MULTIPLICATION SIGN}8 \N{RIGHTWARDS ARROW} u16\N{MULTIPLICATION SIGN}8}}
+  \td{\tt{clmul u8\'MULTIPLICATION SIGN'8 \'RIGHTWARDS ARROW' u16\'MULTIPLICATION SIGN'8}}
   \td{}
   \td{\tt{pmull}\sup{Neon}}
   \td{}
 }
 \tr{
-  \td{\tt{clmul u8\N{MULTIPLICATION SIGN}8 \N{RIGHTWARDS ARROW} u8\N{MULTIPLICATION SIGN}8}}
+  \td{\tt{clmul u8\'MULTIPLICATION SIGN'8 \'RIGHTWARDS ARROW' u8\'MULTIPLICATION SIGN'8}}
   \td{}
   \td{\tt{pmul}\sup{Neon}}
   \td{}
@@ -552,15 +552,15 @@ template<class T, class Abi>
 
 \h4{SIMD widening operations are out of scope}
 
-AVX-512 provides a \tt{u64\N{MULTIPLICATION SIGN}4 \N{RIGHTWARDS ARROW} u128\N{MULTIPLICATION SIGN}4} operation,
+AVX-512 provides a \tt{u64\'MULTIPLICATION SIGN'4 \'RIGHTWARDS ARROW' u128\'MULTIPLICATION SIGN'4} operation,
 and there is currently no precedent for such widening operations in the SIMD library.
 Specifically, the \tt{VPCLMULQDQ} instruction ignores
-one of each \tt{u64\N{MULTIPLICATION SIGN}2} pairs,
+one of each \tt{u64\'MULTIPLICATION SIGN'2} pairs,
 and produces a 128-bit output for each such pair.
 
 It would take \em{considerable} design and wording effort to standardize this,
 especially if one wants to expose the full \tt{VPCLMULQDQ} behavior,
-which allows choosing for each \tt{u64\N{MULTIPLICATION SIGN}2} integer pair,
+which allows choosing for each \tt{u64\'MULTIPLICATION SIGN'2} integer pair,
 which of these integers is multiplied and which is ignored.
 Procedurally, that design effort should be part of
 \ref("P3161R4") (which proposes widening operations in general)
@@ -647,13 +647,13 @@ template<class T>
   constexpr wide_result<T> widening_clmul(T x, T y) noexcept;
 }
 \itemdescr{
-\cowel_macro("alpha"){\N{GREEK SMALL LETTER ALPHA}}
+\cowel_macro("alpha"){\'GREEK SMALL LETTER ALPHA'}
 \cowel_macro("mathvar"){\math{\mi{\cowel_put}}}
 \pnum
 Let:
 \ul{
   \li{
-    \math{\mo{\N{N-ARY CIRCLED PLUS OPERATOR}}} be
+    \math{\mo{\'N-ARY CIRCLED PLUS OPERATOR'}} be
     a reduction using the exclusive OR operation (\eelis{expr.xor});
   }
   \li{
@@ -672,7 +672,7 @@ Let:
 \returns
 A \tcode{wide_result<T>} object storing the bits of an integer \mathvar{c},
 where the value of \math{\msub{\mi{c}\mi{i}}}
-is given by Formula\N{NO-BREAK SPACE}\tt{?.?},
+is given by Formula\'NO-BREAK SPACE'\tt{?.?},
 \mathvar{x} is \tcode{x}, and
 \mathvar{y} is \tcode{y}.
 The result object is initialized so that
@@ -712,7 +712,7 @@ The result object is initialized so that
       }
       \mo{=}
       \munderover{
-        \mo{\N{N-ARY CIRCLED PLUS OPERATOR}}
+        \mo{\'N-ARY CIRCLED PLUS OPERATOR'}
         \mrow{\mi{j}\mo{=}\mn{0}}
         \mi{i}
       }
@@ -720,7 +720,7 @@ The result object is initialized so that
       \msub{
         \mi{y}
         \mrow{
-          \mi{i}\mo{\N{MINUS SIGN}}\mi{j}
+          \mi{i}\mo{\'MINUS SIGN'}\mi{j}
         }
       }
     }
