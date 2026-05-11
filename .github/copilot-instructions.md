@@ -11,6 +11,7 @@ but this format is not used for any new documents.
 
 - `src/` - Source files in COWEL and Bikeshed formats
 - `docs/` - Generated HTML outputs from source files
+- `scripts/` - Utility scripts for rebuilding and verifying generated docs
 - `slides/` - Presentation materials (no longer actively used)
 - `README.md` - Repository overview
 
