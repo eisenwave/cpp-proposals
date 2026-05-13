@@ -21,7 +21,7 @@ while IFS= read -r src; do
   fi
   if [ -s "$src" ]; then
     last=$(tail -c 1 "$src" | od -An -tx1 | tr -d ' \n')
-    if [ "$last" != "0a" ] && [ "$last" != "" ]; then
+    if [ "$last" != "0a" ]; then
       echo "NO_FINAL_NL: $src does not end with a newline"
       failed=1
     fi
