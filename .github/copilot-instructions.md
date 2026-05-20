@@ -23,13 +23,13 @@ Most paper sources are written in **COWEL**.
 It is a specialized language designed for C++ proposal documentation.
 
 - **File extensions**: `.cow` or `.cowel`
-- **Default version**: COWEL 0.9.1
+- **Default version**: COWEL 0.10.0
 - **Version specification**: All files include a version comment at the top
-  (e.g., `\: cowel 0.9.1`)
+  (e.g., `\: cowel 0.10.0`)
 - **Build command**: `cowel run input.cow output.html`
 - **Installation**:
   - Latest: `npm i -g cowel`
-  - Specific version: `npm i -g cowel@0.9.1`
+  - Specific version: `npm i -g cowel@0.10.0`
 
 **Resources**:
 
