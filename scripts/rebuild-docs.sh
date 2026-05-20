@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rebuild HTML files in docs/ for every COWEL 0.9.1 source file,
+# Rebuild HTML files in docs/ for every COWEL 0.10.0 source file,
 # but only when a corresponding HTML file already exists in docs/.
 #
 # Usage: scripts/rebuild-docs.sh
@@ -18,6 +18,6 @@ while IFS= read -r src; do
   fi
   cowel run "$src" "$dest"
   echo "BUILT: $src -> $dest"
-done < <(grep -rl '\\: cowel 0\.9\.1' src/)
+done < <(grep -rl '\\: cowel 0\.10\.0' src/)
 
 exit $failed

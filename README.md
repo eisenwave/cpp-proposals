@@ -10,5 +10,5 @@ or if you have suggestions for improvement.
 
 This repository includes a GitHub Codespaces/devcontainer setup
 that installs Node.js,
-`cowel@0.9.1`,
+`cowel@0.10.0`,
 and the COWEL VS Code extension automatically.
