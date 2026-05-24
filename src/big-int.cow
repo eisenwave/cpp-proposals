@@ -4,7 +4,7 @@
 \wg21_head(title={\tcode{std::big_int}}){
 \dl{
   \dt{Document number:} \dd{\docnum{D4444R0}}
-  \dt{Date:}            \dd{\tt{2026-04-16}}
+  \dt{Date:}            \dd{\tt{2026-05-24}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -22,6 +22,231 @@ Other sections will be filled in over time.
 \h2(listed=false){Contents}
 
 \make_contents
+
+\h2{Introduction}
+
+C++ currently provides no portable support for integers wider than 64 bits.
+This is one of the oldest and most widely recognized gaps in the language,
+which authors have attempted to fill several times:
+\ref("N1692") (2004), \ref("N1744") (2005), and \ref("N4038") (2014)
+all proposed a \tcode{std::integer} class with infinite precision.
+Each of these attempts failed \'EM DASH'
+not because there was a lack of interest or motivation,
+but because the task turned out to be too great of a challenge.
+
+\h2{Motivation}
+
+In terms of utility,
+\tcode{std::big_int} has two main use case:
+\ol{
+  \li{
+    The use case where integers are \dfn{potentially big}.
+    For example,
+    \tcode{std::big_int} could be the result of parsing an integer in a config file,
+    and while the numbers are likely small in practice,
+    it is \em{theoretically} possible that the user puts a huge value into the config file.
+    \tcode{std::big_int} is useful in many scenarios because it eliminates the need
+    for range checks,
+    and it eliminates the possibility of undefined behavior through signed integer overflow.
+    One could also describe this as the \q{correctness use case}.
+  }
+  \li{
+    The use case where integers are \dfn{actually big}.
+    For example, when performing computations in cryptography, statistics, etc.
+    where the numbers involved simply don't fit into 64-bit integers.
+  }
+}
+
+\h3{\tcode{std::big_int} as a vocabulary type}
+
+An important reason why \tcode{std::big_int} should be in the C++ standard library
+is that it is a vocabulary type and may appear at library boundaries.
+
+\Bex{
+A single code base may depend on different libraries that all interact with \tcode{std::big_int}:
+\ol{
+  \li{
+    A library that loads config files (JSON, YAML, etc.)
+    can return deserialized integers as \tcode{std::big_int}.
+  }
+  \li{
+    Those \tcode{std::big_int} objects are then processed by a numeric library
+    that uses them in e.g. statistics.
+  }
+  \li{
+    The results are then stored by another library that serializes \tcode{std:big_int}
+    to e.g. CSV.
+  }
+}
+}
+
+In some sense,
+\tcode{std::big_int} is an even more important vocabulary type
+than \tcode{std::vector} and \tcode{std::string}
+because there is no convenient fallback solution.
+If those containers were not available,
+users could still communicate at library boundaries by using pointers and sizes.
+Strings can be passed to other libraries as a \tcode{char*} (and maybe \tcode{size_t}),
+so while \tcode{std::string} is an important container type,
+it is arguably gratuitous as a vocabulary type.
+By comparison,
+there is no widely established convention for passing large integers between libraries in C++,
+and \tcode{std::big_int} could lay that foundation.
+
+\Bnote{
+Sometimes (such as in the case of loading JSON configs),
+large integers can be passed as decimal digit strings.
+However, this is really just a form of delaying deserialization
+in hopes that the library consumer can do it.
+
+It is not a good way of passing huge integers between libraries in general
+because conversion to/from strings for huge integers is very expensive.
+}
+
+\h2{Design}
+
+The most important anchor points of the design are:
+
+\ul{
+  \li{
+    \tcode{std::big_int} should be elastic;
+    that is, it should grow to the necessary size required to fit the result
+    of an arithmetic operation
+  }
+  \li{
+    \tcode{std::big_int} should support custom allocators
+  }
+  \li{
+    \tcode{std::big_int} should expose \q{small object optimization} to the user
+  }
+}
+
+This culminates in the following library declarations:
+
+\cppblock{
+// Class template:
+template<size_t min_inplace_capacity, class Allocator = allocator<uint_multiprecision_t>>
+  class basic_big_int;
+
+// Alias with default in-place capacity and default allocator
+using big_int = basic_big_int<\i{implementation-defined capacity}>;
+}
+
+Conceptually, a \tcode{basic_big_int} holds:
+\cppblock{
+union {
+  // In-place representation, used for small values:
+  uint_multiprecision_t inplace_storage[N];
+  // Dynamic representation, used for large values:
+  struct {
+    uint_multiprecision_t* dynamic_storage;
+    size_t dynamic_capacity;
+  };
+};
+}
+
+The underlying arithmetic is then implemented to operate on \dfn{limb arrays},
+i.e. arrays of \tcode{uint_multiprecision_t} objects,
+agnostic of whether the integer value is store in-place or dynamically.
+
+\h3{\tcode{std::uint_multiprecision_t}}
+
+A user-facing integer type alias introduced by this paper is \tcode{std::uint_multiprecision_t},
+which is an unsigned integer type with the following important properties:
+\ul{
+  \li{
+    \tcode{std::uint_multiprecision_t} has no padding bits.
+    Padding bits in a limb type would be wasteful and make things more difficult both
+    for users and for implementations.
+  }
+  \li{
+    \tcode{std::uint_multiprecision_t} is the widest type that has arithmetic hardware support.
+  }
+  \li{
+    \tcode{std::uint_multiprecision_t} has no explicit minimum width,
+    but effectively cannot be narrower than \tcode{unsigned char} due to being unpadded.
+  }
+}
+
+In summary, it is the unsigned integer type most suitable for multiprecision.
+
+
+Curiously, there is no existing type with the desired properties
+despite the abundance of type aliases in \header{cstdint} and \header{cstddef}:
+\ul{
+  \li{
+    \tcode{std::int_fast32_t} is at least 32 bits wide,
+    which means that on 16-bit architectures,
+    the multiprecision code would have two layers:
+    the emulation of 32-bit integers on 16-bit hardware,
+    and then the multiprecision of \tcode{std::big_int} operations.
+    This is highly questionable because the point of \tcode{std::uint_multiprecision_t}
+    is to have a type whose operations correspond directly to hardware instructions.
+    Also, \tcode{std::int_fast32_t} is not consistently 64 bits wide on targets
+    with 64-bit arithmetic support.
+  }
+  \li{
+    \tcode{std::size_t} often could be used as \tcode{std::uint_multiprecision_t},
+    but on targets like WASM32,
+    it is only 32 bits wide despite WASM32 having 64-bit arithmetic instructions for \tt{i64}.
+    It would be extremely wasteful to only use 32-bit operations when 64 bits are available.
+  }
+}
+
+\h3{Small object optimizations}
+
+\tcode{std::big_int} (or generally, infinite-precision integer types)
+benefit from \dfn{small object optimization}
+perhaps more than any other vocabulary type.
+This is because with a relatively small amount of in-place storage
+(e.g. 8 bytes for 64-bit numbers),
+a lot of applications would \em{never} need to allocate dynamic storage to hold the value,
+or only for extreme and unusual program inputs.
+Furthermore,
+once the numbers are huge enough to require dynamic allocation,
+the cost of multiprecision arithmetic often hugely outweighs
+the small amount of overhead caused by having a few unused bytes of in-place storage.
+
+\Bnote{
+By comparison,
+all major standard libraries have small object optimization for \tcode{std::string},
+but many strings exceed the in-place capacity (around 20 bytes),
+so dynamic allocation for fairly short strings remains common.
+}
+
+The optimization is also necessary to prevent excessive allocations for small intermediate results.
+For example, even for huge inputs \tcode{x} and \tcode{y},
+the difference \tcode{x - y}, the quotient \tcode{x / y},
+or the remainder \tcode{x % y} could still be fairly small numbers (possibly zero),
+and it is wasteful to dynamically allocate for tiny integers.
+
+Because performing this optimization for \tcode{std::big_int} is such a no-brainer
+and any reasonable implementation should have it,
+we propose to expose it to the user via the \tcode{min_inplace_capacity} template parameter.
+This parameter specifies the minimum integer width that \tcode{std::basic_big_int}
+must be able to represent without dynamic allocation.
+While \tcode{std::big_int} should be used in most cases and provides a reasonable default,
+there may be scenarios where
+\ul{
+  \li{
+    on 32-bit platforms, the capacity could be lowered to \tcode{32} or raised to \tcode{64}
+    to prefer performance or correctness,
+  }
+  \li{
+    on platforms where allocations are particularly expensive
+    or where dynamic storage is very limited,
+    the capacity could be raised to \tcode{128} or even \tcode{256}.
+  }
+}
+
+\Bnote{
+In our \ref("Reference-Impl"),
+\tcode{std::big_int::inplace_capacity} is always 64 regardless of architecture.
+}
+
+\h2{Implementation experience}
+
+Our reference implementation can be found at \ref("Reference-Impl").
 
 \h2{Wording}
 
@@ -1484,6 +1709,30 @@ This requires formatting support.
 \h2{References}
 
 \bib(
+  id = "N1692",
+  title = "A Proposal to add the Infinite Precision Integer to the C++ Standard Library",
+  date = "2004-07-01",
+  author = "M.J. Kronenburg",
+  link = "https://wg21.link/n1692",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2004/n1692.pdf",
+)\
+\bib(
+  id = "N1744",
+  title = "Big Integer Library Proposal for C++0x",
+  date = "2005-01-13",
+  author = "Michiel Salters",
+  link = "https://wg21.link/n1744",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1744.pdf",
+)\
+\bib(
+  id = "N4038",
+  title = "Big Integer Library Proposal for C++0x",
+  date = "2014-05-23",
+  author = "Pete Becker",
+  link = "https://wg21.link/n4038",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4038.html",
+)\
+\bib(
   id = "N5032",
   title = "Working Draft Programming Languages — C++",
   date = "2025-12-15",
@@ -1498,6 +1747,11 @@ This requires formatting support.
   author = "Jan Schultke",
   link = "https://wg21.link/p3724r3",
   long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3724r3.html",
+)\
+\bib(
+  id = "Reference-Impl",
+  title = "eisenwave/std-big-int reference implementation",
+  link = "https://github.com/eisenwave/std-big-int/"
 )\
 
 \make_bib

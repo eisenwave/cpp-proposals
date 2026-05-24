@@ -1573,7 +1573,7 @@ if (theme !== null) {
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/D4444R0>D4444R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-04-16</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2026-05-24</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1591,26 +1591,261 @@ Other sections will be filled in over time.
 <h2 id=contents><a class=para href=#contents></a>Contents</h2>
 
 <div class=toc><div class=toc-num data-level=2>1</div>
-<a href=#wording><h2>Wording</h2></a>
-<div class=toc-num data-level=3>1.1</div>
-<a href=#version%2esyn><h3>[version.syn]</h3></a>
-<div class=toc-num data-level=3>1.2</div>
-<a href=#big%2eint><h3>[big.int]</h3></a>
-<div class=toc-num data-level=3>1.3</div>
-<a href=#charconv><h3>[charconv]</h3></a>
-<div class=toc-num data-level=3>1.4</div>
-<a href=#numeric%2eint%2ediv><h3>[numeric.int.div]</h3></a>
-<div class=toc-num data-level=3>1.5</div>
-<a href=#numeric%2eabs><h3>[numeric.abs]</h3></a>
-<div class=toc-num data-level=3>1.6</div>
-<a href=#numeric%2esat%2ecast><h3>[numeric.sat.cast]</h3></a>
-<div class=toc-num data-level=3>1.7</div>
-<a href=#numeric%2econversions><h3>[numeric.conversions]</h3></a>
+<a href=#introduction><h2>Introduction</h2></a>
 <div class=toc-num data-level=2>2</div>
+<a href=#motivation><h2>Motivation</h2></a>
+<div class=toc-num data-level=3>2.1</div>
+<a href=#std::big_int-as-a-vocabulary-type><h3><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> as a vocabulary type</h3></a>
+<div class=toc-num data-level=2>3</div>
+<a href=#design><h2>Design</h2></a>
+<div class=toc-num data-level=3>3.1</div>
+<a href=#std::uint_multiprecision_t><h3><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint_multiprecision_t</h-></code></h3></a>
+<div class=toc-num data-level=3>3.2</div>
+<a href=#small-object-optimizations><h3>Small object optimizations</h3></a>
+<div class=toc-num data-level=2>4</div>
+<a href=#implementation-experience><h2>Implementation experience</h2></a>
+<div class=toc-num data-level=2>5</div>
+<a href=#wording><h2>Wording</h2></a>
+<div class=toc-num data-level=3>5.1</div>
+<a href=#version%2esyn><h3>[version.syn]</h3></a>
+<div class=toc-num data-level=3>5.2</div>
+<a href=#big%2eint><h3>[big.int]</h3></a>
+<div class=toc-num data-level=3>5.3</div>
+<a href=#charconv><h3>[charconv]</h3></a>
+<div class=toc-num data-level=3>5.4</div>
+<a href=#numeric%2eint%2ediv><h3>[numeric.int.div]</h3></a>
+<div class=toc-num data-level=3>5.5</div>
+<a href=#numeric%2eabs><h3>[numeric.abs]</h3></a>
+<div class=toc-num data-level=3>5.6</div>
+<a href=#numeric%2esat%2ecast><h3>[numeric.sat.cast]</h3></a>
+<div class=toc-num data-level=3>5.7</div>
+<a href=#numeric%2econversions><h3>[numeric.conversions]</h3></a>
+<div class=toc-num data-level=2>6</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
-<h2 id=wording><a class=para href=#wording></a>1. Wording</h2>
+<h2 id=introduction><a class=para href=#introduction></a>1. Introduction</h2>
+
+<p>C++ currently provides no portable support for integers wider than 64 bits.
+This is one of the oldest and most widely recognized gaps in the language,
+which authors have attempted to fill several times:
+<a href="https://wg21%2elink/n1692">[N1692]</a> (2004), <a href="https://wg21%2elink/n1744">[N1744]</a> (2005), and <a href="https://wg21%2elink/n4038">[N4038]</a> (2014)
+all proposed a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>integer</h-></code> class with infinite precision.
+Each of these attempts failed —
+not because there was a lack of interest or motivation,
+but because the task turned out to be too great of a challenge.
+</p>
+<h2 id=motivation><a class=para href=#motivation></a>2. Motivation</h2>
+
+<p>In terms of utility,
+<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> has two main use case:
+</p><ol>
+  <li>
+    The use case where integers are <dfn>potentially big</dfn>.
+    For example,
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> could be the result of parsing an integer in a config file,
+    and while the numbers are likely small in practice,
+    it is <em>theoretically</em> possible that the user puts a huge value into the config file.
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is useful in many scenarios because it eliminates the need
+    for range checks,
+    and it eliminates the possibility of undefined behavior through signed integer overflow.
+    One could also describe this as the <q>correctness use case</q>.
+  </li>
+  <li>
+    The use case where integers are <dfn>actually big</dfn>.
+    For example, when performing computations in cryptography, statistics, etc.
+    where the numbers involved simply don't fit into 64-bit integers.
+  </li>
+</ol>
+
+<h3 id=std::big_int-as-a-vocabulary-type><a class=para href=#std::big_int-as-a-vocabulary-type></a>2.1. <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> as a vocabulary type</h3>
+
+<p>An important reason why <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> should be in the C++ standard library
+is that it is a vocabulary type and may appear at library boundaries.
+</p>
+<example-block><p><intro-></intro-> 
+A single code base may depend on different libraries that all interact with <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>:
+</p><ol>
+  <li>
+    A library that loads config files (JSON, YAML, etc.)
+    can return deserialized integers as <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
+  </li>
+  <li>
+    Those <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> objects are then processed by a numeric library
+    that uses them in e.g. statistics.
+  </li>
+  <li>
+    The results are then stored by another library that serializes <code><h- data-h=name>std</h-><h- data-h=sym_punc>:</h-><h- data-h=name>big_int</h-></code>
+    to e.g. CSV.
+  </li>
+</ol>
+</example-block>
+
+<p>In some sense,
+<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is an even more important vocabulary type
+than <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>vector</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string</h-></code>
+because there is no convenient fallback solution.
+If those containers were not available,
+users could still communicate at library boundaries by using pointers and sizes.
+Strings can be passed to other libraries as a <code><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-></code> (and maybe <code><h- data-h=name_type>size_t</h-></code>),
+so while <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string</h-></code> is an important container type,
+it is arguably gratuitous as a vocabulary type.
+By comparison,
+there is no widely established convention for passing large integers between libraries in C++,
+and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> could lay that foundation.
+</p>
+<note-block><p><intro-></intro-> 
+Sometimes (such as in the case of loading JSON configs),
+large integers can be passed as decimal digit strings.
+However, this is really just a form of delaying deserialization
+in hopes that the library consumer can do it.
+</p>
+<p>It is not a good way of passing huge integers between libraries in general
+because conversion to/from strings for huge integers is very expensive.
+</p></note-block>
+
+<h2 id=design><a class=para href=#design></a>3. Design</h2>
+
+<p>The most important anchor points of the design are:
+</p>
+<ul>
+  <li>
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> should be elastic;
+    that is, it should grow to the necessary size required to fit the result
+    of an arithmetic operation
+  </li>
+  <li>
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> should support custom allocators
+  </li>
+  <li>
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> should expose <q>small object optimization</q> to the user
+  </li>
+</ul>
+
+<p>This culminates in the following library declarations:
+</p>
+<code-block><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Class template:</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>min_inplace_capacity</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>Allocator</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>allocator</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;&gt;</h->
+  <h- data-h=kw>class</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Alias with default in-place capacity and default allocator</h->
+<h- data-h=kw>using</h-> <h- data-h=name>big_int</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>implementation</h-><h- data-h=sym_op>-</h-><h- data-h=name>defined</h-> <h- data-h=name>capacity</h-></i><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>Conceptually, a <code><h- data-h=name>basic_big_int</h-></code> holds:
+</p><code-block><h- data-h=kw>union</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> In-place representation, used for small values:</h->
+  <h- data-h=name_type>uint_multiprecision_t</h-> <h- data-h=name>inplace_storage</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>N</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Dynamic representation, used for large values:</h->
+  <h- data-h=kw>struct</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>*</h-> <h- data-h=name>dynamic_storage</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=name_type>size_t</h-> <h- data-h=name>dynamic_capacity</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>The underlying arithmetic is then implemented to operate on <dfn>limb arrays</dfn>,
+i.e. arrays of <code><h- data-h=name_type>uint_multiprecision_t</h-></code> objects,
+agnostic of whether the integer value is store in-place or dynamically.
+</p>
+<h3 id=std::uint_multiprecision_t><a class=para href=#std::uint_multiprecision_t></a>3.1. <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint_multiprecision_t</h-></code></h3>
+
+<p>A user-facing integer type alias introduced by this paper is <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint_multiprecision_t</h-></code>,
+which is an unsigned integer type with the following important properties:
+</p><ul>
+  <li>
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint_multiprecision_t</h-></code> has no padding bits.
+    Padding bits in a limb type would be wasteful and make things more difficult both
+    for users and for implementations.
+  </li>
+  <li>
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint_multiprecision_t</h-></code> is the widest type that has arithmetic hardware support.
+  </li>
+  <li>
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint_multiprecision_t</h-></code> has no explicit minimum width,
+    but effectively cannot be narrower than <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>char</h-></code> due to being unpadded.
+  </li>
+</ul>
+
+<p>In summary, it is the unsigned integer type most suitable for multiprecision.
+</p>
+
+<p>Curiously, there is no existing type with the desired properties
+despite the abundance of type aliases in <code><h- data-h=str>&lt;cstdint&gt;</h-></code> and <code><h- data-h=str>&lt;cstddef&gt;</h-></code>:
+</p><ul>
+  <li>
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>int_fast32_t</h-></code> is at least 32 bits wide,
+    which means that on 16-bit architectures,
+    the multiprecision code would have two layers:
+    the emulation of 32-bit integers on 16-bit hardware,
+    and then the multiprecision of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> operations.
+    This is highly questionable because the point of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint_multiprecision_t</h-></code>
+    is to have a type whose operations correspond directly to hardware instructions.
+    Also, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>int_fast32_t</h-></code> is not consistently 64 bits wide on targets
+    with 64-bit arithmetic support.
+  </li>
+  <li>
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>size_t</h-></code> often could be used as <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint_multiprecision_t</h-></code>,
+    but on targets like WASM32,
+    it is only 32 bits wide despite WASM32 having 64-bit arithmetic instructions for <tt->i64</tt->.
+    It would be extremely wasteful to only use 32-bit operations when 64 bits are available.
+  </li>
+</ul>
+
+<h3 id=small-object-optimizations><a class=para href=#small-object-optimizations></a>3.2. Small object optimizations</h3>
+
+<p><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> (or generally, infinite-precision integer types)
+benefit from <dfn>small object optimization</dfn>
+perhaps more than any other vocabulary type.
+This is because with a relatively small amount of in-place storage
+(e.g. 8 bytes for 64-bit numbers),
+a lot of applications would <em>never</em> need to allocate dynamic storage to hold the value,
+or only for extreme and unusual program inputs.
+Furthermore,
+once the numbers are huge enough to require dynamic allocation,
+the cost of multiprecision arithmetic often hugely outweighs
+the small amount of overhead caused by having a few unused bytes of in-place storage.
+</p>
+<note-block><p><intro-></intro-> 
+By comparison,
+all major standard libraries have small object optimization for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string</h-></code>,
+but many strings exceed the in-place capacity (around 20 bytes),
+so dynamic allocation for fairly short strings remains common.
+</p></note-block>
+
+<p>The optimization is also necessary to prevent excessive allocations for small intermediate results.
+For example, even for huge inputs <code><h- data-h=name>x</h-></code> and <code><h- data-h=name>y</h-></code>,
+the difference <code><h- data-h=name>x</h-> <h- data-h=sym_op>-</h-> <h- data-h=name>y</h-></code>, the quotient <code><h- data-h=name>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=name>y</h-></code>,
+or the remainder <code><h- data-h=name>x</h-> <h- data-h=sym_op>%</h-> <h- data-h=name>y</h-></code> could still be fairly small numbers (possibly zero),
+and it is wasteful to dynamically allocate for tiny integers.
+</p>
+<p>Because performing this optimization for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is such a no-brainer
+and any reasonable implementation should have it,
+we propose to expose it to the user via the <code><h- data-h=name>min_inplace_capacity</h-></code> template parameter.
+This parameter specifies the minimum integer width that <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>basic_big_int</h-></code>
+must be able to represent without dynamic allocation.
+While <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> should be used in most cases and provides a reasonable default,
+there may be scenarios where
+</p><ul>
+  <li>
+    on 32-bit platforms, the capacity could be lowered to <code><h- data-h=num>32</h-></code> or raised to <code><h- data-h=num>64</h-></code>
+    to prefer performance or correctness,
+  </li>
+  <li>
+    on platforms where allocations are particularly expensive
+    or where dynamic storage is very limited,
+    the capacity could be raised to <code><h- data-h=num>128</h-></code> or even <code><h- data-h=num>256</h-></code>.
+  </li>
+</ul>
+
+<note-block><p><intro-></intro-> 
+In our <a href="https://github%2ecom/eisenwave/std-big-int/">[Reference-Impl]</a>,
+<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-><h- data-h=sym_op>::</h-><h- data-h=name>inplace_capacity</h-></code> is always 64 regardless of architecture.
+</p></note-block>
+
+<h2 id=implementation-experience><a class=para href=#implementation-experience></a>4. Implementation experience</h2>
+
+<p>Our reference implementation can be found at <a href="https://github%2ecom/eisenwave/std-big-int/">[Reference-Impl]</a>.
+</p>
+<h2 id=wording><a class=para href=#wording></a>5. Wording</h2>
 
 <p>The changes are relative to <a href="https://wg21%2elink/n5032">[N5032]</a>.
 </p>
@@ -2938,10 +3173,25 @@ and it would be inconvenient in generic code.
 This requires formatting support.
 </p></todo-block>
 
-<h2 id=references><a class=para href=#references></a>2. References</h2>
+<h2 id=references><a class=para href=#references></a>6. References</h2>
 
 
-<div class=bib><div id=bib-item-N5032 class=bib-item>
+<div class=bib><div id=bib-item-N1692 class=bib-item>
+<a href="https://wg21%2elink/n1692">[N1692]</a>
+<span class=bib-author>M.J. Kronenburg.</span>
+<span class=bib-title>A Proposal to add the Infinite Precision Integer to the C++ Standard Library</span>
+<span class=bib-date>2004-07-01</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2004/n1692%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2004/n1692.pdf</a></div><div id=bib-item-N1744 class=bib-item>
+<a href="https://wg21%2elink/n1744">[N1744]</a>
+<span class=bib-author>Michiel Salters.</span>
+<span class=bib-title>Big Integer Library Proposal for C++0x</span>
+<span class=bib-date>2005-01-13</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2005/n1744%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1744.pdf</a></div><div id=bib-item-N4038 class=bib-item>
+<a href="https://wg21%2elink/n4038">[N4038]</a>
+<span class=bib-author>Pete Becker.</span>
+<span class=bib-title>Big Integer Library Proposal for C++0x</span>
+<span class=bib-date>2014-05-23</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2014/n4038%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4038.html</a></div><div id=bib-item-N5032 class=bib-item>
 <a href="https://wg21%2elink/n5032">[N5032]</a>
 <span class=bib-author>Thomas Köppe.</span>
 <span class=bib-title>Working Draft Programming Languages — C++</span>
@@ -2951,6 +3201,9 @@ This requires formatting support.
 <span class=bib-author>Jan Schultke.</span>
 <span class=bib-title>Integer division</span>
 <span class=bib-date>2026-02-20</span>
-<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/p3724r3%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3724r3.html</a></div></div>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/p3724r3%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3724r3.html</a></div><div id=bib-item-Reference-Impl class=bib-item>
+<a href="https://github%2ecom/eisenwave/std-big-int/">[Reference-Impl]</a>
+<span class=bib-title>eisenwave/std-big-int reference implementation</span>
+<a href="https://github%2ecom/eisenwave/std-big-int/" class=bib-link>https://github.com/eisenwave/std-big-int/</a></div></div>
 </main></body>
 </html>
