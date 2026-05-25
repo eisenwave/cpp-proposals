@@ -1592,10 +1592,18 @@ Other sections will be filled in over time.
 
 <div class=toc><div class=toc-num data-level=2>1</div>
 <a href=#introduction><h2>Introduction</h2></a>
+<div class=toc-num data-level=3>1.1</div>
+<a href=#infinite-precision-integers-in-other-languages><h3>Infinite-precision integers in other languages</h3></a>
 <div class=toc-num data-level=2>2</div>
 <a href=#motivation><h2>Motivation</h2></a>
 <div class=toc-num data-level=3>2.1</div>
-<a href=#std::big_int-as-a-vocabulary-type><h3><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> as a vocabulary type</h3></a>
+<a href=#std::big_int-is-a-vocabulary-type><h3><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is a vocabulary type</h3></a>
+<div class=toc-num data-level=3>2.2</div>
+<a href=#std::big_int-for-convenience-and-correctness><h3><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> for convenience and correctness</h3></a>
+<div class=toc-num data-level=3>2.3</div>
+<a href=#std::big_int-is-platform-dependent-and-hard-to-implement><h3><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is platform-dependent and hard to implement</h3></a>
+<div class=toc-num data-level=3>2.4</div>
+<a href=#std::big_int-should-be-a-compiler-intrinsic-for-constant-evaluation><h3><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> should be a compiler intrinsic for constant evaluation</h3></a>
 <div class=toc-num data-level=2>3</div>
 <a href=#design><h2>Design</h2></a>
 <div class=toc-num data-level=3>3.1</div>
@@ -1635,6 +1643,217 @@ Each of these attempts failed —
 not because there was a lack of interest or motivation,
 but because the task turned out to be too great of a challenge.
 </p>
+<p><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is to <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code>
+what <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string</h-></code> is to <code><h- data-h=kw_type>char</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>N</h-><h- data-h=sym_sqr>]</h-></code>:
+sure, a fixed size is sufficient for some use cases,
+but comes with a constant threat of overflow and undefined behavior,
+and that threat is easily eliminated at some acceptable runtime cost.
+</p>
+<h3 id=infinite-precision-integers-in-other-languages><a class=para href=#infinite-precision-integers-in-other-languages></a>1.1. Infinite-precision integers in other languages</h3>
+
+<p>The runtime cost of infinite-precision integers is often acceptable
+to the point where the <q>default integer</q> in many languages is not fixed-size.
+Even when infinite-precision is not the default,
+languages often provide an infinite-precision type in their standard library,
+or there is a commonly used third-party library that the ecosystem uses:
+</p>
+<style>
+  .center {
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .striped tr:nth-child(even) td {
+    background-color: var(--deep-background-color);
+  }
+  #lib-table td:nth-child(3),
+  #lib-table td:nth-child(4),
+  #lib-table td:nth-child(5) {
+    text-align: center;
+  }
+</style>
+
+<table class="center striped">
+  <tr>
+    <th>Language</th>
+    <th>Integer type / constraint</th>
+    <th>Kind</th>
+  </tr>
+  <tr>
+    <td>Python</td>
+    <td><tt->int</tt-></td>
+    <td>builtin</td>
+  </tr>
+  <tr>
+    <td>Ruby</td>
+    <td><tt->Integer</tt-></td>
+    <td>builtin</td>
+  </tr>
+  <tr>
+    <td>Lisp</td>
+    <td><tt->integer</tt-></td>
+    <td>builtin</td>
+  </tr>
+  <tr>
+    <td>Scheme</td>
+    <td><tt->integer</tt-></td>
+    <td>builtin</td>
+  </tr>
+  <tr>
+    <td>Racket</td>
+    <td><tt->integer</tt-></td>
+    <td>builtin</td>
+  </tr>
+  <tr>
+    <td>Clojure</td>
+    <td><tt->int</tt-></td>
+    <td>builtin</td>
+  </tr>
+  <tr>
+    <td>Haskell</td>
+    <td><tt->Integer</tt-></td>
+    <td>builtin</td>
+  </tr>
+  <tr>
+    <td>Prolog</td>
+    <td><tt->integer</tt-></td>
+    <td>builtin</td>
+  </tr>
+  <tr>
+    <td>Wolfram Language</td>
+    <td><tt->Integer</tt-></td>
+    <td>builtin</td>
+  </tr>
+  <tr>
+    <td>Maxima</td>
+    <td><tt->integer</tt-></td>
+    <td>builtin</td>
+  </tr>
+  <tr>
+    <td>Erlang</td>
+    <td><tt->integer</tt-></td>
+    <td>builtin</td>
+  </tr>
+  <tr>
+    <td>JavaScript / TypeScript</td>
+    <td><tt->bigint</tt-></td>
+    <td>builtin, but not the default</td>
+  </tr>
+  <tr>
+    <td>MATLAB</td>
+    <td>Symbolic Math Toolbox</td>
+    <td>standard library</td>
+  </tr>
+  <tr>
+    <td>Java / Kotlin</td>
+    <td><tt->BigInteger</tt-></td>
+    <td>standard library</td>
+  </tr>
+  <tr>
+    <td>Julia</td>
+    <td><tt->BigInt</tt-></td>
+    <td>standard library</td>
+  </tr>
+  <tr>
+    <td>C#</td>
+    <td><tt->BigInteger</tt-></td>
+    <td>standard library</td>
+  </tr>
+  <tr>
+    <td>F#</td>
+    <td><tt->bigint</tt-></td>
+    <td>standard library</td>
+  </tr>
+  <tr>
+    <td>Visual Basic .NET</td>
+    <td><tt->BigInteger</tt-></td>
+    <td>standard library</td>
+  </tr>
+  <tr>
+    <td>Go</td>
+    <td><tt->big.Int</tt-></td>
+    <td>standard library</td>
+  </tr>
+  <tr>
+    <td>Standard ML</td>
+    <td><tt->IntInf</tt-></td>
+    <td>standard library</td>
+  </tr>
+  <tr>
+    <td>Perl</td>
+    <td><tt->Math::BigInt</tt-></td>
+    <td>standard library</td>
+  </tr>
+  <tr>
+    <td>PHP</td>
+    <td>GMP and BCMath</td>
+    <td>standard library</td>
+  </tr>
+  <tr>
+    <td>R</td>
+    <td><tt->gmp</tt-></td>
+    <td>third-party package</td>
+  </tr>
+  <tr>
+    <td>Swift</td>
+    <td><tt->BigInt</tt-></td>
+    <td>third-party package</td>
+  </tr>
+  <tr>
+    <td>Rust</td>
+    <td><tt->num-bigint</tt-></td>
+    <td>third-party package</td>
+  </tr>
+</table>
+
+<p>Beyond that,
+there are also many programming languages where some third-party support is available
+(e.g. <tt->gmp</tt-> in C or Boost.Multiprecision in C++),
+but there isn't as much ecosystem convergence,
+so these are not listed in the table.
+</p>
+<p>Furthermore,
+even when the language doesn't provide an infinite-precision integer type,
+this is typically part of the compiler regardless.
+For example, MSVC, GCC, and LLVM all internally have an infinite-precision integer,
+such as <code><h- data-h=name>llvm</h-><h- data-h=sym_op>::</h-><h- data-h=name>APInt</h-></code>.
+Any C23 compiler also needs such a type to implement optimizations
+like constant folding for <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-></code>,
+unless it has a small <code><h- data-h=name>BITINT_MAXWIDTH</h-></code>.
+</p>
+<p>Not only are infinite-precision integers available in many languages,
+they are also used frequently:
+</p>
+<table class="center striped">
+  <tr>
+    <th>GitHub code search</th>
+    <th>Amount of files</th>
+  </tr>
+  <tr>
+    <td>
+      <a href="https://github.com/search?q=language%3ATypeScript+%2F%5Cbbigint%2F+-is%3Afork&type=code"><tt->language:TypeScript  /\bbigint/ -is:fork</tt-></a>
+    </td>
+    <td>1.1M</td>
+  </tr>
+  <tr>
+    <td>
+      <a href="https://github.com/search?q=language%3AC%2B%2B+%2F%5Cb%28big%7Ccpp%29_%3Fu%3Fint%2F+-is%3Afork&type=code"><tt->language:Java  /\bbigint/ -is:fork</tt-></a>
+    </td>
+    <td>762K</td>
+  </tr>
+  <tr>
+    <td>
+      <a href="https://github.com/search?q=language%3AJavaScript+%2F%5Cbbigint%2F+-is%3Afork&type=code"><tt->language:JavaScript  /\bbigint/ -is:fork</tt-></a>
+    </td>
+    <td>389K</td>
+  </tr>
+  <tr>
+    <td>
+      <a href="https://github.com/search?q=language%3AC%2B%2B+%2F%5Cb%28big%7Ccpp%29_%3Fu%3Fint%2F+-is%3Afork&type=code"><tt->language:C++ /\b(big|cpp)_?u?int/ -is:fork</tt-></a>
+    </td>
+    <td>171K</td>
+  </tr>
+</table>
+
 <h2 id=motivation><a class=para href=#motivation></a>2. Motivation</h2>
 
 <p>In terms of utility,
@@ -1658,7 +1877,7 @@ but because the task turned out to be too great of a challenge.
   </li>
 </ol>
 
-<h3 id=std::big_int-as-a-vocabulary-type><a class=para href=#std::big_int-as-a-vocabulary-type></a>2.1. <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> as a vocabulary type</h3>
+<h3 id=std::big_int-is-a-vocabulary-type><a class=para href=#std::big_int-is-a-vocabulary-type></a>2.1. <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is a vocabulary type</h3>
 
 <p>An important reason why <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> should be in the C++ standard library
 is that it is a vocabulary type and may appear at library boundaries.
@@ -1704,6 +1923,129 @@ in hopes that the library consumer can do it.
 because conversion to/from strings for huge integers is very expensive.
 </p></note-block>
 
+<h3 id=std::big_int-for-convenience-and-correctness><a class=para href=#std::big_int-for-convenience-and-correctness></a>2.2. <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> for convenience and correctness</h3>
+
+<p>Another reason why <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> needs to be in the standard library
+is that users would often avoid it otherwise,
+even when it is the right tool for the job.
+For example, it could be quite plausible that a library has to handle integers
+with more than 64 bits in some edge cases,
+but if the library author needs to add a dependency on the whole of Boost.Multiprecision
+to replace 2-3 lines of code using <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>intmax_t</h-></code> with <code><h- data-h=name>boost</h-><h- data-h=sym_op>::</h-><h- data-h=name>cpp_int</h-></code>,
+they may just not do it.
+</p>
+<p>C++ developers don't get to choose between
+a fixed-width type for performance and an infinite-precision type for correctness;
+they get to choose between a fixed-width type
+and adding a massive dependency for correctness,
+which they may not do,
+<em>especially</em> if that dependency is transitively forced onto their library users.
+</p>
+<h3 id=std::big_int-is-platform-dependent-and-hard-to-implement><a class=para href=#std::big_int-is-platform-dependent-and-hard-to-implement></a>2.3. <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is platform-dependent and hard to implement</h3>
+
+<p>Another reason why <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> needs to be in the standard library
+is that it's extremely difficult to implement and optimize,
+in part because the implementation depends heavily on the platform's hardware capabilities,
+many of which are not exposed portably in the language.
+</p>
+<example-block><p><intro-></intro-> 
+Some examples of platform and compiler-specific features:
+</p><ul>
+  <li>
+    x86_64 has a <tt->mul</tt-> instruction that yields
+    both the low and the high bits of a multiplication;
+    without utilizing that,
+    multiprecision multiplication is much slower.
+  </li>
+  <li>
+    x86_64 also has a <tt->div</tt-> instruction that takes a 128-bit dividend and a 64-bit divisor,
+    which can be used to implement division of an arbitrary-length dividend much more efficiently.
+  </li>
+  <li>
+    Funnel-shifting (basically a 128-bit shift)
+    is a common operation in multiprecision arithmetic,
+    and Clang recently got a <code><h- data-h=name>__builtin_elementwise_funnel_shl</h-></code> intrinsics that exposes
+    the hardware instruction.
+  </li>
+  <li>
+    Bitwise operations between <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>
+    can be performed in parallel using SIMD intrinsics.
+    While those can be portably implemented using <code><h- data-h=str>&lt;simd&gt;</h-></code> now,
+    that may add unnecessary overhead compared to using the underlying intrinsics directly.
+  </li>
+  <li>
+    Conversions between <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> and floating-point types may be
+    hardware-accelerated or backed by special routines in the runtime library.
+    For example, to convert <code><h- data-h=kw_type>float</h-></code> to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
+    the conversion should go through <code><h- data-h=name>__fixunssfti</h-></code>
+    (<code><h- data-h=kw_type>float</h-></code> → <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>__int128</h-></code>)
+    followed by a conversion to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
+    Note that an unsigned 128-bit integer is sufficient to represent any finite
+    binary32 floating-point number without the fractional part.
+  </li>
+  <li>
+    During constant evaluation,
+    if <code><h- data-h=kw_type>_BitInt</h-></code> is available,
+    it is often faster to implement an operation in terms of <code><h- data-h=kw_type>_BitInt</h-></code>.
+    For example, a 4096-bit division can be delegated entirely to compiler intrinsics
+    by converting the dividend and divisor to <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>4096</h-><h- data-h=sym_par>)</h-></code>,
+    performing the division in terms of e.g. <code><h- data-h=name>llvm</h-><h- data-h=sym_op>::</h-><h- data-h=name>APInt</h-></code> operations.
+    This completely avoids the need for constant evaluation of complex division routines.
+  </li>
+</ul>
+</example-block>
+
+<p>In general, the intrinsics necessary to implement <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> efficiently
+vary wildly from compiler to compiler
+and from architecture to architecture.
+It also varies a lot whether those intrinsics can be used during constant evaluation,
+and these implementation details are subject to frequent change and added features.
+Our <a href="https://github%2ecom/eisenwave/std-big-int/">[Reference-Impl]</a> of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is a sea of <code><h- data-h=kw_ctrl>if</h-> <h- data-h=kw>constexpr</h-></code>
+and <code><h- data-h=name_mac>#ifdef</h-></code> checks.
+</p>
+<p>Overall, it is practically impossible or at least extremely difficult for a third-party library
+to keep up with all these details to implement the type optimally,
+across all compilers and all supported architectures.
+Features like these should ideally live directly in the compiler or in the standard library.
+</p>
+<h3 id=std::big_int-should-be-a-compiler-intrinsic-for-constant-evaluation><a class=para href=#std::big_int-should-be-a-compiler-intrinsic-for-constant-evaluation></a>2.4. <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> should be a compiler intrinsic for constant evaluation</h3>
+
+<p>While a portable implementation of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is possible,
+an ideal implementation for constant evaluation simply delegates
+to the compiler's internal infinite-precision integer type (e.g. <code><h- data-h=name>llvm</h-><h- data-h=sym_op>::</h-><h- data-h=name>APInt</h-></code> in LLVM).
+This is because constant evaluation is relatively expensive
+compared to highly optimized multiprecision code in the compiler internals.
+A third-party library such as Boost.Multiprecision
+does not have the luxury of adding new compiler intrinsics,
+so the implementation quality could never match the potential of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
+</p>
+<p>A closely related issue is the implementation of the user-defined literal,
+which has the following interface in our proposal:
+</p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>...</h-> <h- data-h=name>digits</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>big_int</h-> <h- data-h=kw>operator</h-><h- data-h=str_dlim>"</h-><h- data-h=str_dlim>"</h-><h- data-h=str_deco>n</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> now possible:</h->
+<h- data-h=name>big_int</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>123</h-><h- data-h=num_dlim>'</h-><h- data-h=num>456</h-><h- data-h=num_dlim>'</h-><h- data-h=num>789</h-><h- data-h=num_dlim>'</h-><h- data-h=num>012</h-><h- data-h=num_dlim>'</h-><h- data-h=num>345</h-><h- data-h=num_dlim>'</h-><h- data-h=num>678</h-><h- data-h=num_dlim>'</h-><h- data-h=num>901</h-><h- data-h=num_dlim>'</h-><h- data-h=num>234</h-><h- data-h=num_dlim>'</h-><h- data-h=num>567</h-><h- data-h=num_dlim>'</h-><h- data-h=num>890</h-><h- data-h=num_deco>n</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>The problem is that there is no other form of <code><h- data-h=kw>operator</h-><h- data-h=str_dlim>"</h-><h- data-h=str_dlim>"</h-><h- data-h=str_deco>n</h-></code>
+that provides the obvious syntax,
+and the <code><h- data-h=kw_type>char</h-><h- data-h=sym_op>...</h-></code> form requires manual parsing of the digits during constant evaluation,
+rather than delegating this to the compiler.
+It would be much better if parsing could be done in the compiler to provide a form such as:
+</p><code-block><h- data-h=kw>constexpr</h-> <h- data-h=name>big_int</h-> <h- data-h=kw>operator</h-><h- data-h=str_dlim>"</h-><h- data-h=str_dlim>"</h-><h- data-h=str_deco>n</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>*</h-> <h- data-h=name>limbs</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_type>size_t</h-> <h- data-h=name>size</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>With this form,
+</p><ul>
+  <li>digit separators would be skipped automatically,</li>
+  <li>base prefixes like <code><h- data-h=num_deco>0x</h-></code> would be handled by the compiler, and</li>
+  <li>forming the limb array would be done by the compiler, which is the expensive part,</li>
+  <li>template instantiations would be avoided completely.</li>
+</ul>
+
+<p>That being said,
+this new form of <code><h- data-h=kw>operator</h-><h- data-h=str_dlim>"</h-><h- data-h=str_dlim>"</h-><h- data-h=str_deco>n</h-><h- data-h=str_dlim>"</h-></code> is not part if this proposal,
+but it does demonstrate why some compiler support is needed.
+</p>
 <h2 id=design><a class=para href=#design></a>3. Design</h2>
 
 <p>The most important anchor points of the design are:
