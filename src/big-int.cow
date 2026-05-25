@@ -580,7 +580,84 @@ there may be scenarios where
 \Bnote{
 In our \ref("Reference-Impl"),
 \tcode{std::big_int::inplace_capacity} is always 64 regardless of architecture.
+On 64-bit, our layout is as follows:
+\cppblock{
+// Most significant bit stores the sign;
+// the lower 31 bis store the limb count.
+uint32_t size_and_sign;
+// The capacity of the dynamic storage in limbs.
+// If zero, indicates that there is no allocation and that inplace_storage is active.
+uint32_t capacity;
+union {
+  // For values up to 64 bits.
+  // For big_int, N = 1, but the min_inplace_capacity parameter allows more capacity
+  // for other basic_big_int specializations.
+  uint64_t inplace_storage[N];
+  // For anything that doesn't fit into inplace_storage.
+  uint64_t* dynamic_storage;
+};
 }
+
+This layout ensures that \tcode{std::big_int}
+\ul{
+  \li{is two pointers large,}
+  \li{is aligned to one pointer,}
+  \li{is nothrow-movable and trivially relocatable,}
+  \li{can represent both \tcode{int64_t} and \tcode{uint64_t} values without allocating, and}
+  \li{
+    can represent values with up to \math{\msup{\mn{2}\mrow{\mn{31}\mo{+}\mn{6}}}} bits
+    (137 billion bits).
+  }
+}
+}
+
+\h3{Sign and magnitude}
+
+\tcode{std::big_int} uses a sign-and-magnitude representation
+(as opposed to e.g. two's complement),
+and this is exposed to the user.
+While it may seem like constraining implementation freedom unnecessarily,
+the chosen representation impacts the complexity requirements of various operations.
+For example, if the sign bit is separately stored,
+then negation can be implemented in constant time by just flipping the sign bit,
+whereas for two's complement,
+it requires linear time because bits of the magnitude need updating.
+
+Most implementations of infinite-precision integers use sign-and-magnitude representation,
+as does our \ref("Reference-Impl").
+This is not only due to those beneficial complexity requirements,
+but also because it simplifies the implementation greatly.
+For example:
+multiplicative operators like multiplication and division can be implemented
+solely in terms of the magnitude,
+and the sign bit of the result can be computed separately.
+
+The only major downside of sign-and-magnitude representation is that it requires
+emulation of two's complement for bitwise operations,
+but this is relatively cheap and does not require an additional pass over the data.
+That is, for example, to compute \tcode{a & b} with negative inputs,
+the implementation negates the limbs of negative inputs on the fly
+and also negates the final result if the result is negative.
+
+\Bnote{
+\tcode{~x} is equivalent to \tcode{(-x - 1)}.
+In bitwise operations,
+negative inputs are treated as if they were preceded by an infinite sequences of leading ones, and
+positive inputs are treated as if they were preceded by an infinite sequence of leading zeros.
+}
+
+\h3{Naming}
+
+The name \tcode{std::big_int} was chosen because it meets user expectations
+and makes its design instantly clear.
+In languages where infinite-precision integers are not built-in,
+the name is virtually always some variant of \q{big int} or \q{big integer}.
+The name \tcode{std::big_int} is also immediately recognizable
+as supporting infinite-precision arithmetic and as growing elastically as needed.
+
+Previous proposals used the name \tcode{std::integer},
+but this name doesn't convey the design well,
+and is too similar to concept names like \tcode{std::integral}.
 
 \h2{Implementation experience}
 

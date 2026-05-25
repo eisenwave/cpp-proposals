@@ -1610,6 +1610,10 @@ Other sections will be filled in over time.
 <a href=#std::uint_multiprecision_t><h3><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint_multiprecision_t</h-></code></h3></a>
 <div class=toc-num data-level=3>3.2</div>
 <a href=#small-object-optimizations><h3>Small object optimizations</h3></a>
+<div class=toc-num data-level=3>3.3</div>
+<a href=#sign-and-magnitude><h3>Sign and magnitude</h3></a>
+<div class=toc-num data-level=3>3.4</div>
+<a href=#naming><h3>Naming</h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#implementation-experience><h2>Implementation experience</h2></a>
 <div class=toc-num data-level=2>5</div>
@@ -2181,8 +2185,83 @@ there may be scenarios where
 <note-block><p><intro-></intro-> 
 In our <a href="https://github%2ecom/eisenwave/std-big-int/">[Reference-Impl]</a>,
 <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-><h- data-h=sym_op>::</h-><h- data-h=name>inplace_capacity</h-></code> is always 64 regardless of architecture.
+On 64-bit, our layout is as follows:
+</p><code-block><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Most significant bit stores the sign;</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> the lower 31 bis store the limb count.</h->
+<h- data-h=name_type>uint32_t</h-> <h- data-h=name>size_and_sign</h-><h- data-h=sym_punc>;</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> The capacity of the dynamic storage in limbs.</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> If zero, indicates that there is no allocation and that inplace_storage is active.</h->
+<h- data-h=name_type>uint32_t</h-> <h- data-h=name>capacity</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>union</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> For values up to 64 bits.</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> For big_int, N = 1, but the min_inplace_capacity parameter allows more capacity</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> for other basic_big_int specializations.</h->
+  <h- data-h=name_type>uint64_t</h-> <h- data-h=name>inplace_storage</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>N</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> For anything that doesn't fit into inplace_storage.</h->
+  <h- data-h=name_type>uint64_t</h-><h- data-h=sym_op>*</h-> <h- data-h=name>dynamic_storage</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>This layout ensures that <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>
+</p><ul>
+  <li>is two pointers large,</li>
+  <li>is aligned to one pointer,</li>
+  <li>is nothrow-movable and trivially relocatable,</li>
+  <li>can represent both <code><h- data-h=name_type>int64_t</h-></code> and <code><h- data-h=name_type>uint64_t</h-></code> values without allocating, and</li>
+  <li>
+    can represent values with up to <math display=inline><msup><mn>2</mn><mrow><mn>31</mn><mo>+</mo><mn>6</mn></mrow></msup></math> bits
+    (137 billion bits).
+  </li>
+</ul>
+</note-block>
+
+<h3 id=sign-and-magnitude><a class=para href=#sign-and-magnitude></a>3.3. Sign and magnitude</h3>
+
+<p><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> uses a sign-and-magnitude representation
+(as opposed to e.g. two's complement),
+and this is exposed to the user.
+While it may seem like constraining implementation freedom unnecessarily,
+the chosen representation impacts the complexity requirements of various operations.
+For example, if the sign bit is separately stored,
+then negation can be implemented in constant time by just flipping the sign bit,
+whereas for two's complement,
+it requires linear time because bits of the magnitude need updating.
+</p>
+<p>Most implementations of infinite-precision integers use sign-and-magnitude representation,
+as does our <a href="https://github%2ecom/eisenwave/std-big-int/">[Reference-Impl]</a>.
+This is not only due to those beneficial complexity requirements,
+but also because it simplifies the implementation greatly.
+For example:
+multiplicative operators like multiplication and division can be implemented
+solely in terms of the magnitude,
+and the sign bit of the result can be computed separately.
+</p>
+<p>The only major downside of sign-and-magnitude representation is that it requires
+emulation of two's complement for bitwise operations,
+but this is relatively cheap and does not require an additional pass over the data.
+That is, for example, to compute <code><h- data-h=name>a</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=name>b</h-></code> with negative inputs,
+the implementation negates the limbs of negative inputs on the fly
+and also negates the final result if the result is negative.
+</p>
+<note-block><p><intro-></intro-> 
+<code><h- data-h=sym_op>~</h-><h- data-h=name>x</h-></code> is equivalent to <code><h- data-h=sym_par>(</h-><h- data-h=sym_op>-</h-><h- data-h=name>x</h-> <h- data-h=sym_op>-</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code>.
+In bitwise operations,
+negative inputs are treated as if they were preceded by an infinite sequences of leading ones, and
+positive inputs are treated as if they were preceded by an infinite sequence of leading zeros.
 </p></note-block>
 
+<h3 id=naming><a class=para href=#naming></a>3.4. Naming</h3>
+
+<p>The name <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> was chosen because it meets user expectations
+and makes its design instantly clear.
+In languages where infinite-precision integers are not built-in,
+the name is virtually always some variant of <q>big int</q> or <q>big integer</q>.
+The name <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is also immediately recognizable
+as supporting infinite-precision arithmetic and as growing elastically as needed.
+</p>
+<p>Previous proposals used the name <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>integer</h-></code>,
+but this name doesn't convey the design well,
+and is too similar to concept names like <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>integral</h-></code>.
+</p>
 <h2 id=implementation-experience><a class=para href=#implementation-experience></a>4. Implementation experience</h2>
 
 <p>Our reference implementation can be found at <a href="https://github%2ecom/eisenwave/std-big-int/">[Reference-Impl]</a>.
