@@ -10,14 +10,14 @@ user-invocable: true
 Upgrade this repository from one COWEL version to another in a repeatable, low-risk way.
 
 ## When To Use
-- Bumping COWEL from one release to another (for example 0.10.0 to 0.10.1)
+- Bumping COWEL from one release to another (for example `0.9.0` to `0.10.0`)
 - Updating paper headers in `src/*.cow`
 - Updating workflow and script pins for COWEL
 - Rebuilding docs and checking for bitwise-identical output
 
 ## Inputs
-- Old version (currently in sources), for example `0.10.0`
-- New version (target), for example `0.10.1`
+- Old version (currently in sources), for example `0.9.0`
+- New version (target), for example `0.10.0`
 - Optional `--dry-run` to preview changed files
 
 ## Procedure
