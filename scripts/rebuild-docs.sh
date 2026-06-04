@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rebuild HTML files in docs/ for every COWEL 0.10.1 source file,
+# Rebuild HTML files in docs/ for every COWEL 0.10.2 source file,
 # but only when a corresponding HTML file already exists in docs/.
 #
 # Usage: scripts/rebuild-docs.sh
