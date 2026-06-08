@@ -3,9 +3,9 @@
 
 \wg21_head(title={Clarify the behavior of floating-point overflow}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3899R2}}
-  \dt{Date:}            \dd{\tt{2026-03-25}}
-  \dt{Audience:}        \dd{EWG, CWG}
+  \dt{Document number:} \dd{\docnum{D3899R3}}
+  \dt{Date:}            \dd{\tt{2026-06-08}}
+  \dt{Audience:}        \dd{CWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{
     Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -752,6 +752,20 @@ of a floating-point type adhering to ISO/IEC 60559.
 }
 }
 
+\h3(show_number=false){[lex.fcon]}
+
+Change \eelis{lex.fcon#3} as follows:
+
+\Bdiff{
+If the scaled value is not in the range of representable values for its type,
+the program is ill-formed.
+Otherwise, the value of a floating-point-literal is the scaled value if representable,
+else the
+\del{larger or smaller representable value nearest the scaled value}
+\ins{next greater or lesser value of the type},
+chosen in an implementation-defined manner.
+}
+
 \h3(show_number=false){[expr.pre]}
 
 Delete \eelis{expr.pre#4}:
@@ -772,18 +786,21 @@ An \dfn{arithmetic expression} is
   \li{a subtraction\iref{expr.sub}, or}
   \li{a multiplication, division, or remainder\iref{expr.mul}}
 }
-expression\sup{🞰} where every operand
-is of arithmetic or unscoped enumeration type.
-The behavior is undefined if the result
-of evaluating an arithmetic expression
+expression
+where every (possibly converted) operand
+is of arithmetic type.\br
+\note{
+There exist non-arithmetic expressions such as compound assignment\iref{expr.assign}
+which are defined in terms of arithmetic expressions.
+}\br
+The behavior of evaluating an arithmetic expression is undefined if the mathematical result is neither
 \ul{
   \li{
-    is either not mathematically defined in the domain of real number arithmetic
-    or not in the range of representable values for its type, and
+    in the range of representable values for its type, nor
   }
   \li{
-    cannot be represented as negative infinity, positive infinity, or NaN,
-    in the type of the expression.
+    a negative infinity, positive infinity, or NaN
+    that is among the values of the type.
   }
 }
 
@@ -810,11 +827,6 @@ constexpr std::float32_t div0 = max / 0;    // \serif{error: division by zero is
 }
 
 \hr
-
-\footnote{
-There exist non-arithmetic expressions such as compound assignment\iref{expr.assign}
-which are defined in terms of arithmetic expressions.
-}
 }
 
 \editnote{

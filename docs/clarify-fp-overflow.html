@@ -1547,6 +1547,13 @@ if (theme !== null) {
     float: right;
   }
 
+  .three-way-poll {
+    table-layout: fixed;
+  }
+  .three-way-poll td {
+    width: 2em;
+    text-align: center;
+  }
   .five-way-poll {
     table-layout: fixed;
   }
@@ -1572,9 +1579,9 @@ if (theme !== null) {
 <div class=wg21-head><h1>Clarify the behavior of floating-point overflow</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3899R2>P3899R2</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-03-25</tt-></dd>
-  <dt>Audience:</dt>        <dd>EWG, CWG</dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/D3899R3>D3899R3</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-06-08</tt-></dd>
+  <dt>Audience:</dt>        <dd>CWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>
     Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;<br/>
@@ -1640,8 +1647,10 @@ This paper fixes it.
 <div class=toc-num data-level=3>6.1</div>
 <a href=#basic%2efundamental><h3>[basic.fundamental]</h3></a>
 <div class=toc-num data-level=3>6.2</div>
-<a href=#expr%2epre><h3>[expr.pre]</h3></a>
+<a href=#lex%2efcon><h3>[lex.fcon]</h3></a>
 <div class=toc-num data-level=3>6.3</div>
+<a href=#expr%2epre><h3>[expr.pre]</h3></a>
+<div class=toc-num data-level=3>6.4</div>
 <a href=#expr%2econst><h3>[expr.const]</h3></a>
 <div class=toc-num data-level=2>7</div>
 <a href=#references><h2>References</h2></a>
@@ -2370,6 +2379,20 @@ of a floating-point type adhering to ISO/IEC 60559.
  — <i>end note</i>]
 </p></diff-block>
 
+<h3 id=lex.fcon><a class=para href=#lex%2efcon></a>[lex.fcon]</h3>
+
+<p>Change <a href=https://eel.is/c++draft/lex.fcon#3>[lex.fcon] paragraph 3</a> as follows:
+</p>
+<diff-block>
+<p>If the scaled value is not in the range of representable values for its type,
+the program is ill-formed.
+Otherwise, the value of a floating-point-literal is the scaled value if representable,
+else the
+<del>larger or smaller representable value nearest the scaled value</del>
+<ins>next greater or lesser value of the type</ins>,
+chosen in an implementation-defined manner.
+</p></diff-block>
+
 <h3 id=expr.pre><a class=para href=#expr%2epre></a>[expr.pre]</h3>
 
 <p>Delete <a href=https://eel.is/c++draft/expr.pre#4>[expr.pre] paragraph 4</a>:
@@ -2390,18 +2413,21 @@ the behavior is undefined.
   <li>a subtraction (<a href=https://eel.is/c++draft/expr.sub>[expr.sub]</a>), or</li>
   <li>a multiplication, division, or remainder (<a href=https://eel.is/c++draft/expr.mul>[expr.mul]</a>)</li>
 </ul>
-<p>expression<sup>🞰</sup> where every operand
-is of arithmetic or unscoped enumeration type.
-The behavior is undefined if the result
-of evaluating an arithmetic expression
+<p>expression
+where every (possibly converted) operand
+is of arithmetic type.<br/>
+[<i>Note</i>: 
+There exist non-arithmetic expressions such as compound assignment (<a href=https://eel.is/c++draft/expr.assign>[expr.assign]</a>)
+which are defined in terms of arithmetic expressions.
+ — <i>end note</i>]<br/>
+The behavior of evaluating an arithmetic expression is undefined if the mathematical result is neither
 </p><ul>
   <li>
-    is either not mathematically defined in the domain of real number arithmetic
-    or not in the range of representable values for its type, and
+    in the range of representable values for its type, nor
   </li>
   <li>
-    cannot be represented as negative infinity, positive infinity, or NaN,
-    in the type of the expression.
+    a negative infinity, positive infinity, or NaN
+    that is among the values of the type.
   </li>
 </ul>
 
@@ -2426,11 +2452,6 @@ are not core constant expressions (<a href=https://eel.is/c++draft/expr.const>[e
  — <i>end note</i>]</p>
 
 <hr/>
-
-<p>🞰) 
-There exist non-arithmetic expressions such as compound assignment (<a href=https://eel.is/c++draft/expr.assign>[expr.assign]</a>)
-which are defined in terms of arithmetic expressions.
-</p>
 </ins-block>
 
 <note-block class=edit><p><intro-></intro-> 
