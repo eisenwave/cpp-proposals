@@ -1,0 +1,115 @@
+\: cowel 0.9.2
+\cowel_actions{
+
+\cowel_var_let("slidenum", 0)
+\cowel_macro("slidenum"){\
+\cowel_paragraph_enter\
+\cowel_var_set("slidenum", slidenum + 1)\
+\(slidenum)\
+}
+
+\cowel_macro("slide"){\
+\cowel_html_element("section", (id="slide-\slidenum", ...)){
+\cowel_paragraphs{\cowel_put}
+\div(class="slide-foot"){\slidefoot}
+}\
+}
+
+\cowel_macro("slideh"){\
+\cowel_paragraph_leave\
+\cowel_html_element("h2", (id="slide-h-\(slidenum)")){\cowel_to_html{\cowel_put}}\
+}
+
+\style{\
+  html {
+    scrollbar-width: none;
+  }
+  body {
+    --margin-left: 0;
+    --margin-right: 0;
+  }
+  main {
+    max-width: 100%;
+    width: 100%;
+    margin: 0;
+  }
+  .wg21-head {
+    width: 60em;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  #settings {
+    position: absolute;
+  }
+  section {
+    --sw: calc(min(100vw, 16/9*100vh));
+    margin-left: auto;
+    margin-right: auto;
+    font-size: calc(0.025 * var(--sw));
+    --slide-hpad: calc(0.025 * var(--sw));
+
+    width: var(--sw);
+    box-sizing: border-box;
+    aspect-ratio: 16/9;
+    padding: 0.5em var(--slide-hpad) 0 var(--slide-hpad);
+
+    position: relative;
+
+    margin-bottom: 100vh;
+
+    /* background-color: rgba(50%, 50%, 50%, 5%); */
+
+    border-top: 0.025em var(--border-color) dashed;
+  }
+  section>p {
+    margin-top: 0.25em;
+    margin-bottom: 0.25em;
+  }
+  section>:first-child {
+    margin-top: 0;
+  }
+  section code-block {
+    font-size: 90%;
+  }
+  .slide-foot {
+    width: calc(var(--sw) - 2 * var(--slide-hpad));
+    padding: 0.25em 0 0.25em 0;
+    position: absolute;
+    bottom: 0;
+
+    font-family: var(--sans-serif-family);
+    font-size: 60%;
+    text-align: center;
+    color: var(--text-color);
+    opacity: 0.5;
+
+    border-top: 0.125vh var(--text-color) dashed;
+    border-bottom: 0.125vh var(--text-color) dashed;
+  }
+  a:visited {
+    color: var(--a-color);
+  }\
+}
+
+\cowel_macro("slide_controls"){\
+\Bimp{
+This document has custom controls\span{\noscript{ \b{which require JavaScript}}}:
+\ul{
+  \li{
+  \kbd{\cowel_char_by_name("RIGHTWARDS ARROW")}, \kbd{\cowel_char_by_name("FOUR-PER-EM SPACE")\cowel_char_by_name("DOWNWARDS ARROW")\cowel_char_by_name("FOUR-PER-EM SPACE")}:
+  go to the next slide
+  }
+  \li{
+  \kbd{\cowel_char_by_name("LEFTWARDS ARROW")}, \kbd{\cowel_char_by_name("FOUR-PER-EM SPACE")\cowel_char_by_name("UPWARDS ARROW")\cowel_char_by_name("FOUR-PER-EM SPACE")}:
+  go to previous slide
+  }
+}
+\noscript{\p{\b{
+  Your browser does not have JavaScript enabled,
+  but you can view all the slides by simply scrolling down.
+}}}
+}\
+}
+
+\script{\cowel_include_text("slide-navigation.js")}
+}\
