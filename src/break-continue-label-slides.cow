@@ -1,19 +1,19 @@
-\: cowel 0.5.0
-\import{libwg21.cow}
-\import{libslides.cow}
+\: cowel 0.9.2
+\cowel_include("libwg21-9.cow")
+\cowel_include("libslides-9.cow")
 
-\macro[\footsep]{\N{EM SPACE}|\N{EM SPACE}}
+\cowel_macro("footsep"){\cowel_char_by_name("EM SPACE")|\cowel_char_by_name("EM SPACE")}
 
-\macro[\slidefoot]{
+\cowel_macro("slidefoot"){ 
 Jan Schultke
 \footsep
-Slides for P3568R1
-\N{EM DASH}
+Slides for P3568R2
+\cowel_char_by_name("EM DASH")
 \tt{break label;} and \tt{continue label;}
 \footsep
-SG22 Telecon 2025-06-04
+EWG Brno 2026-06
 \footsep
-Slide \Vget[slidenum]
+Slide \(slidenum)
 }
 
 \style{
@@ -34,75 +34,66 @@ li>ul {
 }
 }
 
-\wg21-head[
-    title = Slides for P3568R1 \br \tt{break label;} and \tt{continue label;}
-]{
+\wg21_head(
+    title={Slides for P3568R2 \br \tt{break label;} and \tt{continue label;}}
+){
 \dl{
-    \dt{Document number:} \dd{\docnum{P3722R0}}
-    \dt{Date:}            \dd{\tt{2025-05-27}}
+    \dt{Document number:} \dd{\docnum{P3722R1}}
+    \dt{Date:}            \dd{\tt{2026-06-08}}
     \dt{Audience:}        \dd{SG22}
     \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
     \dt{Reply-To:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-    \dt{Source:}          \dd{\ref[https://github.com/Eisenwave/cpp-proposals/blob/master/src/break-continue-label-slides.cow]}
+    \dt{Source:}          \dd{\ref("https://github.com/Eisenwave/cpp-proposals/blob/master/src/break-continue-label-slides.cow"){break-continue-label-slides.cow}}
 }
 \hr
-\slide-controls
+\slide_controls
 }
 
 \slide{
-\html-h1{\tcode{break label;}\br
+\cowel_html_element("h1"){\tcode{break label;}\br
 and \br\tcode{continue label;}\br
-\html-span[id=docnum]{P3568R1}}
+\span("id"="docnum"){P3568R2}}
 }
-
-\style{
-.five-way-poll {
-    table-layout: fixed;
-}
-.five-way-poll td {
-    width: 20%;
-    text-align: center;
-}
-.three-way-poll {
-    table-layout: fixed;
-}
-.three-way-poll td {
-    width: 2em;
-    text-align: center;
-}
-}
-
-\macro[\five-way-poll]{\table[class=five-way-poll]{
-\tr{\th{SF}\th{F}\th{N}\th{A}\th{SA}}
-\tr{\put}
-}}
-
-\macro[\three-way-poll]{\table[class=three-way-poll]{
-\tr{\th{F}\th{N}\th{A}}
-\tr{\put}
-}}
 
 \slide{
 \slideh{Introduction}
 C2y now supports \tcode{break} and \tcode{continue} with a label (N3355):
 \cppblock{
 outer: for (int i = 0; i < N; ++i)
-    for (int j = 0; j < M; ++j)
-        if (/* ... */)
-          break outer; // OK, break targets "outer"
+  for (int j = 0; j < M; ++j)
+    if (/* ... */)
+      break outer; // OK, break targets "outer"
 }
 
 \ul{
-\item{would be useful in C++, not just in C}
-\item{if C has it, EWG wants it}
-\item{clearly implementable, even in \tcode{constexpr}}
+  \li{would be useful in C++, not just in C}
+  \li{if C has it, EWG wants it}
+  \li{clearly implementable, even in \tcode{constexpr}}
 }
 }
 
 \slide{
-\slideh{Recent history}
-\html-div[id=hagenberg-polls]{
-\block{\html-h3[id=hagenberg]{Hagenberg 2025}}
+\slideh{C++26 Expansion Statements}
+Breaking out of loop from expanded statement:
+\cppblock{
+outer: for (const auto& tuple : list_of_tuples)
+  template for (const auto& e : tuple)
+    if (/* ... */)
+      break outer;
+}
+
+Possible future direction: expand \tcode{case} labels:
+\cppblock{
+outer: switch (/* ... */) {
+  template for (constexpr int N : cases)
+    case N: visit<N>(); break outer;
+}
+}
+}
+
+\slide{
+\slideh{Recent history \'EM DASH' Hagenberg 2025}
+\div("id"="hagenberg-polls"){
 
 \style{
 #slide-h-3 {
@@ -123,22 +114,16 @@ outer: for (int i = 0; i < N; ++i)
 }
 }
 EWG likes syntax \tcode{N3355: for (...) { }}
-\five-way-poll{
-    \td{4}\td{16}\td{5}\td{9}\td{5}
-}
+\five_way_poll(4, 16, 5, 9, 5)
 
 EWG likes syntax \tcode{for N3377 (...) { }}
-\five-way-poll{
-    \td{7}\td{13}\td{5}\td{5}\td{8}
-}
+\five_way_poll(7, 13, 5, 5, 8)
 
-If C has it, we are interested in this feature too.
-\five-way-poll{
-    \td{16}\td{21}\td{5}\td{2}\td{3}
-}
+\mark{If C has it, we are interested in this feature too.}
+\five_way_poll(16, 21, 5, 2, 3)
 
-\html-div[id=hagenberg-conclusion]{
-\html-h3{Conclusion}
+\div("id"="hagenberg-conclusion"){
+\cowel_html_element("h3"){Conclusion}
 Let WG14 figure out syntax;\br
 we'll copy the feature into C++.
 }
@@ -146,63 +131,57 @@ we'll copy the feature into C++.
 }
 
 \slide{
-\slideh{Recent history}
-\html-div[id=graz-polls]{
-\block{\html-h3[id=graz]{Graz 2025}}
+\slideh{N3658: Simplified lexical scope for labels}
 
-\style{
-#slide-h-4 {
-    margin-bottom: 0;
-}
-#graz {
-    margin-top: 0;
-}
-}
-Would WG14 like to see a paper changing\br{}loop name syntax at a future meeting?
-\three-way-poll{
-    \td{6}\td{11}\td{9}
-}
-\ul{
-\item{
-\b{Conclusion}:
-\tcode{N3355: for (...) { }} syntax wins
-\ul{\item{however, \em{major} N3377 concerns unaddressed}}
-}
-\item{
-C++ goes with N3355 syntax
-\ul{\item{also let's try to fix N3377 issues before WG14}}
-}
-}
-
-}
-}
-
-\slide{
-\slideh{Unaddressed N3377 concerns}
-
-Labels must be unique per function \N{RIGHTWARDS DOUBLE ARROW} problematic for macros:
+Labels must be unique per function \cowel_char_by_name("RIGHTWARDS DOUBLE ARROW") problematic for macros and nesting:
 \cppblock{
 #define MACRO() \\
-    \code[cpp,nested=yes]{outer: for (/* ... */) \hl[macro]{\\}
+    \code("cpp",nested=true){outer: for (/* ... */) \hl("name-macro"){\\}
         for (/* ...*/) break outer}
-// ...
-\hl[macro]{MACRO}(); // OK
-\hl[macro]{MACRO}(); // error: duplicate "outer"
-}
+\hl("name-macro"){MACRO}(); // OK
+\hl("name-macro"){MACRO}(); // error: duplicate "outer"
 
-Also, nested reuse of names impossible:
-\cppblock{
+// Also, nested reuse of names impossible:
 outer: for (/* ... */) inner: for (/* ... */)
     outer: for (/* ... */) inner: for (/* ... */) // error
 }
+
+N3658 solution: drop label restrictions, error on \tcode{goto duplicate;}
+}
+
+\slide(class="wg14-progress"){
+\slideh{Recent history \'EM DASH' WG14}
+\div("id"="graz-polls"){
+\cowel_html_element("h3", ("class"="meeting-head")){Graz 2025}
+
+\style{
+.meeting-head {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.wg14-progress h2 {
+  margin-bottom: 0;
+}
+.wg14-progress p {
+  font-size: 90%;
+}
+}
+Would WG14 like to see a paper changing loop name syntax at a future meeting?
+\three_way_poll(6, 11, 9)
+
+\cowel_html_element("h3", ("class"="meeting-head")){Brno 2025}
+
+Would WG14 like to adopt something along the lines of N3658 into C2y?
+\three_way_poll(18, 7, 1)
+}
 }
 
 \slide{
-\slideh{P3568R1 strategy}
+\slideh{P3568R2 strategy}
 
 \ul{
-\item{labels can go \em{anywhere}, even multiple times}
-\item{restrict \tcode{goto}, \tcode{break}, \tcode{continue}, not labels}
+  \li{labels can go \em{anywhere}, even multiple times}
+  \li{restrict \tcode{goto}, \tcode{break}, \tcode{continue}, not labels}
 }
 \cppblock{
 label: label: while (true) break label; // OK
@@ -213,28 +192,27 @@ while (true) break label; // error: break of unrelated loop
 }
 
 \ul{
-\item{\b{Idea}: labels are \em{basically} comments, so why restrict them?}
-\item{\b{Benefit}: very simple, teachable system}
+  \li{\b{Idea}: labels are \em{basically} comments, so why restrict them?}
+  \li{\b{Benefit}: very simple, teachable system}
 }
-
 }
 
 \slide{
 \slideh{Summary}
 
 \ul{
-\item{EWG wants \tcode{break label}, and we have a design}
-\item{syntax debate is resolved}
-\item{N3377 concerns can be addressed with \tcode{label:} syntax}
-\item{wording exists, CWG chair looked at it}
-\item{
-implementation non-trivial, but \em{clearly} possible
-\ul{
-\item{GCC patch for N3355 exists (C fronted)}
-\item{Clang implementers convinced that \tcode{break label} is feasible}
-}
-}
+  \li{✅ EWG wants \tcode{break label}, and we have a design}
+  \li{✅ syntax debate in WG14 is resolved}
+  \li{✅ label problems are resolved (both in WG14 and in P3568R2)}
+  \li{✅ wording exists, CWG chair looked at it}
+  \li{
+    implementation non-trivial, but possible
+    \ul{
+      \li{GCC and Clang implement N3355 in C mode}
+      \li{no implementation in C++ mode yet}
+      \li{Clang implementers convinced that \tcode{break label} is feasible}
+    }
+  }
 }
 
 }
-
