@@ -1,19 +1,19 @@
-\: cowel 0.6.0
-\cowel_include{libwg21.cow}
-\cowel_include{libslides.cow}
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+\cowel_include("libslides-9.cow")
 
-\cowel_macro(footsep){\N{EM SPACE}|\N{EM SPACE}}
+\cowel_macro("footsep"){\'EM SPACE'|\'EM SPACE'}
 
-\cowel_macro(slidefoot){
+\cowel_macro("slidefoot"){
 Jan Schultke
 \footsep
-Slides for P3642R4
-\N{EM DASH}
+Slides for P3642R5
+\'EM DASH'
 Carry-less product: \tt{std::clmul}
 \footsep
 Telecons 2026
 \footsep
-Slide \Vget(slidenum)
+Slide \(slidenum)
 }
 
 \style{
@@ -35,23 +35,23 @@ li>ul {
 }
 
 \wg21_head(
-    title = Slides for P3642R4 \br Carry-less product: \tcode{std::clmul}
+    title = {Slides for P3642R5 \br Carry-less product: \tcode{std::clmul}}
 ){
 \dl{
-    \dt{Document number:} \dd{\docnum{P3647R1}}
-    \dt{Date:}            \dd{\tt{2026-03-03}}
+    \dt{Document number:} \dd{\docnum{P3647R2}}
+    \dt{Date:}            \dd{\tt{2026-06-10}}
     \dt{Audience:}        \dd{LEWG}
     \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
     \dt{Reply-To:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-    \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/clmul-slides.cow)}
+    \dt{Source:}          \dd{\ref("https://github.com/Eisenwave/cpp-proposals/blob/master/src/clmul-slides.cow")}
 }
 \hr
 \slide_controls
 }
 
 \slide{
-\cowel_html_element(h1){Carry-less product:\br\tcode{std::clmul}\br
-\span(id=docnum){P3642R4}}
+\cowel_html_element("h1"){Carry-less product:\br\tcode{std::clmul}\br
+\span(id="docnum"){P3642R5}}
 }
 
 \slide{
@@ -76,20 +76,20 @@ li>ul {
 
 \b{Intuition}: "carry-less" means we use XOR instead of plus.
 
-\table(id=tony-table){
+\table(id="tony-table"){
 \tr{
     \th{Regular multiplication}
     \th{Carry-less multiplication}
 }
 \tr{
-\td{\codeblock(cpp,borders=false){
+\td{\codeblock("cpp",borders=false){
 \comment{}     x * 0b0110
 == \tt{(x << 3) * 0}
  + (x << 2) * 1
  + (x << 1) * 1
  + (x << 0) * 0
 }}
-\td{\codeblock(cpp,borders=false){
+\td{\codeblock("cpp",borders=false){
 clmul(x, 0b0110)
  == \tt{(x << 3) * 0}
   ^ (x << 2) * 1
@@ -99,7 +99,7 @@ clmul(x, 0b0110)
 }
 }
 \ul{
-\li{useful for CRC, AES-GCM, parsing, bit manipulation, \N{HORIZONTAL ELLIPSIS}}
+\li{useful for CRC, AES-GCM, parsing, bit manipulation, \'HORIZONTAL ELLIPSIS'}
 \li{widespread hardware support (x86_64, ARM, RISC-V)}
 \li{a.k.a. "polynomial multiplication" and "XOR multiplication"}
 }
@@ -114,10 +114,10 @@ clmul(x, 0b0110)
 \li{can be used to check if character is inside/outside string in parallel}
 }
 \pre{
-abc xxx \code(cpp,nested=true){"foobar"} zzz \code(cpp,nested=true){"a"}
-00000000\hl(string-delim){1}\hl(string){000000}\hl(string-delim){1}00000\hl(string-delim){1}\hl(string){0}\hl(string-delim){1} \code(cpp,nested=true){// quotes}
-00000000\hl(string-delim){0}\hl(string){111111}\hl(string-delim){1}00000\hl(string-delim){0}\hl(string){1}\hl(string-delim){1} \code(cpp,nested=true){// clmul(quotes, -1u)}
-00000000\hl(string-delim){0}\hl(string){111111}\hl(string-delim){0}00000\hl(string-delim){0}\hl(string){1}\hl(string-delim){0} \code(cpp,nested=true){// clmul(quotes, -1u) & ~quotes}
+abc xxx \code("cpp",nested=true){"foobar"} zzz \code("cpp",nested=true){"a"}
+00000000\hl("string-delim"){1}\hl("string"){000000}\hl("string-delim"){1}00000\hl("string-delim"){1}\hl("string"){0}\hl("string-delim"){1} \code("cpp",nested=true){// quotes}
+00000000\hl("string-delim"){0}\hl("string"){111111}\hl("string-delim"){1}00000\hl("string-delim"){0}\hl("string"){1}\hl("string-delim"){1} \code("cpp",nested=true){// clmul(quotes, -1u)}
+00000000\hl("string-delim"){0}\hl("string"){111111}\hl("string-delim"){0}00000\hl("string-delim"){0}\hl("string"){1}\hl("string-delim"){0} \code("cpp",nested=true){// clmul(quotes, -1u) & ~quotes}
 }
 
 This technique is used to accelerate string parsing in \tt{simdjson}.
@@ -141,61 +141,61 @@ This technique is used to accelerate string parsing in \tt{simdjson}.
 }
 }
 
-\table(id=optable){
+\table(id="optable"){
 \tr{
     \th{Operation}\th{x86_64}\th{ARM}\th{RV64}
 }
 
 \tr{
-    \td{\tt{clmul u64\N{MULTIPLICATION SIGN}4 \N{RIGHTWARDS ARROW} u128\N{MULTIPLICATION SIGN}4}}
+    \td{\tt{clmul u64×4 → u128×4}}
     \td{\tt{vpclmulqdq}}
     \td{}
     \td{}
 }
 
 \tr{
-    \td{\tt{clmul u64\N{MULTIPLICATION SIGN}2 \N{RIGHTWARDS ARROW} u128\N{MULTIPLICATION SIGN}2}}
+    \td{\tt{clmul u64×2 → u128×2}}
     \td{\tt{vpclmulqdq}}
     \td{}
     \td{}
 }
 
-\tr(class=marked){
-    \td{\tt{clmul u64 \N{RIGHTWARDS ARROW} u128}}
+\tr(class="marked"){
+    \td{\tt{clmul u64 → u128}}
     \td{\tt{pclmulqdq}}
     \td{\tt{pmull}+\tt{pmull2}}
     \td{\tt{clmul}+\tt{clmulh}}
 }
 
-\tr(class=marked){
-    \td{\tt{clmul u64 \N{RIGHTWARDS ARROW} u128}}
+\tr(class="marked"){
+    \td{\tt{clmul u64 → u128}}
     \td{\tt{pclmulqdq}}
     \td{\tt{pmull}+\tt{pmull2}}
     \td{\tt{clmul}+\tt{clmulh}}
 }
 
-\tr(class=marked){
-    \td{\tt{clmul u64 \N{RIGHTWARDS ARROW} u64}}
+\tr(class="marked"){
+    \td{\tt{clmul u64 → u64}}
     \td{}
     \td{\tt{pmull}}
     \td{\tt{clmul}}
 }
 
 \tr{
-    \td{\tt{clmul u8\N{MULTIPLICATION SIGN}8 \N{RIGHTWARDS ARROW} u16\N{MULTIPLICATION SIGN}8}}
+    \td{\tt{clmul u8×8 → u16×8}}
     \td{}
     \td{\tt{pmull}}
     \td{}
 }
 \tr{
-    \td{\tt{clmul u8\N{MULTIPLICATION SIGN}8 \N{RIGHTWARDS ARROW} u8\N{MULTIPLICATION SIGN}8}}
+    \td{\tt{clmul u8×8 → u8×8}}
     \td{}
     \td{\tt{pmul}}
     \td{}
 }
 }
 
-\div(class=center){\mark{Marked} rows are integrated in this proposal.}
+\div(class="center"){\mark{Marked} rows are integrated in this proposal.}
 }
 
 \slide{
@@ -207,23 +207,23 @@ This technique is used to accelerate string parsing in \tt{simdjson}.
 }
 }
 
-\div(id=design){
+\div(id="design"){
 \cppblock{
 template<\exposid{unsigned-integer} T>
-T clmul(T x, T y) noexcept;
+  T clmul(T x, T y) noexcept;
 
 template<class T>
-struct mul_wide_result { // yoinked from P3161R4:
-    T low_bits;          // Unified integer overflow arithmetic
-    T high_bits;
+struct wide_result {
+  T low_bits, high_bits;
+  // comparison operators ...
 };
 
-template<\exposid{unsigned-integer} T>
-constexpr mul_wide_result<T> clmul_wide(T x, T y) noexcept;
+template<\exposid{unsigned-integer} T> // See also P4052R0 for naming rationale:
+  constexpr wide_result<T> widening_clmul(T x, T y) noexcept;
 }
 \ul{
 \li{\tcode{clmul} names used because it is most common (Intel, LLVM, RV64, etc.)}
-\li{\tcode{simd::clmul} also provided (but no \tcode{simd::clmul_wide}) (broken)}
+\li{\tcode{simd::clmul} also provided (but no \tcode{simd::widening_clmul})}
 }
 }
 }
@@ -238,20 +238,22 @@ constexpr mul_wide_result<T> clmul_wide(T x, T y) noexcept;
 }
 }
 
-\cowel_html_element(h4, attr=(class=false-vertical-margin)){Implementation}
-\ul(class=false-vertical-margin){
-\li{naive fallback implementation is trivial}
-\li{just need to wrap platform intrinsics when available}
-\li{portable support with \tt{@llvm.clmul}
-\ul{
-\li{could be wrapped in \tt{__builtin_clmul}}
-}}
+\cowel_html_element("h4", attr=(class="false-vertical-margin")){Implementation}
+\ul(class="false-vertical-margin"){
+  \li{naive fallback implementation is trivial}
+  \li{
+    good implementation difficult
+    (dispatch to CPU instructions,
+    advanced algorithms for software impl.,
+    special cases when one operand is known)
+  }
+  \li{LLVM 23 instruction: \tt{@llvm.clmul}}
+  \li{Clang 23 builtin: \tt{__builtin_elementwise_clmul}}
 }
 
-\cowel_html_element(h4, attr=(class=false-vertical-margin)){Wording}
+\cowel_html_element("h4", attr=(class="false-vertical-margin")){Wording}
 \ul{
-\li{reviewed by SG6 for correctness}
-\li{\i{see paper}}
+  \li{reviewed by SG6 for correctness; \i{see paper}}
 }
 }
 
@@ -267,7 +269,7 @@ constexpr mul_wide_result<T> clmul_wide(T x, T y) noexcept;
 }
 }
 
-\div{\span(id=bye){\tt{k thx bye}\N{EM SPACE}(„• ֊ •„)}}
+\div{\span(id="bye"){\tt{k thx bye}\'EM SPACE'(„• ֊ •„)}}
 
 }
 
