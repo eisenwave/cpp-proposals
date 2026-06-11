@@ -3,8 +3,8 @@
 
 \wg21_head(title={Carry-less product: \tt{std::clmul}}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3642R5}}
-  \dt{Date:}            \dd{\tt{2026-05-10}}
+  \dt{Document number:} \dd{\docnum{D3642R6}}
+  \dt{Date:}            \dd{\tt{2026-06-11}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -23,6 +23,17 @@ Add widening and non-widening carry-less multiplication functions.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R5}
+
+As requested by LEWG votes during the 2026 Brno meeting:
+
+\ul{
+  \li{Replace the bump of \tcode{__cpp_lib_simd} with a new \tcode{__cpp_lib_simd_clmul}}
+  \li{Constrain \tcode{std::wide_result} to unsigned integer types}
+}
+
+Also, implement wording changes during LWG review.
 
 \h3{Changes since R4}
 
@@ -479,9 +490,8 @@ struct wide_result {
   T low_bits;
   T high_bits;
   friend constexpr bool operator==(const wide_result&, const wide_result&) = default;
-  friend constexpr auto operator<=>(const wide_result& x, const wide_result& y)
-    noexcept(noexcept(x.low_bits <=> y.low_bits))
-    -> decltype(x.low_bits <=> y.low_bits);
+  friend constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
+    noexcept;
 };
 
 template<class T>
@@ -545,9 +555,8 @@ Therefore, this proposal provides non-widening SIMD carry-less multiplication
 with the following signature:
 
 \cppblock{
-template<class T, class Abi>
-  constexpr basic_vec<T, Abi> clmul(const basic_vec<T, Abi>& a,
-                                    const basic_vec<T, Abi>& b) noexcept;
+template<\exposid{simd-integral} V>
+  constexpr V clmul(const V& a, const V& b) noexcept;
 }
 
 \h4{SIMD widening operations are out of scope}
@@ -580,22 +589,15 @@ with the changes accepted during the 2026-02 Croydon meeting applied.
 
 \h3(show_number=false){[version.syn]}
 
-Change \eelis{version.syn#2} as follows:
+Add feature test macros to \eelis{version.syn#2} as follows:
 
 \Bdiff{
 \itemdecl{
 \etc
 \ins{#define __cpp_lib_clmul 20????L // \serif{also in \tt{<numeric>}}}
 \etc
-#define __cpp_lib_simd \del{202506L} \ins{20????L} // \serif{also in \tt{<simd>}}
+\ins{#define __cpp_lib_simd_clmul 20????L // \serif{also in \tt{<simd>}}}
 }
-}
-
-\editnote{
-We only bump \tcode{__cpp_lib_simd} without creating a new SIMD
-feature test macro because \ref("P2933R4") did the same,
-and because \tcode{__cpp_lib_clmul} can be used to test for the presence
-of both the scalar and SIMD version.
 }
 
 \h3(show_number=false){[numeric.ops]}
@@ -611,9 +613,8 @@ struct wide_result {
   T low_bits;
   T high_bits;
   friend constexpr bool operator==(const wide_result&, const wide_result&) = default;
-  friend constexpr auto operator<=>(const wide_result& x, const wide_result& y)
-    noexcept(noexcept(x.low_bits <=> y.low_bits))
-    -> decltype(x.low_bits <=> y.low_bits);
+  friend constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
+    noexcept;
 };
 
 template<class T>
@@ -630,10 +631,13 @@ append a subclause immediately following \eelis{numeric.sat}:
 \cowel_html_element("h3"){Carry-less product \stable_ref{numeric.clmul}}
 \cowel_var_set("pnum", 0)
 
+\pnum
+A specialization \tcode{wide_result<T>} is ill-formed
+unless \tcode{T} is an unsigned integer type\iref{basic.fundamental}.
+
 \itemdecl{
-constexpr auto operator<=>(const wide_result& x, const wide_result& y)
-  noexcept(noexcept(x.low_bits <=> y.low_bits))
-  -> decltype(x.low_bits <=> y.low_bits);
+constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
+  noexcept;
 }
 
 \itemdescr{
@@ -657,9 +661,10 @@ Let:
     a reduction using the exclusive OR operation (\eelis{expr.xor});
   }
   \li{
+    for an integer \mathvar{\alpha},
     \math{\msub{\mi{\alpha}\mi{i}}} be
     the \math{\msup{\mi{i}\mtext{th}}} least significant bit
-    in the base-2 representation of an integer \mathvar{\alpha};
+    in the base-2 representation of \mathvar{\alpha};
   }
   \li{\mathvar{N} be the width of \tcode{T}.}
 }
@@ -670,7 +675,8 @@ Let:
 
 \pnum
 \returns
-A \tcode{wide_result<T>} object storing the bits of an integer \mathvar{c},
+A \tcode{wide_result<T>} object storing the bits of an integer \mathvar{c}
+of width \math{\mrow{\mn{2}\mi{N}}},
 where the value of \math{\msub{\mi{c}\mi{i}}}
 is given by Formula\'NO-BREAK SPACE'\tt{?.?},
 \mathvar{x} is \tcode{x}, and
@@ -735,8 +741,12 @@ template<class T>
 }
 \itemdescr{
 \pnum
-\effects
-Equivalent to \tcode{widening_clmul(x, y).low_bits}.
+\constraints
+\tcode{T} is an unsigned integer type\iref{basic.fundamental}.
+
+\pnum
+\returns
+\tcode{widening_clmul(x, y).low_bits}.
 }
 }
 
@@ -778,9 +788,7 @@ namespace std::simd {
   \etc
 
 \ins{  // \serif{[simd.clmul], carry-less product}
-  template<class T, class Abi>
-    constexpr basic_vec<T, Abi> clmul(const basic_vec<T, Abi>& a,
-                                      const basic_vec<T, Abi>& b) noexcept;}
+  template<\exposid{simd-integral} V> constexpr V clmul(const V& a, const V& b) noexcept;}
 
   // \serif{[simd.math], mathematical functions}
   template<\exposid{math-floating-point} V> constexpr \exposid{deduced-simd-t}<V> acos(const V& x);
@@ -797,9 +805,7 @@ append a subclause immediately preceding \eelis{simd.math}:
 \cowel_var_set("pnum", 0)
 
 \itemdecl{
-template<class T, class Abi>
-  constexpr basic_vec<T, Abi> clmul(const basic_vec<T, Abi>& a,
-                                    const basic_vec<T, Abi>& b) noexcept;
+template<\exposid{simd-integral} V> constexpr V clmul(const V& a, const V& b) noexcept;
 }
 
 \itemdescr{
