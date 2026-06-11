@@ -3,9 +3,9 @@
 
 \wg21_head(title={Better shifting}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3793R1}}
-  \dt{Date:}            \dd{\tt{2025-11-19}}
-  \dt{Audience:}        \dd{SG6}
+  \dt{Document number:} \dd{\docnum{P3793R2}}
+  \dt{Date:}            \dd{\tt{2026-06-10}}
+  \dt{Audience:}        \dd{LWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Brian Bi <\mail{bbi5291@gmail.com}>}
   \dt{Co-authors:}      \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -33,6 +33,12 @@ following advantages over the built-in shift operators:
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R1}
+
+\ul{
+  \li{Implement wording changes from LWG review}
+}
 
 \h3{Changes since R0}
 
@@ -706,12 +712,13 @@ functions.
 
 \h3{[version.syn]}
 
-Bump feature-test macros in \eelis{version.syn} as follows:
+Change feature-test macros in \eelis{version.syn} as follows:
 
 \Bdiff{
 \itemdecl{
 #define __cpp_lib_bitops \del{201907L} \ins{20XXXXL} // \serif{freestanding, also in \tt{<bit>}}
-#define __cpp_lib_simd   \del{202502L} \ins{20XXXXL}   // \serif{also in \tt{<simd>}}
+\etc
+\ins{#define __cpp_lib_simd_bitops 20XXXXL // \serif{also in \tt{<simd>}}}
 }
 }
 
@@ -749,16 +756,10 @@ In \eelis{bit}, add a new subclause immediately preceding \eelis{bit.rotate}:
 \cowel_html_element("h3"){Shifting \stable_ref{bit.shift}}
 
 \pnum
-In the following descriptions,
+Within this subclause,
 the result \math{\mi{r}} of an arithmetic operation is
 first represented in a hypothetical integer type with sufficient range,
 then converted to \tcode{T} as if by \tcode{static_cast<T>(\math{\mi{r}})}.
-
-\pnum
-\note{
-The value of \tcode{s} in the following descriptions may be negative,
-which has the effect of \q{shifting in the opposite direction}.
-}
 
 \itemdecl{
 template<class T, class S>
@@ -792,12 +793,6 @@ is a signed or unsigned integer type\iref{basic.fundamental}.
 \returns
 \math{\mrow{\mi{x}\mo{×}\msup{\mn{2}\mrow{\mo{−}\mi{s}}}}}
 rounded towards negative infinity.
-
-\note{
-\tcode{shl(x, s)} is equivalent to \tcode{shr(x, -s)}
-if \tcode{s} is of signed type,
-except that \tcode{-s} can overflow (\eelis{expr.pre}, \eelis{expr.unary.op}).
-}
 }
 }
 
@@ -813,24 +808,24 @@ In \eelis{simd.syn}, change the synopsis as follows:
 
 \etc
 
-\ins{template<\exposid{simd-type} V0, \exposid{simd-type} V1>
-  constexpr V0 shl(const V0& v, const V1& s) noexcept;
-template<\exposid{simd-type} V, class S>
-  constexpr V  shl(const V& v, S s) noexcept;
+\ins{template<\exposid{simd-integral} VX, \exposid{simd-integral} VS>
+  constexpr VX shl(const VX& x, const VS& s) noexcept;
+template<\exposid{simd-integral} V, class S>
+  constexpr V  shl(const V& x, S s) noexcept;
 
-template<\exposid{simd-type} V0, \exposid{simd-type} V1>
-  constexpr V0 shr(const V0& v, const V1& s) noexcept;
-template<\exposid{simd-type} V, class S>
-  constexpr V  shr(const V& v, S s) noexcept;}
+template<\exposid{simd-integral} VX, \exposid{simd-integral} VS>
+  constexpr VX shr(const VX& x, const V1& s) noexcept;
+template<\exposid{simd-integral} V, class S>
+  constexpr V  shr(const V& x, S s) noexcept;}
 
-template<\exposid{simd-type} V0, \exposid{simd-type} V1>
+template<\exposid{simd-integral} V0, \exposid{simd-integral} V1>
   constexpr V0 rotl(const V0& v, const V1& s) noexcept;
-template<\exposid{simd-type} V>
+template<\exposid{simd-integral} V>
   constexpr V  rotl(const V& v, int s) noexcept;
 
-template<\exposid{simd-type} V0, \exposid{simd-type} V1>
+template<\exposid{simd-integral} V0, \exposid{simd-integral} V1>
   constexpr V0 rotr(const V0& v, const V1& s) noexcept;
-template<\exposid{simd-type} V>
+template<\exposid{simd-integral} V>
   constexpr V  rotr(const V& v, int s) noexcept;
 
 \etc
@@ -863,21 +858,20 @@ In \eelis{simd.bit}, immediately preceding the first declaration of
 
 \Bins{
 \itemdecl{
-template<\exposid{simd-type} V0, \exposid{simd-type} V1>
-  constexpr V0 shl(const V0& v0, const V1& v1) noexcept;
-template<\exposid{simd-type} V0, \exposid{simd-type} V1>
-  constexpr V0 shr(const V0& v0, const V1& v1) noexcept;
+template<\exposid{simd-integral} VX, \exposid{simd-integral} VS>
+  constexpr VX shl(const VX& x, const VS& s) noexcept;
+template<\exposid{simd-integral} VX, \exposid{simd-integral} VS>
+  constexpr VX shr(const VX& x, const VS& s) noexcept;
 }
 
 \itemdescr{
 \pnum
 \constraints
 \ul{
-  \li{The type \tcode{V0::value_type} is a signed or unsigned integer
+  \li{Each of \tcode{VX::value_type} and \tcode{VS::value_type} is a signed or unsigned integer
       type\iref{basic.fundamental},}
-  \li{the type \tcode{V1::value_type} is a signed or unsigned integer type,}
-  \li{\tcode{V0::size() == V1::size()} is \tcode{true}, and}
-  \li{\tcode{sizeof(typename V0::value_type) == sizeof(typename V1::value_type)}
+  \li{\tcode{VX::size() == VS::size()} is \tcode{true}, and}
+  \li{\tcode{sizeof(typename VX::value_type) == sizeof(typename VS::value_type)}
       is \tcode{true}.}
 }
 
@@ -885,17 +879,17 @@ template<\exposid{simd-type} V0, \exposid{simd-type} V1>
 \returns
 A \tcode{basic_vec} object where the \math{\msup{\mi{i}\mtext{th}}} element
 is initialized to the result of
-\tcode{\exposid{bit-func}(v0[\math{\mi{i}}], v1[\math{\mi{i}}])}
+\tcode{\exposid{bit-func}(x[\math{\mi{i}}], s[\math{\mi{i}}])}
 for all \math{\mi{i}} in the range
-[\tcode{0}, \tcode{V0::size()}), where \tcode{\exposid{bit-func}} has the same
-behavior as the corresponding scalar function from \header{bit}.
+[\tcode{0}, \tcode{VX::size()}), where \tcode{\exposid{bit-func}}
+is the corresponding scalar function from \header{bit}.
 }
 
 \itemdecl{
-template<\exposid{simd-type} V, class S>
-  constexpr V shl(const V& v, S s) noexcept;
-template<\exposid{simd-type} V, class S>
-  constexpr V shr(const V& v, S s) noexcept;
+template<\exposid{simd-integral} V, class S>
+  constexpr V shl(const V& x, S s) noexcept;
+template<\exposid{simd-integral} V, class S>
+  constexpr V shr(const V& x, S s) noexcept;
 }
 
 \itemdescr{
@@ -908,7 +902,7 @@ is a signed or unsigned integer type\iref{basic.fundamental}.
 \returns
 A \tcode{basic_vec} object where the \math{\msup{\mi{i}\mtext{th}}} element is
 initialized to the result of
-\tcode{\exposid{bit-func}(v[\math{\mi{i}}], s)}
+\tcode{\exposid{bit-func}(x[\math{\mi{i}}], s)}
 for all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}), where
 \tcode{\exposid{bit-func}} is the corresponding scalar function from
 \header{bit}.

@@ -1547,6 +1547,13 @@ if (theme !== null) {
     float: right;
   }
 
+  .three-way-poll {
+    table-layout: fixed;
+  }
+  .three-way-poll td {
+    width: 2em;
+    text-align: center;
+  }
   .five-way-poll {
     table-layout: fixed;
   }
@@ -1572,9 +1579,9 @@ if (theme !== null) {
 <div class=wg21-head><h1>Better shifting</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3793R1>P3793R1</a></dd>
-  <dt>Date:</dt>            <dd><tt->2025-11-19</tt-></dd>
-  <dt>Audience:</dt>        <dd>SG6</dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3793R2>P3793R2</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-06-10</tt-></dd>
+  <dt>Audience:</dt>        <dd>LWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Brian Bi &lt;<a href=mailto:bbi5291@gmail.com class=sans>bbi5291@gmail.com</a>&gt;</dd>
   <dt>Co-authors:</dt>      <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1602,6 +1609,8 @@ following advantages over the built-in shift operators:
 <div class=toc><div class=toc-num data-level=2>1</div>
 <a href=#revision-history><h2>Revision history</h2></a>
 <div class=toc-num data-level=3>1.1</div>
+<a href=#changes-since-r1><h3>Changes since R1</h3></a>
+<div class=toc-num data-level=3>1.2</div>
 <a href=#changes-since-r0><h3>Changes since R0</h3></a>
 <div class=toc-num data-level=2>2</div>
 <a href=#introduction><h2>Introduction</h2></a>
@@ -1645,7 +1654,13 @@ following advantages over the built-in shift operators:
 
 <h2 id=revision-history><a class=para href=#revision-history></a>1. Revision history</h2>
 
-<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.1. Changes since R0</h3>
+<h3 id=changes-since-r1><a class=para href=#changes-since-r1></a>1.1. Changes since R1</h3>
+
+<ul>
+  <li>Implement wording changes from LWG review</li>
+</ul>
+
+<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.2. Changes since R0</h3>
 
 <ul>
   <li>
@@ -2273,11 +2288,12 @@ functions.
 
 <h3 id=version.syn><a class=para href=#version%2esyn></a>6.1. [version.syn]</h3>
 
-<p>Bump feature-test macros in <a href=https://eel.is/c++draft/version.syn>[version.syn]</a> as follows:
+<p>Change feature-test macros in <a href=https://eel.is/c++draft/version.syn>[version.syn]</a> as follows:
 </p>
 <diff-block>
 <code-block class=borderless><h- data-h=name_mac>#define __cpp_lib_bitops </h-><del><h- data-h=name_mac>201907L</h-></del><h- data-h=name_mac> </h-><ins><h- data-h=name_mac>20XXXXL</h-></ins><h- data-h=name_mac> </h-><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding, also in </h-><tt-><h- data-h=cmt>&lt;bit&gt;</h-></tt-></f-serif>
-<h- data-h=name_mac>#define __cpp_lib_simd   </h-><del><h- data-h=name_mac>202502L</h-></del><h- data-h=name_mac> </h-><ins><h- data-h=name_mac>20XXXXL</h-></ins><h- data-h=name_mac>   </h-><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>also in </h-><tt-><h- data-h=cmt>&lt;simd&gt;</h-></tt-></f-serif></code-block>
+[…]
+<ins><h- data-h=name_mac>#define __cpp_lib_simd_bitops 20XXXXL </h-><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>also in </h-><tt-><h- data-h=cmt>&lt;simd&gt;</h-></tt-></f-serif></ins></code-block>
 </diff-block>
 
 <h3 id=bit><a class=para href=#bit></a>6.2. [bit]</h3>
@@ -2312,27 +2328,21 @@ functions.
 <h3>Shifting <span class=stable-ref>[bit.shift]</span></h3>
 
 <p>1
-In the following descriptions,
+Within this subclause,
 the result <math display=inline><mi>r</mi></math> of an arithmetic operation is
 first represented in a hypothetical integer type with sufficient range,
 then converted to <code><h- data-h=name>T</h-></code> as if by <code><h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><math display=inline><mi>r</mi></math><h- data-h=sym_par>)</h-></code>.
 </p>
-<p>2
-[<i>Note</i>: 
-The value of <code><h- data-h=name>s</h-></code> in the following descriptions may be negative,
-which has the effect of <q>shifting in the opposite direction</q>.
- — <i>end note</i>]</p>
-
 <code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>S</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>shl</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
-<p>3
+<p>2
 <i>Constraints</i>:
 Each of <code><h- data-h=name>T</h-></code> and <code><h- data-h=name>S</h-></code>
 is a signed or unsigned integer type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>).
 </p>
-<p>4
+<p>3
 <i>Returns</i>:
 <math display=inline><mrow><mi>x</mi><mo>×</mo><msup><mn>2</mn><mi>s</mi></msup></mrow></math>
 rounded towards negative infinity.
@@ -2342,21 +2352,15 @@ rounded towards negative infinity.
   <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>shr</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
-<p>5
+<p>4
 <i>Constraints</i>:
 Each of <code><h- data-h=name>T</h-></code> and <code><h- data-h=name>S</h-></code>
 is a signed or unsigned integer type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>).
 </p>
-<p>6
+<p>5
 <i>Returns</i>:
 <math display=inline><mrow><mi>x</mi><mo>×</mo><msup><mn>2</mn><mrow><mo>−</mo><mi>s</mi></mrow></msup></mrow></math>
 rounded towards negative infinity.
-</p>
-<p>[<i>Note</i>: 
-<code><h- data-h=name>shl</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-></code> is equivalent to <code><h- data-h=name>shr</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>-</h-><h- data-h=name>s</h-><h- data-h=sym_par>)</h-></code>
-if <code><h- data-h=name>s</h-></code> is of signed type,
-except that <code><h- data-h=sym_op>-</h-><h- data-h=name>s</h-></code> can overflow (<a href=https://eel.is/c++draft/expr.pre>[expr.pre]</a>, <a href=https://eel.is/c++draft/expr.unary.op>[expr.unary.op]</a>).
- — <i>end note</i>]
 </p></div>
 </ins-block>
 
@@ -2371,24 +2375,24 @@ except that <code><h- data-h=sym_op>-</h-><h- data-h=name>s</h-></code> can over
 
 […]
 
-<ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V0</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V1</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>V0</h-> <h- data-h=name>shl</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V0</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>v</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>V1</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>S</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>V</h->  <h- data-h=name>shl</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>v</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>VX</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>VS</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>VX</h-> <h- data-h=name>shl</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>VX</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>VS</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>V</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>S</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>V</h->  <h- data-h=name>shl</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
 
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V0</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V1</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>V0</h-> <h- data-h=name>shr</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V0</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>v</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>V1</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>S</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>V</h->  <h- data-h=name>shr</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>v</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></ins>
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>VX</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>VS</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>VX</h-> <h- data-h=name>shr</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>VX</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>V1</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>V</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>S</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>V</h->  <h- data-h=name>shr</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></ins>
 
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V0</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V1</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>V0</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>V1</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=name>V0</h-> <h- data-h=name>rotl</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V0</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>v</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>V1</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=name>V</h->  <h- data-h=name>rotl</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>v</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
 
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V0</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V1</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>V0</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>V1</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=name>V0</h-> <h- data-h=name>rotr</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V0</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>v</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>V1</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=name>V</h->  <h- data-h=name>rotr</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>v</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
 
 […]
@@ -2419,20 +2423,19 @@ except that <code><h- data-h=sym_op>-</h-><h- data-h=name>s</h-></code> can over
 
 
 <ins-block>
-<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V0</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V1</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>V0</h-> <h- data-h=name>shl</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V0</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>v0</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>V1</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>v1</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V0</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V1</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>V0</h-> <h- data-h=name>shr</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V0</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>v0</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>V1</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>v1</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>VX</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>VS</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>VX</h-> <h- data-h=name>shl</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>VX</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>VS</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>VX</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>VS</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>VX</h-> <h- data-h=name>shr</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>VX</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>VS</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>11
 <i>Constraints</i>:
 </p><ul>
-  <li>The type <code><h- data-h=name>V0</h-><h- data-h=sym_op>::</h-><h- data-h=name>value_type</h-></code> is a signed or unsigned integer
+  <li>Each of <code><h- data-h=name>VX</h-><h- data-h=sym_op>::</h-><h- data-h=name>value_type</h-></code> and <code><h- data-h=name>VS</h-><h- data-h=sym_op>::</h-><h- data-h=name>value_type</h-></code> is a signed or unsigned integer
       type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>),</li>
-  <li>the type <code><h- data-h=name>V1</h-><h- data-h=sym_op>::</h-><h- data-h=name>value_type</h-></code> is a signed or unsigned integer type,</li>
-  <li><code><h- data-h=name>V0</h-><h- data-h=sym_op>::</h-><h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>==</h-> <h- data-h=name>V1</h-><h- data-h=sym_op>::</h-><h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> is <code><h- data-h=bool>true</h-></code>, and</li>
-  <li><code><h- data-h=kw>sizeof</h-><h- data-h=sym_par>(</h-><h- data-h=kw>typename</h-> <h- data-h=name>V0</h-><h- data-h=sym_op>::</h-><h- data-h=name>value_type</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>==</h-> <h- data-h=kw>sizeof</h-><h- data-h=sym_par>(</h-><h- data-h=kw>typename</h-> <h- data-h=name>V1</h-><h- data-h=sym_op>::</h-><h- data-h=name>value_type</h-><h- data-h=sym_par>)</h-></code>
+  <li><code><h- data-h=name>VX</h-><h- data-h=sym_op>::</h-><h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>==</h-> <h- data-h=name>VS</h-><h- data-h=sym_op>::</h-><h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> is <code><h- data-h=bool>true</h-></code>, and</li>
+  <li><code><h- data-h=kw>sizeof</h-><h- data-h=sym_par>(</h-><h- data-h=kw>typename</h-> <h- data-h=name>VX</h-><h- data-h=sym_op>::</h-><h- data-h=name>value_type</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>==</h-> <h- data-h=kw>sizeof</h-><h- data-h=sym_par>(</h-><h- data-h=kw>typename</h-> <h- data-h=name>VS</h-><h- data-h=sym_op>::</h-><h- data-h=name>value_type</h-><h- data-h=sym_par>)</h-></code>
       is <code><h- data-h=bool>true</h-></code>.</li>
 </ul>
 
@@ -2440,16 +2443,16 @@ except that <code><h- data-h=sym_op>-</h-><h- data-h=name>s</h-></code> can over
 <i>Returns</i>:
 A <code><h- data-h=name>basic_vec</h-></code> object where the <math display=inline><msup><mi>i</mi><mtext>th</mtext></msup></math> element
 is initialized to the result of
-<code><i><h- data-h=name>bit-func</h-></i><h- data-h=sym_par>(</h-><h- data-h=name>v0</h-><h- data-h=sym_sqr>[</h-><math display=inline><mi>i</mi></math><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>v1</h-><h- data-h=sym_sqr>[</h-><math display=inline><mi>i</mi></math><h- data-h=sym_sqr>]</h-><h- data-h=sym_par>)</h-></code>
+<code><i><h- data-h=name>bit-func</h-></i><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_sqr>[</h-><math display=inline><mi>i</mi></math><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>s</h-><h- data-h=sym_sqr>[</h-><math display=inline><mi>i</mi></math><h- data-h=sym_sqr>]</h-><h- data-h=sym_par>)</h-></code>
 for all <math display=inline><mi>i</mi></math> in the range
-[<code><h- data-h=num>0</h-></code>, <code><h- data-h=name>V0</h-><h- data-h=sym_op>::</h-><h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>), where <code><i><h- data-h=name>bit-func</h-></i></code> has the same
-behavior as the corresponding scalar function from <code><h- data-h=str>&lt;bit&gt;</h-></code>.
+[<code><h- data-h=num>0</h-></code>, <code><h- data-h=name>VX</h-><h- data-h=sym_op>::</h-><h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>), where <code><i><h- data-h=name>bit-func</h-></i></code>
+is the corresponding scalar function from <code><h- data-h=str>&lt;bit&gt;</h-></code>.
 </p></div>
 
-<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>S</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>V</h-> <h- data-h=name>shl</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>v</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-type</h-></i> <h- data-h=name>V</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>S</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>V</h-> <h- data-h=name>shr</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>v</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>V</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>S</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>V</h-> <h- data-h=name>shl</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>simd-integral</h-></i> <h- data-h=name>V</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>S</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>V</h-> <h- data-h=name>shr</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>13
@@ -2461,7 +2464,7 @@ is a signed or unsigned integer type (<a href=https://eel.is/c++draft/basic.fund
 <i>Returns</i>:
 A <code><h- data-h=name>basic_vec</h-></code> object where the <math display=inline><msup><mi>i</mi><mtext>th</mtext></msup></math> element is
 initialized to the result of
-<code><i><h- data-h=name>bit-func</h-></i><h- data-h=sym_par>(</h-><h- data-h=name>v</h-><h- data-h=sym_sqr>[</h-><math display=inline><mi>i</mi></math><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-></code>
+<code><i><h- data-h=name>bit-func</h-></i><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_sqr>[</h-><math display=inline><mi>i</mi></math><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-></code>
 for all <math display=inline><mi>i</mi></math> in the range [<code><h- data-h=num>0</h-></code>, <code><h- data-h=name>V</h-><h- data-h=sym_op>::</h-><h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>), where
 <code><i><h- data-h=name>bit-func</h-></i></code> is the corresponding scalar function from
 <code><h- data-h=str>&lt;bit&gt;</h-></code>.
