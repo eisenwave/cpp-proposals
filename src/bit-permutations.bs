@@ -1,9 +1,9 @@
 <pre class='metadata'>
 Title: Bit permutations
 Shortname: P3104
-Revision: 5
+Revision: 6
 Status: P
-Date: 2026-05-10
+Date: 2026-06-11
 Group: WG21
 Audience: LWG
 Editor: Jan Schultke, janschultke@gmail.com
@@ -759,6 +759,10 @@ paragraph 2, update the synopsis as follows:
 </code></pre>
 </blockquote>
 
+The value for the feature-test macro should have a number one greater than
+the value for P3793,
+if both papers are applied to the draft during the same meeting.
+
 In subclause
 <a href="https://eel.is/c++draft/bit.syn">[bit.syn]</a>,
 update the synopsis as follows:
@@ -867,10 +871,17 @@ template<class T>
 <p- class="indent">
     7 *Throws*: Nothing.
 </p->
+<p- class="indent">
+    8 *Remarks*: A function call expression that violates the precondition in the *Preconditions*:
+    element is not a core constant expression ([expr.const.core]).
+</p->
 <div class=formula>
     <math display="block"><mrow><mi>repeat</mi><mo form="prefix" stretchy="false">(</mo><mi>x</mi><mo separator="true">,</mo><mi>l</mi><mo form="postfix" stretchy="false">)</mo><mo>=</mo><mrow><munderover><mo movablelimits="false">∑</mo><mrow><mi>n</mi><mo>=</mo><mn>0</mn></mrow><mrow><mi>N</mi><mo>−</mo><mn>1</mn></mrow></munderover></mrow><mrow><msub><mi>x</mi><mrow><mo form="prefix" stretchy="false" lspace="0em" rspace="0em">(</mo><mi>n</mi><mo></mo><mspace width="0.6667em"></mspace><mpadded lspace="0"><mi>mod</mi></mpadded><mspace width="0.1667em"></mspace><mspace width="0.1667em"></mspace><mi>l</mi><mo form="postfix" stretchy="false" lspace="0em" rspace="0em">)</mo></mrow></msub><msup><mn>2</mn><mi>n</mi></msup></mrow></mrow></math>
     [FORMULA 2]
 </div>
+<p- class=indent>
+    9 [*Example*: `bit_repeat(uint32_t{0xc}, 4)` equals `0xcccccccc`. -- *end example*]
+</p->
 
 <p->
 ```cpp
@@ -879,10 +890,10 @@ template<class T>
 ```
 </p->
 <p- class="indent">
-    8 *Constraints*: `T` is an unsigned integer type ([basic.fundamental]).
+    10 *Constraints*: `T` is an unsigned integer type ([basic.fundamental]).
 </p->
 <p- class="indent">
-    9 *Returns*: 
+    11 *Returns*:
     <span><math display="inline"><mrow><mi>compress</mi><mo form="prefix" stretchy="false">(</mo><mi>x</mi><mo separator="true">,</mo><mi>m</mi><mo form="postfix" stretchy="false">)</mo></mrow></math></span>,
     where
     <span><math display="inline"><mi>compress</mi></math></span>
@@ -896,6 +907,10 @@ template<class T>
     <math display="block"><mrow><mi>compress</mi><mo form="prefix" stretchy="false">(</mo><mi>x</mi><mo separator="true">,</mo><mi>m</mi><mo form="postfix" stretchy="false">)</mo><mo>=</mo><mrow><munderover><mo movablelimits="false">∑</mo><mrow><mi>n</mi><mo>=</mo><mn>0</mn></mrow><mrow><mi>N</mi><mo>−</mo><mn>1</mn></mrow></munderover></mrow><mrow><msub><mi>m</mi><mi>n</mi></msub><msub><mi>x</mi><mi>n</mi></msub><msup><mn>2</mn><mrow><mo form="prefix" stretchy="false" lspace="0em" rspace="0em">(</mo><msubsup><mo movablelimits="false">∑</mo><mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow><mrow><mi>n</mi><mo>−</mo><mn>1</mn></mrow></msubsup><msub><mi>m</mi><mi>k</mi></msub><mo form="postfix" stretchy="false" lspace="0em" rspace="0em">)</mo></mrow></msup></mrow></mrow></math>
     [FORMULA 3]
 </div>
+<p- class=indent>
+    12 [*Example*: <code>bit_compress(0b<i>ABCD</i>, 0b0101)</code>
+    equals <code>0b00<i>BD</i></code> for any bits *A*, *B*, *C*, and *D*. -- *end example*]
+</p->
 
 <p->
 ```cpp
@@ -904,10 +919,10 @@ template<class T>
 ```
 </p->
 <p- class="indent">
-    10 *Constraints*: `T` is an unsigned integer type ([basic.fundamental]).
+    13 *Constraints*: `T` is an unsigned integer type ([basic.fundamental]).
 </p->
 <p- class="indent">
-    11 *Returns*:
+    14 *Returns*:
     <span><math display="inline"><mrow><mi>expand</mi><mo form="prefix" stretchy="false">(</mo><mi>x</mi><mo separator="true">,</mo><mi>m</mi><mo form="postfix" stretchy="false">)</mo></mrow></math></span>,
     where
     <span><math display="inline"><mi>expand</mi></math></span>
@@ -921,6 +936,10 @@ template<class T>
     <math display="block"><mrow><mi>expand</mi><mo form="prefix" stretchy="false">(</mo><mi>x</mi><mo separator="true">,</mo><mi>m</mi><mo form="postfix" stretchy="false">)</mo><mo>=</mo><mrow><munderover><mo movablelimits="false">∑</mo><mrow><mi>n</mi><mo>=</mo><mn>0</mn></mrow><mrow><mi>N</mi><mo>−</mo><mn>1</mn></mrow></munderover></mrow><mrow><msub><mi>m</mi><mi>n</mi></msub><msub><mi>x</mi><mrow><mo form="prefix" stretchy="false" lspace="0em" rspace="0em">(</mo><msubsup><mo movablelimits="false">∑</mo><mrow><mi>k</mi><mo>=</mo><mn>0</mn></mrow><mrow><mi>n</mi><mo>−</mo><mn>1</mn></mrow></msubsup><msub><mi>m</mi><mi>k</mi></msub><mo form="postfix" stretchy="false" lspace="0em" rspace="0em">)</mo></mrow></msub><msup><mn>2</mn><mi>n</mi></msup></mrow></mrow></math>
     [FORMULA 4]
 </div>
+<p- class=indent>
+    15 [*Example*: <code>bit_expand(0b<i>ABCD</i>, 0b0101)</code>
+    equals <code>0b0<i>C</i>0<i>D</i></code> for any bits *A*, *B*, *C*, and *D*. -- *end example*]
+</p->
 
 </div>
 
