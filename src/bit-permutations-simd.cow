@@ -3,9 +3,9 @@
 
 \wg21_head(title={\tcode{std::simd} overloads for bit permutations}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3772R1}}
-  \dt{Date:}            \dd{\tt{2025-11-13}}
-  \dt{Audience:}        \dd{LEWG}
+  \dt{Document number:} \dd{\docnum{P3772R2}}
+  \dt{Date:}            \dd{\tt{2026-06-11}}
+  \dt{Audience:}        \dd{LWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultkegmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3772/github")}
@@ -25,6 +25,12 @@ to add consistency with \ref("P2933R4").
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R1}
+
+Implemented feedback from LWG review.
+
+\h3{Changes since R0}
 
 \ul{
   \li{updated paper reference to \ref("P3104R4") (instead of R3)}
@@ -82,7 +88,7 @@ In \eelis{version.syn}, bump the feature-test macro:
 
 \Bdiff{
 \itemdecl{
-#define __cpp_lib_simd \del{202506L} \ins{20XXXXL} // \serif{also in <simd>}
+#define __cpp_lib_simd_bitops \del{202506L} \ins{20XXXXL} // \serif{also in <simd>}
 }
 }
 
@@ -94,7 +100,7 @@ namespace std::simd {
 
   // \serif{\eelis{simd.bit}, bit manipulation}
   template<\exposid{simd-vec-type} V> constexpr V byteswap(const V& v) noexcept;
-\ins{  template<\exposid{simd-vec-type} V> constexpr V bit_reverse(const V& v) noexcept;}
+\ins{  template<\exposid{simd-integral} V> constexpr V bit_reverse(const V& v) noexcept;}
   template<\exposid{simd-vec-type} V> constexpr V bit_ceil(const V& v) noexcept;
   template<\exposid{simd-vec-type} V> constexpr V bit_floor(const V& v) noexcept;
 
@@ -111,9 +117,9 @@ namespace std::simd {
   template<\exposid{simd-vec-type} V>
     constexpr V  rotr(const V& v, int s) noexcept;
 \ins{
-  template<\exposid{simd-vec-type} V0, \exposid{simd-vec-type} V1>
+  template<\exposid{simd-integral} V0, \exposid{simd-integral} V1>
     constexpr V0 bit_repeat(const V0& v, const V1& l);
-  template<\exposid{simd-vec-type} V>
+  template<\exposid{simd-integral} V>
     constexpr V  bit_repeat(const V& v, int l);}
 
   template<\exposid{simd-vec-type} V>
@@ -135,14 +141,14 @@ namespace std::simd {
     constexpr rebind_t<make_signed_t<typename V::value_type>, V>
       popcount(const V& v) noexcept;
 
-\ins{  template<\exposid{simd-vec-type} V>
+\ins{  template<\exposid{simd-integral} V>
     constexpr V bit_compress(const V& v, const V& m) noexcept;
-  template<\exposid{simd-vec-type} V>
+  template<\exposid{simd-integral} V>
     constexpr V bit_expand(const V& v, const V& m) noexcept;
 
-  template<\exposid{simd-vec-type} V>
+  template<\exposid{simd-integral} V>
     constexpr V bit_compress(const V& v, typename V::value_type m) noexcept;
-  template<\exposid{simd-vec-type} V>
+  template<\exposid{simd-integral} V>
     constexpr V bit_expand(const V& v, typename V::value_type m) noexcept;}
 
   \etc
@@ -198,7 +204,7 @@ the result of \tcode{std::byteswap(v[\mathvar{i}])} for all \mathvar{i} in the r
 }
 
 \itemdecl{
-\ins{template<\exposconcept{simd-vec-type} V> constexpr V bit_reverse(const V& v) noexcept;}
+\ins{template<\exposconcept{simd-integral} V> constexpr V bit_reverse(const V& v) noexcept;}
 }
 
 \itemdescr{
@@ -237,7 +243,7 @@ the result of \tcode{std::bit_ceil(v[\mathvar{i}])} for all \mathvar{i} in the r
 \pnum
 \remarks
 A function call expression that violates the precondition in the \expects
-element is not a core constant expression\iref{expr.const}.
+element is not a core constant expression\iref{expr.const.core}.
 }
 
 \itemdecl{
@@ -278,7 +284,7 @@ template<\exposconcept{simd-vec-type} V0, \exposconcept{simd-vec-type} V1>
   constexpr V0 rotl(const V0& v0, const V1& v1) noexcept;
 template<\exposconcept{simd-vec-type} V0, \exposconcept{simd-vec-type} V1>
   constexpr V0 rotr(const V0& v0, const V1& v1) noexcept;
-\ins{template<\exposconcept{simd-vec-type} V0, \exposconcept{simd-vec-type} V1>
+\ins{template<\exposconcept{simd-integral} V0, \exposconcept{simd-integral} V1>
   constexpr V0 bit_repeat(const V0& v0, const V1& v1);}
 }
 
@@ -305,12 +311,17 @@ A \tcode{basic_vec} object where the \mathvar_th{i} element is initialized to
 the result of \tcode{\tt{\i{bit-func}}(v0[\mathvar{i}],
 static_cast<int>(v1[\mathvar{i}]))} for all \mathvar{i} in the range [\tcode{0}, \tcode{V0::size()}),
 where \tt{\i{bit-func}} is the corresponding scalar function from \libheader{bit}.
+
+\ins{¶
+\remarks
+A function call expression that violates the precondition in the \expects
+element is not a core constant expression\iref{expr.const.core}.}
 }
 
 \itemdecl{
 template<\exposconcept{simd-vec-type} V> constexpr V rotl(const V& v, int s) noexcept;
 template<\exposconcept{simd-vec-type} V> constexpr V rotr(const V& v, int s) noexcept;
-\ins{template<\exposconcept{simd-vec-type} V> constexpr V bit_repeat(const V& v, int l);}
+\ins{template<\exposconcept{simd-integral} V> constexpr V bit_repeat(const V& v, int l);}
 }
 
 \itemdescr{
@@ -329,6 +340,11 @@ A \tcode{basic_vec} object where the \mathvar_th{i} element is initialized to
 the result of \tcode{\tt{\i{bit-func}}(v[\mathvar{i}], s)} for all \mathvar{i} in the
 range [\tcode{0}, \tcode{V::size()}), where \tt{\i{bit-func}} is the corresponding
 scalar function from \libheader{bit}.
+
+\ins{¶
+\remarks
+A function call expression that violates the precondition in the \expects
+element is not a core constant expression\iref{expr.const.core}.}
 }
 
 \itemdecl{
@@ -360,9 +376,9 @@ function from \libheader{bit}.
 }
 
 \itemdecl{
-\ins{template<\exposid{simd-vec-type} V>
+\ins{template<\exposid{simd-integral} V>
   constexpr V bit_compress(const V& v, const V& m) noexcept;
-template<\exposid{simd-vec-type} V>
+template<\exposid{simd-integral} V>
   constexpr V bit_expand(const V& v, const V& m) noexcept;}
 }
 
@@ -383,9 +399,9 @@ scalar function from \libheader{bit}.
 }
 
 \itemdecl{
-\ins{template<\exposid{simd-vec-type} V>
+\ins{template<\exposid{simd-integral} V>
   constexpr V bit_compress(const V& v, typename V::value_type m) noexcept;
-template<\exposid{simd-vec-type} V>
+template<\exposid{simd-integral} V>
   constexpr V bit_expand(const V& v, typename V::value_type m) noexcept;}
 }
 
