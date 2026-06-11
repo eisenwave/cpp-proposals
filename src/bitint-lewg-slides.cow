@@ -1,19 +1,19 @@
-\: cowel 0.6.0
-\cowel_include{libwg21.cow}
-\cowel_include{libslides.cow}
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+\cowel_include("libslides-9.cow")
 
-\cowel_macro(footsep){\N{EM SPACE}|\N{EM SPACE}}
+\cowel_macro("footsep"){\'EM SPACE'|\'EM SPACE'}
 
-\cowel_macro(slidefoot){
+\cowel_macro("slidefoot"){
 Jan Schultke
 \footsep
-LEWG Slides for P3666R3
-\N{EM DASH}
+LEWG Slides for P3666R4
+\'EM DASH'
 Bit-precise integers
 \footsep
-Croydon 2026
+Brno 2026
 \footsep
-Slide \Vget(slidenum)
+Slide \(slidenum)
 }
 
 \style{
@@ -35,23 +35,23 @@ li>ul {
 }
 
 \wg21_head(
-    title = Slides for P3666R3 \br Bit-precise integers
+    title = {Slides for P3666R4 \br Bit-precise integers}
 ){
 \dl{
-    \dt{Document number:} \dd{\docnum{P4157R0}}
-    \dt{Date:}            \dd{\tt{2026-03-26}}
+    \dt{Document number:} \dd{\docnum{P4157R1}}
+    \dt{Date:}            \dd{\tt{2026-06-11}}
     \dt{Audience:}        \dd{LEWG}
     \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
     \dt{Reply-To:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-    \dt{Source:}          \dd{\ref(https://github.com/Eisenwave/cpp-proposals/blob/master/src/bitint-lewg-slides.cow)}
+    \dt{Source:}          \dd{\ref("https://github.com/Eisenwave/cpp-proposals/blob/master/src/bitint-lewg-slides.cow")}
 }
 \hr
 \slide_controls
 }
 
 \slide{
-\cowel_html_element(h1){Bit-precise integers\br
-\span(id=docnum){P3666R3}}
+\cowel_html_element("h1"){Bit-precise integers\br
+\span(id="docnum"){P3666R4}}
 }
 
 \slide{
@@ -69,58 +69,98 @@ unsigned _BitInt(8) x = 0xFFwb;
 }
 
 \slide{
-\slideh{P3666 Library decisions to be made}
+\slideh{P3666R3 LEWG in Croydon 2026}
+
+\style{
+  .quad {
+    font-size: 70%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5rem;
+  }
+}
+
+\Bquote{
+\div(class="quad"){
+  \div{
+    \b{POLL}: We should prevent library support for \tcode{_BitInt}
+    \five_way_poll(5, 9, 2, 3, 1)
+    \b{Outcome}: Consensus in favor
+  }
+  \div{
+    \b{POLL}: \tcode{std::is_integral_v<_BitInt(N)>} should be false
+    \five_way_poll(7, 4, 5, 2, 0)
+    \b{Outcome}: Consensus in favor
+  }
+  \div{
+    \b{POLL}: We should provide alias templates for \tcode{_BitInt} \etc
+    \five_way_poll(0, 3, 8, 3, 5)
+    \b{Outcome}: Consensus against
+  }
+  \div{
+    \b{POLL}: We should provide \tcode{std::bit_int} and \tcode{std::bit_uint} as class templates \etc
+    \five_way_poll(2, 4, 8, 4, 0)
+    \b{Outcome}: No consensus
+  }
+}
+}
+}
+
+\slide{
+\slideh{\tt{std::is_integral_v<_BitInt(N)>}}
+
+\Bquote{
+\b{POLL}: \tcode{std::is_integral_v<_BitInt(N)>} should be false
+\five_way_poll(7, 4, 5, 2, 0)
+\b{Outcome}: Consensus in favor
+}
 
 \ul{
-  \li{How much library support to provide? \ul{
-    \li{Aggressively minimal: just the core feature}
-    \li{Minimal but useful: P3666R3}
-    \li{More extensive: \header{simd}, \header{atomic}, etc.}
-  }}
-  \li{Add \tcode{std::bit_int} and \tcode{std::bit_uint} alias templates?}
-  \li{Is \tcode{std::is_integral_v<_BitInt(N)>} true?}
+  \li{other poll outcomes are implemented, \em{but not this one}}
+  \li{LEWG voted with incomplete information}
+  \li{here is why \'HORIZONTAL ELLIPSIS'}
 }
 }
 
 \slide{
-\slideh{Anecdote: \tcode{std::cmp_less}}
+\slideh{Intuition}
 
-\cppblock{
-template<typename _Tp, typename _Up>
-constexpr bool cmp_less(_Tp __t, _Up __u) noexcept
-{
-  static_assert(__is_signed_or_unsigned_integer<_Tp>::value);
-  static_assert(__is_signed_or_unsigned_integer<_Up>::value);
-
-  if constexpr (is_signed_v<_Tp> == is_signed_v<_Up>)
-    return __t < __u;
-  else if constexpr (is_signed_v<_Tp>)
-    return __t < 0 || make_unsigned_t<_Tp>(__t) < __u;
-  else
-    return __u >= 0 && __t < make_unsigned_t<_Up>(__u);
-}
-}
-}
-
-\slide{
-\slideh{Alias templates}
-
-\cppblock{
-template<size_t N>
-  using bit_int = _BitInt(N);
-
-template<size_t N>
-  using bit_uint = unsigned _BitInt(N);
+\Bquote(style="font-size: 150%"){
+A bit-precise integer is an integer.
 }
 
 \ul{
-  \li{deduction is supported}
-  \li{library spec should prefer alias templates over keyword spelling}
+  \li{LEWG disagrees}
+  \li{\q{integer type} is an alias for \q{integral type}\iref{basic.fundamental}}
+  \li{no clear way to avoid obvious teachability problems}
 }
 }
 
 \slide{
-\slideh{\tcode{std::is_integral_v<_BitInt(N)>}}
+\slideh{Procedural issues}
+
+\cowel_html_element("h3"){Two schools of thought}
+\ol{
+  \li{
+    The type trait simply reports what is an integer type in the core language.
+    \ul{
+      \li{LEWG has no design freedom; EWG decides}
+      \li{poll outcome is procedurally invalid}
+    }
+  }
+  \li{
+    The type trait is observable behavior, anything else is wording strategy.
+    \ul{
+      \li{LEWG gets to decide}
+      \li{\q{integer type} can be redefined if use sites are updated}
+      \li{e.g. \tcode{std::is_class_v} is false for unions (but unions are class types)}
+    }
+  }
+}
+}
+
+\slide{
+\slideh{P3666R4 type taxonomy \'EM DASH' C compatibility}
 
 \pre{
 integral types
@@ -133,8 +173,137 @@ integral types
 }
 
 \ul{
-  \li{mostly matches C2y taxonomy}
-  \li{\em{very surprising} if \tcode{std::is_integral_v<_BitInt(N)>} was \tcode{false}}
-  \li{huge wording/teaching effort to treat \tcode{_BitInt(N)} specially}
+  \li{P3666R4 mostly matches C2y taxonomy}
+  \li{e.g. \q{character types} are different}
+  \li{two \em{radically} different taxonomies are harder to learn}
+}
+}
+
+\slide{
+\slideh{\tcode{std::is_integral} is underconstraining}
+
+\ul{
+  \li{rationale for poll: existing \tcode{std::is_integral} constraints would change}
+  \li{
+    surprisingly, \tcode{std::is_integral_v} also matches:
+    \ul{
+      \li{\tcode{char}}
+      \li{\tcode{char32_t}}
+      \li{\tcode{const volatile bool}}
+      \li{\etc}
+    }
+  }
+  \li{users likely expect \tcode{int}, \tcode{unsigned long}, etc. instead}
+  \li{\tcode{std::is_integral_v} by itself is not a suitable constraint anyway}
+}
+}
+
+\slide{
+\slideh{\tt{std::is_integral_v<_BitInt(N)>}\br is \em{already} true in libc++}
+
+\ul{
+  \li{(but false in libstdc++)}
+  \li{this was \em{not} mentioned in LEWG}
+  \li{\em{total} reframing of the poll:\ul{
+    \li{\del{What should the behavior be in the future?}}
+    \li{\ins{Do we want to change the existing libc++ behavior?}}
+  }}
+  \li{if LLVM is fine with shipping this behavior, why are we not?}
+  \li{do we know better?}
+}
+}
+
+\slide{
+\slideh{Most code handles the change fine}
+
+\cppblock{
+template<std::integral T>
+T mul(T x, T y) {
+  return x * y;
+}
+}
+
+\ul{
+  \li{no innate problem with \tcode{T = _BitInt(N)}}
+  \li{edge case: promotion to \tcode{int} can prevent some UB}
+  \li{\'HORIZONTAL ELLIPSIS' but also introduce UB (e.g. \tcode{T = unsigned short})}
+  \li{problems usually arise only for \em{huge} widths}
+}
+}
+
+\slide{
+\slideh{Extended integer types}
+
+\ul{
+  \li{\q{integral type} has always been arbitrarily extendable}
+  \li{
+    implementation can add \tcode{_ExtInt(N)} as extended integer type
+    with same properties as \tcode{_BitInt(N)}
+  }
+  \li{\tcode{std::is_integral_v<_ExtInt(N)>} is \tcode{true} then}
+}
+
+\cowel_html_element("h3"){Key question:}
+
+\Bquote(style="font-size:115%"){
+If the implementation can arbitrarily extend \q{integral type},
+why can't we extend it with \tcode{_BitInt}?
+}
+}
+
+\slide{
+\slideh{\tt{std::is_integral_v<_BitInt(N)>}\br is eternal}
+
+\cowel_html_element("h3"){Key question:}
+
+\Bquote(style="font-size:115%"){
+If \tcode{std::is_integral_v<_BitInt(N)>} is false now,
+can we suddenly make it \tcode{true} later?
+}
+
+\cowel_html_element("h3"){Likely answer:}
+
+This is our \em{only} chance to make it true.
+}
+
+\slide{
+\slideh{Extending categories of fundamental types}
+
+\cowel_html_element("h3"){Past:}
+
+\ul{
+  \li{
+    character type: \tcode{char}, \tcode{wchar_t},
+    \ins{\tcode{char8_t}, \tcode{char16_t}, \tcode{char32_t}}
+  }
+  \li{
+    floating-point type:
+    \tcode{float}, \tcode{double}, \tcode{long double},
+    \ins{\tcode{std::bfloat16_t}, \etc, \tcode{std::float128_t}}
+  }
+}
+
+\cowel_html_element("h3"){Future:}
+
+\ul{
+  \li{
+    integral type:
+    \tcode{int}, \tcode{unsigned long}, \etc
+    \ins{\tcode{_BitInt(N)}}
+  }
+  \li{
+    floating-point type:
+    \tcode{float}, \etc, \tcode{std::float128_t},
+    \ins{\tcode{std::decimal32_t}, \tcode{std::decimal64_t}, \tcode{std::decimal128_t}}
+  }
+}
+}
+
+\slide{
+\slideh{The end}
+
+\ul{
+  \li{Let's get \tcode{std::is_integral_v<_BitInt(N)>} right!}
+  \li{Most of remaining of design/wording is obvious consequence.}
 }
 }
