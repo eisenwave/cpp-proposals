@@ -18,6 +18,6 @@ while IFS= read -r src; do
   fi
   cowel run "$src" "$dest"
   echo "BUILT: $src -> $dest"
-done < <(grep -rl '\\: cowel 0\.10\.1' src/)
+done < <(grep -rl '\\: cowel 0\.10\.2' src/)
 
 exit $failed
