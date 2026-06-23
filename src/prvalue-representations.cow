@@ -19,7 +19,7 @@
 \Babstract{
 In the current C++ type system,
 prvalues have no value presentation,
-which is a deeply flawed for floating-point types.
+which is deeply flawed for floating-point types.
 }
 
 \h2(listed=false){Contents}
@@ -137,6 +137,15 @@ with a \tcode{float} argument is suitable for implementing \tcode{constexpr std:
 but such a C++ enhancement is out of scope for this paper.
 }
 
+\h3{Using NaN payloads for error handling}
+
+The intended use of NaN payloads is to encode error information.
+That is, we can distinguish different failure modes by encoding them in the mantissa of a NaN.
+
+This common technique is completely broken if returning a \tcode{float} prvalue
+from a function discards all that information,
+and this would be a gross violation of developer intent.
+
 \h3{What are distinct floating-point values?}
 
 All of the bold claims above rely on the idea that there is only a single NaN value,
@@ -253,6 +262,23 @@ However, this interpretation is neither desirable nor consistent with the existi
     See \url{https://github.com/cplusplus/CWG/issues/887} for more discussion.
   }
 }
+
+\h3{Is this issue only about NaN?}
+
+No, this issue is a general problem for floating-point types.
+For example, ISO/IEC 60559 decimal floating-point types
+have multiple (possibly non-canonical) representations of the same mathematical value.
+This then causes non-determinism in template argument, bit-casting, etc.
+without any NaNs involved.
+See also \tcode{iscanonical} and \tcode{canonicalize} in C23 \header{math.h}.
+
+Functions such as \tcode{getpayload}, \tcode{setpayload},
+\tcode{signbit}, \tcode{copysign}, and
+\tcode{nan(const char*)}
+are fundamentally querying or manipulating representations rather than values
+in the mathematical sense.
+Despite that, they take prvalues as arguments and return prvalues,
+which clearly suggests that representations must be tied to prvalues.
 
 \h3{Summary}
 
