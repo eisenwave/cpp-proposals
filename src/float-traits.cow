@@ -1,0 +1,550 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+
+\wg21_head(
+  title = {Floating-point traits}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D4285R0}}
+  \dt{Date:}            \dd{\tt{2026-06-23}}
+  \dt{Audience:}        \dd{SG6}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3688/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/template-9.cow")}
+}
+\hr
+}
+
+\Babstract{
+A \tcode{std::float_traits} class template
+that provides more information about floating-point types than \tcode{std::numeric_limits}.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+The information provided by \tcode{std::numeric_limits} is insufficient for various applications.
+
+\Bex{
+Say we want to decompose a \tcode{std::float32_t} into its 22+1 mantissa bits,
+into its biased exponent, and into its sign bit.
+Doing so is helpful when converting e.g. from \tcode{std::float32_t} to a custom
+\tcode{big_int} or \tcode{big_decimal} arbitrary-precision type
+because it effectively requires constructing a \tcode{big_int} from the mantissa,
+then shifting it to the left or right depending on the exponent.
+
+\ul{
+  \li{
+    \tcode{std::numeric_limits} doesn't inform about the location of the sign bit,
+    but at least we can obtain it from \tcode{std::signbit}.
+  }
+  \li{
+    \tcode{std::numeric_limits} doesn't inform about the location or amount of the exponent bits
+    or about the exponent bias,
+    but at least we can obtain the exponent using \tcode{std::frexp} or \tcode{std::ilogb}.
+  }
+  \li{
+    \tcode{std::numeric_limits} doesn't inform about the location of mantissa bits
+    and it doesn't specify whether there is a preceding implicit bit or not.
+    \tcode{std::frexp} is also of limited use because it returns a floating-point number
+    with magnitude in range \math{\mrow{\mo{[}\mn{0.5}\mo{,}\mn{1}\mo{)}}}.
+    For a conversion to \tcode{big_int},
+    we could still use \tcode{std::trunc} to truncate the original value and cast to an integer;
+    the conversion to \tcode{big_float} is more complex.
+  }
+}
+
+While it is possible to compensate for the lack of information
+by calling a variety of \header{cmath} functions,
+this is cumbersome and may be much slower if the compiler doesn't treat every such function
+as an intrinsic but actually emits a \tt{call frexp} instruction.
+If \tcode{std::numeric_limits} provided more information,
+we could simply bit-cast the floating-point value and obtain all the necessary information.
+}
+
+\Bex{
+\tcode{FLT_HAS_SUBNORM} allows to query whether \tcode{float} has subnormal numbers since C++17,
+but \tcode{std::numeric_limits} doesn't provide this information.
+}
+
+\Bex{
+\tcode{std::numeric_limits} is not future-proof for decimal floating-point types
+such as \tcode{_Decimal128} introduced in C23.
+Notably, an implementation of ISO/IEC 60559 decimal floating-point numbers can either use
+\ul{
+  \li{
+    \dfn{decimal} encoding (aka. DPD \'EM DASH' Densely Packed Decimal),
+    in which case the mantissa is a sequence of 10-bit declets, or
+  }
+  \li{
+    \dfn{binary} encoding (aka BID \'EM DASH' Binary Integer Decimal),
+    in which case the mantissa is simply an integer.
+  }
+}
+See also ISO/IEC 60559:2020 §3.5.
+
+A portable workaround for this problem is to bit-cast a decimal floating-point number
+and inspect the bit pattern to identify how it is encoded.
+}
+
+\Bex{
+\tcode{std::numeric_limits} provides limit information
+about floating-point attributes specified in ISO/IEC 60559,
+such as preferredWidth attributes,
+value-changing optimization attributes, and
+reproducibility attributes.
+It only provides information about the rounding-direction attributes
+in the form of \tcode{round_style}.
+
+See also See also ISO/IEC 60559:2020 §4.
+
+For instance, \ref("P3375R3") \q{Reproducible floating-point results}
+considers adding a fundamental or library type with reproducible floating-point semantics
+similar to Java's \tcode{\keyword{strictfp}} types,
+but \tcode{std::numeric_limits} could not be used to query whether a type is reproducible or not.
+}
+
+A key issue with \tcode{std::numeric_limits} is that it cannot be extended in the standard
+because it can be specialized by the user,
+so adding any new members would retroactively make those user-defined specializations invalid.
+
+\h2{Design}
+
+To solve all these problems,
+I propose a new \tcode{std::float_traits} class template that provides more information
+about floating-point types than \tcode{std::numeric_limits}.
+This class template also cannot be specialized by the user,
+so that we don't end up with another non-extendable traits type
+that necessitates \tcode{std::floating_traits},
+\tcode{std::floating_point_traits},
+\tcode{std::floating_point_number_traits}, etc. in the future.
+
+The synopsis looks as follows,
+where information not provided by \tcode{std::numeric_limits} is \mark{marked}:
+
+\cppblock{
+template<class T> struct float_traits {
+  //\serif{ Range}
+  static constexpr T normal_min;
+  static constexpr T normal_max;
+  static constexpr T normal_lowest;
+
+  //\serif{ Precision and radix}
+  static constexpr int  digits;
+  static constexpr int  digits10;
+  static constexpr int  max_digits10;
+  static constexpr bool is_signed;
+  static constexpr int  radix;
+
+  static constexpr T epsilon;
+  static constexpr T round_error;
+
+  //\serif{ Exponents}
+  static constexpr int min_exponent;
+  static constexpr int min_exponent10;
+  static constexpr int max_exponent;
+  static constexpr int max_exponent10;
+
+  //\serif{ Special values}
+  \mark{static constexpr bool has_negative_zero;}
+  static constexpr bool has_infinity;
+  \mark{static constexpr bool has_negative_infinity;}
+  static constexpr bool has_quiet_NaN;
+  static constexpr bool has_signaling_NaN;
+  \mark{static constexpr bool is_signaling_NaN_quiet;}
+  \mark{static constexpr bool has_subnormals;}
+
+  static constexpr T infinity;          //\serif{ optional}
+  \mark{static constexpr T negative_infinity; //\serif{ optional}}
+  static constexpr T quiet_NaN;         //\serif{ optional}
+  static constexpr T signaling_NaN;     //\serif{ optional}
+  static constexpr T subnormal_min;     //\serif{ optional}
+  \mark{static constexpr T subnormal_max;     //\serif{ optional}}
+  \mark{static constexpr T subnormal_lowest;  //\serif{ optional}}
+
+  //\serif{ Representation}
+  static constexpr bool is_iec559;
+  \mark{static constexpr bool is_iec559_binary_interchange;}
+  \mark{static constexpr bool is_iec559_decimal_interchange;}
+  \mark{static constexpr bool is_densely_packed_decimal;}
+
+  \mark{static constexpr int width;}
+  \mark{static constexpr int significant_bits;}
+  \mark{static constexpr bool has_explicit_significant;}
+  \mark{static constexpr int exponent_bits;}
+  \mark{static constexpr int exponent_bias;}
+  \mark{static constexpr bool has_sign_bit;}
+  \mark{static constexpr bool has_unique_finite_representations;}
+  \mark{static constexpr bool has_non_canonical_representations;}
+
+  //\serif{ Attributes}
+  static constexpr bool traps;
+  static constexpr bool tinyness_before;
+  static constexpr float_round_style round_style = round_toward_zero;
+};
+}
+
+\h3{List of new members}
+
+\h4{\tcode{bool has_negative_zero}}
+
+If \tcode{true},
+\tcode{-T{0}} is negative zero and
+is a distinct value from \tcode{T{0}}.
+
+\h4{\tcode{bool has_negative_infinity}}
+
+If \tcode{true},
+\tcode{negative_infinity} is defined.
+
+\h4{\tcode{bool is_signaling_NaN_quiet}}
+
+This variable is \tcode{true} is signaling NaNs are treated as quiet NaNs
+by the implementation.
+For example, this is the behavior of GCC when \tt{-fsignaling-nans} is not specified,
+and the behavior on some architectures such as WASM.
+
+Notably, it is possible for \tcode{has_signaling_NaN} to be \tcode{true}
+while \tcode{is_signaling_NaN_quiet} is also \tcode{true},
+which means that signaling NaN exists on paper and may be classified as such
+by \tcode{issignaling} in \header{math.h},
+but operations on signaling NaN do not trap regardless.
+
+\h4{\tcode{bool has_subnormals}}
+
+\tcode{true} if the type has subnormal numbers.
+
+This information can be queried for \tcode{float}
+using \tcode{FLT_HAS_SUBNORM},
+but that macro is only available since C++17,
+and \tcode{std::numeric_limits} does not provide this information.
+
+\h4{\tcode{T negative_infinity}}
+
+Equals \math{\mrow{\mo{−}\mi{∞}}}.
+
+There is a subtle difference between \tcode{negative_infinity} and \tcode{-infinity}:
+if the floating-point type only has an unsigned infinity representation,
+then \tcode{negative_infinity} is not defined,
+whereas \tcode{-infinity} applies the unary minus operator to \tcode{infinity},
+whatever the result of that might be (we don't have wording for that).
+
+\h4{\tcode{T subnormal_max}}
+
+The greatest subnormal number,
+and only defined if the type has subnormal numbers.
+
+This is simply a counterpart to \tcode{subnormal_min},
+and could also be obtained using \tcode{std::nexttoward},
+but doing so is cumbersome.
+
+\h4{\tcode{T subnormal_lowest}}
+
+Equal to \tcode{-subnormal_max},
+except that using the unary minus operator on \tcode{subnormal_max}
+may result in flushing to zero.
+
+\h4{\tcode{bool is_iec559_binary_interchange}}
+
+\tcode{true} if the representation of \tcode{T}
+is an ISO/IEC 60559 binary interchange format,
+such as binary16, binary32, binary64, or binary128.
+
+\Bnote{
+This is not simply equivalent to \tcode{is_iec559 && radix == 2}
+because \tcode{is_iec559} is also \tcode{true} for extended precision types
+such as \tcode{long double},
+which are specified by ISO/IEC 60559 but are not interchange formats.
+}
+
+\Bex{
+\tcode{is_iec559_binary_interchange && width == 32}
+reliably classifies a type as having binary32 representation,
+which is always \tcode{true} for \tcode{std::float32_t} and typically for \tcode{float} as well.
+}
+
+\h4{\tcode{bool is_iec559_decimal_interchange}}
+
+\tcode{true} if the representation of \tcode{T} is an ISO/IEC 60559 decimal interchange format,
+such as decimal32, decimal64, or decimal128.
+
+\h4{\tcode{bool is_densely_packed_decimal}}
+
+\tcode{true} if \tcode{T} is a decimal floating-point type
+that uses DPD (Densely Packed Decimal) encoding,
+rather than using BID (Binary Integer Decimal) encoding.
+
+\h4{\tcode{int width}}
+
+The total amount of bits in the floating-point representation.
+
+\h4{\tcode{int significant_bits}}
+
+The amount of bits in the significant of the floating-point representation.
+
+This is essential for decomposing a floating-point number.
+
+\h4{\tcode{bool has_explicit_significant}}
+
+\tcode{true} if the significant of the floating-point representation
+is not preceded by an implicit bit.
+
+\Bex{
+ISO/IEC 60559 binary interchange formats have an implicit bit,
+meaning that normal finite numbers have an implicit '\tt{1.}' preceding the significant,
+whereas subnormal numbers have an implicit '\tt{0.}' in front.
+
+However, there are also formats such as x87 80-bit \tcode{long double},
+where the leading significant bit is part of the representation.
+}
+
+This information is essential for decomposing a floating-point number
+because it informs the user whether they need to prepend a \tt{1} or \tt{0}
+in front of the significant bits, or
+whether all bits are already present in the representation.
+
+\h4{\tcode{int exponent_bits}}
+
+The number of exponent bits in the floating-point representation.
+
+This is also crucial for decomposing floating-point numbers.
+
+\h4{\tcode{int exponent_bias}}
+
+The number added onto the raw exponent when interpreted (as encoded in the representation).
+
+\Btodo{
+For decimal floating-point types,
+there are two possible interpretations of exponent bias.
+Some investigation needed.
+}
+
+\h4{\tcode{bool has_sign_bit}}
+
+\tcode{true} if there is a dedicated sign bit in the representation of \tcode{T}.
+
+\Bnote{
+It is possible for \tcode{is_signed} to be \tcode{true}
+while \tcode{has_sign_bit} is \tcode{false},
+because the sign could also be encoded as part of the significant or in some other way,
+rather than always occupying a dedicated bit.
+}
+
+\h4{\tcode{bool has_unique_finite_representations}}
+
+\tcode{true} if every finite number has a unique representation in the floating-point type.
+
+It is possible for \tcode{std::has_unique_object_representations_v<T>}
+to be \tcode{false} because there are multiple alternative representations of the value NaN.
+This obscures whether finite numbers have a unique representation.
+
+\Bex{
+ISO/IEC 60559 binary interchange formats have unique representations for finite numbers,
+meaning that every possible bit pattern corresponds to a unique value,
+except for NaN and infinity (although infinities also have unique representations).
+x87 80-bit \tcode{long double} and ISO/IEC 60559 decimal interchange floating-point types
+do not have unique representations for finite numbers.
+}
+
+With this information,
+if a dataset consists entirely of finite numbers,
+\tcode{std::memcmp} can be used to compare two values for equality.
+
+\Bnote{
+Negative zero and positive zero are distinct finite values.
+}
+
+\h4{\tcode{bool has_non_canonical_representations}}
+
+\tcode{true} if the type has non-canonical representations,
+i.e. representations which are valid but not \q{preferred} by the implementation
+and which typically wouldn't be produced by any arithmetic operation.
+
+\Bex{
+ISO/IEC 60559 decimal interchange formats have non-canonical representations, and
+ISO/IEC 60559 binary interchange formats have none.
+}
+
+\Bnote{
+If this variable is \tcode{false},
+the \header{math.h} function \tcode{iscanonical} returns \tcode{true} for every argument.
+}
+
+\h3{Choice of header}
+
+\tcode{std::float_traits} should be located in \header{limits}.
+This makes it easy to \q{upgrade} from \tcode{std::numeric_limits} to \tcode{std::float_traits},
+and it means that \tcode{std::float_traits} is easily accessible
+without a \q{heavy} include like \header{numeric}.
+
+\h2{Implementation experience}
+
+None.
+That is, unless we consider the precedent of \tcode{std::numeric_limits},
+which this new feature is based on.
+
+\h2{Wording}
+
+The changes are relative to \ref("N5046").
+
+\h3(show_number=false){[version.syn]}
+
+Add a feature-test macro to \eelis{version.syn} as follows:
+
+\Bins{
+\itemdecl{
+#define __cpp_lib_float_traits 20XXXXL // \serif{freestanding, also in \tt{<limits>}}
+}
+}
+
+\h3(show_number=false){[limits.syn]}
+
+\Btodo{
+Provide wording.
+}
+
+\h2(show_number=false){Annex \'EM DASH' Specializations for ISO/IEC 605559 floating-point types}
+
+\cppblock{
+template<> struct float_traits<float32_t> {
+  static constexpr float32_t normal_min                   =  1.17549435E-38f32;
+  static constexpr float32_t normal_max                   =  3.40282347E+38f32;
+  static constexpr float32_t normal_lowest                = -3.40282347E+38f32;
+
+  static constexpr int  digits                            = 24;
+  static constexpr int  digits10                          = 6;
+  static constexpr int  max_digits10                      = 9;
+  static constexpr bool is_signed                         = true;
+  static constexpr int  radix                             = 2;
+
+  static constexpr float32_t epsilon                      = 1.19209290E-07f32;
+  static constexpr float32_t round_error                  = \i{implementation-defined};
+
+  static constexpr int min_exponent                       = -125;
+  static constexpr int min_exponent10                     =   37;
+  static constexpr int max_exponent                       =  128;
+  static constexpr int max_exponent10                     =   38;
+
+  static constexpr bool has_negative_zero                 = true;
+  static constexpr bool has_infinity                      = true;
+  static constexpr bool has_negative_infinity             = true;
+  static constexpr bool has_quiet_NaN                     = true;
+  static constexpr bool has_signaling_NaN                 = true;
+  static constexpr bool is_signaling_NaN_quiet            = \i{implementation-defined};
+  static constexpr bool has_subnormals                    = true;
+
+  static constexpr float32_t infinity                     =  1E+9999f32;
+  static constexpr float32_t negative_infinity            = -1E+9999f32;
+  static constexpr float32_t quiet_NaN                    = \i{quiet NaN initializer};
+  static constexpr float32_t signaling_NaN                = \i{signaling NaN initializer};
+  static constexpr float32_t subnormal_min                =  1.40129846E-45f32;
+  static constexpr float32_t subnormal_max                =  1.17549421E-38f32;
+  static constexpr float32_t subnormal_lowest             = -1.40129846E-45f32;
+
+  static constexpr bool is_iec559                         = true;
+  static constexpr bool is_iec559_binary_interchange      = true;
+  static constexpr bool is_iec559_decimal_interchange     = false;
+  static constexpr bool is_densely_packed_decimal         = false;
+
+  static constexpr int width                              = 32;
+  static constexpr int significant_bits                   = 23;
+  static constexpr bool has_explicit_significant          = false;
+  static constexpr int exponent_bits                      = 8;
+  static constexpr int exponent_bias                      = 127;
+  static constexpr bool has_sign_bit                      = true;
+  static constexpr bool has_unique_finite_representations = true;
+  static constexpr bool has_non_canonical_representations = false;
+
+  static constexpr bool traps                             = false;
+  static constexpr bool tinyness_before                   = \i{implementation-defined};
+  static constexpr float_round_style round_style          = \i{implementation-defined};
+};
+
+
+template<> struct float_traits<_Decimal32> {
+  static constexpr _Decimal32 normal_min                  = \i{TODO};
+  static constexpr _Decimal32 normal_max                  = \i{TODO};
+  static constexpr _Decimal32 normal_lowest               = \i{TODO};
+
+  static constexpr int  digits                            = \i{TODO};
+  static constexpr int  digits10                          = \i{TODO};
+  static constexpr int  max_digits10                      = \i{TODO};
+  static constexpr bool is_signed                         = true;
+  static constexpr int  radix                             = 10;
+
+  static constexpr _Decimal32 epsilon                     = \i{TODO};
+  static constexpr _Decimal32 round_error                 = \i{implementation-defined};
+
+  static constexpr int min_exponent                       = -125;
+  static constexpr int min_exponent10                     =   37;
+  static constexpr int max_exponent                       =  128;
+  static constexpr int max_exponent10                     =   38;
+
+  static constexpr bool has_negative_zero                 = true;
+  static constexpr bool has_infinity                      = true;
+  static constexpr bool has_negative_infinity             = true;
+  static constexpr bool has_quiet_NaN                     = true;
+  static constexpr bool has_signaling_NaN                 = true;
+  static constexpr bool is_signaling_NaN_quiet            = \i{implementation-defined};
+  static constexpr bool has_subnormals                    = true;
+
+  static constexpr _Decimal32 infinity                    =  1E+9999d32;
+  static constexpr _Decimal32 negative_infinity           = -1E+9999d32;
+  static constexpr _Decimal32 quiet_NaN                   = \i{quiet NaN initializer};
+  static constexpr _Decimal32 signaling_NaN               = \i{signaling NaN initializer};
+  static constexpr _Decimal32 subnormal_min               = \i{TODO};
+  static constexpr _Decimal32 subnormal_max               = \i{TODO};
+  static constexpr _Decimal32 subnormal_lowest            = \i{TODO};
+
+  static constexpr bool is_iec559                         = true;
+  static constexpr bool is_iec559_binary_interchange      = true;
+  static constexpr bool is_iec559_decimal_interchange     = false;
+  static constexpr bool is_densely_packed_decimal         = \i{implementation-defined};
+
+  static constexpr int width                              = 32;
+  static constexpr int significant_bits                   = 20;
+  static constexpr bool has_explicit_significant          = false;
+  static constexpr int exponent_bits                      = 11;
+  static constexpr int exponent_bias                      = 101;
+  static constexpr bool has_sign_bit                      = true;
+  static constexpr bool has_unique_finite_representations = false;
+  static constexpr bool has_non_canonical_representations = true;
+
+  static constexpr bool traps                             = false;
+  static constexpr bool tinyness_before                   = \i{implementation-defined};
+  static constexpr float_round_style round_style          = \i{implementation-defined};
+};
+}
+
+\h2(show_number=false){References}
+
+\bib(
+  id = "N5046",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2026-05-12",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5046",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5046.pdf",
+)\
+\bib(
+  id = "P3666R4",
+  title = "Bit-precise integers",
+  date = "2026-05-12",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3666r4",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r4.html",
+)\
+\bib(
+  id = "P3375R3",
+  title = "Reproducible floating-point results",
+  date = "2025-05-12",
+  author = "Guy Davidson",
+  link = "https://wg21.link/p3375r3",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3375r3.html",
+)\
+
+\make_bib
