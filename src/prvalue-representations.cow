@@ -1,0 +1,386 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+
+\wg21_head(
+  title = {Value representations of prvalues}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D4287R0}}
+  \dt{Date:}            \dd{\tt{2026-06-23}}
+  \dt{Audience:}        \dd{SG6, EWG, CWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3688/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/prvalue-representations.cow")}
+}
+\hr
+}
+
+\Babstract{
+In the current C++ type system,
+prvalues have no value presentation,
+which is a deeply flawed for floating-point types.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Problem}
+
+\Bnote{
+The following surprising phenomena have been discussed at
+\url{https://github.com/cplusplus/CWG/issues/930}.
+}
+
+\h3{Broken floating-point functions}
+
+Consider the following example:
+
+\cppblock{
+float x = std::numeric_limits<float>::quiet_NaN();
+assert(std::signbit(std::copysign(x, -1.f)));
+}
+
+It is unspecified by the standard
+whether the \tcode{assert} succeeds or fails
+because \tcode{std::copysign} returns a prvalue of type \tcode{float},
+and prvalues have no value representation.
+That is, they are \q{mathematical values}.
+For floating-point types, there is \em{only one} NaN value,
+and whether the sign bit is set and whether \em{the} NaN is quiet or signaling
+is a property of the representation of the value, not of the value.
+
+Consequently, \tcode{std::copysign}, \tcode{std::signbit},
+and various C23 \header{math.h} functions such as
+\tcode{issignaling},
+\tcode{iscanonical},
+\tcode{canonicalize}, etc.
+are broken due to core language defects.
+
+Furthermore, it is possible
+for \tcode{std::numeric_limits<float>::quiet_NaN()} to return a signaling NaN and
+for \tcode{std::numeric_limits<float>::signaling_NaN()} to return a quiet NaN.
+Obviously, the library specification would disagree,
+but the core language is missing the necessary machinery to make these functions work.
+This is because both of these functions return \em{the} NaN value,
+and prvalues don't carry information such as whether the representation is quiet or signaling.
+
+\h3{Broken template arguments}
+
+Another problem is the following:
+
+\cppblock{
+template<float x> void f();
+void g() {
+  f<std::numeric_limits<float>::quiet_NaN()>();
+}
+}
+
+It is unspecified which NaN representation is used for the template argument,
+possibly resulting in ODR violations.
+\tcode{f<std::numeric_limits<float>::quiet_NaN()>} is essentially choosing a
+template specialization at random in a non-deterministic way.
+
+It may be surprising that specializing \tcode{f} with distinct NaN payloads
+would result in distinct template specializations, but that is the case.
+This is due to the following distinction\iref{temp.type}:
+
+\Bquote{
+Two values are \dfn{template-argument-equivalent}
+if they are of the same type and
+\ul{
+  \li{they are of integral type and their values are the \mark{same}, or}
+  \li{they are of floating-point type and their values are \mark{identical}, or}
+  \li{\etc}
+}
+}
+
+The difference between \q{the same} and \q{identical} is that
+\q{identical} means \q{bitwise identical}.
+
+\Bnote{
+See \ref("P3938R1") for a discussion of the difference between \q{the same} and \q{identical}.
+That paper also clarifies the status quo by adding \ins{bitwise} before \q{identical}.
+}
+
+\Bnote{
+All major compilers distinguish specializations of \tcode{f} with distinct NaN payloads.
+For example, GCC and Clang mangle \tcode{float} template arguments
+as if by bit-casting to an integer and encoding the hex representation in the mangled name.
+}
+
+\h3{Bit-cast non-determinism at compile time}
+
+Consider the following example:
+
+\cppblock{
+constexpr auto n = std::numeric_limits<std::float32_t>::quiet_NaN();
+static_assert(std::bit_cast<std::uint32_t>(auto(n))
+           == std::bit_cast<std::uint32_t>(auto(n)));
+}
+
+It is unspecified by the standard whether this \tcode{static_assert}
+succeeds or fails
+(and the outcome may randomly vary in non-deterministic ways)
+because each of the lvalue-to-rvalue conversions in \tcode{auto(n)}
+results in a prvalue expression whose value is simply NaN.
+
+There is no constraint imposed by the standard which value representation is obtained
+when the prvalue NaN is bit-cast to \tcode{std::uint32_t},
+so in the absence of any limitations,
+the compiler can make any choice it wants.
+
+\Bnote{
+This also means that \tcode{std::bit_cast}
+with a \tcode{float} argument is suitable for implementing \tcode{constexpr std::random_device},
+but such a C++ enhancement is out of scope for this paper.
+}
+
+\h3{What are distinct floating-point values?}
+
+All of the bold claims above rely on the idea that there is only a single NaN value,
+rather than every possible \tcode{float} bit pattern being a distinct value.
+If the latter were the case, there would be no defect.
+
+However, this interpretation is neither desirable nor consistent with the existing wording:
+\ul{
+  \li{
+    Floating-point promotion from \tcode{float} to \tcode{double} specifies that
+    \q{the value is unchanged}\iref{conv.fpprom},
+    but this is unimplementable if every NaN bit pattern is a distinct value.
+    Obviously, turning a 32-bit \tcode{float} bit pattern
+    into a 64-bit \tcode{double} bit pattern changes \em{something},
+    and that something is the representation of the value.
+  }
+  \li{
+    \tcode{std::has_unique_object_representations_v<T>}
+    is \tcode{false} for floating-point types in every major implementation,
+    even if \tcode{float} has no padding bits.
+    This is because there are multiple representations of the single NaN value.
+  }
+  \li{
+    When discussing \ref("P3938R1") in Brno,
+    SG6 discussed the issue of what constitutes distinct floating-point values,
+    and agreed that there is only one NaN value, as the paper suggests:
+    \Bquote{
+    \b{POLL}:
+    SG6 agrees that by “value” of a floating point type
+    we generally mean the sense of value referred to as “Level 2”
+    in Table 3.1 of ISO/IEC 60559 (2020):
+    {-∞…-0} ∪ {+0…+∞} ∪ {NaN}; “Floating point data —
+    an algebraically closed system”
+    (As opposed to “Extended real numbers” or “Representations of floating point data”)
+
+    \five_way_poll(5, 10, 0, 0, 0)
+    \b{Outcome}: strong consensus!
+    }
+    This poll refers to the following table in ISO/IEC 60559:
+    \Bquote{
+      Table 3.1 \'EM DASH'
+      Relationships between different specification levels for a particular format
+      \style{
+        #float-levels tr:not(:first-child) td {
+          border-top: 1px solid var(--border-color);
+        }
+      }
+      \table(id="float-levels"){
+        \tr{
+          \td{Level 1}
+          \td{{−∞ … 0 … +∞}}
+          \td{Extended real numbers.}
+        }
+        \tr{
+          \td{\nobr{many-to-one ↓}}
+          \td{\i{rounding}}
+          \td{↑ projection (except for NaN)}
+        }
+        \tr{
+          \td{Level 2}
+          \td{{−∞ … −0} ∪ {+0 … +∞} ∪ {NaN}}
+          \td{Floating point data — an algebraically closed system.}
+        }
+        \tr{
+          \td{one-to-many ↓}
+          \td{\i{representation specification}}
+          \td{↑ many-to-one}
+        }
+        \tr{
+          \td{Level 3}
+          \td{(sign, exponent, significand) ∪ {−∞, +∞} ∪ qNaN ∪ sNaN}
+          \td{Representations of floating-point data.}
+        }
+        \tr{
+          \td{one-to-many ↓}
+          \td{\i{encoding for representations of floating-point data}}
+          \td{↑ many-to-one}
+        }
+        \tr{
+          \td{Level 4}
+          \td{0111000...}
+          \td{Bit strings.}
+        }
+      }
+    }
+    Thus,
+    \ul{
+      \li{
+        our \q{value} should be Level 2,
+        where there exists only one NaN value.
+        We can then address the issue of representation separately.
+      }
+      \li{
+        Even if our \q{value} were Level 3,
+        this would still result in nondeterminism
+        in our existing wording
+        when bit-casting or when providing NaN template arguments.
+        It would also not resolve the issue of \tcode{std::signbit}
+        because the sign bit does not distinguish between quiet Nan and signaling NaN.
+      }
+      \li{
+        Our \q{value} cannot be Level 4 because this contradicts
+        \tcode{std::has_unique_object_representations_v<float>} being \tcode{false}.
+        If every bit pattern is a distinct value,
+        then \tcode{std::has_unique_object_representations_v<float>} is \tcode{true}.
+      }
+    }
+  }
+  \li{
+    As explained by the floating-point subgroup of WG14 via email,
+    the C23 standard also considers \q{value} to be at Level 2.
+    We generally try to keep our floating-point wording symmetrical with that of C,
+    so this is important.
+    See \url{https://github.com/cplusplus/CWG/issues/887} for more discussion.
+  }
+}
+
+\h3{Summary}
+
+While it is relatively clear that there is only a single NaN value
+(in terms of what the wording already says, what SG6 wants, and
+what keeps us aligned with C wording),
+this causes major problems for C++.
+The solution of defining every bit pattern as a distinct value
+is incompatible with the existing wording.
+
+\h2{Solution}
+
+What we are missing is a notion of \q{value representation of prvalues}.
+If there is only a single NaN value, then
+\tcode{f<\i{NaN}>()}, \tcode{std::signbit(\i{NaN})},
+and other language features become nonsensical and nondeterministic,
+even during constant evaluation,
+unless these features are defined in terms of value representations of prvalues.
+
+More specifically,
+\ul{
+  \li{
+    When obtaining a prvalue through lvalue-to-rvalue conversion,
+    the value representation of the object holding the value becomes
+    the value representation of the prvalue.
+  }
+  \li{
+    When a prvalue is used to initialize an object,
+    the value representation of the prvalue becomes
+    the value representation of the object.
+    This includes temporary materialization conversion.
+  }
+  \li{
+    In other cases,
+    such as when a prvalue is produced from an arithmetic expression,
+    the value representation of the prvalue is implementation-defined.
+    For example, \tcode{x + y} yields a \tcode{float} prvalue
+    which is the sum of \tcode{x} and \tcode{y}
+    and whose value representation is implementation-defined.
+  }
+  \li{
+    Various functions such as \tcode{std::numeric_limits<float>::quiet_NaN()}
+    already specify aspects of the value representation of the prvalue they return.
+    That is, we consider \tcode{std::numeric_limits<float>::quiet_NaN()}
+    to return the value NaN with a quiet value representation,
+    and we consider \tcode{std::signbit} to examine the value representation
+    of its prvalue argument (copied bitwise into the parameter object).
+  }
+}
+
+\Bnote{
+Object representations should remain properties of objects.
+There is no apparent reason why a prvalue would need to have an object representation.
+}
+
+\h3{Prvalues of other types}
+
+While there are similar issues with prvalues of other types,
+these are not really noticeable.
+For example, for \tcode{int} and \tcode{bool},
+template argument equivalence is based on equal values,
+so value representations don't matter.
+
+That being said,
+there is still a surprising problem with \tcode{bool}.
+Consider an ABI where \tcode{bool} is represented as a single byte without padding,
+where the byte value 0x00 represents \tcode{false},
+and any other byte value (0x01, 0x02, etc.) represents \tcode{true}.
+Then:
+\cppblock{
+constexpr bool b = true;
+static_assert(std::bit_cast<char>(auto(n))
+           == std::bit_cast<char>(auto(n)));
+}
+
+It is unspecified and nondeterministic whether this \tcode{static_assert} succeeds or fails
+because each of the lvalue-to-rvalue conversions in \tcode{auto(n)}
+could result in a different value representation.
+Converting from \tcode{true} to \tcode{char} could yield \tcode{char(1)}, \tcode{char(2)}, etc.
+and the standard doesn't specify which one is chosen.
+There is only one \tcode{true} value,
+and the implementation has to choose some value representation for it,
+and we have no wording constraining that choice.
+
+\Bnote{
+This is not a problem if there exists only one possible value representation for \tcode{true},
+but we don't generally guarantee that.
+}
+
+To fix this problem,
+we should at least require that \tcode{std::bit_cast}
+during constant evaluation always produces the same value representation for the same value.
+
+\h2{Implementation experience}
+
+The paper is the effectively standardizing the status quo in every major compiler.
+
+\h2{Impact on existing code}
+
+None.
+The paper merely proposes fixes in parts of the wording that were already broken or missing.
+
+\h2{Wording}
+
+The changes are relative to \ref("N5046").
+
+\Btodo{
+Write this.
+}
+
+\h2{References}
+
+
+\bib(
+  id = "N5046",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2026-05-12",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5046",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5046.pdf",
+)\
+\bib(
+  id = "P3938R1",
+  title = "Values of floating point types",
+  date = "2026-02-20",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3938r1",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3938r1.html",
+)\
+
+\make_bib
