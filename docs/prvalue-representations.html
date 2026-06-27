@@ -1753,10 +1753,32 @@ If the latter were the case, there would be no defect.
   <li>
     Floating-point promotion from <code><h- data-h=kw_type>float</h-></code> to <code><h- data-h=kw_type>double</h-></code> specifies that
     <q>the value is unchanged</q> (<a href=https://eel.is/c++draft/conv.fpprom>[conv.fpprom]</a>),
-    but this is unimplementable if every NaN bit pattern is a distinct value.
-    Obviously, turning a 32-bit <code><h- data-h=kw_type>float</h-></code> bit pattern
-    into a 64-bit <code><h- data-h=kw_type>double</h-></code> bit pattern changes <em>something</em>,
-    and that something is the representation of the value.
+    but:
+    <ul>
+      <li>
+        This is unimplementable if every NaN bit pattern is a distinct value.
+        Obviously, turning a 32-bit <code><h- data-h=kw_type>float</h-></code> bit pattern
+        into a 64-bit <code><h- data-h=kw_type>double</h-></code> bit pattern changes <em>something</em>,
+        and that something is the representation of the value;
+        we shouldn't think of this as a change in value
+        just like casting <code><h- data-h=kw_type>int</h-></code> to <code><h- data-h=kw_type>long</h-></code>
+        doesn't change the value just because there  may be more bits.
+      </li>
+      <li>
+        Considering quiet NaN and signaling NaN to be distinct values
+        is implementable,
+        but is not aligned with existing implementations.
+        On x86_64, conversion of <code><h- data-h=kw_type>float</h-></code> to <code><h- data-h=kw_type>double</h-></code>
+        is implemented using a <tt->cvtss2sd</tt-> instruction,
+        which raises a floating-point exception for signaling NaNs
+        and results in a quiet NaN.
+        Using the <tt->cvtss2sd</tt-> instruction would not be a conforming implementation
+        of floating-point promotion if we considered quiet and signaling NaN to be distinct.
+      </li>
+    </ul>
+    Thus, by process of elimination,
+    a single NaN value is most consistent
+    with this existing wording and implementation practice.
   </li>
   <li>
     <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>has_unique_object_representations_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code>
@@ -1852,6 +1874,14 @@ If the latter were the case, there would be no defect.
         then <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>has_unique_object_representations_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>float</h-><h- data-h=sym_op>&gt;</h-></code> is <code><h- data-h=bool>true</h-></code>.
       </li>
     </ul>
+  </li>
+  <li>
+    There is a general problem with specifying anything regarding floating-point numbers
+    in the core language because C++ supports all sorts of floating-point types,
+    including ones that don't adhere to ISO/IEC 60559.
+    This suggests that a model with a single NaN value is most appropriate
+    because it allows making the broadest and least ISO/IEC 60559-specific
+    statements when talking about <q>values</q>.
   </li>
   <li>
     As explained by the floating-point subgroup of WG14 via email,

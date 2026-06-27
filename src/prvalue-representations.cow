@@ -157,10 +157,32 @@ However, this interpretation is neither desirable nor consistent with the existi
   \li{
     Floating-point promotion from \tcode{float} to \tcode{double} specifies that
     \q{the value is unchanged}\iref{conv.fpprom},
-    but this is unimplementable if every NaN bit pattern is a distinct value.
-    Obviously, turning a 32-bit \tcode{float} bit pattern
-    into a 64-bit \tcode{double} bit pattern changes \em{something},
-    and that something is the representation of the value.
+    but:
+    \ul{
+      \li{
+        This is unimplementable if every NaN bit pattern is a distinct value.
+        Obviously, turning a 32-bit \tcode{float} bit pattern
+        into a 64-bit \tcode{double} bit pattern changes \em{something},
+        and that something is the representation of the value;
+        we shouldn't think of this as a change in value
+        just like casting \tcode{int} to \tcode{long}
+        doesn't change the value just because there  may be more bits.
+      }
+      \li{
+        Considering quiet NaN and signaling NaN to be distinct values
+        is implementable,
+        but is not aligned with existing implementations.
+        On x86_64, conversion of \tcode{float} to \tcode{double}
+        is implemented using a \tt{cvtss2sd} instruction,
+        which raises a floating-point exception for signaling NaNs
+        and results in a quiet NaN.
+        Using the \tt{cvtss2sd} instruction would not be a conforming implementation
+        of floating-point promotion if we considered quiet and signaling NaN to be distinct.
+      }
+    }
+    Thus, by process of elimination,
+    a single NaN value is most consistent
+    with this existing wording and implementation practice.
   }
   \li{
     \tcode{std::has_unique_object_representations_v<T>}
@@ -253,6 +275,14 @@ However, this interpretation is neither desirable nor consistent with the existi
         then \tcode{std::has_unique_object_representations_v<float>} is \tcode{true}.
       }
     }
+  }
+  \li{
+    There is a general problem with specifying anything regarding floating-point numbers
+    in the core language because C++ supports all sorts of floating-point types,
+    including ones that don't adhere to ISO/IEC 60559.
+    This suggests that a model with a single NaN value is most appropriate
+    because it allows making the broadest and least ISO/IEC 60559-specific
+    statements when talking about \q{values}.
   }
   \li{
     As explained by the floating-point subgroup of WG14 via email,
