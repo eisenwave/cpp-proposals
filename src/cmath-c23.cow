@@ -3,9 +3,9 @@
 
 \wg21_head(title={Rebasing \tt{<cmath>} on C23}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3935R1}}
-  \dt{Date:}            \dd{\tt{2026-05-11}}
-  \dt{Audience:}        \dd{SG22}
+  \dt{Document number:} \dd{\docnum{D3935R2}}
+  \dt{Date:}            \dd{\tt{2026-06-27}}
+  \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3935/github")}
@@ -26,12 +26,35 @@ There are many useful C23 \header{math.h} features that should be provided in C+
 
 \h2{Revision history}
 
+\h3{Changes since R1}
+
+\ul{
+  \li{
+    Removed \tcode{iscanonical} and \tcode{canonicalize} functions;
+    see also \ref("#canonical-floating-point-representations-and-canonicalization")
+  }
+  \li{
+    Made classification functions take their parameter by \tcode{const&};
+    see also \ref("#classification-functions")
+  }
+  \li{
+    Removed the \q{fully generic} narrow rounding function templates;
+    see also \ref("#narrow-rounding-functions")
+  }
+  \li{
+    Removed core language changes that define \q{canonical representation}
+  }
+  \li{
+    Adjusted some wording in \ref("#c.math.narrow")
+  }
+}
+
+\h3{Changes since R0}
+
 \ul{
   \li{Removed \tcode{noexcept} from \tcode{std::fadd} and other proposed templates}
   \li{Added \ref("#no-simd-support")}
 }
-
-\h3{Changes since R0}
 
 \h2{Introduction}
 
@@ -46,9 +69,8 @@ which are useful not only to decimal floating-point numbers.
 
 Introducing decimal floating-point numbers into C++ is out-of scope.
 That is, adding C's \tcode{_Decimal128} type as a \tcode{std::decimal128_t} alias
-is not proposed.
-However, this proposal lays a bit of groundwork to make that happen in the future,
-such as introducing the concept of canonical representations into the core language.
+is not proposed,
+and neither is any function intended to provide support for decimal floating-point types.
 
 \header{simd} is also out-of-scope,
 but expanding \header{simd} support for these new functions should be done in a future paper.
@@ -83,13 +105,6 @@ refer to \ref("#wording") for the complete list.
     \th{Function}
     \th{ISO/IEC 60559 op.}
     \th{Returns}
-  }
-  \tr{
-    \td{\tcode{bool iscanonical(\exposid{F} x);}}
-    \td{isCanonical}
-    \td{
-      \tcode{true} if and only if \tcode{x} is canonical
-    }
   }
   \tr{
     \td{\tcode{bool issignaling(\exposid{F} x);}}
@@ -377,15 +392,6 @@ refer to \ref("#wording") for the complete list.
     }
   }
   \tr{
-    \td{\tcode{int canonicalize(
-  \exposid{F}* cx, const \exposid{F}* x);}}
-    \td{convertFormat (same format)}
-    \td{
-      zero if canonicalization succeeded,\br
-      and nonzero value otherwise
-    }
-  }
-  \tr{
     \td{\tcode{\exposid{F} fmaximum_mag(\exposid{F} x, \exposid{F} y);}}
     \td{maximumMagnitude}
     \td{
@@ -576,91 +582,130 @@ no SIMD overloads are proposed because
 \h4{Narrow rounding functions}
 
 The narrow rounding functions (such as \tcode{fadd})
-are unusually difficult to expose in C++ in a generic way.
-Even the \header{tgmath.h} versions require the user to specify the return type
+are the most complex part of this proposal,
+and they are somewhat unergonomic;
+even the \header{tgmath.h} versions require the user to specify the return type
 as a prefix (\tt{f}, \tt{d}, \tt{f32}, …) as part of the function name.
-This is extremely hostile to generic code,
-and also means there is no support for extended floating-types in C++
-because we don't consider \tcode{std::float32_t} to be C23's \tcode{_Float32}
-and to have \tcode{sqrtf32} and other functions that accept it.
+This makes it difficult to write generic code.
 
-To solve this, we can do something novel:
-add function templates for these rounding functions:
+\Bnote{
+To solve this,
+R1 of the paper proposed additional function templates such as:
 
 \cppblock{
 template<class T, class F1, class F2>
   constexpr T fadd(F1 x, F2 y);
-template<class T, class F1, class F2>
-  constexpr T fsub(F1 x, F2 y);
-template<class T, class F1, class F2>
-  constexpr T fmul(F1 x, F2 y);
-template<class T, class F1, class F2>
-  constexpr T fdiv(F1 x, F2 y);
-template<class T, class F1, class F2, class F3>
-  constexpr T ffma(F1 x, F2 y, F3 z);
-template<class T, class F1>
-  constexpr T fsqrt(F1 x);
 }
 
-While the prefix \q{\tt{f}} is a bit inappropriate
-(it it supposed to indicate a \tcode{float} return type),
-there is no obvious alternative prefix,
-\q{\tt{f}} definitely won't clash with future \header{math.h} functions,
-and having no prefix at all would create undesirable overload sets with other functions.
+However, this would create a strange overload set with the existing \tcode{fadd} functions
+(where the \tcode{f} prefix indicates \tcode{float}).
+Notable, the integer overloads of \header{cmath} functions
+are typically implemented function templates,
+and we don't really want to create an overload set with those.
 
-The design goal for these functions is for the user to be able to write:
-\cppblock{
-#ifdef __cplusplus
-  #define f32add(...) \code("cpp",nested=true){::std::fadd<std::float32_t>(__VA_ARGS__)}
-  // ...
-#else
-  #include <tgmath.h>
-#endif
+There is also no other obvious name we could use.
+We may not want to create overload sets with \tcode{std::fma}, \tcode{std::sqrt},
+and \tcode{std::div},
+and use up some extremely valuable names like \tcode{std::add}.
 }
 
-There is also a non-template \tcode{std::fadd} function
-which is meant to emulate the behavior of the \header{tgmath.h} macro
-by selecting between the \tcode{long double}→\tcode{float} and \tcode{double}→\tcode{float}
-overloads.
-
-\Bnote{
-These templates are not \tcode{noexcept}
-because they dispatch to underlying C functions that are not \tcode{noexcept}.
-We also traditionally don't make new C++ overloads of C functions \tcode{noexcept},
-such as in the case of the three-parameter \tcode{std::lerp} overload.
-Despite that, they are not intended to throw.
+Anyway, we provide only the functionality that is necessary for C compatibility,
+which is
+\ul{
+  \li{
+    concrete functions like \tcode{std::faddl}, \tcode{std::f32sqrtf64}, etc., and
+  }
+  \li{
+    overloaded functions like \tcode{std::fadd}
+    which are meant to emulate the behavior of the \header{tgmath.h} macro
+    by selecting between the \tcode{long double}→\tcode{float} and \tcode{double}→\tcode{float}
+    overloads.
+  }
 }
 
 \h4{Canonical floating-point representations and canonicalization}
 
-C23 introduced the concept of "canonical representations"
-identified by \tcode{iscanonical},
-and a function \tcode{canonicalize}
-to convert to canonical representations of the same value.
+Earlier revisions of this paper also included the functions
+\tcode{iscanonical} and \tcode{canonicalize},
+which can technically be called with floating-point arguments of any radix,
+but are only useful for decimal floating-point types.
 
-\Bex{
-Examples of canonical/non-canonical representations include:
+These have been removed because they should be included as part
+of a future proposal that provides support for decimal floating-point types in general.
+Providing them now would also raise the question of what a \q{canonical representation} is,
+within the C++ core language, which is scope creep.
+
+\h4{ISO/IEC-60559-specific functions}
+
+Some of the functions in the table are optionally provided:
+\tcode{totalorder}, \tcode{totalordermag},
+\tcode{getpayload}, \tcode{setpayload}, and \tcode{setpayloadsig}.
+That is because it doesn't make sense to ask for the NaN payload
+of a floating-point number
+where NaN isn't supported.
+Universal behavior for these functions would need to be defined, and
+C currently just delegates to the ISO/IEC 60559 operations.
+
+\Bnote{
+These functions accept a parameter by pointer rather than by value
+because loading a floating-point value into an argument may change the value
+and inadvertently alter the behavior of the function.
+See also \ref("#classification-functions") for discussion of basically the same problem.
+}
+
+A notable difference between the C23 feature and what's proposed
+is that C23 defines these functions only if \tcode{__STDC_WANT_IEC_60559_EXT__} is defined
+before \header{math.h} is included.
+In C++, whether the functions are defined depends solely on whether
+\tcode{std::numeric_limits<T>::is_iec559} is \tcode{true} for the type \tcode{T}.
+Requiring C++ users to define the macro
+would stray too far from \q{idiomatic} C++ code,
+and it's unclear how this is supposed to work with modules and/or with \tcode{import std;}.
+
+The functions have to exist in the runtime math library anyway,
+so the benefit of them being opt-int in a header is unclear.
+
+\h3(id="classification-functions"){Making classification functions take by \tt{const&}}
+
+A pre-existing defect is that classification functions such as \tcode{signbit}
+take their parameter by value.
+The problem is that when lvalue-to-rvalue conversion takes place,
+only the \em{value}, not the exact bit pattern (value representation)
+of an object is being carried by prvalues.
+In terms of hardware, it's possible that loading from memory into a register
+may perform canonicalization, flush to zero, or alter NaN payloads.
+This is a problem because those changes could alter the result of functions such
+\tcode{signbit}, \ins{\tcode{issignaling}}, \tcode{isnormal}, \ins{\tcode{issubnormal}}, etc.
+(essentially of any function).
+
+After extensive CWG discussion of the problem,
+it was suggested that the functions should take their parameter by \tcode{const&}.
+The existing incompatibility between C and C++ was also discussed in SG22
+and resulted in some opposition to R1 of this paper.
+This means that
 \ul{
   \li{
-    Representations for decimal floating-point types are specified
-    to be canonical or non-canonical by ISO/IEC 60559.
-  }
-  \li{Signaling NaN may be non-canonical, whereas quiet NaN may be canonical.}
-  \li{
-    An implementation that flushes subnormals to zero
-    may consider all subnormal normals to be non-canonical representations of zero.
+    existing functions are updated,
+    to e.g. \tcode{signbit(const \exposid{floating-point-type}&)}, and
   }
   \li{
-    Negative zero may be considered a non-canonical representation
-    of positive zero, which is canonical.
+    new functions are added,
+    such as \tcode{iszero(const \exposid{floating-point-type}&)}.
   }
-}
 }
 
-Unless working with decimal floating-point types,
-the classification of representations as "canonical"
-is largely based on the subjective preferences of the implementation;
-there are no hard rules other than a canonical representation being unique.
+Taking \tcode{const&} allows inspecting the original object
+irrespective of what changes lvalue-to-rvalue conversion would perform.
+
+\Bnote{
+In C, this problem is solved by defining these functions as macros,
+without any concrete overloads like \tcode{signbitf(float)}.
+If loading from memory into an argument would change the value,
+the macro could be defined so that it inspects the original object when given an lvalue.
+}
+
+This is not a breaking change because any expression can be passed by \tcode{const&}
+just as well as by value.
 
 \h3{New macros}
 
@@ -743,42 +788,15 @@ and most have been implemented in gnulibc.
 The new narrow rounding function templates simply dispatch to some
 non-template overload based on the template argument \tcode{T}.
 
+Some of the proposed functions are also implemented in Clang as builtins,
+such as \tcode{__builtin_roundeven}.
+Some of them are implementable using existing builtins,
+such as \tcode{__builtlin_isfpclass}.
+Some of these Clang builtins are also \tcode{constexpr}.
+
 \h2{Wording}
 
 The changes are relative to \ref("N5014").
-
-\h3(show_number=false){[basic.fundamental]}
-
-Immediately prior to \eelis{basic.fundamental#13},
-insert a new paragraph:
-
-\Bins{
-An implementation may prefer particular representations of values
-that have multiple representations in a floating-point type.
-The preferred representations of a floating-point type,
-including unique representations of values in the type, are called \dfn{canonical}.
-A floating-point type may also contain \dfn{non-canonical representations},
-for example, redundant representations of some or all its
-values, or representations that are extraneous to the floating-point model.
-Typically, floating-point operations deliver results with canonical representations.
-
-\note{
-The functions \tcode{std::iscanonical} and \tcode{std::canonicalize} distinguish
-canonical (preferred) representations,
-but this distinction alone does not imply that canonical and non-canonical representations
-are of different values.
-}
-}
-
-\editnote{
-The C23 wording is extremely vague,
-and we can't be precise either if we don't want to risk having diverging
-behavior for \tcode{iscanonical}.
-
-\tcode{iscanonical} and \tcode{canonicalize} are primarily motivated by
-ISO/IEC 60559 decimal floating-point representations anyway,
-where it is precisely specified which representations are canonical.
-}
 
 \h3(show_number=false){[version.syn]}
 
@@ -1284,12 +1302,7 @@ namespace std {
   constexpr \floating_point_typ nextdown(\floating_point_typ x);
   constexpr float               nextdownf(float x);
   constexpr long double         nextdownl(long double x);
-\ins{  constexpr float\placeholder{N}_t            nextdownf\placeholder{N}(float\placeholder{N}_t x);
-
-  constexpr int canonicalize(\floating_point_typ* cx, const \floating_point_typ* x);
-  constexpr int canonicalizef(float cx, const float* x);
-  constexpr int canonicalizel(long double cx, const long double* x);
-  constexpr int canonicalizef\placeholder{N}(float\placeholder{N}_t* cx, const float\placeholder{N}_t* x);}
+\ins{  constexpr float\placeholder{N}_t            nextdownf\placeholder{N}(float\placeholder{N}_t x);}
 
   constexpr \floating_point_typ fdim(\floating_point_typ x, \floating_point_typ y);
   constexpr float               fdimf(float x, float y);
@@ -1353,7 +1366,6 @@ namespace std {
 \ins{  constexpr float\placeholder{N}_t            fmaf\placeholder{N}(float\placeholder{N}_t x, float\placeholder{N}_t y, float\placeholder{N}_t z);
 
   //\serif{ [c.math.narrow], narrowing operations}
-  template<class T, class F> constexpr T fadd(F x, F y);
   constexpr float      fadd(\exposid{double-type} x, \exposid{double-type} y);
   constexpr float      faddl(long double x, long double y);
   constexpr double     dadd(long double x, long double y);
@@ -1361,7 +1373,6 @@ namespace std {
   constexpr float\placeholder{N}_t   f\placeholder{N}add(\seebelow x, \seebelow y);
   constexpr float\placeholder{N}_t   f\placeholder{N}addf\placeholder{M}(float\placeholder{M}_t x, float\placeholder{M}_t y);
 
-  template<class T, class F> constexpr T fsub(F x, F y);
   constexpr float      fsub(\exposid{double-type} x, \exposid{double-type} y);
   constexpr float      fsubl(long double x, long double y);
   constexpr double     dsub(long double x, long double y);
@@ -1369,7 +1380,6 @@ namespace std {
   constexpr float\placeholder{N}_t   f\placeholder{N}sub(\seebelow x, \seebelow y);
   constexpr float\placeholder{N}_t   f\placeholder{N}subf\placeholder{M}(float\placeholder{M}_t x, float\placeholder{M}_t y);
 
-  template<class T, class F> constexpr T fmul(F x, F y);
   constexpr float      fmul(\exposid{double-type} x, \exposid{double-type} y);
   constexpr float      fmull(long double x, long double y);
   constexpr double     dmul(long double x, long double y);
@@ -1377,7 +1387,6 @@ namespace std {
   constexpr float\placeholder{N}_t   f\placeholder{N}mul(\seebelow x, \seebelow y);
   constexpr float\placeholder{N}_t   f\placeholder{N}mulf\placeholder{M}(float\placeholder{M}_t x, float\placeholder{M}_t y);
 
-  template<class T, class F> constexpr T fdiv(F x, F y);
   constexpr float      fdiv(\exposid{double-type} x, \exposid{double-type} y);
   constexpr float      fdivl(long double x, long double y);
   constexpr double     ddiv(long double x, long double y);
@@ -1385,7 +1394,6 @@ namespace std {
   constexpr float\placeholder{N}_t   f\placeholder{N}div(\seebelow x, \seebelow y);
   constexpr float\placeholder{N}_t   f\placeholder{N}divf\placeholder{M}(float\placeholder{M}_t x, float\placeholder{M}_t y);
 
-  template<class T, class F> constexpr T ffma(F x, F y, F z);
   constexpr float      ffma(\exposid{double-type} x, \exposid{double-type} y, \exposid{double-type} z);
   constexpr float      ffmal(long double x, long double y, long double z);
   constexpr double     dfma(long double x, long double y, long double z);
@@ -1393,7 +1401,6 @@ namespace std {
   constexpr float\placeholder{N}_t   f\placeholder{N}fma(\seebelow x, \seebelow y, \seebelow z);
   constexpr float\placeholder{N}_t   f\placeholder{N}fmaf\placeholder{M}(float\placeholder{M}_t x, float\placeholder{M}_t y, float\placeholder{M}_t z);
 
-  template<class T, class F> constexpr T fsqrt(F x);
   constexpr float      fsqrt(\exposid{double-type} x);
   constexpr float      fsqrtl(long double x);
   constexpr double     dsqrt(long double x);
@@ -1406,23 +1413,22 @@ namespace std {
                                      \floating_point_typ t) noexcept;
 
   //\serif{ [c.math.fpclass], classification / comparison functions}
-  constexpr int fpclassify(\floating_point_typ x);
-\ins{  constexpr bool iscanonical(\floating_point_typ x);}
-  constexpr bool isfinite(\floating_point_typ x);
-  constexpr bool isinf(\floating_point_typ x);
-  constexpr bool isnan(\floating_point_typ x);
-  constexpr bool isnormal(\floating_point_typ x);
-  constexpr bool signbit(\floating_point_typ x);
-\ins{  constexpr bool issignaling(\floating_point_typ x);}
-\ins{  constexpr bool issubnormal(\floating_point_typ x);}
-\ins{  constexpr bool iszero(\floating_point_typ x);}
-  constexpr bool isgreater(\floating_point_typ x, \floating_point_typ y);
-  constexpr bool isgreaterequal(\floating_point_typ x, \floating_point_typ y);
-  constexpr bool isless(\floating_point_typ x, \floating_point_typ y);
-  constexpr bool islessequal(\floating_point_typ x, \floating_point_typ y);
-  constexpr bool islessgreater(\floating_point_typ x, \floating_point_typ y);
-  constexpr bool isunordered(\floating_point_typ x, \floating_point_typ y);
-\ins{  constexpr bool iseqsig(\floating_point_typ x, \floating_point_typ y);
+  constexpr int fpclassify(\ins{const} \floating_point_typ\ins{&} x);
+  constexpr bool isfinite(\ins{const} \floating_point_typ\ins{&} x);
+  constexpr bool isinf(\ins{const} \floating_point_typ\ins{&} x);
+  constexpr bool isnan(\ins{const} \floating_point_typ\ins{&} x);
+  constexpr bool isnormal(\ins{const} \floating_point_typ\ins{&} x);
+  constexpr bool signbit(\ins{const} \floating_point_typ\ins{&} x);
+\ins{  constexpr bool issignaling(const \floating_point_typ& x);}
+\ins{  constexpr bool issubnormal(const \floating_point_typ& x);}
+\ins{  constexpr bool iszero(const \floating_point_typ& x);}
+  constexpr bool isgreater(\ins{const} \floating_point_typ\ins{&} x, \ins{const} \floating_point_typ\ins{&} y);
+  constexpr bool isgreaterequal(\ins{const} \floating_point_typ\ins{&} x, \ins{const} \floating_point_typ\ins{&} y);
+  constexpr bool isless(\ins{const} \floating_point_typ\ins{&} x, \ins{const} \floating_point_typ\ins{&} y);
+  constexpr bool islessequal(\ins{const} \floating_point_typ\ins{&} x, \ins{const} \floating_point_typ\ins{&} y);
+  constexpr bool islessgreater(\ins{const} \floating_point_typ\ins{&} x, \ins{const} \floating_point_typ\ins{&} y);
+  constexpr bool isunordered(\ins{const} \floating_point_typ\ins{&} x, \ins{const} \floating_point_typ\ins{&} y);
+\ins{  constexpr bool iseqsig(const \floating_point_typ& x, const \floating_point_typ& y);
 
   //\serif{ ISO/IEC 60559 specific functions}
   constexpr bool totalorder(const \floating_point_typ* x,                       \optional
@@ -1763,7 +1769,7 @@ Add a new subclause as follows:
 \cowel_html_element("h3"){Narrowing operations \stable_ref{c.math.narrow}}
 
 \itemdecl{
-constexpr float    f\placeholder{op}(long double x /* ... */);
+constexpr float    f\placeholder{op}(\exposid{double-type} x /* ... */);
 constexpr double   d\placeholder{op}(long double x /* ... */);
 constexpr float\placeholder{N}_t f\placeholder{N}\placeholder{op}(\seebelow x /* ... */);
 constexpr float\placeholder{N}_t f\placeholder{N}\placeholder{op}f\placeholder{M}(float\placeholder{M}_t x /* ... */);
@@ -1793,24 +1799,46 @@ where \tcode{\placeholder{up}} is \tcode{\placeholder{op}} in uppercase.
 
 ¶
 \effects
-Each of the macros and overloads
-\tcode{f\placeholder{op}} and \tcode{d\placeholder{op}}
-has the same behavior as the function
-\tcode{f\placeholder{op}l} and \tcode{d\placeholder{op}l},
-respectively.
-Each of the overloads \tcode{f\placeholder{N}\placeholder{op}}
-has the same behavior as the corresponding function
-\tcode{f\placeholder{N}\placeholder{op}f\placeholder{M}}
-with the same parameter types.
+Each of the overloads
+\ul{
+  \li{
+    \tcode{f\placeholder{op}} and \tcode{d\placeholder{op}}
+    where the \tcode{\exposid{double-type}} is \tcode{double}
+    has the same behavior as the C function with the same name;
+  }
+  \li{
+    \tcode{f\placeholder{op}} and \tcode{d\placeholder{op}}
+    where the \tcode{\exposid{double-type}} is \tcode{long double}
+    has the same behavior as
+    \tcode{f\placeholder{op}l} and \tcode{d\placeholder{op}l}, respectively; and
+  }
+  \li{
+    \tcode{f\placeholder{N}\placeholder{op}}
+    has the same behavior as the corresponding function
+    \tcode{f\placeholder{N}\placeholder{op}f\placeholder{M}}
+    with the same parameter types.
+  }
+}
 
 ¶
 \example{
-If only \tcode{float32_t}, \tcode{float64_t}, and \tcode{float128_t} are defined,
-the implementation provides the overloads
+If only the aliases
+\tcode{float32_t}, \tcode{float64_t}, and \tcode{float128_t} are defined
+in \header{stdfloat},
+for the \tcode{sqrt} operation,
+the implementation provides the following declarations:
 \itemdecl{
+#define FP_FAST_FSQRT \exposid{see above}
+#define FP_FAST_FSQRTL \exposid{see above}
+#define FP_FAST_DSQRTL \exposid{see above}
 #define FP_FAST_F32SQRTF64 \exposid{see above}
 #define FP_FAST_F32SQRTF128 \exposid{see above}
 #define FP_FAST_F64SQRTF128 \exposid{see above}
+
+constexpr float fsqrt(double x);
+constexpr float fsqrt(long double x);
+constexpr float fsqrt(long double x);
+constexpr double dsqrt(long double x);
 
 constexpr float32_t f32sqrt(float64_t x);
 constexpr float32_t f32sqrt(float128_t x);
@@ -1819,77 +1847,11 @@ constexpr float32_t f32sqrtf64(float64_t x);
 constexpr float32_t f32sqrtf128(float128_t x);
 constexpr float64_t f64sqrtf128(float128_t x);
 }
-where \tcode{\placeholder{op}} is \tcode{sqrt}.
-}
-}
-
-\itemdecl{
-template<class T, class F1, class F2>
-  constexpr T fadd(F1 x, F2 y);
-template<class T, class F1, class F2>
-  constexpr T fsub(F1 x, F2 y);
-template<class T, class F1, class F2>
-  constexpr T fmul(F1 x, F2 y);
-template<class T, class F1>
-  constexpr T fdiv(F1 x, F2 y);
-template<class T, class F1, class F2, class F3>
-  constexpr T ffma(F1 x, F2 y, F3 z);
-template<class T, class F1>
-  constexpr T fsqrt(F1 x);
-}
-
-\itemdescr{
-¶
-Let \tcode{Fs} be a pack of template type parameters following \tcode{T}.
-Let \tcode{F} be the type determined as follows:
-\ul{
-  \li{
-    If \tcode{T} is \tcode{double} or
-    if any type in \tcode{Fs} is \tcode{long double},
-    \tcode{F} is \tcode{long double}.
-  }
-  \li{
-    Otherwise, if \tcode{T} is \tcode{float},
-    \tcode{F} is \tcode{double}.
-  }
-  \li{
-    Otherwise, if \tcode{T} is an extended floating-point type
-    named by an alias \tcode{std::float\placeholder{N}_t}\iref{stdfloat.syn},
-    \tcode{F} is the type named by \tcode{std::float\placeholder{M}_t},
-    where \math{\mrow{\mi{M}\mo{=}\mi{N}\mo{×}\mn{2}}},
-    if such an alias is defined.
-  }
-  \li{
-    Otherwise, \tcode{F} is implementation-defined
-    and may not exist.
-  }
-}
-
-¶
-\constraints
-\ul{
-  \li{Each type in \tcode{Fs} is a cv-unqualified arithmetic type.}
-  \li{\tcode{F} exists.}
-  \li{\tcode{((numeric_limimts<Fs>::radix == numeric_limits<F>::radix) && ...)} is \tcode{true}.}
-  \li{\tcode{T} is a cv-unqualified floating-point type other than \tcode{long double}.}
-}
-\example{
-It is implementation-defined whether the constraints
-of \tcode{fadd<bfloat16_t, float32_t>} are satisfied.
-}
-
-¶
-\effects
-All parameters are converted to prvalues of type \tcode{F}.
-Each of the function templates has the same behavior as the corresponding
-non-template overload with the same name,
-if that overload had return type \tcode{T} and parameters all of type \tcode{F}.
-
-¶
-\remarks
-The \tcode{FP_FAST} macros also relate to specializations of these function templates.
-\br\example{
-\tcode{FP_FAST_DSQRTL} relates to \tcode{dsqrtl} and \tcode{fsqrt<double, long double>}.
+Additionally,
+the implementation provides overloads that allow calling
+\tcode{fsqrt},
+\tcode{f32sqrt}, and
+\tcode{f64sqrt} with arguments of integral type.
 }
 }
 }
