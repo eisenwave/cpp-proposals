@@ -3,9 +3,9 @@
 
 \wg21_head(title={Fixing \tcode{std::bit_cast} of types\br{}with padding bits}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3969R1}}
-  \dt{Date:}            \dd{\tt{2026-05-11}}
-  \dt{Audience:}        \dd{LEWG, EWG}
+  \dt{Document number:} \dd{\docnum{P3969R2}}
+  \dt{Date:}            \dd{\tt{2026-06-28}}
+  \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3969/github")}
@@ -27,6 +27,15 @@ this proposal makes that degenerate form of \tcode{std::bit_cast} ill-formed.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R1}
+
+\ul{
+  \li{Mentioned EWG support for the design in \ref("#historical-context-for-the-design")}
+  \li{Mentioned active Clang Pull Request in \ref("#implementation-experience")}
+  \li{Fixed \ref("#wording") bug where bit-casting padding to \tcode{std::byte} was ill-formed}
+  \li{Rebased \ref("#wording") on the post-Brno motions}
+}
 
 \h3{Changes since R0}
 
@@ -115,7 +124,9 @@ considering that most \tcode{_BitInt} types (at least 7/8) have padding bits.
 
 The proposed solution is to make the degenerate form of \tcode{std::bit_cast} ill-formed.
 
-However, R0 of this paper was more ambitious
+\h3{Historical context for the design}
+
+R0 of this paper was more ambitious
 and presented two approaches:
 
 \ol{
@@ -159,6 +170,15 @@ If LEWG does not want to silently change the behavior of \tcode{std::bit_cast}
 and EWG does not want another function,
 then the only option is to make the degenerate form of \tcode{std::bit_cast} ill-formed
 without adding any new function.
+
+This option was also approved by EWG during the 2026-06 Brno meeting:
+
+\Bquote{
+EWG encourages LEWG to pursue the direction in P3969R1
+of making a \tcode{std::bit_cast} on a type with padding ill-formed
+\five_way_poll(9, 11, 3, 0, 0)
+consensus.
+}
 
 \h3{Can't you make \tcode{std::bit_cast} produce unspecified or erroneous values?}
 
@@ -283,14 +303,19 @@ i.e. it raises an error in code that contained unconditional UB.
 While compilers diagnose misuses of \tcode{std::bit_cast} during constant evaluation,
 the proposed compile-time check has not been implemented
 in any compiler at the time of writing.
+However, there is an active Clang Pull Request at
+\url{https://github.com/llvm/llvm-project/pull/200362}
+which adds a \tt{-Wbit-cast-padding} warning which triggers in exactly the same scenarios
+that this proposal would make ill-formed.
+
 The most straight-forward implementation strategy is to add a check
 in the compiler's \tcode{__builtin_bit_cast} intrinsic
 for the degenerate form of \tcode{std::bit_cast}.
 
 \h2{Wording}
 
-The changes are relative to \ref("N5032")
-with the changes from the post-Croydon motions applied.
+The changes are relative to \ref("N5046")
+with the changes from the post-Brno motions applied.
 
 \h3(id="single-function-version-syn-wording", show_number=false){[version.syn]}
 
@@ -322,27 +347,27 @@ template<class To, class From>
   \li{\tcode{is_trivially_copyable_v<From>} is \tcode{true}.}
 }
 
-\mandates
-\ul{
-  \li{Neither \tcode{To} nor \tcode{From} are consteval-only types\iref{basic.types.general}.}
+\ins{\mandates
+For every bit \math{\msub{\mi{s}\mi{i}}} in the object representation
+of a complete object \math{\mi{s}} of type \tcode{From} and
+the corresponding bit \math{\msub{\mi{d}\mi{i}}} in the object representation
+of a complete object \math{\mi{d}} of type \tcode{To},}
+\ul(style="margin-top:0"){
   \li{
-    \ins{For every bit \math{\msub{\mi{s}\mi{i}}} in the object representation
-    of a complete object \math{\mi{s}} of type \tcode{From} and
-    the corresponding bit \math{\msub{\mi{d}\mi{i}}} in the object representation
-    of a complete object \math{\mi{d}} of type \tcode{To},} \ul(style="margin-top:0"){
-      \li{
-        \ins{\math{\msub{\mi{s}\mi{i}}} is in the value representation of \math{\mi{s}},}
-      }
-      \li{
-        \ins{\math{\msub{\mi{s}\mi{i}}} is enclosed by a union,}
-      }
-      \li{
-        \ins{\math{\msub{\mi{d}\mi{i}}} is not in the value representation of \math{\mi{d}}, or}
-      }
-      \li{
-        \ins{\math{\msub{\mi{d}\mi{i}}} is enclosed by a union.}
-      }
-    }
+    \ins{\math{\msub{\mi{s}\mi{i}}} is in the value representation of \math{\mi{s}},}
+  }
+  \li{
+    \ins{\math{\msub{\mi{s}\mi{i}}} is enclosed by a union,}
+  }
+  \li{
+    \ins{\math{\msub{\mi{d}\mi{i}}} is not in the value representation of \math{\mi{d}},}
+  }
+  \li{
+    \ins{\math{\msub{\mi{d}\mi{i}}} is enclosed by a union, or}
+  }
+  \li{
+    \ins{\math{\msub{\mi{d}\mi{i}}} is enclosed by an object
+    of unsigned ordinary character type or \tcode{std::byte} type.}
   }
 }
 
@@ -560,12 +585,12 @@ void clear_padding(T& object) {
 \h2{References}
 
 \bib(
-  id = "N5032",
+  id = "N5046",
   title = "Working Draft, Programming Languages — C++",
-  date = "2025-12-15",
+  date = "2026-05-12",
   author = "Thomas Köppe",
-  link = "https://wg21.link/n5032",
-  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf",
+  link = "https://wg21.link/n5046",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5046.pdf",
 )\
 \bib(
   id = "P0476R1",

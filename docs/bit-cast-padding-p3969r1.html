@@ -1579,9 +1579,9 @@ if (theme !== null) {
 <div class=wg21-head><h1>Fixing <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code> of types<br/>with padding bits</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3969R2>P3969R2</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-06-28</tt-></dd>
-  <dt>Audience:</dt>        <dd>LEWG</dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3969R1>P3969R1</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-05-11</tt-></dd>
+  <dt>Audience:</dt>        <dd>LEWG, EWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
   <dt>GitHub Issue:</dt>    <dd><a href=https://wg21.link/P3969/github class=sans>wg21.link/P3969/github</a></dd>
@@ -1603,24 +1603,20 @@ this proposal makes that degenerate form of <code><h- data-h=name>std</h-><h- da
 <div class=toc><div class=toc-num data-level=2>1</div>
 <a href=#revision-history><h2>Revision history</h2></a>
 <div class=toc-num data-level=3>1.1</div>
-<a href=#changes-since-r1><h3>Changes since R1</h3></a>
-<div class=toc-num data-level=3>1.2</div>
 <a href=#changes-since-r0><h3>Changes since R0</h3></a>
 <div class=toc-num data-level=2>2</div>
 <a href=#introduction><h2>Introduction</h2></a>
 <div class=toc-num data-level=2>3</div>
 <a href=#design><h2>Design</h2></a>
 <div class=toc-num data-level=3>3.1</div>
-<a href=#historical-context-for-the-design><h3>Historical context for the design</h3></a>
-<div class=toc-num data-level=3>3.2</div>
 <a href=#cant-you-make-std::bit_cast-produce-unspecified-or-erroneous-values><h3>Can't you make <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code> produce unspecified or erroneous values?</h3></a>
-<div class=toc-num data-level=3>3.3</div>
+<div class=toc-num data-level=3>3.2</div>
 <a href=#constraints-vs-mandates><h3><i>Constraints</i> vs <i>Mandates</i></h3></a>
-<div class=toc-num data-level=3>3.4</div>
+<div class=toc-num data-level=3>3.3</div>
 <a href=#bit-cast-constant-evaluation-undefined-behavior><h3>Requiring <tt->std::bit_cast</tt-> UB to be diagnosed in constant expressions</h3></a>
-<div class=toc-num data-level=3>3.5</div>
+<div class=toc-num data-level=3>3.4</div>
 <a href=#union-edge-case><h3><code><h- data-h=kw>union</h-></code> edge case</h3></a>
-<div class=toc-num data-level=3>3.6</div>
+<div class=toc-num data-level=3>3.5</div>
 <a href=#future-direction><h3>Future direction</h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#impact-on-existing-code><h2>Impact on existing code</h2></a>
@@ -1654,21 +1650,12 @@ this proposal makes that degenerate form of <code><h- data-h=name>std</h-><h- da
 
 <h2 id=revision-history><a class=para href=#revision-history></a>1. Revision history</h2>
 
-<h3 id=changes-since-r1><a class=para href=#changes-since-r1></a>1.1. Changes since R1</h3>
-
-<ul>
-  <li>Mentioned EWG support for the design in <a href=#historical-context-for-the-design>§3.1. Historical context for the design</a></li>
-  <li>Mentioned active Clang Pull Request in <a href=#implementation-experience>§5. Implementation experience</a></li>
-  <li>Fixed <a href=#wording>§6. Wording</a> bug where bit-casting padding to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>byte</h-></code> was ill-formed</li>
-  <li>Rebased <a href=#wording>§6. Wording</a> on the post-Brno motions</li>
-</ul>
-
-<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.2. Changes since R0</h3>
+<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.1. Changes since R0</h3>
 
 <ul>
   <li>Limited the scope of the paper to only expand the <i>Mandates</i> of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code></li>
   <li>Mentioned <a href="https://wg21%2elink/lwg4539">[LWG4539]</a></li>
-  <li>Added <a href=#union-edge-case>§3.5. <code><h- data-h=kw>union</h-></code> edge case</a></li>
+  <li>Added <a href=#union-edge-case>§3.4. <code><h- data-h=kw>union</h-></code> edge case</a></li>
   <li>Expanded design discussion in various areas</li>
   <li>Rebased <a href=#wording>§6. Wording</a> on the post-Croydon motions</li>
 </ul>
@@ -1744,9 +1731,7 @@ considering that most <code><h- data-h=kw_type>_BitInt</h-></code> types (at lea
 
 <p>The proposed solution is to make the degenerate form of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code> ill-formed.
 </p>
-<h3 id=historical-context-for-the-design><a class=para href=#historical-context-for-the-design></a>3.1. Historical context for the design</h3>
-
-<p>R0 of this paper was more ambitious
+<p>However, R0 of this paper was more ambitious
 and presented two approaches:
 </p>
 <ol>
@@ -1797,19 +1782,7 @@ and EWG does not want another function,
 then the only option is to make the degenerate form of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code> ill-formed
 without adding any new function.
 </p>
-<p>This option was also approved by EWG during the 2026-06 Brno meeting:
-</p>
-<blockquote>
-<p>EWG encourages LEWG to pursue the direction in P3969R1
-of making a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code> on a type with padding ill-formed
-</p><table class=five-way-poll>
-<tr><th>SF</th><th>F</th><th>N</th><th>A</th><th>SA</th></tr>
-<tr><td>9</td><td>11</td><td>3</td><td>0</td><td>0</td></tr>
-</table>
-<p>consensus.
-</p></blockquote>
-
-<h3 id=cant-you-make-std::bit_cast-produce-unspecified-or-erroneous-values><a class=para href=#cant-you-make-std::bit_cast-produce-unspecified-or-erroneous-values></a>3.2. Can't you make <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code> produce unspecified or erroneous values?</h3>
+<h3 id=cant-you-make-std::bit_cast-produce-unspecified-or-erroneous-values><a class=para href=#cant-you-make-std::bit_cast-produce-unspecified-or-erroneous-values></a>3.1. Can't you make <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code> produce unspecified or erroneous values?</h3>
 
 <p>A possible approach would be to make <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code> produce
 unspecified bit values instead of indeterminate bit values.
@@ -1857,7 +1830,7 @@ This provides minimal (if any) benefit,
 and could be explored in a separate paper;
 it is a separate issue from the one presented in this paper.
 </p>
-<h3 id=constraints-vs-mandates><a class=para href=#constraints-vs-mandates></a>3.3. <i>Constraints</i> vs <i>Mandates</i></h3>
+<h3 id=constraints-vs-mandates><a class=para href=#constraints-vs-mandates></a>3.2. <i>Constraints</i> vs <i>Mandates</i></h3>
 
 <p>The degenerate form of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code> should be diagnosed using
 a <i>Mandates</i> element (that is, <code><h- data-h=kw>static_assert</h-></code>).
@@ -1878,7 +1851,7 @@ consteval-only types or types that result in the degenerate form.
 <p>Also, using <i>Mandates</i> makes the implementation strategy simpler;
 it only requires a modification of the <code><h- data-h=name>__builtin_bit_cast</h-></code> intrinsic.
 </p>
-<h3 id=bit-cast-constant-evaluation-undefined-behavior><a class=para href=#bit-cast-constant-evaluation-undefined-behavior></a>3.4. Requiring <tt->std::bit_cast</tt-> UB to be diagnosed in constant expressions</h3>
+<h3 id=bit-cast-constant-evaluation-undefined-behavior><a class=para href=#bit-cast-constant-evaluation-undefined-behavior></a>3.3. Requiring <tt->std::bit_cast</tt-> UB to be diagnosed in constant expressions</h3>
 
 <p><a href=https://eel.is/c++draft/bit.cast#4.2>[bit.cast] paragraph 4, bullet 2</a> explicitly makes indeterminate result bits undefined behavior
 <em>inside</em> <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code>,
@@ -1894,7 +1867,7 @@ should be diagnosed during constant evaluation.
 This defect is addressed in <a href="https://wg21%2elink/lwg4539">[LWG4539]</a>,
 and can be resolved independently of this paper.
 </p>
-<h3 id=union-edge-case><a class=para href=#union-edge-case></a>3.5. <code><h- data-h=kw>union</h-></code> edge case</h3>
+<h3 id=union-edge-case><a class=para href=#union-edge-case></a>3.4. <code><h- data-h=kw>union</h-></code> edge case</h3>
 
 <p>When bit-casting bits that are enclosed by a union,
 it is unknown during translation whether the bits are padding bits or not.
@@ -1909,7 +1882,7 @@ Disallowing them would mean that <code><h- data-h=name>std</h-><h- data-h=sym_op
 would have to be ill-formed,
 breaking existing code.
 </p>
-<h3 id=future-direction><a class=para href=#future-direction></a>3.6. Future direction</h3>
+<h3 id=future-direction><a class=para href=#future-direction></a>3.5. Future direction</h3>
 
 <p>The proposed solution does not preclude the possibility
 of making <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code> clear the padding bits in the future,
@@ -1930,19 +1903,14 @@ i.e. it raises an error in code that contained unconditional UB.
 <p>While compilers diagnose misuses of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code> during constant evaluation,
 the proposed compile-time check has not been implemented
 in any compiler at the time of writing.
-However, there is an active Clang Pull Request at
-<a href=https://github.com/llvm/llvm-project/pull/200362 class=sans>https://github.com/llvm/llvm-project/pull/200362</a>
-which adds a <tt->-Wbit-cast-padding</tt-> warning which triggers in exactly the same scenarios
-that this proposal would make ill-formed.
-</p>
-<p>The most straight-forward implementation strategy is to add a check
+The most straight-forward implementation strategy is to add a check
 in the compiler's <code><h- data-h=name>__builtin_bit_cast</h-></code> intrinsic
 for the degenerate form of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code>.
 </p>
 <h2 id=wording><a class=para href=#wording></a>6. Wording</h2>
 
-<p>The changes are relative to <a href="https://wg21%2elink/n5046">[N5046]</a>
-with the changes from the post-Brno motions applied.
+<p>The changes are relative to <a href="https://wg21%2elink/n5032">[N5032]</a>
+with the changes from the post-Croydon motions applied.
 </p>
 <h3 id=single-function-version-syn-wording><a class=para href=#single-function-version-syn-wording></a>[version.syn]</h3>
 
@@ -1970,27 +1938,27 @@ with the changes from the post-Brno motions applied.
   <li><code><h- data-h=name>is_trivially_copyable_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>From</h-><h- data-h=sym_op>&gt;</h-></code> is <code><h- data-h=bool>true</h-></code>.</li>
 </ul>
 
-<p><ins><i>Mandates</i>:
-For every bit <math display=inline><msub><mi>s</mi><mi>i</mi></msub></math> in the object representation
-of a complete object <math display=inline><mi>s</mi></math> of type <code><h- data-h=name>From</h-></code> and
-the corresponding bit <math display=inline><msub><mi>d</mi><mi>i</mi></msub></math> in the object representation
-of a complete object <math display=inline><mi>d</mi></math> of type <code><h- data-h=name>To</h-></code>,</ins>
-</p><ul style=margin-top:0>
+<p><i>Mandates</i>:
+</p><ul>
+  <li>Neither <code><h- data-h=name>To</h-></code> nor <code><h- data-h=name>From</h-></code> are consteval-only types (<a href=https://eel.is/c++draft/basic.types.general>[basic.types.general]</a>).</li>
   <li>
-    <ins><math display=inline><msub><mi>s</mi><mi>i</mi></msub></math> is in the value representation of <math display=inline><mi>s</mi></math>,</ins>
-  </li>
-  <li>
-    <ins><math display=inline><msub><mi>s</mi><mi>i</mi></msub></math> is enclosed by a union,</ins>
-  </li>
-  <li>
-    <ins><math display=inline><msub><mi>d</mi><mi>i</mi></msub></math> is not in the value representation of <math display=inline><mi>d</mi></math>,</ins>
-  </li>
-  <li>
-    <ins><math display=inline><msub><mi>d</mi><mi>i</mi></msub></math> is enclosed by a union, or</ins>
-  </li>
-  <li>
-    <ins><math display=inline><msub><mi>d</mi><mi>i</mi></msub></math> is enclosed by an object
-    of unsigned ordinary character type or <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>byte</h-></code> type.</ins>
+    <ins>For every bit <math display=inline><msub><mi>s</mi><mi>i</mi></msub></math> in the object representation
+    of a complete object <math display=inline><mi>s</mi></math> of type <code><h- data-h=name>From</h-></code> and
+    the corresponding bit <math display=inline><msub><mi>d</mi><mi>i</mi></msub></math> in the object representation
+    of a complete object <math display=inline><mi>d</mi></math> of type <code><h- data-h=name>To</h-></code>,</ins> <ul style=margin-top:0>
+      <li>
+        <ins><math display=inline><msub><mi>s</mi><mi>i</mi></msub></math> is in the value representation of <math display=inline><mi>s</mi></math>,</ins>
+      </li>
+      <li>
+        <ins><math display=inline><msub><mi>s</mi><mi>i</mi></msub></math> is enclosed by a union,</ins>
+      </li>
+      <li>
+        <ins><math display=inline><msub><mi>d</mi><mi>i</mi></msub></math> is not in the value representation of <math display=inline><mi>d</mi></math>, or</ins>
+      </li>
+      <li>
+        <ins><math display=inline><msub><mi>d</mi><mi>i</mi></msub></math> is enclosed by a union.</ins>
+      </li>
+    </ul>
   </li>
 </ul>
 
@@ -2202,12 +2170,12 @@ in terms of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=na
 <h2 id=references><a class=para href=#references></a>8. References</h2>
 
 
-<div class=bib><div id=bib-item-N5046 class=bib-item>
-<a href="https://wg21%2elink/n5046">[N5046]</a>
+<div class=bib><div id=bib-item-N5032 class=bib-item>
+<a href="https://wg21%2elink/n5032">[N5032]</a>
 <span class=bib-author>Thomas Köppe.</span>
 <span class=bib-title>Working Draft, Programming Languages — C++</span>
-<span class=bib-date>2026-05-12</span>
-<a href="https://open-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/n5046%2epdf" class=bib-link>https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5046.pdf</a></div><div id=bib-item-P0476R1 class=bib-item>
+<span class=bib-date>2025-12-15</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/n5032%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf</a></div><div id=bib-item-P0476R1 class=bib-item>
 <a href="https://wg21%2elink/p0476r1">[P0476R1]</a>
 <span class=bib-author>JF Bastien.</span>
 <span class=bib-title>Bit-casting object representations</span>
