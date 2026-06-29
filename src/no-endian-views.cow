@@ -1,0 +1,355 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+
+\wg21_head(
+  title = {No Endian Views}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{P4247R0}}
+  \dt{Date:}            \dd{\tt{2026-06-29}}
+  \dt{Audience:}        \dd{LEWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P4247/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/no-endian-views.cow")}
+}
+\hr
+}
+
+\Babstract{
+The design direction of \ref("P4030R1") \q{Endian Views} should not be pursued.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+\ref("P4030R1") \q{Endian Views} introduces Endianness adaptors
+\tcode{std::views::from_little_endian},
+\tcode{std::views::to_\'SHY'little_endian},
+\tcode{std::views::from_big_endian}, and
+\tcode{std::views::to_big_endian}.
+I argue that these are not suitable for standardization because they are
+unfit for the intended use case,
+for the reasons described below.
+
+\h3{Endian Views are of limited use to serialization}
+
+\h4{The serialization pipeline}
+
+Serialization and deserialization is a pipeline with several steps.
+Let's take deserialization of UTF-32 code points for example:
+
+\pre{
+CONSUME       →  REINTERPRET  →  ADJUST ENDIAN
+std::byte[4]     uint32_t        uint32_t
+}
+
+The key problem with Endian Views is that they are intended to assist in this pipeline,
+but they only cover the last transformation step,
+i.e. \tt{ADJUST ENDIAN}, even though these steps are virtually
+always performed in one go.
+
+\h4{Contrived motivation}
+
+\ref("P4030R1") §2 \q{Before/After Tables} contains a motivating example involving
+
+\Bquote{
+\cppblock{
+constexpr vector<uint32_t> utf16be_to_utf32be(
+    const vector<uint16_t>& utf16be_data) { /* ... */ }
+}
+}
+
+This signature is contrived
+because it doesn't make sense for the user to hold a \tcode{vector<uint16_t>}
+where the Endianness of the elements is incorrect; nothing can be meaningfully done
+with that data, other than
+\ul{
+  \li{shooting yourself in the foot by forgetting that the data is not usable yet,}
+  \li{making it usable by swapping Endianness (but why didn't you do that sooner?), or}
+  \li{
+    serializing the data without Endian swap,
+    but then Endian Views were neither used for deserialization nor serialization.
+  }
+}
+
+\Bnote{
+The last bullet is sometimes relevant in networking,
+where for optimization purposes, packets are held in their original Big-Endian form in memory
+so that data within can be serialized again without Endian swaps.
+
+However, again, Endian Views are useless for this purpose because the use case
+deliberately avoids ever performing Endianness adjustment.
+}
+
+The comparison table the paper should be showing is:
+
+\table{
+  \tr{
+    \th{Before}
+    \th{After}
+  }
+  \tr{
+    \td{
+\itemdecl{
+constexpr vector<byte> utf16be_to_utf32be(
+    const vector<byte>& utf16be_data) {
+  return utf16be_data
+    | views::chunk(4)
+    | views::transform([](auto chunk) {
+          array<std::byte, 4> a;
+          ranges::copy(chunk, a.begin());
+          return bit_cast<uint32_t>(a);
+      })
+    | \mark{views::transform([](const uint16_t x) {
+          return endian_swap<endian::big>(x);
+    })}
+    | views::as_char16_t
+    | views::to_utf32
+    | \mark{views::transform([](const uint32_t x) {
+          return endian_swap<endian::little>(x);
+    })}
+    | views::transform([](uint32_t v) {
+          return bit_cast<array<byte, 4>>(v);
+      })
+    | views::join
+    | ranges::to<vector>();
+}
+}
+    }
+    \td{
+\itemdecl{
+constexpr vector<byte> utf16be_to_utf32be(
+    const vector<byte>& utf16be_data) {
+  return utf16be_data
+    | views::chunk(4)
+    | views::transform([](auto chunk) {
+          array<std::byte, 4> a;
+          ranges::copy(chunk, a.begin());
+          return bit_cast<uint32_t>(a);
+      })
+    | \mark{views::from_big_endian}
+    | views::as_char16_t
+    | views::to_utf32
+    | \mark{views::to_little_endian}
+    | views::transform([](uint32_t v) {
+          return bit_cast<array<byte, 4>>(v);
+      })
+    | views::join
+    | ranges::to<vector>();
+}
+}
+    }
+  }
+}
+
+\'HORIZONTAL ELLIPSIS' where \tcode{endian_swap} can be trivially implemented by the user as:
+
+\cppblock{
+template<endian E, integral T>
+constexpr T endian_swap(T x) {
+  if constexpr (E != endian::native) {
+    return byteswap(x);
+  } else {
+    return x;
+  }
+}
+}
+
+This comparison table makes a few things readily apparent:
+\ul{
+  \li{
+    Endian Views provide incredibly low value because they are just a shorthand
+    for wrapping a trivial-to-implement utility function in \tcode{views::transform}.
+    \Bnote{
+    There is one minor exception to this:
+    if the original data is contiguous and the Endianness conversion is a no-op,
+    the result is also contiguous,
+    whereas \tcode{transform_view} never produces a contiguous range.
+    }
+  }
+  \li{
+    Endian Views address just a small part of the pipeline;
+    the benefits are marginal if not more of the pipeline is covered by the feature.
+  }
+  \li{
+    Both before and after, the code expresses the overall idea of
+    \q{loading Big-Endian data} in several pieces like chunking,
+    reinterpretation, and Endian swapping.
+    Neither side is expressive.
+  }
+}
+
+A significant improvement over the left column would look like:
+
+\cppblock{
+constexpr vector<byte> utf16be_to_utf32be(span<const byte> utf16be_data) {
+  return utf16be_data
+    | views::from_bytes<char16_t, endian::big>
+    | views::to_utf32
+    | views::to_bytes<endian::big>
+    | ranges::to<vector>();
+}
+}
+
+\h4{Problems with range checks}
+
+However, both with this version and all the previous ones,
+there is an issue with needing to check each iteration over a \tcode{char32_t}
+element whether at least four bytes remain in the range.
+If we didn't use views whatsoever, we could easily check whether the amount of bytes
+is a multiple of four once in the function,
+and perform the conversion in bulk unchecked for the remainder of the function.
+
+Whether the compiler can factor out this range check is questionable,
+and it could significantly worsen performance of using views if it cannot.
+\ref("P4030R1") does not investigate this problem.
+
+\h3{Endian Views are a pessimization}
+
+Another major problem with Endian Views is that their intended usage is pessimized.
+Consider a typical use case of serializing a \tcode{span<const char32_t>} as UTF-32LE in a file:
+\cppblock{
+constexpr void write_utf32le(FILE* file, span<const char32_t> text) {
+  if constexpr (endian::native == endian) /* extremely likely */ {
+    fwrite(reinterpret_cast<char*>(text.data()), text.size(), sizeof(char32_t), file);
+  } else {
+    char32_t buffer[1024];
+    for (auto chunk : text | views::chunked(1024)) {
+      memcpy(&buffer, chunk.data(), ranges::size(chunk) * sizeof(char32_t));
+      for (char32_t& x : chunk) {
+        x = byteswap(x);
+      }
+      fwrite(reinterpret_cast<char*>(chunk.data()), chunk.size(), sizeof(char32_t), file);
+    }
+  }
+}
+}
+
+Due to how widespread Little-Endian architectures are,
+the \tcode{else} branch can also arguably be omitted by most users in favor of a two-line function,
+where one line is:
+\cppblock{
+static_assert(endian::native == endian::little);
+}
+
+Endian Views provide negative value for this use case
+because not only would it require a lot more effort to use them here,
+they would also drop the contiguity of the data
+when transforming from \tcode{char32_t} to an \tcode{array<byte, 4>},
+despite the fact that Endian Views try to preserve contiguity.
+
+Curiously, the terms \q{performance}, \q{optimization}, or \q{throughput},
+do not appear once in \ref("P4030R1") as if this subject were not worth discussing.
+This would not be that big of a problem
+\ul{
+  \li{
+    if encoding of text wasn't a primary advertised use case
+    (where we should at least care about our low-level utilities performing well), and
+  }
+  \li{
+    if the baseline wasn't a single call to \tcode{std::fwrite}
+    (which Endian Views can only perform worse than;
+    the question is just \em{how much worse}).
+  }
+}
+
+\h3{Endian Views work poorly for floating-point}
+
+The design of Endian Views is centered around integral types;
+\tcode{from_little_endian} and other view types can only be used if the element type
+of the transformed range is integral.
+However, serialization is perfectly reasonable for other types,
+such as \tcode{std::float32_t}.
+For example, the
+\ref("https://en.wikipedia.org/wiki/STL_(file_format)"){STL file format}
+is essentially a sequence of 32-bit floating-point values.
+
+With the current design,
+the user would have to add another two steps to the pipeline which bit-cast
+\tcode{std::float32_t} to \tcode{std::uint32_t} (and back)
+to be able to use Endian Views.
+This seems hostile and makes the feature even less attractive than it already is.
+
+Even if this problem were resolved by making Endian Views accept anything trivially copyable,
+the more pressing issue is that not every floating-point bit pattern is valid for the type,
+and thus some may result in undefined behavior when returned from a function.
+This gives us a few options:
+
+\ul{
+  \li{
+    Accept that Endian Views for \tcode{float} can sometimes result in undefined behavior.
+    Deal with it 😎
+  }
+  \li{
+    Don't accept floating-point types (\ref("P4030R1")).
+  }
+  \li{
+    Accept only those floating-point types where byte-swapping is always well-defined.
+  }
+  \li{
+    Don't try to hold invalid floating-point values in the first place.
+    That is, use the \tcode{views::from_bytes<float, endian::big>} approach mentioned above.
+  }
+}
+
+The first option reduces safety,
+the second option is unergonomic, and
+the third option is clunky and makes \tcode{float} serialization non-portable.
+
+The last option doesn't have any of these problems,
+and it demonstrates that \ref("P4030R1") artificially creates a problem
+that cannot be solved without unpleasant trade-offs.
+
+\h2{Proposed action}
+
+Do not pursue the design of \ref("P4030R1").
+
+If the design is pursued,
+\ref("P4030R1") needs substantial work:
+\ul{
+  \li{
+    Provide proper design discussion of a view that converts directly from bytes
+    versus a view that only does the Endian swap.
+    Just because one can be composed from the other doesn't mean the smaller (Endian swap) utility
+    is automatically better,
+    just like composing \tcode{std::fwrite} from \tcode{std::putchar} isn't a good idea,
+    even though it may be academically satisfying.
+  }
+  \li{
+    Provide proper discussion of performance considerations.
+    Currently, there is no mention of performance whatsoever.
+  }
+  \li{
+    Discuss the intended use case and the existing practice in the targeted domains.
+    That is, do established C++ libraries actually use views for their serialization purposes,
+    and do those views use an Endian swap in the pipeline?
+    Is that technique a creative invention of \ref("P4030R1") or already established?
+  }
+  \li{
+    Discuss how much benefit Endian Views provide as compared to wrapping a simple utility function
+    in \tcode{views::transform}.
+    The paper currently does not even consider the possibility of a \tcode{std::from_big_endian}
+    utility function rather than \tcode{views::from_big_endian}.
+  }
+}
+
+That doesn't mean that the overarching
+problem of serialization and deserialization with Endian transformation
+is not worth solving.
+It is worth solving, but not in this way.
+
+\h2{References}
+
+\bib(
+  id = "P4030R1",
+  title = "Endian Views",
+  date = "2026-06-05",
+  author = "Eddie Nolan",
+  link = "https://isocpp.org/files/papers/P4030R1.html",
+)\
+
+\make_bib
