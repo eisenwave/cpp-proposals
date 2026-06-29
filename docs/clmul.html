@@ -1579,8 +1579,8 @@ if (theme !== null) {
 <div class=wg21-head><h1>Carry-less product: <tt->std::clmul</tt-></h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/D3642R6>D3642R6</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-06-11</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3642R6>P3642R6</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-06-29</tt-></dd>
   <dt>Audience:</dt>        <dd>LEWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1633,14 +1633,26 @@ Add widening and non-widening carry-less multiplication functions.
 <div class=toc-num data-level=4>5.3.1</div>
 <a href=#simd-widening-operations-are-out-of-scope><h4>SIMD widening operations are out of scope</h4></a>
 <div class=toc-num data-level=2>6</div>
-<a href=#wording><h2>Proposed wording</h2></a>
+<a href=#lwg-design-changes><h2>Potential design changes following LWG review</h2></a>
 <div class=toc-num data-level=3>6.1</div>
-<a href=#version%2esyn><h3>[version.syn]</h3></a>
+<a href=#aggregate-type-std::wide_result><h3>Aggregate type <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>wide_result</h-></code></h3></a>
 <div class=toc-num data-level=3>6.2</div>
-<a href=#numeric%2eops><h3>[numeric.ops]</h3></a>
+<a href=#alignment-of-std::wide_resultstd::uint64_t><h3>Alignment of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>wide_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint64_t</h-><h- data-h=sym_op>&gt;</h-></code></h3></a>
 <div class=toc-num data-level=3>6.3</div>
-<a href=#wording-simd><h3>[simd]</h3></a>
+<a href=#integer-interoperability><h3>Integer interoperability</h3></a>
 <div class=toc-num data-level=2>7</div>
+<a href=#wording><h2>Proposed wording</h2></a>
+<div class=toc-num data-level=3>7.1</div>
+<a href=#version%2esyn><h3>[version.syn]</h3></a>
+<div class=toc-num data-level=3>7.2</div>
+<a href=#numeric%2eops><h3>[numeric.ops]</h3></a>
+<div class=toc-num data-level=3>7.3</div>
+<a href=#wording-simd><h3>[simd]</h3></a>
+<div class=toc-num data-level=2>8</div>
+<a href=#alt-wording-a><h2>Optional wording changes A</h2></a>
+<div class=toc-num data-level=2>9</div>
+<a href=#alt-wording-b><h2>Optional wording changes B</h2></a>
+<div class=toc-num data-level=2>10</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
@@ -1648,21 +1660,32 @@ Add widening and non-widening carry-less multiplication functions.
 
 <h3 id=changes-since-r5><a class=para href=#changes-since-r5></a>1.1. Changes since R5</h3>
 
-<p>As requested by LEWG votes during the 2026 Brno meeting:
+<note-block><p><intro-></intro-> 
+The paper was forwarded from LEWG to LWG during the 2026-06 Brno meeting,
+but got stuck in LWG due to some design concerns that require LEWG input.
+</p></note-block>
+
+<p>As requested by LEWG during the 2026 Brno meeting:
 </p>
 <ul>
   <li>Replace the bump of <code><h- data-h=name>__cpp_lib_simd</h-></code> with a new <code><h- data-h=name>__cpp_lib_simd_clmul</h-></code></li>
   <li>Constrain <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>wide_result</h-></code> to unsigned integer types</li>
 </ul>
 
-<p>Also, implement wording changes during LWG review.
+<p>Also, following LWG review during the 2026 Brno meeting:
 </p>
+<ul>
+  <li>Apply various wording adjustments during review</li>
+  <li>Add <a href=#lwg-design-changes>§6. Potential design changes following LWG review</a></li>
+  <li>Add wording for those design changes in <a href=#alt-wording-a>§8. Optional wording changes A</a> and <a href=#alt-wording-b>§9. Optional wording changes B</a></li>
+</ul>
+
 <h3 id=changes-since-r4><a class=para href=#changes-since-r4></a>1.2. Changes since R4</h3>
 
 <ul>
   <li>Rename <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>clmul_wide</h-></code> to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>widening_clmul</h-></code></li>
   <li>Fix <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>simd</h-><h- data-h=sym_op>::</h-><h- data-h=name>clmul</h-></code> specified as a unary function (should be binary)</li>
-  <li>Rebase <a href=#wording>§6. Proposed wording</a> on <a href="https://wg21%2elink/n5032">[N5032]</a> with post-Croydon changes applied</li>
+  <li>Rebase <a href=#wording>§7. Proposed wording</a> on <a href="https://wg21%2elink/n5032">[N5032]</a> with post-Croydon changes applied</li>
 </ul>
 
 <h3 id=changes-since-r3><a class=para href=#changes-since-r3></a>1.3. Changes since R3</h3>
@@ -1682,8 +1705,8 @@ Add widening and non-widening carry-less multiplication functions.
 <ul>
   <li>Add missing <tt->&lt;T&gt;</tt-> for <code><h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;=&gt;</h-></code></li>
   <li>Provide a <a href=#possible-implementation>§4. Possible implementation</a> better suited for SIMD parallelization</li>
-  <li>Rebase <a href=#wording>§6. Proposed wording</a> on N5014</li>
-  <li>Improve <a href=#wording>§6. Proposed wording</a> editorially</li>
+  <li>Rebase <a href=#wording>§7. Proposed wording</a> on N5014</li>
+  <li>Improve <a href=#wording>§7. Proposed wording</a> editorially</li>
 </ul>
 
 <h3 id=changes-since-r1><a class=para href=#changes-since-r1></a>1.5. Changes since R1</h3>
@@ -1711,16 +1734,16 @@ that the next revision includes <code><h- data-h=name>std</h-><h- data-h=sym_op>
   <li>Provide (non-widening) <a href=#simd>§5.3. SIMD support</a></li>
   <li>Use two-space indentation, and generally match the code style of the C++ standard</li>
   <li>Provide detailed design description for <a href=#widening>§5.2. Widening operation</a></li>
-  <li>Make <a href=#wording>§6. Proposed wording</a> and design independent of <a href="https://wg21%2elink/p3161r4">[P3161R4]</a></li>
-  <li>Fix stray <code><h- data-h=name>U</h-></code> type name in <a href=#wording>§6. Proposed wording</a>, and improve wording generally</li>
-  <li>Rebase <a href=#wording>§6. Proposed wording</a> on <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>simd</h-></code> naming changes in <a href="https://wg21%2elink/p3691r1">[P3691R1]</a></li>
+  <li>Make <a href=#wording>§7. Proposed wording</a> and design independent of <a href="https://wg21%2elink/p3161r4">[P3161R4]</a></li>
+  <li>Fix stray <code><h- data-h=name>U</h-></code> type name in <a href=#wording>§7. Proposed wording</a>, and improve wording generally</li>
+  <li>Rebase <a href=#wording>§7. Proposed wording</a> on <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>simd</h-></code> naming changes in <a href="https://wg21%2elink/p3691r1">[P3691R1]</a></li>
 </ul>
 
 <h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.6. Changes since R0</h3>
 
 <ul>
   <li>Generate the proposal using COWEL instead of bikeshed</li>
-  <li>Fix incorrect formula in <a href=#wording>§6. Proposed wording</a> for bits ≥ the integer width</li>
+  <li>Fix incorrect formula in <a href=#wording>§7. Proposed wording</a> for bits ≥ the integer width</li>
   <li>Fix <a href=#hardware-support>§4.1. Hardware support</a> missing new VPCLMULQDQ instructions</li>
   <li>Fix improper uses of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>unsigned_integral</h-></code> in <a href=#introduction>§2. Introduction</a></li>
   <li>Make slight editorial wording adjustments</li>
@@ -2185,7 +2208,76 @@ This is a broad design space.
 <p>In conclusion, a proposal for widening SIMD operations <em>in general</em> would be well-motivated.
 For <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>clmul</h-></code>, designing SIMD widening operations would be scope creep.
 </p>
-<h2 id=wording><a class=para href=#wording></a>6. Proposed wording</h2>
+<h2 id=lwg-design-changes><a class=para href=#lwg-design-changes></a>6. Potential design changes following LWG review</h2>
+
+<note-block><p><intro-></intro-> 
+The design in the preceding section is what has been approved by LEWG
+and what is reflected in <a href=#wording>§7. Proposed wording</a>.
+This section discusses potentional additioal changes.
+</p></note-block>
+
+<p>During LWG review,
+some minor wording changes were fixed.
+In addition, certain design questions have been raised during LWG review of the paper:
+</p>
+<h3 id=aggregate-type-std::wide_result><a class=para href=#aggregate-type-std::wide_result></a>6.1. Aggregate type <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>wide_result</h-></code></h3>
+
+<p>Should <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>wide_result</h-></code> actually be an aggregate type?
+A notable problem is that this permits structured bindings and list initialization,
+and the <q>low bits first</q> order was perceived as more surprising than the other way around.
+Furthermore, while big-endian architectures are uncommon,
+they do exist, and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>wide_result</h-></code> is less friendly in its layout to those.
+To solve this:
+</p><ul>
+  <li>
+    The type could be converted to a non-aggregate,
+    with member functions for accessing the data members rather than making them public.
+  </li>
+  <li>
+    Structured bindings access could simply not be provided,
+    which would prevent the potential resulting bugs.
+  </li>
+</ul>
+
+<p>The wording for this option is provided in <a href=#alt-wording-a>§8. Optional wording changes A</a>.
+</p>
+<h3 id=alignment-of-std::wide_resultstd::uint64_t><a class=para href=#alignment-of-std::wide_resultstd::uint64_t></a>6.2. Alignment of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>wide_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint64_t</h-><h- data-h=sym_op>&gt;</h-></code></h3>
+
+<p>Should <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>wide_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint64_t</h-><h- data-h=sym_op>&gt;</h-></code> be required to be <q>over-aligned</q>
+to 128 bits?
+This would be consistent with <code><h- data-h=kw_type>__int128</h-></code> but inconsistent with <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>128</h-><h- data-h=sym_par>)</h-></code>;
+the latter is only aligned to 64 bits.
+</p>
+<p>I personally believe that the standard should not mandate either one.
+Both options are plausible ipmlementation choices,
+and if the neither the C nor the C++ standard mandates specific alignment for integer types,
+why would we mandate it here?
+Mandating 128-bit alignment for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>wide_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint64_t</h-><h- data-h=sym_op>&gt;</h-></code>
+also suggests that several ABIs have made a mistake by <q>under-aligning</q> <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>128</h-><h- data-h=sym_par>)</h-></code>,
+which is not a claim we should be making without <em>extremely</em> strong evidence
+and ABI expertise.
+</p>
+<note-block><p><intro-></intro-> 
+No wording for such a requirement is provided in this paper.
+</p></note-block>
+
+<h3 id=integer-interoperability><a class=para href=#integer-interoperability></a>6.3. Integer interoperability</h3>
+
+<p>While <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>wide_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint32_t</h-><h- data-h=sym_op>&gt;</h-></code> is strongly implied
+to have the same layout as <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint64_t</h-></code>,
+and while this is desired,
+it's not actually guaranteed.
+There also seems to be no good reason why that guarantee wouldn't be possible to provide,
+at least if <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>wide_result</h-></code> is not an aggregate and the implementation
+has some more freedom regarding its layout.
+</p>
+<p>That is, we could guarantee that
+<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>wide_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>has</h-> <h- data-h=name>the</h-> <h- data-h=name>same</h-> <h- data-h=name>layout</h-> <h- data-h=name>as</h-> <code><h- data-h=kw_type><h- data-h=kw_type>_BitInt</h-></h-><h- data-h=sym_par><h- data-h=sym_par>(</h-></h-><h- data-h=name><h- data-h=name>N</h-></h-> <h- data-h=sym_op><h- data-h=sym_op>*</h-></h-> <h- data-h=num><h- data-h=num>2</h-></h-><h- data-h=sym_par><h- data-h=sym_par>)</h-></h-></code></code>
+(though phrased generally, not just for bit-precise integers).
+</p>
+<p>The wording for this option is provided in <a href=#alt-wording-b>§9. Optional wording changes B</a>.
+</p>
+<h2 id=wording><a class=para href=#wording></a>7. Proposed wording</h2>
 
 <p>The proposed changes are relative to <a href="https://wg21%2elink/n5032">[N5032]</a>,
 with the changes accepted during the 2026-02 Croydon meeting applied.
@@ -2409,7 +2501,117 @@ for all <math display=inline><mi>i</mi></math> in the range [<code><h- data-h=nu
 </p></div>
 </ins-block>
 
-<h2 id=references><a class=para href=#references></a>7. References</h2>
+<h2 id=alt-wording-a><a class=para href=#alt-wording-a></a>8. Optional wording changes A</h2>
+
+<p>Optionally, if <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>wide_result</h-></code> is not to be an aggregate type,
+immediately apply the following changes
+on top of the preceding changes.
+</p>
+<p>Remove the current declaration of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>wide_result</h-></code> in <a href=https://eel.is/c++draft/numeric.ops.overview>[numeric.ops.overview]</a>:
+</p>
+<del-block>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=kw>struct</h-> <h- data-h=name>wide_result</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=name>T</h-> <h- data-h=name>low_bits</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=name>T</h-> <h- data-h=name>high_bits</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>friend</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>==</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>wide_result</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>wide_result</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw>default</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>friend</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name>strong_ordering</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;=&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>wide_result</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>wide_result</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h->
+    <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h-></code-block>
+</del-block>
+
+<p>Insert the following in its place:
+</p>
+<ins-block>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=kw>struct</h-> <h- data-h=name>wide_result</h-> <h- data-h=sym_brac>{</h->
+<h- data-h=kw>public</h-><h- data-h=sym_punc>:</h->
+  <h- data-h=kw>using</h-> <h- data-h=name>value_type</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>T</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>wide_result</h-><h- data-h=sym_par>(</h-><h- data-h=name>value_type</h-> <h- data-h=name>high</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>value_type</h-> <h- data-h=name>low</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h->
+    <h- data-h=sym_punc>:</h-> <i><h- data-h=name>high-bits</h-></i><h- data-h=sym_par>(</h-><h- data-h=name>high</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>low-bits</h-></i><h- data-h=sym_par>(</h-><h- data-h=name>low</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>value_type</h-> <h- data-h=name>low_bits</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h-> <h- data-h=kw_ctrl>return</h-> <i><h- data-h=name>low-bits</h-></i><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>value_type</h-> <h- data-h=name>high_bits</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h-> <h- data-h=kw_ctrl>return</h-> <i><h- data-h=name>high-bits</h-></i><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h->
+  <h- data-h=kw>friend</h-> <h- data-h=name>strong_ordering</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;=&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>wide_result</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>wide_result</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw>default</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>private</h-><h- data-h=sym_punc>:</h->
+  <h- data-h=name>value_type</h-> <i><h- data-h=name>high-bits</h-></i><h- data-h=sym_punc>,</h-> <i><h- data-h=name>low-bits</h-></i><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>exposition-only</h-></f-serif>
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h-></code-block>
+</ins-block>
+
+
+
+<p>Change <a href=https://eel.is/c++draft/numeric.clmul>[numeric.clmul]</a> as follows:
+</p>
+<diff-block>
+<p>1
+A specialization <code><h- data-h=name>wide_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> is ill-formed
+unless <code><h- data-h=name>T</h-></code> is an unsigned integer type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>).
+</p>
+<p><ins>
+2
+A specialization of <code><h- data-h=name>wide_result</h-></code> is a standard-layout,
+trivially copyable class type.
+The members <code><i><h- data-h=name>high-bits</h-></i></code> and <code><i><h- data-h=name>low-bits</h-></i></code>
+of any specialization of <code><h- data-h=name>wide_result</h-></code> may be reordered,
+and <code><h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;=&gt;</h-></code> may be implemented as non-defaulted,
+as long as the result of equality, relational, and three-way comparisons
+between <code><h- data-h=name>wide_result</h-></code> objects is consistent with defining
+<code><i><h- data-h=name>high-bits</h-></i></code> first and defaulting <code><h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;=&gt;</h-></code>.
+</ins></p>
+
+<p><ins>
+3
+<i>Recommended practice</i>:
+The member <code><i><h- data-h=name>low-bits</h-></i></code> should precede
+the member <code><i><h- data-h=name>high-bits</h-></i></code>
+in all specializations of <code><h- data-h=name>wide_result</h-></code>
+if <code><h- data-h=name>endian</h-><h- data-h=sym_op>::</h-><h- data-h=name>native</h-></code> equals <code><h- data-h=name>endian</h-><h- data-h=sym_op>::</h-><h- data-h=name>little</h-></code> (<a href=https://eel.is/c++draft/bit.endian>[bit.endian]</a>).
+</ins></p>
+
+<code-block class=borderless><del><h- data-h=kw>constexpr</h-> <h- data-h=name>strong_ordering</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;=&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>wide_result</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>wide_result</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h->
+  <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></del></code-block>
+
+<div class=indent>
+<p><del>4
+<i>Returns</i>:
+<code><h- data-h=name>tie</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_op>.</h-><h- data-h=name>high_bits</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>x</h-><h- data-h=sym_op>.</h-><h- data-h=name>low_bits</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&lt;=&gt;</h-> <h- data-h=name>tie</h-><h- data-h=sym_par>(</h-><h- data-h=name>y</h-><h- data-h=sym_op>.</h-><h- data-h=name>high_bits</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_op>.</h-><h- data-h=name>low_bits</h-><h- data-h=sym_par>)</h-></code>.</del>
+</p></div>
+</diff-block>
+
+<p><b>Bulk edit</b>:
+In the remainder of <a href=https://eel.is/c++draft/numeric.clmul>[numeric.clmul]</a>, replace
+any mention of <del><code><h- data-h=name>high_bits</h-></code></del> with <ins><code><i><h- data-h=name>high-bits</h-></i></code></ins> and
+any mention of <del><code><h- data-h=name>low_bits</h-></code></del> with <ins><code><i><h- data-h=name>low-bits</h-></i></code></ins>.
+</p>
+<h2 id=alt-wording-b><a class=para href=#alt-wording-b></a>9. Optional wording changes B</h2>
+
+<p>Optionally, if we want to provide stricter guarantees regarding integer layout compatibility,
+immediately apply the following changes
+on top of the preceding changes.
+</p>
+<p>If the changes from <a href=#alt-wording-a>§8. Optional wording changes A</a> have been applied,
+delete the <i>Recommended practice</i> element in <a href=https://eel.is/c++draft/numeric.clmul>[numeric.clmul]</a>:
+</p>
+<del-block>
+<p><i>Recommended practice</i>:
+The member <code><i><h- data-h=name>low-bits</h-></i></code> should precede
+the member <code><i><h- data-h=name>high-bits</h-></i></code>
+in all specializations of <code><h- data-h=name>wide_result</h-></code>
+if <code><h- data-h=name>endian</h-><h- data-h=sym_op>::</h-><h- data-h=name>native</h-></code> equals <code><h- data-h=name>endian</h-><h- data-h=sym_op>::</h-><h- data-h=name>little</h-></code> (<a href=https://eel.is/c++draft/bit.endian>[bit.endian]</a>).
+</p></del-block>
+
+<p>In any case, insert a new paragraph
+immediately preceding the library declarations in <a href=https://eel.is/c++draft/numeric.clmul>[numeric.clmul]</a>:
+</p>
+<ins-block>
+<p>For two objects <math display=inline><msub><mi>w</mi><mn>0</mn></msub></math> and <math display=inline><msub><mi>w</mi><mn>1</mn></msub></math>
+of a type <code><h- data-h=name>wide_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code>,
+if <code><h- data-h=name>T</h-></code> has no padding bits and there exists an unsigned integer type
+<code><h- data-h=name>W</h-></code> with twice the width of <code><h- data-h=name>T</h-></code> and with no padding bits, then
+<code><math display=inline><msub><mi>w</mi><mn>0</mn></msub></math> <h- data-h=sym_op>&lt;=&gt;</h-> <math display=inline><msub><mi>w</mi><mn>1</mn></msub></math></code> shall be equivalent to
+<code><h- data-h=name>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>W</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><math display=inline><msub><mi>w</mi><mn>0</mn></msub></math><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&lt;=&gt;</h-> <h- data-h=name>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>W</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><math display=inline><msub><mi>w</mi><mn>1</mn></msub></math><h- data-h=sym_par>)</h-></code>.
+</p></ins-block>
+
+<h2 id=references><a class=para href=#references></a>10. References</h2>
 
 
 

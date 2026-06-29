@@ -3,8 +3,8 @@
 
 \wg21_head(title={Carry-less product: \tt{std::clmul}}){
 \dl{
-  \dt{Document number:} \dd{\docnum{D3642R6}}
-  \dt{Date:}            \dd{\tt{2026-06-11}}
+  \dt{Document number:} \dd{\docnum{P3642R6}}
+  \dt{Date:}            \dd{\tt{2026-06-29}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -26,14 +26,25 @@ Add widening and non-widening carry-less multiplication functions.
 
 \h3{Changes since R5}
 
-As requested by LEWG votes during the 2026 Brno meeting:
+\Bnote{
+The paper was forwarded from LEWG to LWG during the 2026-06 Brno meeting,
+but got stuck in LWG due to some design concerns that require LEWG input.
+}
+
+As requested by LEWG during the 2026 Brno meeting:
 
 \ul{
   \li{Replace the bump of \tcode{__cpp_lib_simd} with a new \tcode{__cpp_lib_simd_clmul}}
   \li{Constrain \tcode{std::wide_result} to unsigned integer types}
 }
 
-Also, implement wording changes during LWG review.
+Also, following LWG review during the 2026 Brno meeting:
+
+\ul{
+  \li{Apply various wording adjustments during review}
+  \li{Add \ref("#lwg-design-changes")}
+  \li{Add wording for those design changes in \ref("#alt-wording-a") and \ref("#alt-wording-b")}
+}
 
 \h3{Changes since R4}
 
@@ -582,6 +593,75 @@ This is a broad design space.
 In conclusion, a proposal for widening SIMD operations \em{in general} would be well-motivated.
 For \tcode{std::clmul}, designing SIMD widening operations would be scope creep.
 
+\h2(id="lwg-design-changes"){Potential design changes following LWG review}
+
+\Bnote{
+The design in the preceding section is what has been approved by LEWG
+and what is reflected in \ref("#wording").
+This section discusses potentional additioal changes.
+}
+
+During LWG review,
+some minor wording changes were fixed.
+In addition, certain design questions have been raised during LWG review of the paper:
+
+\h3{Aggregate type \tcode{std::wide_result}}
+
+Should \tcode{std::wide_result} actually be an aggregate type?
+A notable problem is that this permits structured bindings and list initialization,
+and the \q{low bits first} order was perceived as more surprising than the other way around.
+Furthermore, while big-endian architectures are uncommon,
+they do exist, and \tcode{std::wide_result} is less friendly in its layout to those.
+To solve this:
+\ul{
+  \li{
+    The type could be converted to a non-aggregate,
+    with member functions for accessing the data members rather than making them public.
+  }
+  \li{
+    Structured bindings access could simply not be provided,
+    which would prevent the potential resulting bugs.
+  }
+}
+
+The wording for this option is provided in \ref("#alt-wording-a").
+
+\h3{Alignment of \tcode{std::wide_result<std::uint64_t>}}
+
+Should \tcode{std::wide_result<std::uint64_t>} be required to be \q{over-aligned}
+to 128 bits?
+This would be consistent with \tcode{__int128} but inconsistent with \tcode{_BitInt(128)};
+the latter is only aligned to 64 bits.
+
+I personally believe that the standard should not mandate either one.
+Both options are plausible ipmlementation choices,
+and if the neither the C nor the C++ standard mandates specific alignment for integer types,
+why would we mandate it here?
+Mandating 128-bit alignment for \tcode{std::wide_result<std::uint64_t>}
+also suggests that several ABIs have made a mistake by \q{under-aligning} \tcode{_BitInt(128)},
+which is not a claim we should be making without \em{extremely} strong evidence
+and ABI expertise.
+
+\Bnote{
+No wording for such a requirement is provided in this paper.
+}
+
+\h3{Integer interoperability}
+
+While \tcode{std::wide_result<std::uint32_t>} is strongly implied
+to have the same layout as \tcode{std::uint64_t},
+and while this is desired,
+it's not actually guaranteed.
+There also seems to be no good reason why that guarantee wouldn't be possible to provide,
+at least if \tcode{std::wide_result} is not an aggregate and the implementation
+has some more freedom regarding its layout.
+
+That is, we could guarantee that
+\tcode{std::wide_result<_BitInt(N)> has the same layout as \tcode{_BitInt(N * 2)}}
+(though phrased generally, not just for bit-precise integers).
+
+The wording for this option is provided in \ref("#alt-wording-b").
+
 \h2(id="wording"){Proposed wording}
 
 The proposed changes are relative to \ref("N5032"),
@@ -820,6 +900,122 @@ to the result of
 \tcode{std::clmul(a[\math{\mi{i}}], b[\math{\mi{i}}])}\iref{numeric.clmul}
 for all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}).
 }
+}
+
+\h2(id="alt-wording-a"){Optional wording changes A}
+
+Optionally, if \tcode{std::wide_result} is not to be an aggregate type,
+immediately apply the following changes
+on top of the preceding changes.
+
+Remove the current declaration of \tcode{std::wide_result} in \eelis{numeric.ops.overview}:
+
+\Bdel{
+\itemdecl{
+template<class T>
+struct wide_result {
+  T low_bits;
+  T high_bits;
+  friend constexpr bool operator==(const wide_result&, const wide_result&) = default;
+  friend constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
+    noexcept;
+};
+}
+}
+
+Insert the following in its place:
+
+\Bins{
+\itemdecl{
+template<class T>
+struct wide_result {
+public:
+  using value_type = T;
+  constexpr wide_result(value_type high, value_type low) noexcept
+    : \exposid{high-bits}(high), \exposid{low-bits}(low) {}
+  constexpr value_type low_bits() const noexcept { return \exposid{low-bits}; }
+  constexpr value_type high_bits() const noexcept { return \exposid{high-bits}; }
+  friend strong_ordering operator<=>(const wide_result&, const wide_result&) = default;
+private:
+  value_type \exposid{high-bits}, \exposid{low-bits}; // \serif{exposition-only}
+};
+}
+}
+
+\cowel_var_set("pnum", 0)
+
+Change \eelis{numeric.clmul} as follows:
+
+\Bdiff{
+\pnum
+A specialization \tcode{wide_result<T>} is ill-formed
+unless \tcode{T} is an unsigned integer type\iref{basic.fundamental}.
+
+\ins{
+\pnum
+A specialization of \tcode{wide_result} is a standard-layout,
+trivially copyable class type.
+The members \tcode{\exposid{high-bits}} and \tcode{\exposid{low-bits}}
+of any specialization of \tcode{wide_result} may be reordered,
+and \tcode{operator<=>} may be implemented as non-defaulted,
+as long as the result of equality, relational, and three-way comparisons
+between \tcode{wide_result} objects is consistent with defining
+\tcode{\exposid{high-bits}} first and defaulting \tcode{operator<=>}.
+}
+
+\ins{
+\pnum
+\recommended
+The member \tcode{\exposid{low-bits}} should precede
+the member \tcode{\exposid{high-bits}}
+in all specializations of \tcode{wide_result}
+if \tcode{endian::native} equals \tcode{endian::little}\iref{bit.endian}.
+}
+
+\itemdecl{
+\del{constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
+  noexcept;}
+}
+
+\itemdescr{
+\del{\pnum
+\returns
+\tcode{tie(x.high_bits, x.low_bits) <=> tie(y.high_bits, y.low_bits)}.}
+}
+}
+
+\b{Bulk edit}:
+In the remainder of \eelis{numeric.clmul}, replace
+any mention of \del{\tcode{high_bits}} with \ins{\tcode{\exposid{high-bits}}} and
+any mention of \del{\tcode{low_bits}} with \ins{\tcode{\exposid{low-bits}}}.
+
+\h2(id="alt-wording-b"){Optional wording changes B}
+
+Optionally, if we want to provide stricter guarantees regarding integer layout compatibility,
+immediately apply the following changes
+on top of the preceding changes.
+
+If the changes from \ref("#alt-wording-a") have been applied,
+delete the \i{Recommended practice} element in \eelis{numeric.clmul}:
+
+\Bdel{
+\recommended
+The member \tcode{\exposid{low-bits}} should precede
+the member \tcode{\exposid{high-bits}}
+in all specializations of \tcode{wide_result}
+if \tcode{endian::native} equals \tcode{endian::little}\iref{bit.endian}.
+}
+
+In any case, insert a new paragraph
+immediately preceding the library declarations in \eelis{numeric.clmul}:
+
+\Bins{
+For two objects \math{\msub{\mi{w}\mn{0}}} and \math{\msub{\mi{w}\mn{1}}}
+of a type \tcode{wide_result<T>},
+if \tcode{T} has no padding bits and there exists an unsigned integer type
+\tcode{W} with twice the width of \tcode{T} and with no padding bits, then
+\tcode{\math{\msub{\mi{w}\mn{0}}} <=> \math{\msub{\mi{w}\mn{1}}}} shall be equivalent to
+\tcode{bit_cast<W>(\math{\msub{\mi{w}\mn{0}}}) <=> bit_cast<W>(\math{\msub{\mi{w}\mn{1}}})}.
 }
 
 \h2{References}
