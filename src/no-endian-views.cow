@@ -6,7 +6,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{P4247R0}}
-  \dt{Date:}            \dd{\tt{2026-06-29}}
+  \dt{Date:}            \dd{\tt{2026-07-11}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -65,10 +65,14 @@ constexpr vector<uint32_t> utf16be_to_utf32be(
 
 This signature is contrived
 because it doesn't make sense for the user to hold a \tcode{vector<uint16_t>}
-where the Endianness of the elements is incorrect; nothing can be meaningfully done
-with that data, other than
+where the Endianness of the elements is incorrect
+(at least not if Endian Views are used);
+nothing can be meaningfully done with that data, other than
 \ul{
-  \li{shooting yourself in the foot by forgetting that the data is not usable yet,}
+  \li{
+    shooting yourself in the foot by forgetting that the data is not usable
+    due to having the wrong Endianness yet,
+  }
   \li{making it usable by swapping Endianness (but why didn't you do that sooner?), or}
   \li{
     serializing the data without Endian swap,
@@ -100,7 +104,7 @@ constexpr vector<byte> utf16be_to_utf32be(
   return utf16be_data
     | views::chunk(4)
     | views::transform([](auto chunk) {
-          array<std::byte, 4> a;
+          array<byte, 4> a;
           ranges::copy(chunk, a.begin());
           return bit_cast<uint32_t>(a);
       })
@@ -127,7 +131,7 @@ constexpr vector<byte> utf16be_to_utf32be(
   return utf16be_data
     | views::chunk(4)
     | views::transform([](auto chunk) {
-          array<std::byte, 4> a;
+          array<byte, 4> a;
           ranges::copy(chunk, a.begin());
           return bit_cast<uint32_t>(a);
       })
@@ -214,8 +218,8 @@ Another major problem with Endian Views is that their intended usage is pessimiz
 Consider a typical use case of serializing a \tcode{span<const char32_t>} as UTF-32LE in a file:
 \cppblock{
 constexpr void write_utf32le(FILE* file, span<const char32_t> text) {
-  if constexpr (endian::native == endian) /* extremely likely */ {
-    fwrite(reinterpret_cast<char*>(text.data()), text.size(), sizeof(char32_t), file);
+  if constexpr (endian::native == endian::little) /* extremely likely */ {
+    fwrite(text.data(), sizeof(char32_t), text.size(), file);
   } else {
     char32_t buffer[1024];
     for (auto chunk : text | views::chunked(1024)) {
@@ -223,7 +227,7 @@ constexpr void write_utf32le(FILE* file, span<const char32_t> text) {
       for (char32_t& x : chunk) {
         x = byteswap(x);
       }
-      fwrite(reinterpret_cast<char*>(chunk.data()), chunk.size(), sizeof(char32_t), file);
+      fwrite(chunk.data(), sizeof(char32_t), chunk.size(), file);
     }
   }
 }
@@ -340,7 +344,7 @@ If the design is pursued,
 That doesn't mean that the overarching
 problem of serialization and deserialization with Endian transformation
 is not worth solving.
-It is worth solving, but not in this way.
+It is worth solving, but not using Endian Views.
 
 \h2{References}
 
