@@ -1,0 +1,458 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")\
+\cowel_macro("pref"){\ref("https://isocpp.org/files/papers/P2964R5.html#\cowel_put{0}"){§\cowel_put{1} \q{\cowel_put{2}}}}\
+
+\wg21_head(
+  title = {Design problems with P2964R5 (User-defined element types in \tcode{std::simd})}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{P4305R0}}
+  \dt{Date:}            \dd{\tt{2026-07-13}}
+  \dt{Audience:}        \dd{LEWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3688/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/user-def-simd.cow")}
+}
+\hr
+}
+
+\Babstract{
+This paper discusses some design problems in \ref("P2964R5").
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+\ref("P2964R5") enables the use of user-defined types in \tcode{std::simd::basic_vec}.
+While this idea is useful in principle,
+there are some crucial design problems that are either addressed the wrong way
+or not discussed whatsoever.
+
+\h2{Opt-in vs. opt-out}
+
+One critical question is whether support for
+\tcode{simd::vec<T>} should be opt-in or opt-out.
+The paper currently makes it opt-out,
+while I suggest to make it opt-in.
+
+\h3{False portrayal of \tcode{vec<T>} as an opt-in}
+
+\pref("opt_in_naming", "5.1", {Naming \tt{vec<T>} is already an opt-in})
+makes the claim:
+
+\Bquote{
+No type is vectorized inadvertently.
+A type enters simd only when a programmer writes \tcode{vec<T>} or \tcode{basic_vec<T, Abi>} in their own source.
+That act is itself the opt-in: the user has explicitly asked for the vectorized form of \tcode{T}.
+}
+
+It is true that the \em{user} opts into using \tcode{vec<T>} by writing \tcode{vec<T>}.
+However, this opt-in is totally irrelevant to the discussion.
+We care about whether \em{library authors} opt into \tcode{vec<T>} being usable
+for a type \tcode{T} they define.
+
+The \em{user} also opts into details of overload sets by taking a function pointer
+or by reflecting on library declarations.
+By the author's logic, it is perfectly fine for all functions in the standard library
+to be addressable because the user has opted into taking function pointers
+when writing '\tcode{&}' in \tcode{&std::sqrtf}.
+
+\h3{Structure of arrays}
+
+\ref("P2964R5") has a motivational example in
+\pref("compound", "3.5", {Compound Types}):
+
+\Bquote{
+Small compound types that fit in 16 bytes can be vectorized as atomic units,
+enabling structure-of-arrays patterns,
+or packet processing of multiple values simultaneously.
+
+\cppblock{
+// Coordinate pairs
+vec<std::pair<int, int>> coordinates;
+}
+}
+
+This raises the question whether \tcode{simd::vec} \em{itself}
+should have structure-of-arrays layout.
+The key issue is that for some types,
+the better layout for SIMD is \q{structure-of-arrays}.
+Making \tcode{vec<T>} have structure-of-arrays layout could be especially sensible
+for \q{heterogeneous structures},
+such as a \tcode{struct number_with_unit { float; enum; }},
+where it may be much better to perform parallel operations on all the \tcode{float}s
+and then on all \tcode{enum}s,
+rather than interleaving them.
+
+Only the library author can effectively decide whether for their type \tcode{T},
+\tcode{vec<T>} should be a \q{structure-of-arrays} or \q{array-of-structures},
+and this decision is case-by-case.
+Making that decision after users have started using \tcode{vec<T>} is an ABI break.
+
+The dilemma of \q{structure-of-arrays} layout is also somewhat of an argument against
+\ref("P2964R5") as a whole:
+while a \tcode{struct { float; int; }} may be eligible for use in \tcode{simd::vec},
+the elementwise operations may perform much worse than operations on
+\tcode{struct { vec<float>; vec<int>; }}.
+More generally,
+it may be best in most cases to break everything up into \tcode{simd::vec} of fundamental types,
+rather than putting large, complex types into \tcode{simd::vec}.
+
+Due to these performance considerations,
+the library author's position may be
+\Bquote{
+Don't ever put this type into \tcode{simd::vec}.
+I don't want to support this, and it performs badly anyway.
+}
+This position can be hard to take retroactively when users have already begun putting
+the type into \tcode{simd::vec} and the mechanism is opt-out.
+A key insight is that with an opt-in mechanism,
+\em{the author} decides how best to use their types with SIMD \'EM DASH'
+the expert makes a conscious decision.
+With an opt-out mechanism,
+\em{the user} makes that decision irrespective of the library author's opinion,
+and it's not clear whether the author even has a position on this
+because an opt-out design doesn't require taking any position
+(which may prove to be a mistake when it's already too late).
+
+
+\h3{Bit-packed and byte-packed types}
+
+For some types,
+such as \tcode{unsigned _BitInt(1)}
+(currently a Clang extension and C23 feature that for 1-bit integers),
+the layout provided by \tcode{vec<unsigned _BitInt(1)>} without special-casing
+would be the same as for an \tcode{unsigned _BitInt(1)[N]};
+that is, one bit of value per byte.
+
+There are several issues with this:
+\ul{
+  \li{\tcode{simd::basic_vec} now needs to handle padding bits properly.}
+  \li{
+    A bit-packed layout may be better,
+    especially when \tcode{vec<unsigned _BitInt(1)>} is used for its bitwise operations
+    (\tcode{&}, \tcode{|}, etc.).
+    In that case, any operation is doing pointless work on 7 padding bits.
+  }
+  \li{
+    \tcode{unsigned _BitInt(1)} satisfies the requirements for types to implicitly
+    opt into \tcode{vec<unsigned _BitInt(1)>},
+    so changing the layout to be bit-packed later is an ABI break.
+  }
+}
+
+While \tcode{unsigned _BitInt(1)} can be special-cased by the standard library implementation,
+this is not something that the user, a third-party library,
+or anyone else who is not the implementation can do.
+\pref("customization_points", "7", {Customization Points})
+provides no form of layout customization.
+If there later arrived a customization mechanism
+for making \tcode{vec<unsigned _BitInt(1)>} bit-packed,
+that would constitute an ABI break if utilized.
+
+Similarly, there can be types that are larger than the information they carry.
+For example,
+scoped enumerations by default have an underlying type of \tcode{int}
+(usually 4 bytes large),
+but often only some of the enumerators are actually relevant,
+so the \q{effective} value range may fit into 8 bits or less.
+\ref("P2964R5") makes any such enumerations implicitly opt into the \tcode{vec<int32_t>} layout,
+and changing that to be a \tcode{vec<unsigned char>} layout later is an ABI break.
+
+\h3{Elevating ABI breaks to API breaks}
+
+\ref("P2964R5") also makes it so that by customization being opt-out,
+ABI breaks are sometimes elevated to API breaks.
+
+For example, if the user defines a type
+\cppblock{
+struct alignas(4) rgb { uint8_t r, g, b; };
+}
+\'HORIZONTAL ELLIPSIS' where the \tcode{alignas(4)} might exist for performance reasons,
+later removing that \tcode{alignas(4)} is an API break of \tcode{vec<rgb>}.
+This happens because \ref("P2964R5") requires the size of a type to be a power of two,
+and the size is changed from 4 to 3,
+so any uses of \tcode{vec<rgb>} become ill-formed.
+
+While breaking ABI is often fine in template-only/header-only libraries,
+making existing user code suddenly ill-formed is never fine.
+\ref("P2964R5") imposes the burden of opting out of \tcode{simd::vec} support
+for any defined type on the library author,
+rather than letting them retain control by default.
+
+\ref("P2964R5") has the following to conclude about this situation:
+
+\Bquote{
+We believe the consequence is nonetheless acceptable.
+The break is diagnosed at compile time,
+which is preferable to the silent run-time mismatch that \tcode{vector<rgb>} produces,
+since at least the problem is flagged.
+Also, it arises only for types whose size may change,
+where the author is the party best placed
+to know whether that is likely and to use \tcode{disable_vectorization} accordingly.
+}
+
+The problem with this line of reasoning is that continuously adding mechanisms
+that library authors have to consider opting out of
+is obviously unsustainable.
+Imagine if the library author had to
+\ul{
+  \li{
+    opt out of \tcode{operator==} support for every \tcode{struct}
+    because they may change the behavior later,
+  }
+  \li{
+    opt out of \tcode{constexpr} support for every function
+    because they may do some runtime work in it later,
+    even if the function doesn't make runtime-only calls now,
+  }
+  \li{
+    opt out of \tcode{noexcept} support for every function
+    because they may want to throw exceptions in the future,
+    even if they don't do it now,
+  }
+  \li{
+    \'HORIZONTAL ELLIPSIS'
+  }
+}
+
+Opt-out mechanisms should be reserved for where opt-out is extremely unlikely
+and where authors are likely aware of how and when to opt out.
+Neither of these conditions appears to be satisfied because
+\ul{
+  \li{
+    structure-of-arrays layout, bit-packed layout, avoiding future API breaks,
+    and likely other reasons commonly motivate opting out, and
+  }
+  \li{
+    it's unlikely that every library author who defines an \tcode{enum} or \tcode{struct}
+    is aware that they might need to opt out of SIMD support for a variety of reasons.
+  }
+}
+
+\h3{False parallels to containers}
+
+\pref("opt_out_boundary", "5.3", {The library-boundary caveat})
+also draws a false parallel to other containers:
+
+\Bquote{
+In none of these cases does the standard library place any obligation on the consumer of \tcode{rgb},
+and in none does it offer the consumer any protection.
+\tcode{std::array} has no opt-out and no means of recording that an aggregate use has fixed a type's layout,
+because altering a type's size is treated as the responsibility of the type's author,
+not of any container or view that merely stores it.
+\tcode{array<rgb>} continues to compile until the author changes the size,
+after which it fails silently on mismatched data, and this is accepted as correct.
+}
+
+Firstly, \tcode{std::array} and other containers store elements directly
+and provide references to those stored elements.
+By comparison, \tcode{simd::vec} deliberately does not do this
+so that bit-packed layouts, structure-of-arrays layout,
+collapsing the padding bytes between \tcode{long double}s
+and other things are possible.
+Thus, the parallel to \tcode{std::array} is false because \tcode{simd::vec}
+is not merely an aggregation.
+
+Secondly,
+containers such as \tcode{std::array<T>} depend on
+\tcode{T} being movable, copyable, etc. to also provide those properties for the container.
+This is no different from a user who is copying \tcode{T} around,
+outside of any container.
+By comparison, \tcode{vec<T>} depends on hyper-specific layout properties like
+the size being a power of two,
+where neither the user nor the library author might be aware that some opt-in has taken place
+when defining \tcode{T}.
+
+\h3{Opt-out is not too much effort}
+
+An underlying premise of \ref("P2964R5") is that it would be too much effort
+to opt out \tcode{vec} support,
+even though it's not stated as the key motivation.
+The premise is visible in the following:
+
+\Bquote{
+The list [of types that opt out],
+moreover, has no natural bound, since it must enumerate
+the entire open set that the constraints previously admitted without enumeration:
+every strong typedef, every enumeration, every small aggregate, and
+types such as \tcode{array}, \tcode{pair}, \tcode{tuple}, and \tcode{duration},
+together with any small trivially copyable type defined in future.
+Opt-out enumerates a small number of exceptions and
+allows the constraints to govern the remainder.
+Opt-in maintains an unbounded list of inclusions while rendering the constraints inert.
+}
+
+In either case (opt-in or opt-out),
+the set of types for which action needs to be taken has no bound:
+For opt-in,
+every \tcode{struct} and every \tcode{enum} is potentially a type for which a library author
+needs to opt out of \tcode{vec} support because they may change layout details later.
+
+Furthermore,
+while there are many types that are \em{eligible} for SIMD use,
+the amount which users would plausibly want to put into a \tcode{vec} is
+likely a tiny fraction of those types.
+There are many \tcode{enum}s and \tcode{struct}s that happen to have the right size,
+but don't have any operator overloads,
+so \tcode{vec<T>} could do nothing more than a \tcode{array<T>} anyway.
+Opting into \tcode{simd::vec} support only starts making sense once there are
+operations to be performed elementwise,
+and adding a one-liner opt-in is a very small burden for a type
+that has hundreds or thousands of lines of arithmetic operations defined.
+
+\h3{No mechanism for deprecation}
+
+A problem that further compounds an opt-out design is that there is no way
+to deprecate existing \tcode{simd::vec} support.
+If the library author decides that they don't want \tcode{simd::vec<T>} to be allowed
+but users already make use of that,
+they have no means of deprecating those existing uses of \tcode{simd::vec<T>}:
+\ul{
+  \li{
+    Putting \tcode{[[deprecated]]} on the \tcode{disable_vectorization<T>} specialization
+    doesn't accomplish anything by itself.
+  }
+  \li{
+    Putting \tcode{[[deprecated]]} onto the \tcode{simd_operator} functions
+    for operation customization
+    also doesn't apply deprecation to the actual operator overloads.
+  }
+}
+
+At least,
+this issue is solvable without any major downside:
+it is possible for the standard library
+to detect the presence of \tcode{[[deprecated]]} attributes
+using C++26 Reflection
+and to define the corresponding operator overloads and specializations as deprecated.
+
+\h2{Operation customization}
+
+\h3{Customizing math functions}
+
+Another major problem with \ref("P2964R5")
+is the way that operation customization is performed.
+In \pref("customization_points", "7", {Customization Points}),
+for example, the mechanism for customizing \tcode{operator+} between \tcode{simd::vec}
+relies on \tcode{std::plus}.
+Such function objects are sufficient for customizing any operators.
+However, this mechanism is only necessary if the user wants to avoid the default behavior,
+which is that operations are performed elementwise using the scalar operation.
+
+The problem is that there are vastly more operations that may need to be customized,
+and the paper provides no exploration for how that should be done.
+For example,
+if the user defines a function \tcode{abs(T)} for their type \tcode{T},
+should \tcode{simd::abs} not automatically perform the elementwise operation?
+The paper uses \tcode{chrono::duration} as an example of a type that may be supported
+due to implicit opt-in,
+but \tcode{simd::abs} would not automatically call \tcode{std::abs(std::chrono::duration)}.
+
+This problem becomes especially apparent when considering user-defined floating-point types
+like \tcode{float8_t} (e.g. for use in AI applications).
+In addition to providing operator overloads for a \tcode{float8_t} type,
+the user would likely implement large amounts of math functions for \tcode{float8_t} as well.
+Ultimately,
+the problem should be addressed holistically in such a way that puts all the following into relation:
+\ul{
+  \li{
+    \tcode{std::abs} for floating-point and complex types.
+  }
+  \li{
+    \tcode{std::simd::abs} for floating-point and complex types.
+  }
+  \li{
+    Future \tcode{abs} functions for a Quantities and Units library.
+  }
+  \li{
+    \tcode{std::abs} for additional library types like \tcode{chrono::duration}.
+  }
+  \li{
+    User-defined \tcode{abs} functions outside the \tcode{std} namespace.
+  }
+  \li{
+    Customizable math functions like \tcode{std::math::abs}
+    (see \ref("P4188R0")).
+  }
+}
+
+\h3{No obvious solution}
+
+We appear to have an ever-growing and incoherent collection of mathematical functions,
+and \ref("P2964R5") compounds this issue.
+It seems inevitable that any \tcode{vec<custom_float>} would need math function support,
+so simply ignoring this problem is not viable.
+There also appears to be no obvious solution:
+
+\ul{
+  \li{
+    If the user is intended to rely on future customizable \tcode{std::math} functions,
+    the user is severely limited in their customization.
+    \ref("P4188R0") only suggests a handful of math functions to be customizable,
+    but \tcode{simd::vec<float>} already supports vastly more,
+    and any user-defined floating-point type may also need to support vastly more.
+  }
+  \li{
+    If the user is intended to provide their own \tcode{abs} overloads to customize SIMD math,
+    this requires a large amount of boilerplate because there is no nice
+    \q{elementwise by default} behavior.
+    This also raises the question whether we need \q{elementwise by default}
+    for operator overloads in the first place.
+    Whether the user needs to define 95 boilerplate elementwise math functions
+    where \tcode{\i{func}(simd::vec<T>)} calls \tcode{\tcode{\i{func}(T)}}
+    and avoids 5 boilerplate operator overloads, or defines 100 boilerplate functions
+    makes very little difference.
+    If \ref("P2964R5") necessitates a mountain of boilerplate,
+    we may as well simplify the overall design instead of reducing the size of the mountain
+    by a few percent.
+  }
+  \li{
+    If \tcode{simd::sqrt} were intended to behave elementwise by default, just like
+    \tcode{operator+} between \tcode{simd::vec} behaves elementwise by default,
+    that would be a consistent design,
+    but it would bypass and conflict with the more general mechanism of \tcode{std::math} functions.
+    In any case, this possibility is not discussed at all in the paper.
+  }
+}
+
+\h2{Call for action}
+
+\ref("P2964R5") should do the following:
+\ul{
+  \li{
+    Revert to opt-in \tcode{simd::vec} support for user-defined types.
+  }
+  \li{
+    Discuss the possibility of deprecating \tcode{simd::vec} specializations
+    and operators for user-defined types
+    (\ref("#no-mechanism-for-deprecation")).
+  }
+  \li{
+    Halt progress on \ref("P2964R5") until \ref("P4188R0") has been seen by LEWG
+    and until its relation to SIMD operation customization is clear.
+  }
+}
+
+\h2{References}
+
+\bib(
+  id = "P2964R5",
+  title = "User-defined element types in std::simd through trait-based vectorizable definition",
+  date = "2026-07-07",
+  author = "Daniel Towner",
+  link = "https://isocpp.org/files/papers/P2964R5.html",
+)\
+\bib(
+  id = "P4188R0",
+  title = "Extensible Math Functions for C++",
+  date = "2026-03-30",
+  author = "Stéphane Gros-Lemesre",
+  link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4188r0.pdf",
+)\
+
+\make_bib
