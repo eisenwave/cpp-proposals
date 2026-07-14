@@ -3,8 +3,8 @@
 
 \wg21_head(title={Bit-precise integers}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3666R4}}
-  \dt{Date:}            \dd{\tt{2026-05-12}}
+  \dt{Document number:} \dd{\docnum{D3666R5}}
+  \dt{Date:}            \dd{\tt{2026-07-14}}
   \dt{Audience:}        \dd{CWG, LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -3049,6 +3049,65 @@ Seldom.
 
 \h3{Library}
 
+\h4(show_number=false){[expos.only.entity]}
+
+At the end of the synopsis in \eelis{expos.only.entity#2},
+add the following:
+
+\Bins{
+\itemdecl{
+template<class T> concept \exposid{standard-int-type} = \seebelow;
+template<class T> concept \exposid{extended-int-type} = \seebelow;
+template<class T> concept \exposid{bit-precise-int-type} = \seebelow;
+
+template<class T> concept \exposid{standard-or-extended-int} =
+  \exposid{standard-int-type}<T> || \exposid{extended-int-type}<T>;
+template<class T> concept \exposid{standard-or-extended-sint} =
+  \exposid{standard-or-extended-int}<T> && is_signed_v<T>;
+template<class T> concept \exposid{standard-or-extended-uint} =
+  \exposid{standard-or-extended-int}<T> && is_unsigned_v<T>;
+
+template<class T> concept \exposid{signed-or-unsigned-int} =
+  \exposid{standard-int-type}<T> || \exposid{extended-int-type}<T> || \exposid{bit-precise-int-type}<T>;
+template<class T> concept \exposid{unsigned-int} =
+  \exposid{signed-or-unsigned-int}<T> && is_unsigned_v<T>;
+
+template<class T>
+  concept \exposid{no-bit-int-integral} =
+    integral<T> && !\exposid{bit-precise-int-type}<remove_cv_t<T>>;
+template<class T>
+  concept \exposid{no-bit-int-no-bool-integral} =
+    integral<T> && !\exposid{bit-precise-int-type}<remove_cv_t<T>> && !is_same_v<remove_cv_t<T>, bool>;
+template<class T>
+  concept \exposid{no-bit-int-arithmetic} =
+    \exposid{no-bit-int-integral}<T> || \exposid{floating_point}<T>;
+template<class T>
+  concept \exposid{no-bit-int-no-bool-arithmetic} =
+    \exposid{no-bit-int-no-bool-integral}<T> || \exposid{floating_point}<T>;
+}
+}
+
+Immediately following \eelis{expos.only.entity#2},
+insert a new paragraph:
+
+\Bins{
+The exposition-only concept
+\ul{
+  \li{
+    \tcode{\exposid{standard-int-type}} is satisfied and modeled if
+    \tcode{T} is a standard integer type\iref{basic.fundamental},
+  }
+  \li{
+    \tcode{\exposid{extended-int-type}} is satisfied and modeled if
+    \tcode{T} is an extended integer type, and
+  }
+  \li{
+    \tcode{\exposid{bit-precise-int-type}} is satisfied and modeled if
+    \tcode{T} is a bit-precise integer type.
+  }
+}
+}
+
 \h4(show_number=false){[allocator.requirements.general]}
 
 Change \eelis{allocator.requirements.general} as follows:
@@ -3095,56 +3154,48 @@ Change \eelis{support.types.byteops} as follows:
 
 \Bdiff{
 \itemdecl{
-template<class IntType>
+template<\ins{\exposid{no-bit-int-integral}} IntType>
   constexpr byte& operator<<=(byte& b, IntType shift) noexcept;
 }
 \itemdescr{
 \constraints
 \del{\tcode{is_integral_v<IntType>} is \tcode{true}.}
-\ins{\tcode{IntType} is an integral type
-other than a possibly cv-qualified bit-precise integer type.}
 
 \effects
 Equivalent to: \tcode{return b = b << shift;}
 }
 
 \itemdecl{
-template<class IntType>
+template<\ins{\exposid{no-bit-int-integral}} IntType>
   constexpr byte operator<<(byte b, IntType shift) noexcept;
 }
 \itemdescr{
-\constraints
-\del{\tcode{is_integral_v<IntType>} is \tcode{true}.}
-\ins{\tcode{IntType} is an integral type
-other than a possibly cv-qualified bit-precise integer type.}
+\del{\constraints
+\tcode{is_integral_v<IntType>} is \tcode{true}.}
 
 \effects
 Equivalent to: \tcode{return static_cast<byte>(static_cast<unsigned int>(b) << shift);}
 }
 
 \itemdecl{
-template<class IntType>
+template<\ins{\exposid{no-bit-int-integral}} IntType>
   constexpr byte& operator>>=(byte& b, IntType shift) noexcept;
 }
 \itemdescr{
-\constraints
-\del{\tcode{is_integral_v<IntType>} is \tcode{true}.}
-\ins{\tcode{IntType} is an integral type
-other than a possibly cv-qualified bit-precise integer type.}
+\del{\constraints
+\tcode{is_integral_v<IntType>} is \tcode{true}.}
 
 \effects
 Equivalent to: \tcode{return b = b >> shift;}
 }
 
 \itemdecl{
-template<class IntType>
+template<\ins{\exposid{no-bit-int-integral}} IntType>
   constexpr byte operator>>(byte b, IntType shift) noexcept;
 }
 \itemdescr{
-\constraints
-\del{\tcode{is_integral_v<IntType>} is \tcode{true}.}
-\ins{\tcode{IntType} is an integral type
-other than a possibly cv-qualified bit-precise integer type.}
+\del{\constraints
+\tcode{is_integral_v<IntType>} is \tcode{true}.}
 
 \effects
 Equivalent to: \tcode{return static_cast<byte>(static_cast<unsigned int>(b) >> shift);}
@@ -3153,14 +3204,12 @@ Equivalent to: \tcode{return static_cast<byte>(static_cast<unsigned int>(b) >> s
 \etc
 
 \itemdecl{
-template<class IntType>
+template<\ins{\exposid{no-bit-int-integral}} IntType>
   constexpr IntType to_integer(byte b) noexcept;
 }
 \itemdescr{
-\constraints
-\del{\tcode{is_integral_v<IntType>} is \tcode{true}.}
-\ins{\tcode{IntType} is an integral type
-other than a possibly cv-qualified bit-precise integer type.}
+\del{\constraints
+\tcode{is_integral_v<IntType>} is \tcode{true}.}
 
 \effects
 Equivalent to: \tcode{return static_cast<IntType>(b);}
@@ -3242,8 +3291,9 @@ namespace std {
 }
 
 \mandates
-\tcode{T} is an integer type
-\ins{other than a possibly cv-qualified bit-precise integer type}.
+\tcode{T}
+\del{is an integer type}
+\ins{models \tcode{\exposid{standard-or-extended-uint}}}.
 }
 
 \h4(show_number=false){[meta.trans.sign]}
@@ -3377,10 +3427,9 @@ template<class T, class U>
 
 \itemdescr{
 \mandates
-Each of \tcode{T} and \tcode{U} is a
-\del{signed or unsigned}
-\ins{standard or extended}
-integer type\iref{basic.fundamental}.
+Each of \tcode{T} and \tcode{U}
+\del{is a signed or unsigned integer type\iref{basic.fundamental}.}
+\ins{models \tcode{\exposid{standard-or-extended-int}}}.
 
 \effects
 \etc
@@ -3393,10 +3442,9 @@ template<class T, class U>
 
 \itemdescr{
 \mandates
-Each of \tcode{T} and \tcode{U} is a
-\del{signed or unsigned}
-\ins{standard or extended}
-integer type\iref{basic.fundamental}.
+Each of \tcode{T} and \tcode{U}
+\del{is a signed or unsigned integer type\iref{basic.fundamental}.}
+\ins{models \tcode{\exposid{standard-or-extended-int}}}.
 
 \effects
 \etc
@@ -3409,10 +3457,9 @@ template<class R, class T>
 
 \itemdescr{
 \mandates
-Each of \tcode{T} and \tcode{R} is a
-\del{signed or unsigned}
-\ins{standard or extended}
-integer type\iref{basic.fundamental}.
+Each of \tcode{T} and \tcode{R}
+\del{is a signed or unsigned integer type\iref{basic.fundamental}.}
+\ins{models \tcode{\exposid{standard-or-extended-int}}}.
 
 \effects
 \etc
@@ -3425,40 +3472,106 @@ Change \eelis{bit.byteswap} as follows:
 
 \Bdiff{
 \itemdecl{
-template<class T>
+template<\ins{\exposid{no-bit-int-integral}} T>
   constexpr T byteswap(T value) noexcept;
 }
 
 \itemdescr{
-\constraints
-\tcode{T} \del{models \tcode{integral}
-\ins{is an integral type other than a possibly cv-qualified bit-precise integer type}.
+\del{\constraints
+\tcode{T} models \tcode{integral}.}
 }
 
 \etc
 }
-}
 
 \h4(show_number=false){[bit]}
 
-Change the \i{Constraints} element attached to each of the function templates
-\tcode{has_single_bit},
-\tcode{bit_ceil},
-\tcode{bit_floor},
-\tcode{bit_width},
-\tcode{rotl},
-\tcode{rotr},
-\tcode{countl_zero},
-\tcode{countl_one},
-\tcode{countr_zero},
-\tcode{countr_one}, and
-\tcode{popcount}
-as follows:
+Change the synopsis in \eelis{bit.syn} as follows:
 
 \Bdiff{
+\itemdecl{
+//\serif{ all freestanding}
+namespace std {
+  //\serif{ \eelis{bit.cast}, bit_cast}
+  template<class To, class From>
+    constexpr To bit_cast(const From& from) noexcept;
+
+  //\serif{ \eelis{bit.byteswap}, byteswap}
+  template<\del{class} \ins{\exposid{standard-or-extended-int}} T>
+    constexpr T byteswap(T value) noexcept;
+
+  //\serif{ \eelis{bit.pow}, integral powers of 2}
+  template<\del{class} \ins{\exposid{standard-or-extended-uint}} T>
+    constexpr bool has_single_bit(T x) noexcept;
+  template<\del{class} \ins{\exposid{standard-or-extended-uint}} T>
+    constexpr T bit_ceil(T x);
+  template<\del{class} \ins{\exposid{standard-or-extended-uint}} T>
+    constexpr T bit_floor(T x) noexcept;
+  template<\del{class} \ins{\exposid{standard-or-extended-uint}} T>
+    constexpr int bit_width(T x) noexcept;
+
+  //\serif{ \eelis{bit.shift}, shifting}
+  template<\del{class} \ins{\exposid{standard-or-extended-uint}} T, \del{class} \ins{\exposid{standard-or-extended-int}} S>
+    constexpr T shl(T x, S s) noexcept;
+  template<\del{class} \ins{\exposid{standard-or-extended-uint}} T, \del{class} \ins{\exposid{standard-or-extended-int}} S>
+    constexpr T shr(T x, S s) noexcept;
+
+  //\serif{ \eelis{bit.rotate}, rotating}
+  template<\del{class} \ins{\exposid{standard-or-extended-uint}} T>
+    constexpr T rotl(T x, int s) noexcept;
+  template<\del{class} \ins{\exposid{standard-or-extended-uint}} T>
+    constexpr T rotr(T x, int s) noexcept;
+
+  //\serif{ \eelis{bit.count}, counting}
+  template<\del{class} \ins{\exposid{standard-or-extended-uint}} T>
+    constexpr int countl_zero(T x) noexcept;
+  template<\del{class} \ins{\exposid{standard-or-extended-uint}} T>
+    constexpr int countl_one(T x) noexcept;
+  template<\del{class} \ins{\exposid{standard-or-extended-uint}} T>
+    constexpr int countr_zero(T x) noexcept;
+  template<\del{class} \ins{\exposid{standard-or-extended-uint}} T>
+    constexpr int countr_one(T x) noexcept;
+  template<\del{class} \ins{\exposid{standard-or-extended-uint}} T>
+    constexpr int popcount(T x) noexcept;
+  
+  //\serif{ \eelis{bit.permute}, permutation}
+  template<\del{class} \ins{\exposid{standard-or-extended-uint}} T>
+    constexpr T bit_reverse(T x) noexcept;
+  template<\del{class} \ins{\exposid{standard-or-extended-uint}} T>
+    constexpr T bit_repeat(T x, int l);
+  template<\del{class} \ins{\exposid{standard-or-extended-uint}} T>
+    constexpr T bit_compress(T x, T m) noexcept;
+  template<\del{class} \ins{\exposid{standard-or-extended-uint}} T>
+    constexpr T bit_expand(T x, T m) noexcept;
+
+  //\serif{ \eelis{bit.endian}, endian}
+  enum class endian {
+    little = see below,
+    big    = see below,
+    native = see below
+  };
+}
+}
+}
+
+\b{Bulk edit}:
+Apply the synopsis changes to the definitions throughout \eelis{bit}.
+
+\Bex{
+Modify the declaration of \tcode{byteswap} in \eelis{bit.byteswap} as follows:
+\itemdecl{
+template<\del{class} \ins{\exposid{standard-or-extended-int}} T>
+  constexpr T byteswap(T value) noexcept;
+}
+}
+
+\b{Bulk edit}:
+Delete the \i{Constraints} element attached to every function in \eelis{bit},
+except in \eelis{bit.cast}:
+
+\Bdel{
 \constraints
-\tcode{T} is an unsigned integer type
-\ins{other than a bit-precise integer type}\iref{basic.fundamental}.
+\etc
 }
 
 
@@ -3482,13 +3595,12 @@ Change \eelis{stdbit.h.syn#2} as follows:
 
 \Bdiff{
 \mandates
-\tcode{T} is \del{an unsigned integer type}
+\del{\tcode{T} is an unsigned integer type.}
 \ul{
-  \li{\ins{a standard unsigned integer type,}}
-  \li{\ins{an extended unsigned integer type, or}}
+  \li{\ins{\tcode{T} models \tcode{\exposid{unsigned-int}}.}}
   \li{
-    \ins{a bit-precise unsigned integer type whose width matches
-    a standard or extended integer type}.
+    \ins{If \tcode{T} is a bit-precise integer type,
+    its width matches that of a standard or extended integer type}.
   }
 }
 }
@@ -3503,8 +3615,8 @@ typename X::difference_type
 }
 \itemdescr{
 \result
-A signed integer type
-\ins{other than a possibly cv-qualified bit-precise integer type},
+A \del{signed integer} type
+\ins{that models \tcode{\exposid{standard-or-extended-sint}}},
 identical to the difference type of \tcode{X::iterator} and \tcode{X::const_iterator}.
 }
 
@@ -3513,8 +3625,8 @@ typename X::size_type
 }
 \itemdescr{
 \result
-An unsigned integer type
-\ins{other than a possibly cv-qualified bit-precise integer type},
+\del{An unsigned integer} \ins{A} type
+\ins{that models \tcode{\exposid{standard-or-extended-uint}}},
 that can represent any non-negative value of \tcode{X::difference_type}.
 }
 }
@@ -3538,10 +3650,9 @@ namespace std {
 \mandates
 \ul{
   \li{
-    \tcode{IndexType} is a
-    \del{signed or unsigned}
-    \ins{standard or extended}
-    integer type, and
+    \tcode{IndexType}
+    \del{is a signed or unsigned integer type}
+    \ins{models \tcode{\exposid{standard-or-extended-int}}}, and
   }
   \li{
     each element of \tcode{Extents} is either
@@ -3559,9 +3670,9 @@ Change \eelis{mdspan.sub.overview#2},
 
 \Bdiff{
 Given a
-\del{signed or unsigned}
-\ins{standard or extended}
-integer type \tcode{IndexType}
+\del{signed or unsigned integer}
+\ins{standard or extended integer}
+type \tcode{IndexType}
 \etc
 }
 
@@ -3601,11 +3712,11 @@ namespace std {
 \tcode{ExtentType},
 \tcode{FirstType},
 \tcode{LastType}, and
-\tcode{StrideType} are
-\del{signed or unsigned}
-\ins{standard or extended}
-integer types, or
-model \tcode{\exposid{integral-constant-like}}.
+\tcode{StrideType}
+\del{are signed or unsigned integer types, or}
+model
+\ins{\tcode{\exposid{signed-or-unsigned-int}} or}
+\tcode{\exposid{integral-constant-like}}.
 
 \note{\etc}
 }
@@ -3631,8 +3742,10 @@ A type \tcode{X} meets the \i{Cpp17Iterator} requirements if
 \ul{
   \li{\etc}
   \li{
-    \tcode{iterator_traits<X>​::​difference_type} is a signed integer type
-    \ins{other than a bit-precise integer type} or \tcode{void}, and
+    \tcode{iterator_traits<X>::difference_type}
+    \del{is a signed integer type}
+    \ins{models \tcode{\exposid{standard-or-extended-sint}}}
+    or \ins{is} \tcode{void}, and
   }
   \li{\etc}
 }
@@ -3645,8 +3758,9 @@ Change \eelis{common.iter.types#1} as follows:
 \Bdiff{
 The nested \grammarterm{typedef-name} \tcode{iterator_category}
 of the specialization of \tcode{iterator_traits} for \tcode{common_iterator<I, S>}
-is declared if and only if \tcode{iter_difference_t<I>} is
-an integral type \ins{other than a possibly cv-qualified bit-precise integer type}.
+is declared if and only if \tcode{iter_difference_t<I>}
+\del{is an integral type}
+\ins{models \tcode{\exposid{no-bit-int-integral}}}.
 }
 
 \h4(show_number=false){[range.iota.view]}
@@ -3690,8 +3804,9 @@ template<class InputIterator, class Size, class Function>
 
 \itemdescr{
 \mandates
-The type \tcode{Size} is convertible to an integral type
-\ins{other than a bit-precise integer type}
+The type \tcode{Size} is convertible to
+\del{an integral type}
+\ins{a type that models \tcode{\exposid{no-bit-int-integral}}}
 (\eelis{conv.integral}, \eelis{class.conv}).
 
 \etc
@@ -3705,8 +3820,9 @@ template<class ExecutionPolicy, class ForwardIterator, class Size, class Functio
 
 \itemdescr{
 \mandates
-The type \tcode{Size} is convertible to an integral type
-\ins{other than a bit-precise integer type}
+The type \tcode{Size} is convertible to
+\del{an integral type}
+\ins{a type that models \tcode{\exposid{no-bit-int-integral}}}
 (\eelis{conv.integral}, \eelis{class.conv}).
 
 \etc
@@ -3734,8 +3850,9 @@ Change \eelis{alg.search#5} as follows:
 
 \Bdiff{
 \mandates
-The type \tcode{Size} is convertible to an integral type
-\ins{other than a bit-precise integer type}
+The type \tcode{Size} is convertible to
+\del{an integral type}
+\ins{a type that models \tcode{\exposid{no-bit-int-integral}}}
 (\eelis{conv.integral}, \eelis{class.conv}).
 }
 
@@ -3745,8 +3862,9 @@ Change \eelis{alg.copy#15} as follows:
 
 \Bdiff{
 \mandates
-The type \tcode{Size} is convertible to an integral type
-\ins{other than a bit-precise integer type}
+The type \tcode{Size} is convertible to
+\del{an integral type}
+\ins{a type that models \tcode{\exposid{no-bit-int-integral}}}
 (\eelis{conv.integral}, \eelis{class.conv}).
 }
 
@@ -3758,8 +3876,9 @@ Change \eelis{alg.fill#2} as follows:
 \mandates
 The expression \tcode{value} is writable\iref{iterator.requirements.general}
 to the output iterator.
-The type \tcode{Size} is convertible to an integral type
-\ins{other than a bit-precise integer type}
+The type \tcode{Size} is convertible to
+\del{an integral type}
+\ins{a type that models \tcode{\exposid{no-bit-int-integral}}}
 (\eelis{conv.integral}, \eelis{class.conv}).
 }
 
@@ -3769,8 +3888,9 @@ Change \eelis{alg.generate#2} as follows:
 
 \Bdiff{
 \mandates
-\tcode{Size} is convertible to an integral type
-\ins{other than a bit-precise integer type}
+\tcode{Size} is convertible to
+\del{an integral type}
+\ins{a type that models \tcode{\exposid{no-bit-int-integral}}}
 (\eelis{conv.integral}, \eelis{class.conv}).
 }
 
@@ -3786,8 +3906,9 @@ template<class M, class N>
 
 \itemdescr{
 \mandates
-\tcode{M} and \tcode{N} both are integer types other than \cv \tcode{bool}
-\ins{or a possibly cv-qualified bit-precise integer type}.
+\tcode{M} and \tcode{N} both
+\del{are integer types other than \cv{} \tcode{bool}}
+\ins{model \tcode{\exposid{no-bit-int-no-bool-integral}}.}
 
 \etc
 }
@@ -3805,8 +3926,9 @@ template<class M, class N>
 
 \itemdescr{
 \mandates
-\tcode{M} and \tcode{N} both are integer types other than \cv \tcode{bool}
-\ins{or a possibly cv-qualified bit-precise integer type}.
+\tcode{M} and \tcode{N} both
+\del{are integer types other than \cv{} \tcode{bool}}
+\ins{model \tcode{\exposid{no-bit-int-no-bool-integral}}.}
 
 \etc
 }
@@ -3818,52 +3940,56 @@ Change \eelis{numeric.ops.midpoint} as follows:
 
 \Bdiff{
 \itemdecl{
-template<class T>
+template<\del{class} \ins{\exposid{no-bit-int-no-bool-arithmetic}} T>
   constexpr T midpoint(T a, T b) noexcept;
 }
 
 \itemdescr{
-\constraints
-\tcode{T} is an arithmetic type other than \cv \tcode{bool}
-\ins{or a possibly cv-qualified bit-precise integer type}.
+\del{\constraints
+\tcode{T} is an arithmetic type other than \cv \tcode{bool}.}
 
 \etc
 }
 }
 
-\h4(show_number=false){[numeric.sat.func]}
+\h4(show_number=false){[numeric.sat]}
 
-Change the \i{Constraints} element underneath all function templates
-in \eelis{numeric.sat.func} as follows:
-
-\Bdiff{
-\constraints
-\tcode{T} is a
-\del{signed or unsigned}
-\ins{standard or extended}
-integer type\iref{basic.fundamental}.
-}
-
-\h4(show_number=false){[numeric.sat.cast]}
-
-Change \eelis{numeric.sat.cast} as follows:
+Change the synopsis in \eelis{numeric.ops.overview} as follows:
 
 \Bdiff{
 \itemdecl{
-template<class R, class T>
-  constexpr R saturating_cast(T x) noexcept;
+//\serif{ \eelis{numeric.sat}, saturation arithmetic}
+template<\del{class} \ins{\exposid{standard-or-extended-int}} T>
+  constexpr T saturating_add(T x, T y) noexcept;
+template<\del{class} \ins{\exposid{standard-or-extended-int}} T>
+  constexpr T saturating_sub(T x, T y) noexcept;
+template<\del{class} \ins{\exposid{standard-or-extended-int}} T>
+  constexpr T saturating_mul(T x, T y) noexcept;
+template<\del{class} \ins{\exposid{standard-or-extended-int}} T>
+  constexpr T saturating_div(T x, T y) noexcept;
+template<\del{class} \ins{\exposid{standard-or-extended-int}} T, \del{class} \ins{\exposid{standard-or-extended-int}} U>
+  constexpr T saturating_cast(U x) noexcept;
+}
 }
 
-\itemdescr{
+\b{Bulk edit}:
+Apply the synopsis changes to the definitions throughout \eelis{numeric.sat}.
+
+\Bex{
+Modify the declaration of \tcode{saturating_add} in \eelis{numeric.sat} as follows:
+\itemdecl{
+template<\del{class} \ins{\exposid{standard-or-extended-int}} T>
+  constexpr T saturating_add(T x, T y) noexcept;
+}
+}
+
+\b{Bulk edit}:
+Delete the \i{Constraints} element underneath all function templates
+in \eelis{numeric.sat}:
+
+\Bdel{
 \constraints
-\tcode{R} and \tcode{T} are
-\del{signed or unsigned}
-\del{standard or extended}
-integer types\iref{basic.fundamental}.
-
-\returns
 \etc
-}
 }
 
 \h4(show_number=false){[charconv.syn]}
@@ -3874,7 +4000,7 @@ Change \eelis{charconv.syn#1} as follows:
 When a function is specified with a type placeholder of \tcode{\exposid{integer-type}},
 the implementation provides overloads for \tcode{char} and all
 \del{cv-unqualified signed and unsigned integer types}
-\ins{standard and extended integer types}
+\ins{types that model \tcode{\exposid{standard-or-extended-int}}}
 in lieu of \tcode{\exposid{integer-type}}.
 When a function is specified with a type placeholder of \tcode{\exposid{floating-point-type}},
 the implementation provides overloads for all
@@ -3910,9 +4036,11 @@ The additional constexpr overloads are sufficient to ensure:
     then it is effectively cast to \tcode{complex<T>}.
   }
   \li{
-    Otherwise, if the argument has integral type
-    \ins{other than a possibly cv-qualified bit-precise integer type},
-    then it is effectively cast to \tcode{complex<double>}.
+    Otherwise, if the \ins{type of the} argument
+    \del{has integral type}
+    \ins{models \tcode{\exposid{no-bit-int-integral}}},
+    \del{then it} \ins{the argument}
+    is effectively cast to \tcode{complex<double>}.
   }
 }
 }
@@ -3937,8 +4065,8 @@ change the \q{Pre-post-condition} column corresponding to
 \tcode{S::result_type} as follows:
 
 \Bdiff{
-\tcode{T} is an unsigned integer type
-\ins{other than a bit-precise integer type}
+\tcode{T} \del{is an unsigned integer type}
+\ins{models \tcode{\exposid{standard-or-extended-uint}} and has a width}
 of at least 32 bits.
 }
 
@@ -3953,8 +4081,9 @@ A class \tcode{G} meets the \dfn{uniform random bit generator} requirements if
     \tcode{G} models \tcode{uniform_random_bit_generator},
   }
   \li{
-    \tcode{invoke_result_t<G&>} is an unsigned integer type
-    \ins{other than a bit-precise integer type}\iref{basic.fundamental}, and
+    \tcode{invoke_result_t<G&>}
+    \del{is an unsigned integer type\iref{basic.fundamental}}
+    \ins{models \tcode{\exposid{standard-or-extended-uint}}}, and
   }
   \li{
     \tcode{G} provides a nested \grammarterm{typedef-name} \tcode{result_type}
@@ -3975,14 +4104,13 @@ Change \eelis{rand.util.seedseq} as follows:
 \etc
 
 \itemdecl{
-template<class T>
+template<\del{class} \ins{\exposid{no-bit-int-integral}} T>
   seed_seq(initializer_list<T> il);
 }
 
 \itemdescr{
-\constraints
-\tcode{T} is an integer type
-\ins{other than a possibly cv-qualified bit-precise integer type}.
+\del{\constraints
+\tcode{T} is an integer type.}
 
 \effects
 Same as \tcode{seed_seq(il.begin(), il.end())}.
@@ -3995,8 +4123,9 @@ template<class InputIterator>
 
 \itemdescr{
 \mandates
-\tcode{iterator_traits<InputIterator>​::​value_type} is an integer type
-\ins{other than a possibly cv-qualified bit-precise integer type}.
+\tcode{iterator_traits<InputIterator>​::​value_type}
+\del{is an integer type}
+\ins{models \tcode{\exposid{no-bit-int-integral}}}.
 
 \etc
 }
@@ -4009,8 +4138,8 @@ template<class RandomAccessIterator>
 \itemdescr{
 \mandates
 \tcode{iterator_traits<RandomAccessIterator>​::​​value_type}
-is an unsigned integer type
-\ins{other than a possibly cv-qualified bit-precise integer type,}
+\del{is an unsigned integer type}
+\ins{models \tcode{\exposid{standard-or-extended-uint}}, and is}
 capable of accommodating 32-bit quantities.
 
 \etc
@@ -4052,29 +4181,9 @@ Change \eelis{simd.expos} as follows:
 
 \Bdiff{
 \itemdecl{
-template<class T>
-  concept \exposid{bit-precise-integer} = \seebelow; //\serif{ exposition only}
-
 template<class V>
   concept \exposid{simd-integral} = //\serif{ exposition only}
-    \exposid{simd-vec-type}<V> && integral<typename V::value_type> \ins{&& !\exposid{bit-precise-integer}<remove_cv_t<V>>};
-}
-}
-
-\h4(show_number=false){[simd.expos.defn]}
-
-Immediately following the declaration of \tcode{\exposid{deduced-vec-t}},
-add the following declaration:
-
-\Bins{
-\itemdecl{
-template<class T>
-  concept \exposid{bit-precise-integer} = \seebelow; //\serif{ exposition only}
-}
-
-\itemdescr{
-The concept \tcode{\exposid{bit-precise-integer}} is satisfied and modeled
-if and only if \tcode{T} is a bit-precise integer type\iref{basic.fundamental}.
+    \exposid{simd-vec-type}<V> && \del{integral} \ins{\exposid{no-bit-int-integral}}<typename V::value_type>;
 }
 }
 
@@ -4087,7 +4196,7 @@ Change \eelis{simd.mask.overview} as follows:
 \etc
 
 template<unsigned_integral T>
-  requires (!same_as<T, value_type> \ins{&& !\exposid{bit-precise-integer}<remove_cv_t<T>>})
+  requires (!same_as<T, value_type> \ins{&& !\exposid{bit-precise-int-type}<remove_cv_t<T>>})
   constexpr explicit basic_mask(T val) noexcept;
 
 \etc
@@ -4103,7 +4212,7 @@ Change \eelis{simd.mask.ctor} as follows:
 \etc
 
 template<unsigned_integral T>
-  requires (!same_as<T, value_type> \ins{&& !\exposid{bit-precise-integer}<remove_cv_t<T>>})
+  requires (!same_as<T, value_type> \ins{&& !\exposid{bit-precise-int-type}<remove_cv_t<T>>})
   constexpr explicit basic_mask(T val) noexcept;
 }
 
@@ -4130,10 +4239,8 @@ template<class type1, class type2, class type3>
 \mandates
 Each of the types
 \tcode{type1}, \tcode{type2}, and \tcode{type3}
-is a
-\del{cv-unqualified signed or unsigned}
-\ins{standard or extended}
-integer type.
+\del{is a cv-unqualified signed or unsigned integer type}
+\ins{models \tcode{\exposid{standard-or-extended-int}}}.
 
 \remarks
 Each function template has the same semantics
@@ -4151,9 +4258,10 @@ This matches the restrictions in \ref("N3550"), 7.20 "Checked Integer Arithmetic
 Change \eelis{time.duration.general#2} as follows:
 
 \Bdiff{
-\tcode{Rep} shall be an arithmetic type
-\ins{other than a bit-precise integer type}
-or a class emulating an arithmetic type.
+\tcode{Rep} shall
+\del{be an arithmetic type}
+\ins{model \tcode{\exposid{no-bit-int-arithmetic}}}
+or \ins{be} a class emulating an arithmetic type.
 If
 a specialization of \tcode{duration} is instantiated with a cv-qualified type or
 a specialization of \tcode{duration} as the argument for the template parameter \tcode{Rep},
@@ -4194,9 +4302,9 @@ transferred in an I/O operation, or the size of I/O buffers.
 Change \eelis{atomics.ref.int#1} as follows:
 
 \Bdiff{
-There are specializations of the atomic_ref class template for all integral types
-\ins{except for possibly cv-qualified bit-precise integer types and}
-except \ins{for} \cv \tcode{bool}.
+There are specializations of the atomic_ref class template for all
+\del{integral types except \cv \tcode{bool}}
+\ins{types that model \tcode{\exposid{no-bit-int-no-bool-integral}}}.
 \etc
 }
 
