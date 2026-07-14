@@ -46,6 +46,18 @@ Also, following LWG review during the 2026 Brno meeting:
   \li{Add wording for those design changes in \ref("#alt-wording-a") and \ref("#alt-wording-b")}
 }
 
+Furthermore, some editorial changes:
+
+\ul{
+  \li{
+    Mention in \ref("#intrinsic-implementation") that \tcode{__builtin_elementwise_clmul}
+    is available in Clang 23
+  }
+  \li{
+    Expand \ref("#intrinsic-implementation") with possible optimizations
+  }
+}
+
 \h3{Changes since R4}
 
 \ul{
@@ -349,18 +361,56 @@ The mathematical basis for the \ref("NTL") implementation is described in
 \ref("FasterMultiplicationInGF2").
 }
 
-Since January 2026,
-LLVM also provides a portable \tt{@llvm.clmul} intrinsic function (\ref("LLVMClmul")).
-Ideally, an implementation would simply lower
+\h3{Intrinsic implementation}
+
+Since Clang 23,
+LLVM also provides a portable \tt{@llvm.clmul} intrinsic function (\ref("LLVMClmul")),
+and Clang provides a \tcode{__builtin_elementwise_clmul} intrinsic.
+Thus, the operation can be lowered like:
 \tcode{std::clmul} → \tcode{__builtin_clmul} → \tcode{@llvm.clmul} → \tcode{pclmulqdq}.
 
-The issue with library implementations is that the optimal implementation
-for \tcode{std::clmul} highly depends on the architecture
-and has interesting mathematical properties that become opaque in the library.
-For example, if one factor is known to be a power of two,
-even if the exact value isn't known,
-normal multiplication can be used, which may be faster.
-Also, carry-less multiplication is commutative.
+While a pure library implementation of \tcode{std::clmul} is possible,
+it misses out on many optimization opportunities.
+
+\Bex{
+\ul{
+  \li{
+    \tcode{std::clmul} is commutative, pure, re-entrant, non-throwing,
+    does not affect the floating-point environment, etc.
+    Not all of these properties can be easily communicated for a library function.
+  }
+  \li{
+    Carry-less multiplication with \tcode{0} or \tcode{1} can be simplified
+    irrespective of the other factor.
+  }
+  \li{
+    If one factor has a large number of trailing zeroes,
+    the operation can be simplified by shifting that factor to the right,
+    performing the multiplication, and shifting back to the left.
+    This may avoid multiprecision operations;
+    that is, it can turn a 128-bit multiplication into a 64-bit multiplication.
+  }
+  \li{
+    If one factor is known to be a power of two,
+    even if the exact value isn't known,
+    normal multiplication can be used, which may be faster.
+  }
+  \li{
+    If one factor is a mask (that is, a sequence of contiguous one-bits),
+    carry-less multiplication is equivalent to a \q{parallel prefix XOR}
+    or \q{bitwise parity} operation, which is simpler than the usual software implementation.
+  }
+  \li{
+    \tcode{std::clmul(x, x)} is equivalent to interleaving bits of \tcode{x} with zeroes.
+    This pattern of squaring can be recognized
+    (even if the value of \tcode{x} is unknown)
+    and transformed into \tcode{std::bit_expand(x, 0x5555'5555u)}
+    if the \tt{PDEP} instruction is available in hardware.
+    On x86_64, this may be beneficial because carry-less multiplication is a vector instruction
+    and \tt{PDEP} may have less overhead.
+  }
+}
+}
 
 \h3{Hardware support}
 

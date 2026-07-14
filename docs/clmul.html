@@ -1621,6 +1621,8 @@ Add widening and non-widening carry-less multiplication functions.
 <div class=toc-num data-level=2>4</div>
 <a href=#possible-implementation><h2>Possible implementation</h2></a>
 <div class=toc-num data-level=3>4.1</div>
+<a href=#intrinsic-implementation><h3>Intrinsic implementation</h3></a>
+<div class=toc-num data-level=3>4.2</div>
 <a href=#hardware-support><h3>Hardware support</h3></a>
 <div class=toc-num data-level=2>5</div>
 <a href=#design-considerations><h2>Design considerations</h2></a>
@@ -1678,6 +1680,18 @@ but got stuck in LWG due to some design concerns that require LEWG input.
   <li>Apply various wording adjustments during review</li>
   <li>Add <a href=#lwg-design-changes>§6. Potential design changes following LWG review</a></li>
   <li>Add wording for those design changes in <a href=#alt-wording-a>§8. Optional wording changes A</a> and <a href=#alt-wording-b>§9. Optional wording changes B</a></li>
+</ul>
+
+<p>Furthermore, some editorial changes:
+</p>
+<ul>
+  <li>
+    Mention in <a href=#intrinsic-implementation>§4.1. Intrinsic implementation</a> that <code><h- data-h=name>__builtin_elementwise_clmul</h-></code>
+    is available in Clang 23
+  </li>
+  <li>
+    Expand <a href=#intrinsic-implementation>§4.1. Intrinsic implementation</a> with possible optimizations
+  </li>
 </ul>
 
 <h3 id=changes-since-r4><a class=para href=#changes-since-r4></a>1.2. Changes since R4</h3>
@@ -1744,7 +1758,7 @@ that the next revision includes <code><h- data-h=name>std</h-><h- data-h=sym_op>
 <ul>
   <li>Generate the proposal using COWEL instead of bikeshed</li>
   <li>Fix incorrect formula in <a href=#wording>§7. Proposed wording</a> for bits ≥ the integer width</li>
-  <li>Fix <a href=#hardware-support>§4.1. Hardware support</a> missing new VPCLMULQDQ instructions</li>
+  <li>Fix <a href=#hardware-support>§4.2. Hardware support</a> missing new VPCLMULQDQ instructions</li>
   <li>Fix improper uses of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>unsigned_integral</h-></code> in <a href=#introduction>§2. Introduction</a></li>
   <li>Make slight editorial wording adjustments</li>
   <li>Rebase on N5008 and <a href="https://wg21%2elink/p3161r4">[P3161R4]</a></li>
@@ -1970,20 +1984,58 @@ The mathematical basis for the <a href="https://github%2ecom/libntl/ntl">[NTL]</
 <a href="https://inria%2ehal%2escience/inria-00188261v4/document">[FasterMultiplicationInGF2]</a>.
 </p></note-block>
 
-<p>Since January 2026,
-LLVM also provides a portable <tt->@llvm.clmul</tt-> intrinsic function (<a href="https://llvm%2eorg/docs/LangRef%2ehtml#llvm-clmul-intrinsic">[LLVMClmul]</a>).
-Ideally, an implementation would simply lower
+<h3 id=intrinsic-implementation><a class=para href=#intrinsic-implementation></a>4.1. Intrinsic implementation</h3>
+
+<p>Since Clang 23,
+LLVM also provides a portable <tt->@llvm.clmul</tt-> intrinsic function (<a href="https://llvm%2eorg/docs/LangRef%2ehtml#llvm-clmul-intrinsic">[LLVMClmul]</a>),
+and Clang provides a <code><h- data-h=name>__builtin_elementwise_clmul</h-></code> intrinsic.
+Thus, the operation can be lowered like:
 <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>clmul</h-></code> → <code><h- data-h=name>__builtin_clmul</h-></code> → <code>@llvm.clmul</code> → <code><h- data-h=name>pclmulqdq</h-></code>.
 </p>
-<p>The issue with library implementations is that the optimal implementation
-for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>clmul</h-></code> highly depends on the architecture
-and has interesting mathematical properties that become opaque in the library.
-For example, if one factor is known to be a power of two,
-even if the exact value isn't known,
-normal multiplication can be used, which may be faster.
-Also, carry-less multiplication is commutative.
+<p>While a pure library implementation of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>clmul</h-></code> is possible,
+it misses out on many optimization opportunities.
 </p>
-<h3 id=hardware-support><a class=para href=#hardware-support></a>4.1. Hardware support</h3>
+<example-block><p><intro-></intro-> 
+</p><ul>
+  <li>
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>clmul</h-></code> is commutative, pure, re-entrant, non-throwing,
+    does not affect the floating-point environment, etc.
+    Not all of these properties can be easily communicated for a library function.
+  </li>
+  <li>
+    Carry-less multiplication with <code><h- data-h=num>0</h-></code> or <code><h- data-h=num>1</h-></code> can be simplified
+    irrespective of the other factor.
+  </li>
+  <li>
+    If one factor has a large number of trailing zeroes,
+    the operation can be simplified by shifting that factor to the right,
+    performing the multiplication, and shifting back to the left.
+    This may avoid multiprecision operations;
+    that is, it can turn a 128-bit multiplication into a 64-bit multiplication.
+  </li>
+  <li>
+    If one factor is known to be a power of two,
+    even if the exact value isn't known,
+    normal multiplication can be used, which may be faster.
+  </li>
+  <li>
+    If one factor is a mask (that is, a sequence of contiguous one-bits),
+    carry-less multiplication is equivalent to a <q>parallel prefix XOR</q>
+    or <q>bitwise parity</q> operation, which is simpler than the usual software implementation.
+  </li>
+  <li>
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>clmul</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-></code> is equivalent to interleaving bits of <code><h- data-h=name>x</h-></code> with zeroes.
+    This pattern of squaring can be recognized
+    (even if the value of <code><h- data-h=name>x</h-></code> is unknown)
+    and transformed into <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_expand</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>5555</h-><h- data-h=num_dlim>'</h-><h- data-h=num>5555</h-><h- data-h=num_deco>u</h-><h- data-h=sym_par>)</h-></code>
+    if the <tt->PDEP</tt-> instruction is available in hardware.
+    On x86_64, this may be beneficial because carry-less multiplication is a vector instruction
+    and <tt->PDEP</tt-> may have less overhead.
+  </li>
+</ul>
+</example-block>
+
+<h3 id=hardware-support><a class=para href=#hardware-support></a>4.2. Hardware support</h3>
 
 <p>The implementation difficulty lies mostly in utilizing available hardware instructions,
 not in the naive fallback implementation.
@@ -2127,7 +2179,7 @@ there exists a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h
   <h- data-h=kw>constexpr</h-> <h- data-h=name>wide_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>widening_clmul</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <p>Such a widening function is important in a various cryptographic use cases.
-There is universal <a href=#hardware-support>§4.1. Hardware support</a> for obtaining all 128 bits
+There is universal <a href=#hardware-support>§4.2. Hardware support</a> for obtaining all 128 bits
 of a multiplication for that reason.
 </p>
 <p>Most of the design choices take the design of <a href="https://wg21%2elink/p3161r4">[P3161R4]</a> and <a href="https://wg21%2elink/p4052r0">[P4052R0]</a>
