@@ -4,7 +4,7 @@
 \wg21_head(title={Carry-less product: \tt{std::clmul}}){
 \dl{
   \dt{Document number:} \dd{\docnum{P3642R6}}
-  \dt{Date:}            \dd{\tt{2026-06-29}}
+  \dt{Date:}            \dd{\tt{2026-07-14}}
   \dt{Audience:}        \dd{LEWG, LWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -908,36 +908,27 @@ Optionally, if \tcode{std::wide_result} is not to be an aggregate type,
 immediately apply the following changes
 on top of the preceding changes.
 
-Remove the current declaration of \tcode{std::wide_result} in \eelis{numeric.ops.overview}:
+Change the declaration of \tcode{std::wide_result} in \eelis{numeric.ops.overview}
+as follows:
 
-\Bdel{
+\Bdiff{
 \itemdecl{
 template<class T>
-struct wide_result {
-  T low_bits;
-  T high_bits;
+\del{struct} \ins{class} wide_result {
+  \del{T low_bits;}
+  \del{T high_bits;}
+\ins{public:}
+  \ins{constexpr wide_result(T high, T low) noexcept
+    : \exposid{high-bits}(high), \exposid{low-bits}(low) {}}
+
+  \ins{constexpr T high_bits() const noexcept { return \exposid{high-bits}; }}
+  \ins{constexpr T low_bits() const noexcept { return \exposid{low-bits}; }}
+
   friend constexpr bool operator==(const wide_result&, const wide_result&) = default;
   friend constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
     noexcept;
-};
-}
-}
-
-Insert the following in its place:
-
-\Bins{
-\itemdecl{
-template<class T>
-struct wide_result {
-public:
-  using value_type = T;
-  constexpr wide_result(value_type high, value_type low) noexcept
-    : \exposid{high-bits}(high), \exposid{low-bits}(low) {}
-  constexpr value_type low_bits() const noexcept { return \exposid{low-bits}; }
-  constexpr value_type high_bits() const noexcept { return \exposid{high-bits}; }
-  friend strong_ordering operator<=>(const wide_result&, const wide_result&) = default;
-private:
-  value_type \exposid{high-bits}, \exposid{low-bits}; // \serif{exposition-only}
+\ins{private:
+  T \exposid{high-bits}, \exposid{low-bits}; // \serif{exposition-only}}
 };
 }
 }
@@ -956,11 +947,7 @@ unless \tcode{T} is an unsigned integer type\iref{basic.fundamental}.
 A specialization of \tcode{wide_result} is a standard-layout,
 trivially copyable class type.
 The members \tcode{\exposid{high-bits}} and \tcode{\exposid{low-bits}}
-of any specialization of \tcode{wide_result} may be reordered,
-and \tcode{operator<=>} may be implemented as non-defaulted,
-as long as the result of equality, relational, and three-way comparisons
-between \tcode{wide_result} objects is consistent with defining
-\tcode{\exposid{high-bits}} first and defaulting \tcode{operator<=>}.
+of any specialization of \tcode{wide_result} may be reordered.
 }
 
 \ins{
@@ -970,17 +957,6 @@ The member \tcode{\exposid{low-bits}} should precede
 the member \tcode{\exposid{high-bits}}
 in all specializations of \tcode{wide_result}
 if \tcode{endian::native} equals \tcode{endian::little}\iref{bit.endian}.
-}
-
-\itemdecl{
-\del{constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
-  noexcept;}
-}
-
-\itemdescr{
-\del{\pnum
-\returns
-\tcode{tie(x.high_bits, x.low_bits) <=> tie(y.high_bits, y.low_bits)}.}
 }
 }
 
@@ -1015,7 +991,8 @@ of a type \tcode{wide_result<T>},
 if \tcode{T} has no padding bits and there exists an unsigned integer type
 \tcode{W} with twice the width of \tcode{T} and with no padding bits, then
 \tcode{\math{\msub{\mi{w}\mn{0}}} <=> \math{\msub{\mi{w}\mn{1}}}} shall be equivalent to
-\tcode{bit_cast<W>(\math{\msub{\mi{w}\mn{0}}}) <=> bit_cast<W>(\math{\msub{\mi{w}\mn{1}}})}.
+\tcode{bit_cast<W>(\math{\msub{\mi{w}\mn{0}}}) <=> bit_cast<W>(\math{\msub{\mi{w}\mn{1}}})}
+and \tcode{wide_result<T>} shall have the same size and alignment as \tcode{W}.
 }
 
 \h2{References}
