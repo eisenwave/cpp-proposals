@@ -1579,8 +1579,8 @@ if (theme !== null) {
 <div class=wg21-head><h1>Case ranges</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/P4040R0>P4040R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-04-01</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P4040R1>P4040R1</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-15-07</tt-></dd>
   <dt>Audience:</dt>        <dd>SG22</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1600,34 +1600,53 @@ This feature should be standardized for C++.
 <h2 id=contents><a class=para href=#contents></a>Contents</h2>
 
 <div class=toc><div class=toc-num data-level=2>1</div>
-<a href=#introduction><h2>Introduction</h2></a>
+<a href=#revision-history><h2>Revision history</h2></a>
+<div class=toc-num data-level=3>1.1</div>
+<a href=#changes-since-r0><h3>Changes since R0</h3></a>
 <div class=toc-num data-level=2>2</div>
-<a href=#motivation><h2>Motivation</h2></a>
+<a href=#introduction><h2>Introduction</h2></a>
 <div class=toc-num data-level=2>3</div>
-<a href=#design><h2>Design</h2></a>
-<div class=toc-num data-level=3>3.1</div>
-<a href=#design-strategy><h3>Design strategy</h3></a>
-<div class=toc-num data-level=3>3.2</div>
-<a href=#scoped-enumerations><h3>Scoped enumerations</h3></a>
-<div class=toc-num data-level=3>3.3</div>
-<a href=#why-not-wait-for-pattern-matching><h3>Why not wait for pattern matching?</h3></a>
-<div class=toc-num data-level=3>3.4</div>
-<a href=#what-about-pack-expansion-case-labels><h3>What about pack expansion <code><h- data-h=kw_ctrl>case</h-></code> labels?</h3></a>
+<a href=#motivation><h2>Motivation</h2></a>
 <div class=toc-num data-level=2>4</div>
-<a href=#implementation-experience><h2>Implementation experience</h2></a>
+<a href=#design><h2>Design</h2></a>
+<div class=toc-num data-level=3>4.1</div>
+<a href=#design-strategy><h3>Design strategy</h3></a>
+<div class=toc-num data-level=3>4.2</div>
+<a href=#scoped-enumerations><h3>Scoped enumerations</h3></a>
+<div class=toc-num data-level=3>4.3</div>
+<a href=#mixing-unscoped-enumeration-types><h3>Mixing unscoped enumeration types</h3></a>
+<div class=toc-num data-level=4>4.3.1</div>
+<a href=#arguments-against-restrictions-in-this-paper><h4>Arguments against restrictions in this paper</h4></a>
+<div class=toc-num data-level=4>4.3.2</div>
+<a href=#deprecate-mixing-enumeration-types><h4>Deprecate mixing enumeration types</h4></a>
+<div class=toc-num data-level=3>4.4</div>
+<a href=#why-not-wait-for-pattern-matching><h3>Why not wait for pattern matching?</h3></a>
+<div class=toc-num data-level=3>4.5</div>
+<a href=#what-about-pack-expansion-case-labels><h3>What about pack expansion <code><h- data-h=kw_ctrl>case</h-></code> labels?</h3></a>
 <div class=toc-num data-level=2>5</div>
-<a href=#wording><h2>Wording</h2></a>
-<div class=toc-num data-level=3>5.1</div>
-<a href=#cpp%2epredefined><h3>[cpp.predefined]</h3></a>
-<div class=toc-num data-level=3>5.2</div>
-<a href=#stmt%2elabel><h3>[stmt.label]</h3></a>
-<div class=toc-num data-level=3>5.3</div>
-<a href=#stmt%2eswitch><h3>[stmt.switch]</h3></a>
+<a href=#implementation-experience><h2>Implementation experience</h2></a>
 <div class=toc-num data-level=2>6</div>
+<a href=#wording><h2>Wording</h2></a>
+<div class=toc-num data-level=3>6.1</div>
+<a href=#cpp%2epredefined><h3>[cpp.predefined]</h3></a>
+<div class=toc-num data-level=3>6.2</div>
+<a href=#stmt%2elabel><h3>[stmt.label]</h3></a>
+<div class=toc-num data-level=3>6.3</div>
+<a href=#stmt%2eswitch><h3>[stmt.switch]</h3></a>
+<div class=toc-num data-level=2>7</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
-<h2 id=introduction><a class=para href=#introduction></a>1. Introduction</h2>
+<h2 id=revision-history><a class=para href=#revision-history></a>1. Revision history</h2>
+
+<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.1. Changes since R0</h3>
+
+<ul>
+  <li>Added <a href=#mixing-unscoped-enumeration-types>§4.3. Mixing unscoped enumeration types</a></li>
+  <li>Revised wording following CWG reflector review</li>
+</ul>
+
+<h2 id=introduction><a class=para href=#introduction></a>2. Introduction</h2>
 
 <style>
   .tony-table {
@@ -1687,7 +1706,7 @@ not just for C but also for C++.
 Since it is useful and widely supported,
 we should standardize existing practice and make it available to users in standard C++.
 </p>
-<h2 id=motivation><a class=para href=#motivation></a>2. Motivation</h2>
+<h2 id=motivation><a class=para href=#motivation></a>3. Motivation</h2>
 
 <p>The benefit of the range syntax is obvious:
 when there are several contiguous cases,
@@ -1714,9 +1733,9 @@ Providing it to users would make it easier to port C code to C++ and vice versa.
 Historically, C++ has always provided the control flow constructs of C,
 although <code><h- data-h=kw>defer</h-></code> may likely result in divergence.
 </p>
-<h2 id=design><a class=para href=#design></a>3. Design</h2>
+<h2 id=design><a class=para href=#design></a>4. Design</h2>
 
-<h3 id=design-strategy><a class=para href=#design-strategy></a>3.1. Design strategy</h3>
+<h3 id=design-strategy><a class=para href=#design-strategy></a>4.1. Design strategy</h3>
 
 <p>The overall strategy is to copy the semantics of the C2y feature as accurately as possible.
 Among other things, this includes design decisions such as:
@@ -1734,6 +1753,9 @@ Among other things, this includes design decisions such as:
       it may be annoying if the types of both sides of the <g-term>constant-range-expression</g-term>
       have to be of the same type.
     </p></example-block>
+  </li>
+  <li>
+    Mixing different unscoped enumeration types is permitted.
   </li>
   <li>
     Overlapping ranges are disallowed.
@@ -1768,7 +1790,7 @@ which works around the problem.
 This quirk is also documented at <a href=https://gcc.gnu.org/onlinedocs/gcc/Case-Ranges.html class=sans>https://gcc.gnu.org/onlinedocs/gcc/Case-Ranges.html</a>.
 </p></note-block>
 
-<h3 id=scoped-enumerations><a class=para href=#scoped-enumerations></a>3.2. Scoped enumerations</h3>
+<h3 id=scoped-enumerations><a class=para href=#scoped-enumerations></a>4.2. Scoped enumerations</h3>
 
 <p>One feature exclusive to the C++ compiler extension is the support for scoped enumerations,
 such as in:
@@ -1800,7 +1822,67 @@ The range check does not undergo overload resolution for <code><h- data-h=kw>ope
 but takes place in terms of the underlying type of the enumeration.
 </p></note-block>
 
-<h3 id=why-not-wait-for-pattern-matching><a class=para href=#why-not-wait-for-pattern-matching></a>3.3. Why not wait for pattern matching?</h3>
+<h3 id=mixing-unscoped-enumeration-types><a class=para href=#mixing-unscoped-enumeration-types></a>4.3. Mixing unscoped enumeration types</h3>
+
+<p>Currently, the following construct is valid in both C2y and C++26:
+</p>
+<code-block><h- data-h=kw>enum</h-> <h- data-h=name>A</h-> <h- data-h=sym_brac>{</h-> <h- data-h=name>X</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>enum</h-> <h- data-h=name>B</h-> <h- data-h=sym_brac>{</h-> <h- data-h=name>Y</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=kw_type>void</h-> <h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw_ctrl>switch</h-> <h- data-h=sym_par>(</h-><h- data-h=name>X</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+        <h- data-h=kw_ctrl>case</h-> <h- data-h=name>Y</h-><h- data-h=sym_punc>:</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=sym_brac>}</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>In C++, this is because <code><h- data-h=name>Y</h-></code> is a converted constant expression (<a href=https://eel.is/c++draft/stmt.switch>[stmt.switch]</a>)
+of type <code><h- data-h=name>A</h-></code>,
+and the conversion from values of type <code><h- data-h=name>B</h-></code> to <code><h- data-h=name>A</h-></code> is well-defined and not
+narrowing (<a href=https://eel.is/c++draft/dcl.init.list#def:conversion,narrowing>[dcl.init.list] definition of "conversion,narrowing"</a>).
+</p>
+<note-block><p><intro-></intro-> 
+At the time of writing, out of GCC, Clang, and MSVC, only Clang diagnoses this as
+a <tt->-Wenum-compare-switch</tt-> warning,
+and Clang only does so in C++ mode.
+</p></note-block>
+
+<p>Consequently, this paper permits the following
+(except the code would be invalid due to overlapping ranges):
+</p><code-block><h- data-h=kw_ctrl>switch</h-> <h- data-h=sym_par>(</h-><h- data-h=name>X</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw_ctrl>case</h-> <h- data-h=name>Y</h-><h- data-h=sym_punc>:</h-><h- data-h=sym_punc>;</h->        <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> OK, pre-existing mismatch between condition and label type</h-></f-serif>
+    <h- data-h=kw_ctrl>case</h-> <h- data-h=name>Y</h-> <h- data-h=sym_op>...</h-> <h- data-h=name>Y</h-><h- data-h=sym_punc>:</h-><h- data-h=sym_punc>;</h->  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> OK, new mismatch between condition and label type</h-></f-serif>
+    <h- data-h=kw_ctrl>case</h-> <h- data-h=name>X</h-> <h- data-h=sym_op>...</h-> <h- data-h=name>Y</h-><h- data-h=sym_punc>:</h-><h- data-h=sym_punc>;</h->  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> OK, mixing different unscoped enumerations a case range</h-></f-serif>
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>It could be argued that permitting this mixing is surprising.
+Also, <a href="https://wg21%2elink/p2864r2">[P2864R2]</a> removed the (deprecated in C++20) ability to mix
+different enumeration types in comparisons (or generally, in usual arithmetic conversions),
+and disallowing enumeration mixing in <code><h- data-h=kw_ctrl>switch</h-></code> statements
+would be consistent with that design.
+</p>
+<h4 id=arguments-against-restrictions-in-this-paper><a class=para href=#arguments-against-restrictions-in-this-paper></a>4.3.1. Arguments against restrictions in this paper</h4>
+
+<p>However, the current behavior has existed in the C++ extension
+for many years and is the current C2y behavior,
+so any change may break existing code and create incompatibility with C.
+Making that change is also not necessary right now;
+the proposed feature is an ancient extension,
+so we make a breaking change whether we restrict the behavior now or in a few years.
+</p>
+<p>Making the behavior more restrictive should also be done holistically:
+if writing <code><h- data-h=name>X</h-> <h- data-h=sym_op>...</h-> <h- data-h=name>Y</h-></code> is disallowed, then <code><h- data-h=kw_ctrl>case</h-> <h- data-h=name>Y</h-><h- data-h=sym_punc>:</h-></code> should also be disallowed
+when there is a mismatch with the condition type,
+but that is an entirely separate and pre-existing issue for a separate paper.
+</p>
+<h4 id=deprecate-mixing-enumeration-types><a class=para href=#deprecate-mixing-enumeration-types></a>4.3.2. Deprecate mixing enumeration types</h4>
+
+<p>A compromise worth considering is to allow mixing enumeration types now,
+but to deprecate it <q>on arrival</q>.
+Deprecating new features is unconventional,
+but seems appropriate considering that the new feature is pre-existing as an extension,
+so any changes to it should be subject to deprecation just like existing standard features.
+</p>
+<h3 id=why-not-wait-for-pattern-matching><a class=para href=#why-not-wait-for-pattern-matching></a>4.4. Why not wait for pattern matching?</h3>
 
 <p>Pattern matching provides very similar functionality:
 </p>
@@ -1854,7 +1936,7 @@ but takes place in terms of the underlying type of the enumeration.
   </li>
 </ul>
 
-<h3 id=what-about-pack-expansion-case-labels><a class=para href=#what-about-pack-expansion-case-labels></a>3.4. What about pack expansion <code><h- data-h=kw_ctrl>case</h-></code> labels?</h3>
+<h3 id=what-about-pack-expansion-case-labels><a class=para href=#what-about-pack-expansion-case-labels></a>4.5. What about pack expansion <code><h- data-h=kw_ctrl>case</h-></code> labels?</h3>
 
 <p>It may be worth considering a pack expansion <code><h- data-h=kw_ctrl>case</h-></code> label, like:
 </p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>auto</h-><h- data-h=sym_op>...</h-> <h- data-h=name>Args</h-><h- data-h=sym_op>&gt;</h->
@@ -1889,7 +1971,7 @@ whether pack expansions are supported or not.
 <p>In conclusion, pack expansion <code><h- data-h=kw_ctrl>case</h-></code> labels are <u>not</u> proposed,
 and case ranges do not prevent such a feature from being added in the future.
 </p>
-<h2 id=implementation-experience><a class=para href=#implementation-experience></a>4. Implementation experience</h2>
+<h2 id=implementation-experience><a class=para href=#implementation-experience></a>5. Implementation experience</h2>
 
 <p>Case ranges were first implemented in GCC 2.0 (1992) and Clang 1.0 (2007),
 albeit as a GNU extension,
@@ -1899,7 +1981,7 @@ Both GCC and Clang currently provide the feature as proposed in both C and C++ m
 <p>MSVC does not support case ranges.
 </p>
 
-<h2 id=wording><a class=para href=#wording></a>5. Wording</h2>
+<h2 id=wording><a class=para href=#wording></a>6. Wording</h2>
 
 <p>The changes are relative to <a href="https://wg21%2elink/n5032">[N5032]</a>.
 </p>
@@ -1953,8 +2035,8 @@ promotions (<a href=https://eel.is/c++draft/conv.prom>[conv.prom]</a>),
 the condition is converted to the promoted type.
 </p>
 <p><ins>3</ins> Any statement within the <code><h- data-h=kw_ctrl>switch</h-></code> statement can be labeled
-with one or more <del>case</del> <ins><code><h- data-h=kw_ctrl>case</h-></code></ins> labels <del>as follows</del>
-<ins>of one of the forms</ins>:
+with one or more <del>case</del> <ins><code><h- data-h=kw_ctrl>case</h-></code></ins> labels <del>as follows:</del>
+<ins>of one of the forms</ins>
 </p><dl class=grammar>
   <dd><ins>attribute-specifier-seq<sub class=opt>opt</sub></ins> <h- data-h=kw>case</h-> constant-expression <code><h- data-h=sym_punc>:</h-></code></dd>
   <dd><ins>attribute-specifier-seq<sub class=opt>opt</sub> <h- data-h=kw>case</h-> constant-range-expression <code><h- data-h=sym_punc>:</h-></code></ins></dd>
@@ -1966,18 +2048,22 @@ of the second form</ins>
 shall be a converted constant expression (<a href=https://eel.is/c++draft/expr.const>[expr.const]</a>)
 of the adjusted type of the <del>switch</del> <ins><code><h- data-h=kw_ctrl>switch</h-></code></ins> condition.
 <ins>
-Let the <dfn>value range</dfn> of a <code><h- data-h=kw_ctrl>case</h-></code> label <math display=inline><mi>L</mi></math> be:
+Let the <dfn>integer value</dfn> of a value <math display=inline><mi>v</mi></math> be
+<math display=inline><mi>v</mi></math> if <math display=inline><mi>v</mi></math> is of integral type other than <code><h- data-h=kw_type>bool</h-></code>,
+and otherwise the value obtained by converting <math display=inline><mi>v</mi></math> to the underlying type of <math display=inline><mi>v</mi></math>.
+Let the <dfn>integer range</dfn> of a <code><h- data-h=kw_ctrl>case</h-></code> label <math display=inline><mi>L</mi></math> be:
 <ul>
   <li>
     <ins>if <math display=inline><mi>L</mi></math> is of the first form,
     <math display=inline><mrow><mo stretchy=false>[</mo><mi>x</mi><mo>,</mo><mi>x</mi><mo stretchy=false>]</mo></mrow></math>,
-    where <math display=inline><mi>x</mi></math> is the converted value of the <g-term>constant-expression</g-term>;</ins>
+    where <math display=inline><mi>x</mi></math> is the integer value of the converted value
+    of the <g-term>constant-expression</g-term>;</ins>
 
   </li>
   <li>
     <ins>otherwise,
     <math display=inline><mrow><mo stretchy=false>[</mo><mi>a</mi><mo>,</mo><mi>b</mi><mo stretchy=false>]</mo></mrow></math>,
-    where <math display=inline><mi>a</mi></math> and <math display=inline><mi>b</mi></math> are the converted values of the
+    where <math display=inline><mi>a</mi></math> and <math display=inline><mi>b</mi></math> are the integer values of the converted values of the
     first and second <g-term>constant-expression</g-term>
     of the <g-term>constant-range-expression</g-term>,
     respectively.</ins>
@@ -1998,7 +2084,7 @@ shall <del>have the same value after conversion</del> <ins>overlap</ins>.
 <h- data-h=kw_ctrl>switch</h-> <h- data-h=sym_par>(</h-><h- data-h=name>i</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=kw_ctrl>case</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1</h-><h- data-h=sym_punc>:</h->          <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> error: narrowing conversion from </h-><code><h- data-h=sym_op>-</h-><h- data-h=num>1</h-></code><h- data-h=cmt> to </h-><code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-></code></f-serif>
   <h- data-h=kw_ctrl>case</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>...</h-> <h- data-h=num>10</h-><h- data-h=num_deco>ull</h-><h- data-h=sym_punc>:</h-> <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> OK</h-></f-serif>
-  <h- data-h=kw_ctrl>case</h-> <h- data-h=num>2</h-> <h- data-h=sym_op>...</h-> <h- data-h=num>3</h-><h- data-h=sym_punc>:</h->     <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> error: value range overlaps with that of previous label</h-></f-serif>
+  <h- data-h=kw_ctrl>case</h-> <h- data-h=num>10</h-> <h- data-h=sym_op>...</h-> <h- data-h=num>15</h-><h- data-h=sym_punc>:</h->   <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> error: integer range overlaps with that of previous label</h-></f-serif>
 <h- data-h=sym_brac>}</h-></code-block>
 <p> — <i>end example</i>]
 </p></ins-block>
@@ -2008,7 +2094,7 @@ insert a new paragraph:
 </p><ins-block>
 <p><i>Recommended practice</i>:
 Implementations should emit a warning
-when the value range of a <code><h- data-h=kw_ctrl>case</h-></code> label is empty.
+when the integer range of a <code><h- data-h=kw_ctrl>case</h-></code> label is empty.
 </p></ins-block>
 
 <note-block class=edit><p><intro-></intro-> 
@@ -2047,20 +2133,17 @@ If no case matches and if there is no <code><h- data-h=kw>default</h-></code>
 then none of the statements in the switch is executed.
 </del>
 <ins>, and control may be passed
-to one of the statements labeled by a label associated with the <code><h- data-h=kw_ctrl>switch</h-></code> statement,
+to one of the statements labeled with a label associated with the <code><h- data-h=kw_ctrl>switch</h-></code> statement,
 selected as follows:</ins>
 </p><ul>
   <li><ins>
-    If the value of the condition lies in the value range of one of the <code><h- data-h=kw_ctrl>case</h-></code> labels,
-    control is passed to the statement labeled by that label.
-    If the value is of enumeration type <code><h- data-h=name>E</h-></code>,
-    determining whether it lies in the value range takes place
-    by first explicitly converting (<a href=https://eel.is/c++draft/expr.type.conv>[expr.type.conv]</a>) the value range boundaries
-    and the value of the condition to the underlying type of <code><h- data-h=name>E</h-></code>.
+    If the integer value of the value of the condition
+    lies in the integer range of one of the <code><h- data-h=kw_ctrl>case</h-></code> labels,
+    control is passed to the statement labeled with that label.
   </ins></li>
   <li><ins>
     Otherwise, if there is a <code><h- data-h=kw>default</h-></code> label,
-    control is passed to the statement labeled by that label.
+    control is passed to the statement labeled with the <code><h- data-h=kw>default</h-></code> label.
   </ins></li>
   <li><ins>
     Otherwise, control is not passed
@@ -2069,7 +2152,7 @@ selected as follows:</ins>
 </ul>
 </diff-block>
 
-<h2 id=references><a class=para href=#references></a>6. References</h2>
+<h2 id=references><a class=para href=#references></a>7. References</h2>
 
 
 <div class=bib><div id=bib-item-N3370 class=bib-item>
@@ -2082,6 +2165,11 @@ selected as follows:</ins>
 <span class=bib-author>Thomas Köppe.</span>
 <span class=bib-title>Working Draft, Programming Languages — C++</span>
 <span class=bib-date>2025-12-15</span>
-<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/n5032%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf</a></div></div>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/n5032%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf</a></div><div id=bib-item-P2864R2 class=bib-item>
+<a href="https://wg21%2elink/p2864r2">[P2864R2]</a>
+<span class=bib-author>Alisdair Meredith.</span>
+<span class=bib-title>Remove Deprecated Arithmetic Conversion on Enumerations From C++26</span>
+<span class=bib-date>2023-11-10</span>
+<a href="https://www%2eopen-std%2eorg/JTC1/SC22/WG21/docs/papers/2023/p2864r2%2epdf" class=bib-link>https://www.open-std.org/JTC1/SC22/WG21/docs/papers/2023/p2864r2.pdf</a></div></div>
 </main></body>
 </html>

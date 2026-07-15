@@ -3,8 +3,8 @@
 
 \wg21_head(title={Case ranges}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P4040R0}}
-  \dt{Date:}            \dd{\tt{2026-04-01}}
+  \dt{Document number:} \dd{\docnum{P4040R1}}
+  \dt{Date:}            \dd{\tt{2026-15-07}}
   \dt{Audience:}        \dd{SG22}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -24,6 +24,15 @@ This feature should be standardized for C++.
 \h2(listed=false){Contents}
 
 \make_contents
+
+\h2{Revision history}
+
+\h3{Changes since R0}
+
+\ul{
+  \li{Added \ref("#mixing-unscoped-enumeration-types")}
+  \li{Revised wording following CWG reflector review}
+}
 
 \h2{Introduction}
 
@@ -140,6 +149,9 @@ Among other things, this includes design decisions such as:
     }
   }
   \li{
+    Mixing different unscoped enumeration types is permitted.
+  }
+  \li{
     Overlapping ranges are disallowed.
     That is, the \tcode{switch} needs to be able to select one \tcode{case} label
     unambiguously.
@@ -205,6 +217,70 @@ and case ranges allow for selecting such blocks.
 The range check does not undergo overload resolution for \tcode{operator<},
 but takes place in terms of the underlying type of the enumeration.
 }
+
+\h3{Mixing unscoped enumeration types}
+
+Currently, the following construct is valid in both C2y and C++26:
+
+\cppblock{
+enum A { X };
+enum B { Y };
+
+void f() {
+    switch (X) {
+        case Y:;
+    }
+}
+}
+
+In C++, this is because \tcode{Y} is a converted constant expression\iref{stmt.switch}
+of type \tcode{A},
+and the conversion from values of type \tcode{B} to \tcode{A} is well-defined and not
+narrowing\iref{dcl.init.list#def:conversion,narrowing}.
+
+\Bnote{
+At the time of writing, out of GCC, Clang, and MSVC, only Clang diagnoses this as
+a \tt{-Wenum-compare-switch} warning,
+and Clang only does so in C++ mode.
+}
+
+Consequently, this paper permits the following
+(except the code would be invalid due to overlapping ranges):
+\cppblock{
+switch (X) {
+    case Y:;        //\serif{ OK, pre-existing mismatch between condition and label type}
+    case Y ... Y:;  //\serif{ OK, new mismatch between condition and label type}
+    case X ... Y:;  //\serif{ OK, mixing different unscoped enumerations a case range}
+}
+}
+
+It could be argued that permitting this mixing is surprising.
+Also, \ref("P2864R2") removed the (deprecated in C++20) ability to mix
+different enumeration types in comparisons (or generally, in usual arithmetic conversions),
+and disallowing enumeration mixing in \tcode{switch} statements
+would be consistent with that design.
+
+\h4{Arguments against restrictions in this paper}
+
+However, the current behavior has existed in the C++ extension
+for many years and is the current C2y behavior,
+so any change may break existing code and create incompatibility with C.
+Making that change is also not necessary right now;
+the proposed feature is an ancient extension,
+so we make a breaking change whether we restrict the behavior now or in a few years.
+
+Making the behavior more restrictive should also be done holistically:
+if writing \tcode{X ... Y} is disallowed, then \tcode{case Y:} should also be disallowed
+when there is a mismatch with the condition type,
+but that is an entirely separate and pre-existing issue for a separate paper.
+
+\h4{Deprecate mixing enumeration types}
+
+A compromise worth considering is to allow mixing enumeration types now,
+but to deprecate it \q{on arrival}.
+Deprecating new features is unconventional,
+but seems appropriate considering that the new feature is pre-existing as an extension,
+so any changes to it should be subject to deprecation just like existing standard features.
 
 \h3{Why not wait for pattern matching?}
 
@@ -369,8 +445,8 @@ promotions\iref{conv.prom},
 the condition is converted to the promoted type.
 
 \ins{3} Any statement within the \tcode{switch} statement can be labeled
-with one or more \del{case} \ins{\tcode{case}} labels \del{as follows}
-\ins{of one of the forms}:
+with one or more \del{case} \ins{\tcode{case}} labels \del{as follows:}
+\ins{of one of the forms}
 \dl(class="grammar"){
   \dd{\ins{\opt{attribute-specifier-seq}} \keyword{case} constant-expression \tcode{:}}
   \dd{\ins{\opt{attribute-specifier-seq} \keyword{case} constant-range-expression \tcode{:}}}
@@ -382,18 +458,22 @@ of the second form}
 shall be a converted constant expression\iref{expr.const}
 of the adjusted type of the \del{switch} \ins{\tcode{switch}} condition.
 \ins{
-Let the \dfn{value range} of a \tcode{case} label \math{\mi{L}} be:
+Let the \dfn{integer value} of a value \math{\mi{v}} be
+\math{\mi{v}} if \math{\mi{v}} is of integral type other than \tcode{bool},
+and otherwise the value obtained by converting \math{\mi{v}} to the underlying type of \math{\mi{v}}.
+Let the \dfn{integer range} of a \tcode{case} label \math{\mi{L}} be:
 \ul{
   \li{
     \ins{if \math{\mi{L}} is of the first form,
     \math{\mrow{\mo(stretchy=false){[}\mi{x}\mo{,}\mi{x}\mo(stretchy=false){]}}},
-    where \math{\mi{x}} is the converted value of the \grammarterm{constant-expression};}
+    where \math{\mi{x}} is the integer value of the converted value
+    of the \grammarterm{constant-expression};}
 
   }
   \li{
     \ins{otherwise,
     \math{\mrow{\mo(stretchy=false){[}\mi{a}\mo{,}\mi{b}\mo(stretchy=false){]}}},
-    where \math{\mi{a}} and \math{\mi{b}} are the converted values of the
+    where \math{\mi{a}} and \math{\mi{b}} are the integer values of the converted values of the
     first and second \grammarterm{constant-expression}
     of the \grammarterm{constant-range-expression},
     respectively.}
@@ -415,7 +495,7 @@ unsigned int i = 0;
 switch (i) {
   case -1:          //\serif{ error: narrowing conversion from \ocode{-1} to \ocode{unsigned int}}
   case 0 ... 10ull: //\serif{ OK}
-  case 2 ... 3:     //\serif{ error: value range overlaps with that of previous label}
+  case 10 ... 15:   //\serif{ error: integer range overlaps with that of previous label}
 }
 }
 }
@@ -426,7 +506,7 @@ insert a new paragraph:
 \Bins{
 \recommended
 Implementations should emit a warning
-when the value range of a \tcode{case} label is empty.
+when the integer range of a \tcode{case} label is empty.
 }
 
 \editnote{
@@ -465,20 +545,17 @@ If no case matches and if there is no \tcode{default}
 then none of the statements in the switch is executed.
 }
 \ins{, and control may be passed
-to one of the statements labeled by a label associated with the \tcode{switch} statement,
+to one of the statements labeled with a label associated with the \tcode{switch} statement,
 selected as follows:}
 \ul{
   \li{\ins{
-    If the value of the condition lies in the value range of one of the \tcode{case} labels,
-    control is passed to the statement labeled by that label.
-    If the value is of enumeration type \tcode{E},
-    determining whether it lies in the value range takes place
-    by first explicitly converting\iref{expr.type.conv} the value range boundaries
-    and the value of the condition to the underlying type of \tcode{E}.
+    If the integer value of the value of the condition
+    lies in the integer range of one of the \tcode{case} labels,
+    control is passed to the statement labeled with that label.
   }}
   \li{\ins{
     Otherwise, if there is a \tcode{default} label,
-    control is passed to the statement labeled by that label.
+    control is passed to the statement labeled with the \tcode{default} label.
   }}
   \li{\ins{
     Otherwise, control is not passed
@@ -503,6 +580,14 @@ selected as follows:}
   author = "Thomas Köppe",
   link = "https://wg21.link/n5032",
   long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf",
+)\
+\bib(
+  id = "P2864R2",
+  title = "Remove Deprecated Arithmetic Conversion on Enumerations From C++26",
+  date = "2023-11-10",
+  author = "Alisdair Meredith",
+  link = "https://wg21.link/p2864r2",
+  long_link = "https://www.open-std.org/JTC1/SC22/WG21/docs/papers/2023/p2864r2.pdf",
 )\
 
 \make_bib
