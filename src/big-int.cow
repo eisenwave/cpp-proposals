@@ -4,7 +4,7 @@
 \wg21_head(title={\tcode{std::big_int}}){
 \dl{
   \dt{Document number:} \dd{\docnum{D4444R0}}
-  \dt{Date:}            \dd{\tt{2026-05-24}}
+  \dt{Date:}            \dd{\tt{2026-07-16}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -399,7 +399,9 @@ to keep up with all these details to implement the type optimally,
 across all compilers and all supported architectures.
 Features like these should ideally live directly in the compiler or in the standard library.
 
-\h3{\tcode{std::big_int} should be a compiler intrinsic for constant evaluation}
+\h3(
+  id="big-int-compiler-intrinsic",
+){\tt{std::big_int} should be a compiler intrinsic for constant evaluation}
 
 While a portable implementation of \tcode{std::big_int} is possible,
 an ideal implementation for constant evaluation simply delegates
@@ -457,6 +459,9 @@ The most important anchor points of the design are:
   \li{
     \tcode{std::big_int} should expose \q{small object optimization} to the user
   }
+  \li{
+    \tcode{std::big_int} should grant access to the underlying representation
+  }
 }
 
 This culminates in the following library declarations:
@@ -507,7 +512,6 @@ which is an unsigned integer type with the following important properties:
 }
 
 In summary, it is the unsigned integer type most suitable for multiprecision.
-
 
 Curiously, there is no existing type with the desired properties
 despite the abundance of type aliases in \header{cstdint} and \header{cstddef}:
@@ -646,6 +650,60 @@ negative inputs are treated as if they were preceded by an infinite sequences of
 positive inputs are treated as if they were preceded by an infinite sequence of leading zeros.
 }
 
+\h3{Access to the underlying representation} 
+
+As mentioned in \ref("#design"),
+a \tcode{std::big_int} is conceptually a \tcode{union} of
+\tcode{uint_multiprecision_t inplace_storage[N];} and
+\tcode{uint_multiprecision_t* dynamic_storage;}.
+This storage should be directly accessible using a function.
+Currently, we facilitate this using:
+
+\cppblock{
+constexpr span<const uint_multiprecision_t> representation() const noexcept;
+}
+
+The obvious downside of giving the user such direct access is that it breaks encapsulation,
+and it constrains the \q{small object type} that the implementation could use.
+For example, it isn't possible to have an \tcode{__int128 inplace_storage}
+because \tcode{uint_multiprecision_t} cannot alias \tcode{__int128}.
+
+Despite those downsides,
+giving the user low-level access to the storage is necessary because it enables the user
+to provide additional operations on \tcode{std::big_int} without overhead.
+
+\Bex{
+Consider how a user would implement their own \tcode{std::popcount} function
+(counting the number of one-bits within the integer):
+\cppblock{
+int popcount(const std::big_int& x) noexcept {
+  int sum = 0;
+  for (std::uint_multiprecision_t d : x.representation()) {
+    sum += std::popcount(d);
+  }
+  return sum;
+}
+}
+Without this kind of low-level accesss,
+the user would have to repeatedly perform bitwise operations such as \tcode{>>} and \tcode{&}
+in order to perform the operation limb-by-limb.
+
+Furthermore, it is unclear how the operation could be performed without allocations.
+Even if the result of \tcode{(x >> N) & M} fits into a 64-bit integer and needs no allocation,
+any intermediate result of \tcode{(x >> N)} may require allocation.
+}
+
+\Bnote{
+Boost.Multiprecision provides access to the underlying representation
+via a \tcode{limbs()} member function.
+}
+
+Crucially, we only provide read access to the representation, not write access.
+Providing write access would make it easily possible to put the \tcode{std::big_int}
+into a corrupt state, like
+having a \tcode{size()} that doesn't match the number of bits in the representation, or
+producing negative zero.
+
 \h3{Naming}
 
 The name \tcode{std::big_int} was chosen because it meets user expectations
@@ -658,6 +716,346 @@ as supporting infinite-precision arithmetic and as growing elastically as needed
 Previous proposals used the name \tcode{std::integer},
 but this name doesn't convey the design well,
 and is too similar to concept names like \tcode{std::integral}.
+
+\h3{Optimal operator overloads}
+
+The design includes operator overloads that are \q{optimal},
+which requires handling two cases:
+\ul{
+  \li{
+    When an operand is an rvalue of type \tcode{basic_big_int},
+    its allocation can be reused for the operation.
+  }
+  \li{
+    When an operand is of integral type,
+    no temporary \tcode{basic_big_int} is created.
+    This is important because the type may be \tcode{__int128}, \tcode{_BitInt(1024)}, etc.
+    and may not be representable as \tcode{basic_big_int} without an unnecessary allocation.
+  }
+}
+
+\Bex{
+Consequently, the signature of binary operators look like:
+\cppblock{
+template<class L, class R> constexpr \exposid{common-big-int-type}<L, R> operator+(L&& x, R&& y);
+}
+
+Unary operators become overload sets, like:
+\cppblock{
+constexpr basic_big_int operator+() const&;
+constexpr basic_big_int operator+() && noexcept;
+}
+}
+
+Each such binary operator must handle eight distinct cases,
+which the \ref("Reference-Impl") classifies as follows:
+\Bquote{
+\cppblock{
+// Convenience macro that describes one of eight forms of binary operation
+// that any binary operation for `big_int` can take.
+enum struct binary_op_form : unsigned char {
+    // Both sides are movable.
+    // Typically, the operations is performed by mutating the integer
+    // with the most capacity.
+    move_move,
+    // Only the left side is movable, and its allocation is reused.
+    // The left side is also a `basic_big_int`, but not movable.
+    move_copy,
+    // Only the right side is movable, and its allocation is reused.
+    // The right side is also a `basic_big_int`, but not movable.
+    copy_move,
+    // Neither side is movable, so a fresh `basic_big_int` is created.
+    copy_copy,
+    // The left side is movable, and its allocation is reused.
+    // The right side is a fundamental integer (of any cvref qualification).
+    move_int,
+    // The right side is movable, and its allocation is reused.
+    // The left side is a fundamental integer (of any cvref qualification).
+    int_move,
+    // A fresh `basic_big_int` is created because the left side is not movable.
+    // The right side is a fundamental integer (of any cvref qualification).
+    copy_int,
+    // A fresh `basic_big_int` is created because the left side is not movable.
+    // The left side is a fundamental integer (of any cvref qualification).
+    int_copy,
+};
+}
+}
+
+The benefit of such a design is that vast amounts of user code
+are sped up without any effort by the user, such as:
+\cppblock{
+x + (y * z);     // operator+ reuses allocation
+x += y * z;      // operator+= reuses allocation
+(x + y) / 2;     // operator/ reuses allocation
+x - std::abs(y); // operator- reuses allocation
+}
+Since \tcode{(y * z)} returns \tcode{basic_big_int} by value,
+\tcode{operator+} can repurpose the allocation of that result.
+By comparison, if \tcode{operator+} worked with \tcode{const&},
+lots of allocations would be unnecessarily thrown away.
+
+The downside of this design is that every binary operator needs to be a template
+accepting forwarding references,
+and this possibly applies to other future operations like \tcode{std::gcd} as well.
+However, this implementation complexity is not really perceived by the user.
+If the operators were not \q{optimal},
+the user would need to avoid overhead by writing:
+\cppblock{
+big_int result = y * z;
+result += x;
+}
+
+It's obvious that the complexity of managing allocations optimally goes \em{somewhere}.
+The question is just whether it should be done invisibly by the standard library,
+or whether the burden is off-loaded onto users.
+We don't see a compelling reason to off-load onto users.
+
+\h4{Why not return by \tt{&&} from unary operators?}
+
+For unary operators, it would also be possible to return by xvalue instead of by prvalue,
+but this would mean that the value category of the result of operators is not always the same.
+The perceived benefit is that an unnecessary extra object is avoided.
+
+\Bex{
+The hypothetical overload set for \tcode{operator+} looks as follows:
+\cppblock{
+constexpr basic_big_int   operator+() const&;
+constexpr basic_big_int&& operator+() && noexcept;
+}
+}
+
+It would also mean that users run danger of holding onto objects longer than they expected:
+\cppblock{
+auto&& x = ~std::move(y);
+}
+If \tcode{x} refers to the original object \tcode{y},
+a data race could be introduced by working with \tcode{x} on one thread,
+and overwriting \tcode{y = 0;} on another thread,
+each of which is well-defined on its own.
+
+Overall, this idea is making things more complicated and dangerous,
+with the only benefit being a micro-optimization
+which we don't see as sufficiently important.
+
+\h3{Why not provide lower-level operations for arithmetic?}
+
+A common idea in the committee is that rather than providing the \q{high-level construct}
+of \tcode{std::big_int},
+we could (first) provide the low-level building blocks,
+such as multiprecison operations.
+Then, any third-party library could easily build its own \tcode{big_int}
+type on top of such operations.
+
+There is some merit to this idea;
+our \ref("Reference-Impl") internally dispatches to a number of functions
+that operate on \tcode{span<uint_multiprecision_t>},
+and those could be exposed directly to the user.
+However, we don't propose any of these low-level operations in this paper for a number of reasons:
+
+\ul{
+  \li{
+    The low-level operations are not actually useful in isolation
+    and not actually useful in a wide variety of domains.
+    Unlike other numeric operations like those in \header{cmath},
+    the multiprecison \tcode{span} operations are basically
+    only useful for implementing \tcode{big_int}.
+  }
+  \li{
+    Fixed-width multiprecision operations should already be covered by \tcode{_BitInt(N)},
+    making the \tcode{span} arithmetic functions even more limited in scope.
+  }
+  \li{
+    Many of the operations require additional allocations.
+    For example, \tcode{operator/} requires additional temporary \tcode{basic_big_int},
+    unless the divisor has only one limb.
+  }
+  \li{
+    \tcode{big_int} does an enormous amount of work by dispatching to the proper operation
+    depending on\ul{
+      \li{type of operands (one may be of integral type),}
+      \li{value category of operands (to repurpose allocations),}
+      \li{limb count (different multiplication algorithms are chosen based on operand size),}
+      \li{constant evaluation,}
+      \li{
+        the availability of \tcode{_BitInt(N)}
+        (if a sufficiently large \tcode{_BitInt} is available for the operation,
+        the whole operation can be delegated to intrinsics
+        by converting both sides to \tcode{_BitInt}),
+      }
+      \li{\etc}
+    }
+    Providing the user only with the \tcode{span} operation
+    which does not have this vast amount of extra logic
+    is not actually in their best interest.
+    It would be like providing them with a \tcode{sqrt} function that doesn't handle
+    infinities and NaNs and telling them it's a lower-level building block.
+    In the best case, their \tcode{big_int} operations would end up recreating
+    the standard library implementation verbatim.
+    In the worst (and much more likely case),
+    the user's \tcode{big_int} would end up worse than the standard library version.
+  }
+  \li{
+    The design of these \tcode{span} operations is extremely complicated in itself.
+    Among other important questions, it is unclear whether the operations should
+    be templates that can take \tcode{span} with both static and dynamic extent,
+    how allocators should be passed (if at all), etc.
+  }
+  \li{
+    The motivation of this paper is largely based on
+    using \tcode{big_int} as a vocabulary type and as a \q{safe and dynamic} alternative
+    to fixed-width integers.
+    None of that motivates these \tcode{span} operations.
+  }
+  \li{
+    There is no urgency to add \tcode{span} operations as a prerequisite for \tcode{std::big_int}.
+    If those low-level operations were ever added,
+    the implementation of \tcode{std::big_int} could simply start using them.
+    There is no ABI break waiting to happen by standardizing \tcode{std::big_int}
+    without those \tcode{span} operations.
+  }
+  \li{
+    The \tcode{span} operations are a pessimization for constant evaluation.
+    At least in theory, it is possible to make \tcode{std::big_int} hold a
+    \tcode{std::meta::info} or some other \q{compiler internals handle type}
+    which directly references the compiler's arbitrary-precision integer type.
+    See also \ref("#big-int-compiler-intrinsic").
+    The \q{compiler handle approach}
+    can result in much more lightweight constant evaluation,
+    and only requires allocating when the object is transitioned from its
+    compile-time representation to its runtime representation.
+    By contrast, the \tcode{span} operations necessitate
+    actually having a \tcode{span<uint_multiprecision_t>} and managing its allocations,
+    so more work is done in the frontend.
+  }
+}
+
+Overall, we don't see a need for these \tcode{span} operations in this paper.
+They might be useful in spite of the problems listed above,
+but are an entirely separate feature with separate motivation.
+
+The explanation above also reveals that the premise of \tcode{span} operations being \q{lower-level}
+is simply wrong, to an extent.
+The \tcode{std::big_int} level is the lowest level at which approaches such as
+wrapping a handle to \tcode{llvm::APint} is feasible.
+The more \tcode{std::big_int} is treated as a compiler intrinsic,
+the lower-level it conceptually becomes.
+
+\h3{Hash support for \tt{std::big_int}}
+
+We also provide \tt{std::hash} support.
+While the hashing algorithm is up to the implementation
+(there are various widely used algorithms for hashing a sequence of integers),
+there is an important restriction:
+for any \tcode{basic_big_int<b, A>} object,
+the \tcode{std::hash} result depends solely on the integer value
+(i.e. the mathematical value represented) by the object.
+
+This makes it possible to use a different \tcode{basic_big_int} as a key type
+than the type used for lookup (assuming transparent lookup in some container).
+
+However, the hash might not be compatible with that of fundamental types,
+i.e. \tcode{1} may be hashed differently than \tcode{std::big_int{1}}.
+This was done to increase flexibility in the \tcode{hash<big_int>} implementation
+and to not pessimize the hash algorithm.
+
+\Bdecision{
+We should seriously consider whether we want hash parity between fundamental types
+and \tcode{basic_big_int}.
+}
+
+\h3{User-defined literals for \tt{std::big_int}}
+
+For convenient creationg of \tcode{std::big_int},
+we provide the following user-defined literal:
+
+\cppblock{
+inline namespace literals {
+  inline namespace big_int_literals {
+    template<char... digits>
+      constexpr big_int operator""n() noexcept(\seebelow);
+  }
+}
+}
+
+The \tcode{inline namespace} approach is the same as for other standard library UDLs,
+such as \tcode{std::literals::string_\cowel_to_html{\'SHY'}view_literals::operator""sv}.
+
+\Bex{
+The user could write the following code:
+\cppblock{
+using namespace std::big_int_literals;
+auto x = 123n;
+}
+}
+
+\h4(id="udl-suffix-naming"){Why \tt{123n}?}
+
+The suffix '\tt{n}' was chosen for symmetry with JavaScript,
+where \tcode{123n} is equivalent to \tcode{BigInt(123)}.
+
+\h4{User-defined literals vs. string constructors}
+
+It is worth noting that other libraries typically don't provide a UDL.
+For example, Boost.Multiprecision instead has a string constructor,
+expecting users to write \tcode{boost::cpp_int("123")}.
+We opted not to match that design because
+\ul{
+  \li{
+    The \tcode{123n} syntax is more natural and concise than \tcode{std::big_int("123")}.
+  }
+  \li{
+    The \tcode{"123"} syntax pessimizes runtime performance.
+    The UDL approach allows pre-computing a \tcode{constexpr uint_multiprecision_t[]}
+    holding the limbs during constant evaluation.
+    The runtime call to \tcode{operator""()} only needs to copy the pre-computed limb array.
+    Such a design is only possible thanks to \tcode{template<char...>}
+    giving us the literal as a constant expression.
+  }
+  \li{
+    Third-party libraries avoid this form of UDL in part because it is very complicated
+    to implement and requires parsing the integer literal with all features
+    (including base prefixs, digit separators, etc.).
+    In the standard, we can consider this to be an insignificant QoI issue.
+    In the standard library implementation,
+    we also have the luxury of doing the UDL parsing using a compiler intrinsic
+    if it turns out to be too expensive to do in constant evaluation.
+    Third-party libraries don't have this luxury.
+  }
+}
+
+\Bnote{
+As mentioned in \ref("#big-int-compiler-intrinsic"),
+a future direction may be to extend the UDL syntax to support multiprecision, like:
+\cppblock{
+constexpr big_int operator""n(const uint_multiprecision_t* limbs, size_t size);
+}
+
+Here, the compiler would do the work of parsing the literal and turning it into a limb array.
+This would avoid turning \tcode{operator""n} into a template.
+}
+
+While this new form of UDL is not proposed here,
+it still informs us that there is potential to improve UDLs and reduce some of their costs,
+without breaking existing uses of \tcode{123n}.
+This makes UDLs a more compelling option right now.
+
+\h4{Why provide UDLs or string constructors? Why not neither?}
+
+\em{Some} form of convenient construction is necessary.
+Otherwise, creating large constant \tcode{std::big_int} objects is simply too tedious.
+
+It would also be possible using the constructor
+taking a \tcode{span<const uint_multiprecision_t>},
+but this would require breaking any large constants up into individual limbs,
+which is very difficult to do portably
+considering that \tcode{uint_multiprecision_t} varies in size.
+
+Another option is to rely on \tcode{_BitInt},
+but this feature is not yet available in the C++ standard,
+and even if it was,
+the \tcode{BITINT_MAXWIDTH} is only guaranteed to be at least \tcode{LLONG_WIDTH}.
+In other words, \tcode{_BitInt}s larger than 64-bit are an optional feature.
 
 \h2{Implementation experience}
 
