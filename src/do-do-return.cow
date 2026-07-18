@@ -1,0 +1,407 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+\cowel_macro("do_return"){\tcode{\keyword{do_return}}}
+
+\wg21_head(
+  title = {Do \do_return!}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D4323R0}}
+  \dt{Date:}            \dd{\tt{2026-07-18}}
+  \dt{Audience:}        \dd{EWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P4323/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/do-do-return.cow")}
+}
+\hr
+}
+
+\Babstract{
+
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+\ref("P2806R4") proposes a new feature of \tcode{do} expressions,
+allowing the user to put statements inside of an expression.
+One notable design aspect is that \tcode{do} expressions permit omitting the \do_return statement
+to produce a result:
+
+\Bquote{
+In its simplest form:
+\cppblock{
+int x = do { \do_return 42; };
+int y = do { 42 }; // equivalent to above
+}
+A \tcode{do} expression consists of a sequence of statements, but is still, itself,
+an expression (and thus has a value and a type).
+}
+
+I argue that this is a bad idea,
+and that \do_return should be required,
+for the reasons listed below.
+
+\h2{Problems with omitting \do_return}
+
+\h3{Novelty and inconsistency}
+
+The ability to omit statements which would yield results from expressions
+is a staple of other languages,
+such as Kotlin and Rust.
+
+\Bex{
+Kotlin implicitly uses the last statement of a block as the result,
+in various places:
+\codeblock("kotlin"){
+val x = run { // run invoked with a lambda
+  println("Hello")
+  42
+}
+
+val y = if (true) {
+  // ...
+  "yes"
+} else "no"
+}
+}
+
+\Bex{
+In Rust, the last statement of a block (not suffixed by a semicolon) is the result of a block:
+\codeblock("rust"){
+let x = {
+  let a = 3;
+  let b = 4;
+  a + b  // value of the block because semicolon is omitted
+};
+
+let y = if true {
+  "yes" // value of the block because semicolon is omitted
+} else "no";
+}
+}
+
+The key observation is that in those other languages,
+the \q{last statement is result} design is consistently applied across the language,
+for a wide variety of constructs.
+This is not the case in \ref("P2806R4"),
+making that design novel and surprising for \tcode{do} expressions.
+C++ users have been taught for 30 years that
+\ul{
+  \li{
+    blocks enclosed by braces contain a bunch of statements,
+  }
+  \li{
+    you put a semicolon at the end of the line
+    (unless the line starts with \tcode{if} or whatever), and
+  }
+  \li{
+    control flow interactions
+    (without which you flow off the end of a block)
+    require a keyword like \tcode{if}, \tcode{return}, \tcode{break}, \tcode{co_yield}, etc.
+  }
+}
+There is an immense amount of value in these consistent and teachable rules,
+which \ref("P2806R4") proposes to throw in the bin,
+just to save a few characters.
+They would no longer be universal rules.
+
+Furthermore, why is the design not applied to other constructs,
+even though it would be possible in principle, like for lambda expressions?
+
+\cppblock{
+int x = do { 42 };
+int y = [] { 42 }(); // equivalent to above
+}
+
+There are two possible directions here:
+\ul{
+  \li{
+    Not changing lambda expressions would be inconsistent
+    with \tcode{do} expressions, without good rationale.
+    We would still sacrifice the consistent and teachable rules
+    by making \tcode{do} expressions special,
+    but we wouldn't get much value in return.
+  }
+  \li{
+    Changing lambda expressions like this retroactively might be fine,
+    but it demonstrates that the \q{last statement is result} feature
+    is orthogonal to \tcode{do} expressions,
+    and that the design needs to be explored holistically.
+  }
+}
+
+Either way,
+the conclusion seems that \ref("P2806R4") should not be proposing this design.
+Perhaps it could be done in a separate paper for various constructs in general.
+
+\h3{Competing styles}
+
+An inevitable outcome of letting users omit \do_return
+is that there will be competing styles,
+where some users prefer to always write \do_return.
+This would be motivated by consistency with control flow in other places,
+like \tcode{return} and \tcode{co_yield}.
+A C++ developer used to omitting \do_return would find it jarring to work on a code base
+where \do_return is always required, and vice versa.
+
+While having some disagreement over style is natural in a programming language,
+C++ already has a ton of options without a clear winner,
+and this issue would be compounded.
+There is real cost to adding more and more competing styles
+which then either need to be litigated by each code base,
+or lead to inconsistent code.
+
+\h3{Visually grepping control flow}
+
+In the following code block,
+try to find all the places where control flow is altered in some way:
+
+\style{
+.blurry h- {
+  filter: blur(0.25em);
+}
+}
+
+\div(id="blurry-code", class="blurry"){
+\cppblock{
+bool members_equal(
+    std::span<const Group_Member_Value> xs,
+    std::span<const Group_Member_Value> ys,
+    const File_Source_Span& lhs_location,
+    const File_Source_Span& rhs_location,
+    Context& context
+)
+{
+    if (xs.size() != ys.size()) {
+        return false;
+    }
+    for (std::size_t i = 0; i < xs.size(); ++i) {
+        const auto name_equal = evaluate_internal_equality(
+            xs[i].name, ys[i].name, lhs_location, rhs_location, context
+        );
+        if (!name_equal || !*name_equal) {
+            return false;
+        }
+
+        const auto value_equal = evaluate_internal_equality(
+            xs[i].value, ys[i].value, lhs_location, rhs_location, context
+        );
+        if (!value_equal || !*value_equal) {
+            return false;
+        }
+    }
+    return true;
+}
+}
+}
+
+\cowel_paragraph_enter
+\cowel_html_element("input", (type="checkbox", id="blur", checked="checked", onclick="document.getElementById('blurry-code').classList.toggle('blurry')"))
+\sans{Toggle blur}
+
+Despite this block being blurry and thus completely unreadable,
+you can actually identify all the \tcode{if}, \tcode{for}, and \tcode{return} statements
+easily do to their shape and syntax highlighting.
+The same \q{visual identification} of control flow is done
+subconsciously by developers all the time.
+Searching for a \tcode{return} statement in a long function doesn't require reading the entire
+function from top-to-bottom, but rather scanning
+for the shape and color of a \tcode{return} statement.
+
+As things stand, \em{universally}, builtin control flow constructs in C++
+can be visually identified in this way.
+This would not be the case for \do_return,
+which can be omitted.
+
+\h3{Accessibility problems}
+
+In the proposed design,
+there is a major difference between the following expressions:
+
+\cppblock{
+do { f() }  // expression of the type of f's return value
+do { f(); } // expression of type void
+}
+
+This design is hostile to users with poor eyesight
+because a semicolon has major semantic impact.
+It also shows that having competing styles is not just a matter of preference;
+one user may prefer to omit \do_return because they have 20/20 vision
+and they optimize for brevity,
+which is detrimental to other users with poor eyesight.
+
+The design also poorly integrates with screen readers
+because it requires keeping the screen reader in \q{high verbosity mode} to read code.
+Historically, C++ semicolons could have been largely omitted as noise
+because they were merely statement terminators,
+with a few exceptions like \tcode{for (;;)}.
+
+\Bex{
+That is, \tcode{int x = 0; int y = 0;} could have been pronounced as
+\q{int x equals zero int y equals zero} without loss of information.
+}
+
+\h3{Textually grepping control flow, future direction}
+
+Another way to scan for control flow is to perform a text search.
+If the user is confronted with a long \tcode{do} expression and wants to find all the places
+where it yields a result,
+they can search for \do_return and jump from search result to search result.
+This is not possible when the only distinguishing factor between
+yielding a result and yielding \tcode{void} is a semicolon.
+
+Perhaps initially, the issue is not so bad because the user only has
+to check the last statement of a \tcode{do} expression to see if it yields a result.
+However, a logical next step in language design is to allow the following:
+
+\cppblock{
+auto x = do {
+  if (condition) { // result of if as a whole is an int,
+    1              // which is the result of the do expression
+  } else {
+    2
+  }
+};
+}
+
+This wouldn't be a breaking change because
+\q{yielding a result of the \tcode{if} expression}
+requires omitting semicolons inside the \tcode{if} statement,
+which is currently not possible.
+
+Once again, we are confronted with uncomfortable choices:
+\ul{
+  \li{
+    If we want to pursue omitting \do_return in more places,
+    we should commit to it fully,
+    and consider the consequences for all possible statements rather than just
+    the last statement in a \tcode{do} expression.
+    There is a slippery slope here.
+  }
+  \li{
+    If we don't want to pursue this,
+    the current design of \ref("P2806R4") is half-baked.
+    If Rust and Kotlin let you omit the \do_return equivalent in more places,
+    why can't we?
+    Why would Rust be such an inspiration for the paper if we
+    cherry-pick only a small portion of its syntax
+    and consider the same Rust syntax in other construct to be a bad fit for C++?
+  }
+}
+
+\h3{Irregular \tcode{void} and latent bugs}
+
+Another observation is that in Kotlin and Rust,
+the following construct works fine,
+when it doesn't in C++:
+
+\codeblock("kotlin"){
+fun f() { } // Kotlin function that returns Unit (like C++ void)
+val x = run {
+  f() // fine, result is Unit
+}
+}
+
+\codeblock("rust"){
+fn f() { } // Rust function that returns ()
+let x = {
+  f() // fine, result is ()
+};
+}
+
+\cppblock{
+void f() { }
+auto x = do {
+  f() // error, cannot have variable of type 'void'
+}
+}
+
+Consequently, the existence of the semicolon becomes hugely significant,
+especially in templates,
+where diagnostics are delayed until instantiation.
+\ul{
+  \li{
+    If the user forgot to append a semicolon to the last statement
+    but they intended the \tcode{do} expression to be a \tcode{void} expression,
+    their code would inadvertently return something unexpected,
+    and storing the result in a variable would compile even if it makes no sense.
+    By comparison, it is much less likely that the user forgets prepend \tcode{return}
+    before an expression. \q{\tcode{42;}} is obviously wrong when you're used to seeing
+    a big, syntax-highlighted \tcode{return} at the end of your blocks.
+  }
+  \li{
+    If the user accidentally added a semicolon (perhaps out of habit or due to muscle memory),
+    their code would not compile because there is no regular \tcode{void},
+    so the result couldn't be stored in \tcode{auto x}.
+    Again, the fact that there is a stray semicolon
+    is much less obvious than a missing \tcode{return} or \do_return.
+  }
+}
+
+\h2{Conclusion}
+
+The discussion above shows that there are many serious problems
+with omitting \do_return in \tcode{do} expressions.
+Consistency with other constructs,
+teachability,
+stylistic consistency,
+accessibility,
+visual and textual greppability,
+and other positives aspects of the language are sacrificed
+where \tcode{do} expressions are used without \do_return.
+
+Either, that direction should not be pursued at all,
+or it should be pursued holistically.
+That is:
+\ul{
+  \li{
+    Do we want to allow omitting the \tcode{return} statement in lambdas?
+  }
+  \li{
+    Do we want to allow omitting the \tcode{return} statement in functions, in general?
+  }
+  \li{
+    Do we want to allow omitting \do_return
+    in the last \tcode{if} statement of a \tcode{do} expression?
+    What if we want to make \tcode{if} an expression in the future?
+  }
+  \li{
+    Do we want to allow omitting \do_return
+    in the last \tcode{try} statement of a \tcode{do} expression?
+    What if we want to make \tcode{try} an expression in the future?
+  }
+  \li{
+    Where else in the language do we want to allow omitting control flow keywords?
+  }
+  \li{
+    What other language constructs are affected by this, now and in the future?
+  }
+  \li{
+    How do these decisions impact overall teachability, greppability, and
+    accessibility of C++?
+  }
+}
+
+If we simply ignore these concerns,
+we risk losing sight of the big picture.
+This is unjustifiable, especially considering that the omission of \do_return
+can be introduced at any point in the future without breaking changes,
+since it requires omitting a semicolon, which would be ill-formed by default.
+
+\h2{References}
+
+\bib(
+  id = "P2806R4",
+  title = "do expressions",
+  date = "2026-07-15",
+  author = "Barry Revzin et al.",
+  link = "https://wg21.link/p2806r4",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2806r4.html",
+)\
+
+\make_bib
