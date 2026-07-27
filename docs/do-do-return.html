@@ -1430,7 +1430,7 @@ if (theme !== null) {
     document.documentElement.className = theme;
 }
   </script>
-<title>Do !</title></head>
+<title>Do do_return!</title></head>
 <body>
 <div id=settings tabindex=0>
     <div id=theme-icon></div>
@@ -1577,11 +1577,11 @@ if (theme !== null) {
 </style>
 
 
-<div class=wg21-head><h1>Do <code><h- data-h=kw>do_return</h-></code>!</h1>
+<div class=wg21-head><h1>Do <tt->do_return</tt->!</h1>
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/D4323R0>D4323R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-07-18</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2026-07-27</tt-></dd>
   <dt>Audience:</dt>        <dd>EWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1642,7 +1642,7 @@ for the reasons listed below.
 
 <h3 id=novelty-and-inconsistency><a class=para href=#novelty-and-inconsistency></a>2.1. Novelty and inconsistency</h3>
 
-<p>The ability to omit statements which would yield results from expressions
+<p>The ability to omit keywords like <code><h- data-h=kw_ctrl>return</h-></code> which would yield results from expressions
 is a staple of other languages,
 such as Kotlin and Rust.
 </p>
@@ -1694,9 +1694,9 @@ C++ users have been taught for 30 years that
   </li>
 </ul>
 <p>There is an immense amount of value in these consistent and teachable rules,
-which <a href="https://wg21%2elink/p2806r4">[P2806R4]</a> proposes to throw in the bin,
-just to save a few characters.
-They would no longer be universal rules.
+which <a href="https://wg21%2elink/p2806r4">[P2806R4]</a> proposes to weaken,
+for the purpose of reducing verbosity.
+These rules would no longer be universal rules.
 </p>
 <p>Furthermore, why is the design not applied to other constructs,
 even though it would be possible in principle, like for lambda expressions?
@@ -1736,10 +1736,10 @@ A C++ developer used to omitting <code><h- data-h=kw>do_return</h-></code> would
 where <code><h- data-h=kw>do_return</h-></code> is always required, and vice versa.
 </p>
 <p>While having some disagreement over style is natural in a programming language,
-C++ already has a ton of options without a clear winner,
+C++ already has a ton of options without a clear winner (like initialization style),
 and this issue would be compounded.
 There is real cost to adding more and more competing styles
-which then either need to be litigated by each code base,
+which then either need to be litigated by each code base
 or lead to inconsistent code.
 </p>
 <h3 id=visually-grepping-control-flow><a class=para href=#visually-grepping-control-flow></a>2.3. Visually grepping control flow</h3>
@@ -1898,24 +1898,39 @@ when it doesn't in C++:
 <p>Consequently, the existence of the semicolon becomes hugely significant,
 especially in templates,
 where diagnostics are delayed until instantiation.
-</p><ul>
-  <li>
-    If the user forgot to append a semicolon to the last statement
-    but they intended the <code><h- data-h=kw_ctrl>do</h-></code> expression to be a <code><h- data-h=kw_type>void</h-></code> expression,
-    their code would inadvertently return something unexpected,
-    and storing the result in a variable would compile even if it makes no sense.
-    By comparison, it is much less likely that the user forgets prepend <code><h- data-h=kw_ctrl>return</h-></code>
-    before an expression. <q><code><h- data-h=num>42</h-><h- data-h=sym_punc>;</h-></code></q> is obviously wrong when you're used to seeing
-    a big, syntax-highlighted <code><h- data-h=kw_ctrl>return</h-></code> at the end of your blocks.
-  </li>
-  <li>
-    If the user accidentally added a semicolon (perhaps out of habit or due to muscle memory),
-    their code would not compile because there is no regular <code><h- data-h=kw_type>void</h-></code>,
-    so the result couldn't be stored in <code><h- data-h=kw>auto</h-> <h- data-h=name>x</h-></code>.
-    Again, the fact that there is a stray semicolon
-    is much less obvious than a missing <code><h- data-h=kw_ctrl>return</h-></code> or <code><h- data-h=kw>do_return</h-></code>.
-  </li>
-</ul>
+</p>
+<example-block><p><intro-></intro-> 
+</p><code-block><h- data-h=kw_type>void</h-> <h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>invocable</h-><h- data-h=sym_op>&lt;</h-><h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>auto</h-> <h- data-h=name>action</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Nonsensical code assuming 'action' returns 'void',</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> but mistake is not diagnosed until instantiation:</h->
+  <h- data-h=kw>auto</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw_ctrl>do</h-> <h- data-h=sym_brac>{</h-> <h- data-h=name>action</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> forgot semicolon </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+<p>If the user forgot to append a semicolon to the last statement
+but they intended the <code><h- data-h=kw_ctrl>do</h-></code> expression to be a <code><h- data-h=kw_type>void</h-></code> expression,
+their code would inadvertently return something unexpected,
+and storing the result in a variable would compile even if it makes no sense.
+By comparison, it is much less likely that the user forgets prepend <code><h- data-h=kw_ctrl>return</h-></code>
+before an expression.
+</p>
+<p><q><code><h- data-h=num>42</h-><h- data-h=sym_punc>;</h-></code></q> is obviously wrong when you're used to seeing
+a big, syntax-highlighted <code><h- data-h=kw_ctrl>return</h-></code> at the end of your blocks.
+</p></example-block>
+
+<example-block><p><intro-></intro-> 
+</p><code-block><h- data-h=kw_type>void</h-> <h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>invocable</h-><h- data-h=sym_op>&lt;</h-><h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>auto</h-> <h- data-h=name>producer</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw>auto</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw_ctrl>do</h-> <h- data-h=sym_brac>{</h-> <h- data-h=name>producer</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> error: 'auto' deduces to 'void'</h->
+<h- data-h=sym_brac>}</h-></code-block>
+<p>If the user accidentally added a semicolon (perhaps out of habit or due to muscle memory),
+their code would not compile because there is no regular <code><h- data-h=kw_type>void</h-></code>,
+so the result couldn't be stored in <code><h- data-h=kw>auto</h-> <h- data-h=name>x</h-></code>.
+Again, the fact that there is a stray semicolon
+is much less obvious than a missing <code><h- data-h=kw_ctrl>return</h-></code> or <code><h- data-h=kw>do_return</h-></code>.
+</p>
+<p>Currently, this can be diagnosed prior to instantiation because the <code><h- data-h=kw_ctrl>do</h-></code> expression
+must return <code><h- data-h=kw_type>void</h-></code> based on its syntax
+and <code><h- data-h=kw_type>void</h-></code> is not a valid type for <code><h- data-h=name>x</h-></code>,
+but this could change in the future if <code><h- data-h=kw_type>void</h-></code> was made more regular in the language.
+</p></example-block>
 
 <h2 id=conclusion><a class=para href=#conclusion></a>3. Conclusion</h2>
 

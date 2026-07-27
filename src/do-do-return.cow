@@ -3,11 +3,11 @@
 \cowel_macro("do_return"){\tcode{\keyword{do_return}}}
 
 \wg21_head(
-  title = {Do \do_return!}
+  title = {Do \tt{do_return}!}
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{D4323R0}}
-  \dt{Date:}            \dd{\tt{2026-07-18}}
+  \dt{Date:}            \dd{\tt{2026-07-27}}
   \dt{Audience:}        \dd{EWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -50,7 +50,7 @@ for the reasons listed below.
 
 \h3{Novelty and inconsistency}
 
-The ability to omit statements which would yield results from expressions
+The ability to omit keywords like \tcode{return} which would yield results from expressions
 is a staple of other languages,
 such as Kotlin and Rust.
 
@@ -106,9 +106,9 @@ C++ users have been taught for 30 years that
   }
 }
 There is an immense amount of value in these consistent and teachable rules,
-which \ref("P2806R4") proposes to throw in the bin,
-just to save a few characters.
-They would no longer be universal rules.
+which \ref("P2806R4") proposes to weaken,
+for the purpose of reducing verbosity.
+These rules would no longer be universal rules.
 
 Furthermore, why is the design not applied to other constructs,
 even though it would be possible in principle, like for lambda expressions?
@@ -150,10 +150,10 @@ A C++ developer used to omitting \do_return would find it jarring to work on a c
 where \do_return is always required, and vice versa.
 
 While having some disagreement over style is natural in a programming language,
-C++ already has a ton of options without a clear winner,
+C++ already has a ton of options without a clear winner (like initialization style),
 and this issue would be compounded.
 There is real cost to adding more and more competing styles
-which then either need to be litigated by each code base,
+which then either need to be litigated by each code base
 or lead to inconsistent code.
 
 \h3{Visually grepping control flow}
@@ -324,23 +324,42 @@ auto x = do {
 Consequently, the existence of the semicolon becomes hugely significant,
 especially in templates,
 where diagnostics are delayed until instantiation.
-\ul{
-  \li{
-    If the user forgot to append a semicolon to the last statement
-    but they intended the \tcode{do} expression to be a \tcode{void} expression,
-    their code would inadvertently return something unexpected,
-    and storing the result in a variable would compile even if it makes no sense.
-    By comparison, it is much less likely that the user forgets prepend \tcode{return}
-    before an expression. \q{\tcode{42;}} is obviously wrong when you're used to seeing
-    a big, syntax-highlighted \tcode{return} at the end of your blocks.
-  }
-  \li{
-    If the user accidentally added a semicolon (perhaps out of habit or due to muscle memory),
-    their code would not compile because there is no regular \tcode{void},
-    so the result couldn't be stored in \tcode{auto x}.
-    Again, the fact that there is a stray semicolon
-    is much less obvious than a missing \tcode{return} or \do_return.
-  }
+
+\Bex{
+\cppblock{
+void f(std::invocable</* ... */> auto action) {
+  // Nonsensical code assuming 'action' returns 'void',
+  // but mistake is not diagnosed until instantiation:
+  auto x = do { action() /* forgot semicolon */ };
+}
+}
+If the user forgot to append a semicolon to the last statement
+but they intended the \tcode{do} expression to be a \tcode{void} expression,
+their code would inadvertently return something unexpected,
+and storing the result in a variable would compile even if it makes no sense.
+By comparison, it is much less likely that the user forgets prepend \tcode{return}
+before an expression.
+
+\q{\tcode{42;}} is obviously wrong when you're used to seeing
+a big, syntax-highlighted \tcode{return} at the end of your blocks.
+}
+
+\Bex{
+\cppblock{
+void f(std::invocable</* ... */> auto producer) {
+  auto x = do { producer(); }; // error: 'auto' deduces to 'void'
+}
+}
+If the user accidentally added a semicolon (perhaps out of habit or due to muscle memory),
+their code would not compile because there is no regular \tcode{void},
+so the result couldn't be stored in \tcode{auto x}.
+Again, the fact that there is a stray semicolon
+is much less obvious than a missing \tcode{return} or \do_return.
+
+Currently, this can be diagnosed prior to instantiation because the \tcode{do} expression
+must return \tcode{void} based on its syntax
+and \tcode{void} is not a valid type for \tcode{x},
+but this could change in the future if \tcode{void} was made more regular in the language.
 }
 
 \h2{Conclusion}
