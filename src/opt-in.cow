@@ -1,0 +1,444 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+
+\wg21_head(
+  title = {\tt{[[opt_in]]}}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{DXXXXR0}}
+  \dt{Date:}            \dd{\tt{2026-07-23}}
+  \dt{Audience:}        \dd{EWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3688/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/template-9.cow")}
+}
+\hr
+}
+
+\Babstract{
+A \tcode{[[opt_in]]} attribute for opting int,
+and a \tcode{[[requires_opt_in]]} attribute for requiring opting in.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+Kotlin has two commonly used annotations that have no C++ counterpart:
+\ul{
+  \li{
+    \ref("https://kotlinlang.org/docs/opt-in-requirements.html#create-opt-in-requirement-annotations"){\tt{@RequiresOptIn}}
+    creates an opt-in requirement for the annotated feature
+  }
+  \li{
+    \ref("https://kotlinlang.org/docs/opt-in-requirements.html#opt-in-to-api"){\tt{@OptIn}}
+    opts into use of declarations that require it
+  }
+}
+
+\Bex{
+Library code:
+\codeblock("kotlin"){
+@RequiresOptIn(message = "This API is experimental.")
+@Retention(AnnotationRetention.BINARY)
+@Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
+annotation class MyDateTime
+
+@MyDateTime
+// A class requiring opt-in
+class DateProvider
+}
+
+Client code:
+\codeblock("kotlin"){
+@OptIn(MyDateTime::class)
+
+// Uses DateProvider
+fun getDate(): Date {
+    val dateProvider: DateProvider
+    // ...
+}
+}
+}
+
+The point of this feature is to let the user explicitly opt into features,
+such as experimental/unstable/nightly APIs that are part of the library,
+but which users should use with caution.
+
+I propose to add a C++ counterpart to this feature, in the form of two attributes:
+\ul{
+  \li{
+    \tcode{[[requires_opt_in(\gterm{qualified-id}, \opt{\gterm{plain-string-literal}}, \opt{\gterm{constant-expression}})]]}
+    creates \dfn{opt-in requirement}.
+    This attribute can be applied to any declaration.
+    The \gterm{constant-expression} controls the diagnostic level and/or disables the requirement.
+  }
+  \li{
+    \tcode{[[opt_in(\gterm{qualified-id})]]} opts into a requirement.
+  }
+  \li{
+    \tcode{[[export_opt_in(\gterm{qualified-id})]]} opts into a requirement
+    and propagates that requirement to users of this declaration.
+  }
+}
+
+\Bex{
+Library code:
+\cppblock{
+namespace lib{
+  struct container {
+    unsigned size();
+    [[requires_opt_in(lib::experimental_signed_size)]] int ssize();
+  };
+}
+}
+
+User code:
+\cppblock{
+struct wrapper {
+  container c;
+
+  unsigned size() {
+    return c.size(); // OK, no opt-in requirement
+  }
+
+  // Propagate the opt-in requirement of the underlying library.
+  // It's only possible to provide ssize() because the library does so,
+  // so we should make users of wrapper::ssize() aware of this too.
+  //
+  // Alternatively, we could use 'opt_in' intead of 'export_opt_in' and promise
+  // future compatibility, like using static_cast<int>(c.size()) at some point.
+  [[export_opt_in(lib::experimental_signed_size)]]
+  int ssize() {
+    return c.ssize(); // OK, use of 'ssize' is in a context that opts in
+  }
+}
+
+void f(wrapper w) {
+  c.size();  // OK
+  w.ssize(); // warning: opt-in 'lib::experimental_signed_size' required for 'ssize()'
+
+  [[opt_in(lib::experimental_signed_size)]] w.ssize(); // OK, statement-level opt-in
+}
+
+[[opt_in(lib::experimental_signed_size)]]
+void g(wrapper w) {
+  w.ssize(); // OK, function-level opt-in
+}
+}
+}
+
+\h2{Motivation}
+
+Opt-in control annotations could provide a lot of utility,
+both to the C++ standard library and its implementations,
+as well as to third-party libraries.
+
+\h3{Eliminating the \tt{std::experimental} namespace}
+
+Currently, opting into TS features (that are not yet in the working draft)
+requires use of a \tcode{std::experimental} namespace.
+This is actually an opt-in in disguse, but not a great one.
+It makes it a breaking change to convert the TS code to standard code eventually,
+even if nothing about the API changed.
+
+By comparison,
+the same could be accomplishing using a \tcode{[[requires_opt_in(std::experimental)]]}
+annotation.
+
+\h3{Providing compiler extensions, including future standard extensions}
+
+For standard library vendors,
+the new attribute would make it very easy to extend the standard library with new inventions
+and with features that are only available in a more recent standard mode.
+
+\Bex{
+\ul{
+  \li{
+    An \tcode{[[opt_in(gnu::cxx29_extension)]]} could be required to use C++29 features
+    in older language modes, like C++26 and below,
+    rather than eliminating these declarations entirely through \tcode{#ifdef}.
+  }
+  \li{
+    An \tcode{[[opt_in(gnu::libstdcxx_extension)]]} could be required to use vendor extensions
+    in namespace \tcode{std},
+    like overloads of \tcode{std::to_string} for \tcode{__int128}.
+  }
+}
+}
+
+Currently, providing such extensions is a risk to users who are trying
+to use only the features of the standard they are actually intending to use.
+
+\h3{Quasi-deprecating flawed features}
+
+Some features in the standard may be considered undesirable,
+even if we never actually deprecate them because removal is not plausible.
+
+\Bex{
+\tcode{std::rand} is known for its low random quality,
+and could be annotated like:
+
+\cppblock{
+[[requires_opt_in(std::low_quality_random)]] int rand();
+[[requires_opt_in(std::low_quality_random)]] void srand(unsigned seed);
+}
+
+A user could still use \tcode{rand()},
+but would need a \tcode{[[opt_in]]} attribute.
+}
+
+\h3{Providing opt-in mechanism for third-party libraries}
+
+Last but not least is the obvious use case:
+allowing library authors to mark certain experimental/unstable APIs
+as needing an opt-in.
+Currently, this would typically be done using the preprocessor,
+through various \tt{WANT_*} and \tcode{EXPERIMENTAL_*} macros
+that may need to be defined before including a header.
+
+This existing practice is a poor-man's solution because it requires
+an ever-increasing amount of conditional compilation.
+Preprocessing solutions also don't play nicely with modules;
+one can't customize modules by putting \tcode{#define WANT_STUFF} before \tcode{import m;}.
+
+These solutions are also not capable of propagating opt-in requirements.
+Once some feature has been included via \tt{WANT}, it's simply there,
+and the downstream consumers are not aware that they are indirectly using an unstable API.
+By comparison, \tcode{[[export_opt_in]]} can be used to propagate opt-in requirements,
+and such requirements can be propagated through the type system:
+
+\Bex{
+Core library:
+\cppblock{
+namespace mathlib {
+  using float8_t = /* ... */;
+  // ...
+  [[requires_opt_in(
+    mathlib::decimal_float,
+    "Support for decimal floating-point is experimental."
+  )]]
+  using decimal64_t = /* ... */;
+}
+}
+
+Linear algebra library:
+\cppblock{
+namespace linalg {
+  template<class T> struct vec3 {
+    T x, y, z;
+    // ...
+  };
+
+  [[export_opt_in(mathlib::decimal_float)]]
+  using vec3d64 = vec3<mathlib::decimal64_t>;
+}
+}
+Note that without the attribute on the declaration of \tcode{vec3d64},
+a warning would be emitted.
+
+Downstream user code:
+\cppblock{
+void f(linalg::vec3d64 v); // warning: opt-in 'mathlib::decimal_float' required for 'vec3d64':
+                   // Support for decimal floating-point is experimental.
+
+[[opt_in(mathlib::decimal_float)]]
+void g(linalg::vec3d64 v); // OK
+}
+}
+
+\Bex{
+A a more concrete example,
+the \ref("https://bemanproject.org/"){Beman project} provides
+\ref("https://github.com/bemanproject"){reference implementations for various standard library proposals}.
+
+For those libraries,
+\tcode{[[requires_opt_in]]} could distinguish between features that are actually
+in the proposed wording and part of the current design,
+and features where the paper author is merely \q{floating an idea}
+and experimenting with design alternatives.
+}
+
+\Bex{
+OpenGL essentially has two categories of functions:
+\ul{
+  \li{\q{Immediate-mode rendering} functions like \tcode{glBegin} and \tcode{glEnd}.}
+  \li{Modern functions like \tcode{glBindVertexArray}.}
+}
+
+While \tcode{glBegin} and \tcode{glEnd} are deprecated legacy OpenGL functionality,
+it makes little sense to make them \tcode{[[deprecated]]} in code.
+These functions are not going away anytime soon,
+and they do provide some toy graphics API for educational purposes which is very easy to use.
+Silencing \tcode{[[deprecated]]} would also require disabling e.g. \tcode{-Wdeprecated} entirely,
+which would be very bad.
+
+However, it would be realistic for an OpenGL header or for some C++ wrapper to provide
+\tcode{[[requires_opt_in(legacy_gl_api)]]}
+so that old functions are not used accidentally.
+}
+
+\h2{Design}
+
+\h3{Controlling diagnostic level}
+
+The third parameter in a \tcode{[[requires_opt_in(/* ... */)]]} attribute is an optional
+\gterm{constant-expression} of type \tcode{std::opt_in_requirement}:
+
+\cppblock{
+enum class opt_in_requirement {
+  // Requirement is disabled.
+  none,
+  // Violation of the opt-in requirement results in a warning (default).
+  warning,
+  // Violation of the opt-in requirement results in an error.
+  error,
+};
+}
+
+This level gives library authors more control,
+and is analogous to Kotlin's \code("kt"){RequiresOptIn.Level},
+which is either \code("kt"){ERROR} or \code("kt"){WARNING}.
+The level also allows marking particular specializations as requiring an opt-in.
+
+\Bex{
+For a template \tcode{result<T, E>},
+there are two ways to make the specialization \tcode{result<void, E>}
+require an opt-in:
+
+\cppblock{
+// 1. Apply the requirement to the primrary template,
+//    assuming that only that template is provided.
+template<class T, class E>
+struct [[requires_opt_in(/* ... */, std::is_void_v<T> ?
+         std::opt_in_requirement::warning : std::opt_in_requirement::none)]]
+result {
+    /* ... */
+};
+
+// 2. Alternatively, apply the requirement to some partial specialization.
+template<class E>
+  struct [[requires_opt_in(/* ... */)]] result<void, E> { /* ... */ };
+}
+}
+
+Without the extra requirement parameter,
+users would struggle with marking the use of specific template parameters
+as requiring an opt-in,
+such as when only \tcode{const} or \tcode{volatile} parameters
+require opt-in.
+This would be especially problematic for function templates,
+which don't support partial specializations.
+
+\h3{When opt-in is required}
+
+Opt-in is required in the same cases where \tcode{[[deprecated]]} would emit a warning.
+For example, a deprecated overload in an overload set does not mean that the entire
+overload set requires opt-in.
+
+When it has been determined that opt-in is required for some construct that refers to
+another construct,
+the \tcode{opt_in_requirement} value of the requirement is checked,
+and either nothing, a warning, or error is emitted.
+
+\h3{Overload resolution and SFINAE}
+
+Even when the user specifies \tcode{opt_in_requirement::error},
+this does not alter the result of overload resolution, and it is SFINAE-unfriendly.
+Any opt-in requirement is either satisfied,
+or the diagnostic is emitted.
+
+\h3{Ignorability of attributes}
+
+A notable problem is that older compilers do not support
+\tcode{[[requires_opt_in]]},
+so even if a library author specifies \tcode{opt_in_requirement::error},
+there is no strict guarantee of an error on lack of opt-in.
+
+However, this problem is not a deal-breaker because
+\ul{
+  \li{
+    the library author cannot distinguish between a user whose \tcode{[[requires_opt_in]]}
+    attribute is \q{broken} and between a user who opted in,
+    so the functionality they are providing still needs to be correct for everyone, and
+  }
+  \li{
+    a library author could also guard opt-in features behind the \tcode{__cpp_opt_in}
+    feature-test macro,
+    so they only provide opt-in extras if users are reliably forced to opt in.
+  }
+}
+
+The feature-test macro is actually necessary to avoid warnings for unrecognized attributes,
+so all a library author has to do is:
+\cppblock{
+#ifdef __cpp_opt_in
+[[requires_opt_in(/* ... */)]]
+\ins{void f();}
+#endif
+\del{void f();}
+}
+That is, they should make the whole declaration guarded by the feature-test,
+not just the attribute.
+Or alternatively,
+\cppblock{
+// defined once
+#ifdef __cpp_opt_in
+#define MY_LIB_OPT_IN_FEATURE(id, msg, ...) \\
+  [[requires_opt_in(id, msg)]] __VA_ARGS__
+#endif
+
+// Expands to nothing of opting in is not possible,
+// or expands to a declaration with [[requires_opt_in]]
+MY_LIB_OPT_IN_FEATURE(stuff, "Experimental.",
+void f() {
+  // ...
+}
+)
+}
+
+Of course, eventually support for \tcode{[[requires_opt_in]]} would be so widespread
+that these macro uses would no longer be necessary.
+Pure C++29 code would have no need for them.
+This may just take a few decades.
+
+\h2{Wording}
+
+The changes are relative to \ref("N5046").
+
+\h3(show_number=false){[version.syn]}
+
+Add a feature-test macro to \eelis{version.syn} as follows:
+
+\Bins{
+\itemdecl{
+#define __cpp_my_new_feature 20XXXXL // \serif{freestanding, also in \tt{<header>}}
+}
+}
+
+A \tcode{std::vector} is a \exposid{std-vector}.
+
+\h2{References}
+
+
+\bib(
+  id = "N5046",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2026-05-12",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5046",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5046.pdf",
+)\
+\bib(
+  id = "P3666R4",
+  title = "Bit-precise integers",
+  date = "2026-05-12",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3666r4",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r4.html",
+)\
+
+\make_bib
