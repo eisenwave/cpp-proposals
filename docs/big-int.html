@@ -1576,16 +1576,30 @@ if (theme !== null) {
   }
 </style>
 
+<style>
+.toc h4 {
+  margin-left: 1.5em;
+}
+.toc h5 {
+  margin-left: 3em;
+}
+.toc h6 {
+  margin-left: 4.5em;
+}
+</style>
+
 <div class=wg21-head><h1><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code></h1>
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/D4444R0>D4444R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-07-16</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2026-07-30</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
-  <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
+  <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;<br/>
+                            Christopher Kormanyos &lt;<a href=mailto:ckormanyos@yahoo.com class=sans>ckormanyos@yahoo.com</a>&gt;<br/>
+                            Matt Borland &lt;<a href=mailto:matt@mattborland.com class=sans>matt@mattborland.com</a>&gt;</dd>
   <dt>GitHub Issue:</dt>    <dd><a href=https://wg21.link/P4444/github class=sans>wg21.link/P4444/github</a></dd>
-  <dt>Source:</dt>          <dd><a href=https://github.com/eisenwave/cpp-proposals/blob/master/src/big-int.cow class=sans>github.com/eisenwave/cpp-proposals/blob/master/src/big-int.cow</a></dd>
+  <dt>Source:</dt>          <dd><a href=https://github.com/eisenwave/cpp-proposals/blob/main/src/big-int.cow class=sans>github.com/eisenwave/cpp-proposals/blob/main/src/big-int.cow</a></dd>
 </dl>
 <hr/>
 </div>
@@ -1618,46 +1632,72 @@ Other sections will be filled in over time.
 <div class=toc-num data-level=3>3.2</div>
 <a href=#small-object-optimizations><h3>Small object optimizations</h3></a>
 <div class=toc-num data-level=3>3.3</div>
-<a href=#sign-and-magnitude><h3>Sign and magnitude</h3></a>
+<a href=#constexpr-support><h3><tt->constexpr</tt-> support</h3></a>
+<div class=toc-num data-level=4>3.3.1</div>
+<a href=#circumventing-transient-allocations><h4>Circumventing transient allocations</h4></a>
 <div class=toc-num data-level=3>3.4</div>
-<a href=#access-to-the-underlying-representation><h3>Access to the underlying representation</h3></a>
+<a href=#sign-and-magnitude><h3>Sign and magnitude</h3></a>
 <div class=toc-num data-level=3>3.5</div>
-<a href=#naming><h3>Naming</h3></a>
+<a href=#access-to-the-underlying-representation><h3>Access to the underlying representation</h3></a>
 <div class=toc-num data-level=3>3.6</div>
-<a href=#optimal-operator-overloads><h3>Optimal operator overloads</h3></a>
-<div class=toc-num data-level=4>3.6.1</div>
-<a href=#why-not-return-by--from-unary-operators><h4>Why not return by <tt->&amp;&amp;</tt-> from unary operators?</h4></a>
+<a href=#naming><h3>Naming</h3></a>
 <div class=toc-num data-level=3>3.7</div>
-<a href=#why-not-provide-lower-level-operations-for-arithmetic><h3>Why not provide lower-level operations for arithmetic?</h3></a>
+<a href=#optimal-operator-overloads><h3>Optimal operator overloads</h3></a>
+<div class=toc-num data-level=4>3.7.1</div>
+<a href=#why-not-return-by--from-unary-operators><h4>Why not return by <tt->&amp;&amp;</tt-> from unary operators?</h4></a>
 <div class=toc-num data-level=3>3.8</div>
-<a href=#hash-support-for-std::big_int><h3>Hash support for <tt->std::big_int</tt-></h3></a>
+<a href=#why-not-use-reference-counting><h3>Why not use reference counting?</h3></a>
 <div class=toc-num data-level=3>3.9</div>
+<a href=#why-not-provide-lower-level-operations-for-arithmetic><h3>Why not provide lower-level operations for arithmetic?</h3></a>
+<div class=toc-num data-level=3>3.10</div>
+<a href=#hash-support-for-std::big_int><h3>Hash support for <tt->std::big_int</tt-></h3></a>
+<div class=toc-num data-level=3>3.11</div>
 <a href=#user-defined-literals-for-std::big_int><h3>User-defined literals for <tt->std::big_int</tt-></h3></a>
-<div class=toc-num data-level=4>3.9.1</div>
+<div class=toc-num data-level=4>3.11.1</div>
 <a href=#udl-suffix-naming><h4>Why <tt->123n</tt->?</h4></a>
-<div class=toc-num data-level=4>3.9.2</div>
+<div class=toc-num data-level=4>3.11.2</div>
 <a href=#user-defined-literals-vs%2e-string-constructors><h4>User-defined literals vs. string constructors</h4></a>
-<div class=toc-num data-level=4>3.9.3</div>
-<a href=#why-provide-udls-or-string-constructors-why-not-neither><h4>Why provide UDLs or string constructors? Why not neither?</h4></a>
+<div class=toc-num data-level=4>3.11.3</div>
+<a href=#why-provide-udls-or-string-constructors-at-all><h4>Why provide UDLs or string constructors at all?</h4></a>
+<div class=toc-num data-level=3>3.12</div>
+<a href=#bit-precise-integer-interoperability><h3>Bit-precise integer interoperability</h3></a>
+<div class=toc-num data-level=3>3.13</div>
+<a href=#limb-type-parameter><h3>Limb type parameter</h3></a>
+<div class=toc-num data-level=3>3.14</div>
+<a href=#order-of-template-parameters><h3>Order of template parameters</h3></a>
 <div class=toc-num data-level=2>4</div>
-<a href=#implementation-experience><h2>Implementation experience</h2></a>
+<a href=#future-direction><h2>Future direction</h2></a>
+<div class=toc-num data-level=3>4.1</div>
+<a href=#integer-numeric-functions><h3>Integer numeric functions</h3></a>
+<div class=toc-num data-level=3>4.2</div>
+<a href=#fixed-point-interoperability><h3>Fixed-point interoperability</h3></a>
 <div class=toc-num data-level=2>5</div>
-<a href=#wording><h2>Wording</h2></a>
+<a href=#arguments-against-standardization><h2>Arguments against standardization</h2></a>
 <div class=toc-num data-level=3>5.1</div>
-<a href=#version%2esyn><h3>[version.syn]</h3></a>
+<a href=#many-trade-offs><h3>Many trade-offs</h3></a>
 <div class=toc-num data-level=3>5.2</div>
-<a href=#big%2eint><h3>[big.int]</h3></a>
+<a href=#use-of-committee-resources><h3>Use of committee resources</h3></a>
 <div class=toc-num data-level=3>5.3</div>
-<a href=#charconv><h3>[charconv]</h3></a>
-<div class=toc-num data-level=3>5.4</div>
-<a href=#numeric%2eint%2ediv><h3>[numeric.int.div]</h3></a>
-<div class=toc-num data-level=3>5.5</div>
-<a href=#numeric%2eabs><h3>[numeric.abs]</h3></a>
-<div class=toc-num data-level=3>5.6</div>
-<a href=#numeric%2esat%2ecast><h3>[numeric.sat.cast]</h3></a>
-<div class=toc-num data-level=3>5.7</div>
-<a href=#numeric%2econversions><h3>[numeric.conversions]</h3></a>
+<a href=#use-of-implementer-resources><h3>Use of implementer resources</h3></a>
 <div class=toc-num data-level=2>6</div>
+<a href=#implementation-experience><h2>Implementation experience</h2></a>
+<div class=toc-num data-level=2>7</div>
+<a href=#wording><h2>Wording</h2></a>
+<div class=toc-num data-level=3>7.1</div>
+<a href=#version%2esyn><h3>[version.syn]</h3></a>
+<div class=toc-num data-level=3>7.2</div>
+<a href=#big%2eint><h3>[big.int]</h3></a>
+<div class=toc-num data-level=3>7.3</div>
+<a href=#charconv><h3>[charconv]</h3></a>
+<div class=toc-num data-level=3>7.4</div>
+<a href=#numeric%2eint%2ediv><h3>[numeric.int.div]</h3></a>
+<div class=toc-num data-level=3>7.5</div>
+<a href=#numeric%2eabs><h3>[numeric.abs]</h3></a>
+<div class=toc-num data-level=3>7.6</div>
+<a href=#numeric%2esat%2ecast><h3>[numeric.sat.cast]</h3></a>
+<div class=toc-num data-level=3>7.7</div>
+<a href=#numeric%2econversions><h3>[numeric.conversions]</h3></a>
+<div class=toc-num data-level=2>8</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
@@ -1854,34 +1894,55 @@ they are also used frequently:
 </p>
 <table class="center striped">
   <tr>
+    <th>Language</th>
     <th>GitHub code search</th>
-    <th>Amount of files</th>
+    <th># Files</th>
   </tr>
   <tr>
+    <td>TypeScript</td>
     <td>
       <a href="https://github.com/search?q=language%3ATypeScript+%2F%5Cbbigint%2F+-is%3Afork&type=code"><tt->language:TypeScript  /\bbigint/ -is:fork</tt-></a>
     </td>
-    <td>1.1M</td>
+    <td>1.4M</td>
   </tr>
   <tr>
+    <td>Java</td>
     <td>
-      <a href="https://github.com/search?q=language%3AC%2B%2B+%2F%5Cb%28big%7Ccpp%29_%3Fu%3Fint%2F+-is%3Afork&type=code"><tt->language:Java  /\bbigint/ -is:fork</tt-></a>
+      <a href="https://github.com/search?q=language%3AJava++%2F%5Cbbigint%2F+-is%3Afork&type=code"><tt->language:Java  /\bbigint/ -is:fork</tt-></a>
     </td>
-    <td>762K</td>
+    <td>1.3M</td>
   </tr>
   <tr>
+    <td>JavaScript</td>
     <td>
       <a href="https://github.com/search?q=language%3AJavaScript+%2F%5Cbbigint%2F+-is%3Afork&type=code"><tt->language:JavaScript  /\bbigint/ -is:fork</tt-></a>
     </td>
-    <td>389K</td>
+    <td>811K</td>
   </tr>
   <tr>
+    <td>C++</td>
     <td>
       <a href="https://github.com/search?q=language%3AC%2B%2B+%2F%5Cb%28big%7Ccpp%29_%3Fu%3Fint%2F+-is%3Afork&type=code"><tt->language:C++ /\b(big|cpp)_?u?int/ -is:fork</tt-></a>
     </td>
-    <td>171K</td>
+    <td>404K</td>
+  </tr>
+  <tr>
+    <td>Rust</td>
+    <td>
+      <a href="https://github.com/search?q=language%3ARust+%2F%5Cbbig_%3Fint%2F+-is%3Afork&type=code"><tt->language:Rust /\bbig_?int/ -is:fork</tt-></a>
+    </td>
+    <td>104K</td>
   </tr>
 </table>
+
+<note-block><p><intro-></intro-> 
+The amount of files shown here was captured at the time of writing,
+and is subject to change.
+</p>
+<p>The tables also does not include languages where no active choice to use infinite-precision integers
+over fixed-width integers is made.
+Otherwise, the results would be inflated by e.g. 107M files using <code><h- data-h=name>int</h-></code> in Python.
+</p></note-block>
 
 <h2 id=motivation><a class=para href=#motivation></a>2. Motivation</h2>
 
@@ -2094,6 +2155,9 @@ but it does demonstrate why some compiler support is needed.
   <li>
     <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> should grant access to the underlying representation
   </li>
+  <li>
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> operations should be <code><h- data-h=kw>constexpr</h-></code>
+  </li>
 </ul>
 
 <p>This culminates in the following library declarations:
@@ -2241,7 +2305,71 @@ On 64-bit, our layout is as follows:
 </ul>
 </note-block>
 
-<h3 id=sign-and-magnitude><a class=para href=#sign-and-magnitude></a>3.3. Sign and magnitude</h3>
+<h3 id=constexpr-support><a class=para href=#constexpr-support></a>3.3. <tt->constexpr</tt-> support</h3>
+
+<p><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> also provides <code><h- data-h=kw>constexpr</h-></code> operations,
+similar to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string</h-></code>.
+</p>
+<note-block><p><intro-></intro-> 
+Being able to perform multiprecision arithmetic at compile time is actually
+part of the motivation for the paper.
+<a href=#big-int-compiler-intrinsic>§2.4. <tt->std::big_int</tt-> should be a compiler intrinsic for constant evaluation</a> goes into more detail.
+</p></note-block>
+
+<p>Without any dedicated compiler intrinsics,
+this means that <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> manages an allocation,
+similar to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string</h-></code>.
+That allocation is transient, i.e. it cannot persist to runtime.
+However, performing operations on a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> and freeing all memory
+before the end of the constant expression is fine.
+</p>
+<p>There is another layer to the design here,
+which is that <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is <em>mandated</em> to perform small object optimization,
+and this is exposed to the user in the public API,
+rather than just being an optional optimization like for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string</h-></code>.
+Because of this, we can have <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> values persist to runtime
+as long as the value is small enough to require no allocation.
+</p>
+<example-block><p><intro-></intro-> 
+</p><code-block><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> error: allocation not freed before the end of the constant expression</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>64</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1024</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>-</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, -1 is representable within the object, and 64 bits are guaranteed</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>64</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1</h-><h- data-h=sym_punc>;</h-></code-block>
+</example-block>
+
+<h4 id=circumventing-transient-allocations><a class=para href=#circumventing-transient-allocations></a>3.3.1. Circumventing transient allocations</h4>
+
+<p>One additional restriction on implementations to make this behavior reliable
+is that they must never represent a <code><h- data-h=name>basic_big_int</h-></code> dynamically
+when inplace storage is sufficient.
+At runtime, implementations might hold onto an allocation until <code><h- data-h=name>shrink_to_fit</h-></code>
+is called because that allocation may be immediately useful in the next operation.
+</p>
+<example-block><p><intro-></intro-> 
+We might do:
+</p><code-block><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>64</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> pre-existing value which holds an allocation</h->
+<h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>64</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>y</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>move</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>-</h-> <h- data-h=num>1000</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>5</h-><h- data-h=sym_punc>;</h-></code-block>
+<p>Even if subtracting <code><h- data-h=num>1000</h-></code> would make the difference small enough to be represented
+as a 64-bit integer,
+we do not (and should not) require freeing the storage of <code><h- data-h=name>x</h-></code> <em>at runtime</em>.
+That allocation is immediately useful to represent the result of the bit-shift.
+</p></example-block>
+
+<p>However, <em>at compile time</em>,
+we require that <em>every operation</em> behaves as if <code><h- data-h=name>shrink_to_fit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>
+was called on the result,
+so allocations are aggressively freed if at all possible.
+This is necessary because the result of the subtraction in the example
+might be stored in a <code><h- data-h=kw>constexpr</h-></code> variable,
+and this would fail unncessarily because of <code><h- data-h=kw>constexpr</h-></code> allocation restrictons.
+</p>
+<p>If we didn't have that behavior,
+<code><h- data-h=kw>constexpr</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> variables might <q>randomly</q> fail to compile
+from the perspective of the user, depending on the compiler,
+for no good reason.
+</p>
+<h3 id=sign-and-magnitude><a class=para href=#sign-and-magnitude></a>3.4. Sign and magnitude</h3>
 
 <p><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> uses a sign-and-magnitude representation
 (as opposed to e.g. two's complement),
@@ -2276,7 +2404,7 @@ negative inputs are treated as if they were preceded by an infinite sequences of
 positive inputs are treated as if they were preceded by an infinite sequence of leading zeros.
 </p></note-block>
 
-<h3 id=access-to-the-underlying-representation><a class=para href=#access-to-the-underlying-representation></a>3.4. Access to the underlying representation</h3>
+<h3 id=access-to-the-underlying-representation><a class=para href=#access-to-the-underlying-representation></a>3.5. Access to the underlying representation</h3>
 
 <p>As mentioned in <a href=#design>§3. Design</a>,
 a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is conceptually a <code><h- data-h=kw>union</h-></code> of
@@ -2326,7 +2454,7 @@ into a corrupt state, like
 having a <code><h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> that doesn't match the number of bits in the representation, or
 producing negative zero.
 </p>
-<h3 id=naming><a class=para href=#naming></a>3.5. Naming</h3>
+<h3 id=naming><a class=para href=#naming></a>3.6. Naming</h3>
 
 <p>The name <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> was chosen because it meets user expectations
 and makes its design instantly clear.
@@ -2339,7 +2467,7 @@ as supporting infinite-precision arithmetic and as growing elastically as needed
 but this name doesn't convey the design well,
 and is too similar to concept names like <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>integral</h-></code>.
 </p>
-<h3 id=optimal-operator-overloads><a class=para href=#optimal-operator-overloads></a>3.6. Optimal operator overloads</h3>
+<h3 id=optimal-operator-overloads><a class=para href=#optimal-operator-overloads></a>3.7. Optimal operator overloads</h3>
 
 <p>The design includes operator overloads that are <q>optimal</q>,
 which requires handling two cases:
@@ -2423,7 +2551,7 @@ The question is just whether it should be done invisibly by the standard library
 or whether the burden is off-loaded onto users.
 We don't see a compelling reason to off-load onto users.
 </p>
-<h4 id=why-not-return-by--from-unary-operators><a class=para href=#why-not-return-by--from-unary-operators></a>3.6.1. Why not return by <tt->&amp;&amp;</tt-> from unary operators?</h4>
+<h4 id=why-not-return-by--from-unary-operators><a class=para href=#why-not-return-by--from-unary-operators></a>3.7.1. Why not return by <tt->&amp;&amp;</tt-> from unary operators?</h4>
 
 <p>For unary operators, it would also be possible to return by xvalue instead of by prvalue,
 but this would mean that the value category of the result of operators is not always the same.
@@ -2446,7 +2574,55 @@ each of which is well-defined on its own.
 with the only benefit being a micro-optimization
 which we don't see as sufficiently important.
 </p>
-<h3 id=why-not-provide-lower-level-operations-for-arithmetic><a class=para href=#why-not-provide-lower-level-operations-for-arithmetic></a>3.7. Why not provide lower-level operations for arithmetic?</h3>
+<h3 id=why-not-use-reference-counting><a class=para href=#why-not-use-reference-counting></a>3.8. Why not use reference counting?</h3>
+
+<p>An idea very early in the design process was to use reference counting in order to avoid
+the issue explained in <a href=#optimal-operator-overloads>§3.7. Optimal operator overloads</a>.
+That is, if <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> was essentially a
+<code><h- data-h=name>shared_ptr</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_op>&gt;</h-></code>,
+it would be possible to pass it cheaply by value.
+</p>
+<example-block><p><intro-></intro-> 
+A function signature as follows would not be problematic:
+</p><code-block><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=sym_op>-</h-><h- data-h=name>std</h-><h- data-h=sym_punc>:</h-><h- data-h=name>move</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_punc>:</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>move</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+<p>If <code><h- data-h=name>x</h-></code> has unique ownership (i.e. the reference count is 1),
+<code><h- data-h=sym_op>-</h-><h- data-h=name>x</h-></code> can modify the integer in-place;
+otherwise, <code><h- data-h=sym_op>-</h-><h- data-h=name>x</h-></code> performs a copy.
+</p></example-block>
+
+<p>While this idea seems clever at first, there are several problems:
+</p><ul>
+  <li>
+    The same was historically attempted for types like <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string</h-></code> to no success.
+    Boost implementers gave negative feedback on this idea being pursued for
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>, and Boost.Multiprecision performs no reference counting either.
+    A key problem is difficulty of implementation.
+  </li>
+  <li>
+    The reference counting needs to be atomic because in the standard library,
+    read-only access like copy constructors is generally thread-safe.
+    Atomic operations can have significant overhead.
+  </li>
+  <li>
+    Actually making use of the optimization opportunity in the example above
+    (that is, modifying <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>'s data in-place if it has unique ownership)
+    requires an atomic compare exchange (CAS):
+    if the reference counter is currently one, set it to zero,
+    otherwise other threads might believe they have unique ownership too.
+    That also makes the <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>move</h-></code> in the example necessary;
+    we need permission to mess with the original object.
+    Even with no contention,
+    a CAS is a relatively expensive instruction.
+  </li>
+</ul>
+
+<p>By comparison, a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> design with unique ownership
+avoids a lot of problems because is is statically known that it has unique ownership;
+no runtime check is needed.
+</p>
+<h3 id=why-not-provide-lower-level-operations-for-arithmetic><a class=para href=#why-not-provide-lower-level-operations-for-arithmetic></a>3.9. Why not provide lower-level operations for arithmetic?</h3>
 
 <p>A common idea in the committee is that rather than providing the <q>high-level construct</q>
 of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
@@ -2497,7 +2673,7 @@ However, we don't propose any of these low-level operations in this paper for a 
     which does not have this vast amount of extra logic
     is not actually in their best interest.
     It would be like providing them with a <code><h- data-h=name>sqrt</h-></code> function that doesn't handle
-    infinities and NaNs and telling them it's a lower-level building block.
+    infinities and NaNs and telling them that this <code><h- data-h=name>sqrt</h-></code> is a lower-level building block.
     In the best case, their <code><h- data-h=name>big_int</h-></code> operations would end up recreating
     the standard library implementation verbatim.
     In the worst (and much more likely case),
@@ -2549,7 +2725,7 @@ wrapping a handle to <code><h- data-h=name>llvm</h-><h- data-h=sym_op>::</h-><h-
 The more <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is treated as a compiler intrinsic,
 the lower-level it conceptually becomes.
 </p>
-<h3 id=hash-support-for-std::big_int><a class=para href=#hash-support-for-std::big_int></a>3.8. Hash support for <tt->std::big_int</tt-></h3>
+<h3 id=hash-support-for-std::big_int><a class=para href=#hash-support-for-std::big_int></a>3.10. Hash support for <tt->std::big_int</tt-></h3>
 
 <p>We also provide <tt->std::hash</tt-> support.
 While the hashing algorithm is up to the implementation
@@ -2572,7 +2748,7 @@ We should seriously consider whether we want hash parity between fundamental typ
 and <code><h- data-h=name>basic_big_int</h-></code>.
 </p></decision-block>
 
-<h3 id=user-defined-literals-for-std::big_int><a class=para href=#user-defined-literals-for-std::big_int></a>3.9. User-defined literals for <tt->std::big_int</tt-></h3>
+<h3 id=user-defined-literals-for-std::big_int><a class=para href=#user-defined-literals-for-std::big_int></a>3.11. User-defined literals for <tt->std::big_int</tt-></h3>
 
 <p>For convenient creationg of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
 we provide the following user-defined literal:
@@ -2593,12 +2769,12 @@ The user could write the following code:
 <h- data-h=kw>auto</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>123</h-><h- data-h=num_deco>n</h-><h- data-h=sym_punc>;</h-></code-block>
 </example-block>
 
-<h4 id=udl-suffix-naming><a class=para href=#udl-suffix-naming></a>3.9.1. Why <tt->123n</tt->?</h4>
+<h4 id=udl-suffix-naming><a class=para href=#udl-suffix-naming></a>3.11.1. Why <tt->123n</tt->?</h4>
 
 <p>The suffix '<tt->n</tt->' was chosen for symmetry with JavaScript,
 where <code><h- data-h=num>123</h-><h- data-h=num_deco>n</h-></code> is equivalent to <code><h- data-h=name>BigInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>123</h-><h- data-h=sym_par>)</h-></code>.
 </p>
-<h4 id=user-defined-literals-vs.-string-constructors><a class=para href=#user-defined-literals-vs%2e-string-constructors></a>3.9.2. User-defined literals vs. string constructors</h4>
+<h4 id=user-defined-literals-vs.-string-constructors><a class=para href=#user-defined-literals-vs%2e-string-constructors></a>3.11.2. User-defined literals vs. string constructors</h4>
 
 <p>It is worth noting that other libraries typically don't provide a UDL.
 For example, Boost.Multiprecision instead has a string constructor,
@@ -2642,7 +2818,7 @@ it still informs us that there is potential to improve UDLs and reduce some of t
 without breaking existing uses of <code><h- data-h=num>123</h-><h- data-h=num_deco>n</h-></code>.
 This makes UDLs a more compelling option right now.
 </p>
-<h4 id=why-provide-udls-or-string-constructors-why-not-neither><a class=para href=#why-provide-udls-or-string-constructors-why-not-neither></a>3.9.3. Why provide UDLs or string constructors? Why not neither?</h4>
+<h4 id=why-provide-udls-or-string-constructors-at-all><a class=para href=#why-provide-udls-or-string-constructors-at-all></a>3.11.3. Why provide UDLs or string constructors at all?</h4>
 
 <p><em>Some</em> form of convenient construction is necessary.
 Otherwise, creating large constant <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> objects is simply too tedious.
@@ -2659,11 +2835,386 @@ and even if it was,
 the <code><h- data-h=name>BITINT_MAXWIDTH</h-></code> is only guaranteed to be at least <code><h- data-h=name>LLONG_WIDTH</h-></code>.
 In other words, <code><h- data-h=kw_type>_BitInt</h-></code>s larger than 64-bit are an optional feature.
 </p>
-<h2 id=implementation-experience><a class=para href=#implementation-experience></a>4. Implementation experience</h2>
+<h3 id=bit-precise-integer-interoperability><a class=para href=#bit-precise-integer-interoperability></a>3.12. Bit-precise integer interoperability</h3>
+
+<p>While <a href="https://wg21%2elink/p3666r4">[P3666R4]</a> has not been merged into C++29 yet,
+we still need to consider how <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> will interoperate with <code><h- data-h=kw_type>_BitInt</h-></code>.
+Notably, the constructor of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> may or may not reject those integers,
+and the user-defined conversion to integer types may or may not be valid.
+</p>
+<p>We believe that this conversion should be valid in both directions because it exposes a
+fundamental and clearly useful bit of functionality.
+There is simply no good reason to prevent these conversions,
+other than wanting to prevent <code><h- data-h=kw_type>_BitInt</h-></code> from ever being a useful and fully supported
+type in the standard library.
+</p>
+<example-block><p><intro-></intro-> 
+One use case where <code><h- data-h=kw_type>_BitInt</h-></code> is specifically useful is for providing large integer literals.
+For example, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-><h- data-h=sym_brac>{</h-><h- data-h=num>123</h-><h- data-h=num_deco>wb</h-><h- data-h=sym_brac>}</h-></code> can be used instead of <code><h- data-h=num>123</h-><h- data-h=num_deco>n</h-></code>,
+which bypasses the user-defined <code><h- data-h=kw>operator</h-><h- data-h=str_dlim>"</h-><h- data-h=str_dlim>"</h-><h- data-h=str_deco>n</h-></code> literal,
+and that UDL's implementation is relatively complicated and heavy.
+As long as a sufficiently wide <code><h- data-h=kw_type>_BitInt</h-></code> type exists,
+its <g-term>integer-literal</g-term> is a more lightweigt alternative.
+</p></example-block>
+
+<example-block><p><intro-></intro-> 
+Another use case is a cryptography library that uses <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> at its library bounds,
+but performs the underlying calculations (such as for RSA) using e.g. <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>8192</h-><h- data-h=sym_par>)</h-></code>.
+This clearly requires converting <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> to <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>8192</h-><h- data-h=sym_par>)</h-></code>,
+and a user would need perform that conversion manually limb-by-limb
+if the standard library didn't provide it.
+</p>
+<p>Such a conversion is also clearly useful when handing the values of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>
+off to a C library that uses <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>128</h-><h- data-h=sym_par>)</h-></code>, <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>256</h-><h- data-h=sym_par>)</h-></code>, etc. in its API.
+</p></example-block>
+
+<h3 id=limb-type-parameter><a class=para href=#limb-type-parameter></a>3.13. Limb type parameter</h3>
+
+<p>When it comes to allowing configuration of the limb type,
+there is a spectrum of solutions:
+</p>
+<ul>
+  <li>
+    Don't allow any limb type configuration and have no template parameter.
+    This is a simple design, but closes the door to future extensions forever
+    because adding another template parameter would be an API break.
+  </li>
+  <li>
+    <b>Ours:</b>
+    Have a limb type parameter <code><h- data-h=kw>class</h-> <h- data-h=name>Limb</h-></code>
+    but only allow <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint_multiprecision_t</h-></code> as an argument.
+    This enables future extension.
+  </li>
+  <li>
+    Allow types as arguments that are <q>functionally equivalent</q> to
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint_multiprecision_t</h-></code>.
+    That is, they are distinct types that have the same object and value representation,
+    like <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-></code> and <code><h- data-h=name>unsinged</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code> on 64-bit Linux.
+  </li>
+  <li>
+    Allow some subset of unsigned integer types,
+    like 32-bit and 64-bit.
+  </li>
+  <li>
+    Allow arbitrary unsigned integer types.
+  </li>
+</ul>
+
+<p>While we are not proposing any arguments other than <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint_multiprecision_t</h-></code>
+in this paper,
+such future extension could be very reasonable for two reasons:
+</p><ul>
+  <li>
+    Existing code that uses either <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-></code> or <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code>
+    as a limb type would experience friction
+    when working with spans of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint_multiprecision_t</h-></code>,
+    even if those types are functionally equivalent.
+    For example, there would be no guarantee that an existing C API yielding a
+    <code><h- data-h=kw>const</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-><h- data-h=sym_op>*</h-></code> to the user could obtain that pointer
+    directly from <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-><h- data-h=sym_op>::</h-><h- data-h=name>representation</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>.
+  </li>
+  <li>
+    Some configuration of the limb type is reasonably implementable and quite useful.
+    For example, 64-bit code interfacing with 32-bit legacy code bases could benefit
+    from working with a 32-bit limb type.
+  </li>
+  <li>
+    Within a few decades, 128-bit arithmetic support may arrive on 64-bit platforms,
+    similar to how WASM32 supports 64-bit arithmetic opeations but has a 32-bit address space.
+    If so, there ought to be a way to create a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>basic_big_int</h-></code> with 128-bit limbs,
+    even if <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint_multiprecision_t</h-></code> cannot be redefined due to ABI concerns.
+  </li>
+</ul>
+
+<p>Even if one doesn't find these arguments very compelling,
+is there strong enough reason to make it impossible to ever extend <code><h- data-h=name>basic_big_int</h-></code>
+with a different limb type?
+Probably not.
+The template parameter only mildly inconveniences implementers and power users
+who don't just use <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
+similar to how most users work with <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string</h-></code>
+rather than <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>basic_string</h-></code>.
+</p>
+<note-block><p><intro-></intro-> 
+A similar approach was recently taken in <a href="https://wg21%2elink/p2019r9">[P2019R9]</a> <q>Thread attributes</q>,
+in <a href=https://eel.is/c++draft/thread.thread.class.general>[thread.thread.class.general]</a>:
+</p><code-block><h- data-h=kw>template</h-> <h- data-h=sym_op>&lt;</h-><h- data-h=name>same_as</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>class</h-> <h- data-h=name>name_hint</h-><h- data-h=sym_punc>;</h-></code-block>
+</note-block>
+
+<note-block><p><intro-></intro-> 
+Supporting <q>functionally equivalent</q> unsigned integer types would ideally be done
+with some compiler support or by ignoring certain instances of UB.
+The underlying operations working with <code><h- data-h=name>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;</h-></code>
+could be <q>blessed</q> so that internally,
+e.g. <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-></code> can alias <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code> and <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>64</h-><h- data-h=sym_par>)</h-></code>.
+This would allow having only one internal function while still handling all types.
+</p></note-block>
+
+<h3 id=order-of-template-parameters><a class=para href=#order-of-template-parameters></a>3.14. Order of template parameters</h3>
+
+<p>For <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>basic_big_int</h-></code>,
+the order is generally <q>most likely to be specified as an argument first</q>:
+</p>
+<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>min_inplace_capacity</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>Limb</h-> <h- data-h=sym_op>=</h-> <h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_punc>,</h->
+         <h- data-h=kw>class</h-> <h- data-h=name>Allocator</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>allocator</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>Limb</h-><h- data-h=sym_op>&gt;&gt;</h->
+  <h- data-h=kw>class</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>The <code><h- data-h=name>Allocator</h-></code> parameter needs to come after the <code><h- data-h=name>Limb</h-></code> parameter
+so that the default argument <code><h- data-h=name>allocator</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>Limb</h-><h- data-h=sym_op>&gt;</h-></code> can be spelled.
+This is unfortunate because the limb type cannot be configured at all
+(it must always be <code><h- data-h=name_type>uint_multiprecision_t</h-></code>),
+but would not be so bad if it became genuinely configurable in the future.
+</p>
+<p>Fortunately, the only people inconvenienced are power users who use <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>basic_big_int</h-></code>
+with a custom allocator,
+which is acceptablle.
+</p>
+<h2 id=future-direction><a class=para href=#future-direction></a>4. Future direction</h2>
+
+<p>The initial <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> proposal is only the start.
+There are many features that could be added subsequently
+but which are not in this paper to keep its scope focused.
+</p>
+<h3 id=integer-numeric-functions><a class=para href=#integer-numeric-functions></a>4.1. Integer numeric functions</h3>
+
+<p>This paper only provides <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> overloads for pre-existing functions,
+such as <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code>.
+However, infinite-precision libraries typically provide many more operations, such as
+</p><ul>
+  <li>modular arithmetic functions, like <code><h- data-h=name>powmod</h-></code>,</li>
+  <li>integer exponentiation (<code><h- data-h=name>ipow</h-></code>),</li>
+  <li>integer logarithm (<code><h- data-h=name>ilog</h-></code>),</li>
+  <li>integer square root (<code><h- data-h=name>isqrt</h-></code>),</li>
+  <li>factional (<code><h- data-h=name>fact</h-></code>),</li>
+  <li>binomial coefficient (<code><h- data-h=name>choose</h-></code>),</li>
+  <li>[…]</li>
+</ul>
+
+<p>The key observation is that these functions are at least as useful for fundamental integer types,
+not just for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
+and they should be designed for integers in general.
+That makes all of them separate and orthogonal features,
+where a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> overload is just one of the design aspects.
+</p>
+<note-block><p><intro-></intro-> 
+The <code><h- data-h=name>bigint</h-></code> type in JavScript was standardized in such a minimal form as well:
+only the numeric type itself is provided,
+while the additonal <code><h- data-h=name>Math</h-></code> utilities are largely missing.
+</p></note-block>
+
+<h3 id=fixed-point-interoperability><a class=para href=#fixed-point-interoperability></a>4.2. Fixed-point interoperability</h3>
+
+<p>To provide interoperability with fixed-point numbers,
+a conversion to/from such numbers could be provided.
+Concretely, this would require
+</p><ul>
+  <li>
+    a constructor taking the integer and its scale (in bits),
+  </li>
+  <li>
+    a conversion function that yields the integer and its scale.
+  </li>
+</ul>
+
+<p>Neither is truly necessary because
+conversion from fixed-point could also be implemented in terms of
+construction from an integer followed by <code><h- data-h=sym_op>&lt;&lt;=</h-></code> or <code><h- data-h=sym_op>&gt;&gt;=</h-></code>.
+conversion to fixed-point could also be implemented in terms of a
+<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>countl_zero</h-></code> overload for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> and in terms of <code><h- data-h=sym_op>&gt;&gt;</h-></code>.
+However, more direct implementations may provide some convenience.
+</p>
+<p>In any case,
+there is no urgent need to provide such convenience in this proposal,
+especially considering that there are zero-overhead workarounds using bit-shifting.
+</p>
+<h2 id=arguments-against-standardization><a class=para href=#arguments-against-standardization></a>5. Arguments against standardization</h2>
+
+<p>While there is strong motivation to include <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> in the standard,
+there are also some arguments against doing so, which need to be considered carefully.
+</p>
+<h3 id=many-trade-offs><a class=para href=#many-trade-offs></a>5.1. Many trade-offs</h3>
+
+<p><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is relatively complex,
+and any complex design comes with a number of trade-offs.
+This does provide some motivation against standardization.
+Generally speaking, if a feature has so many trade-offs that most
+users will have to make their own form of a feature,
+this suggests that the feature is unfit for standardization.
+</p>
+<p>Some concrete trade-offs for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> (and our response to these) are:
+</p>
+<style>
+.row-seps td {
+  border-top: 1px solid var(--border-color);
+}
+</style>
+
+<table class=row-seps>
+  <tr>
+    <th>Trade-off</th>
+    <th>Explanation</th>
+    <th>Our response</th>
+  </tr>
+  <tr>
+    <td>SOO</td>
+    <td>
+      We force <a href=#small-object-optimizations>§3.2. Small object optimizations</a>,
+      which does pessimize the use case where the values are always huge.
+    </td>
+    <td>
+      <ul>
+        <li>
+          Providing a single <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> non-template alias
+          prevents a pessimization of the interface
+          where the user would always have to provide the <code><h- data-h=name>small_capacity</h-></code> and where
+          there would be no true vocabulary type.
+        </li>
+        <li>
+          In the use case where <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> always stores huge values,
+          the cost of allocation and arithmetic dominates the small added cost of increased
+          container size and branching.
+        </li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td>SOO size</td>
+    <td>
+      Depending on the use case,
+      different <b>amounts of small object optimization</b> are appropriate.
+    </td>
+    <td>
+      We solve this by making the amount configurable like in <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>128</h-><h- data-h=sym_op>&gt;</h-></code>.
+    </td>
+  </tr>
+  <tr>
+    <td>Allocation</td>
+    <td>
+      Different use cases require different <b>forms of allocation</b>.
+    </td>
+    <td>
+      We address this by making <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> allocator-aware.
+    </td>
+  </tr>
+  <tr>
+    <td>Constant-time operations</td>
+    <td>
+      In certain applications such as in cryptography,
+      <b>constant-time operations</b> are desired, and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>
+      is not designed around constant execution time.
+    </td>
+    <td>
+      Constant-time execution requires constant integer sizes,
+      so this use case is actually covered by <code><h- data-h=kw_type>_BitInt</h-></code>, not <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
+      It's fundamentally implausible for 1-bit integer operations to have the same cost
+      as 1024-bit integer operations,
+      no matter what design trade-offs are made.
+      In other words, there is no trade-off because
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> would not be used for this purpose anyway.
+    </td>
+  </tr>
+  <tr>
+    <td>Representation</td>
+    <td>
+      The <b>representation</b> could be <a href=#sign-and-magnitude>§3.4. Sign and magnitude</a>, two's complement,
+      or anything else.
+      The choice depends on what is most convenient for the surrounding code.
+    </td>
+    <td>
+      In theory, any representation could be chosen,
+      but for reasons explained in the referenced section,
+      this is almost always sign and magnitude.
+      The choice largely boils down to minimizing the cost of operations.
+      Two's complement types like <code><h- data-h=name>llvm</h-><h- data-h=sym_op>::</h-><h- data-h=name>APInt</h-></code> are a rare exception.
+    </td>
+  </tr>
+  <tr>
+    <td>Elasticity</td>
+    <td>
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> operations are <b>elastic</b>
+      (meaning growth happens automatically to fit the result),
+      but some use cases require <b>inelastic</b> results,
+      like <code><h- data-h=name>llvm</h-><h- data-h=sym_op>::</h-><h- data-h=name>APInt</h-></code>.
+    </td>
+    <td>
+      This is arguably not a trade-off because inelastic operations can always be added later,
+      via e.g. <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>fixed_add</h-></code> or <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>wrapping_add</h-></code> functions.
+      The trade-off is limited to the fact that those operations would not simply be spelled
+      <code><h- data-h=kw>operator</h-><h- data-h=sym_op>+</h-></code>.
+    </td>
+  </tr>
+</table>
+
+<p>In summary, the idea that <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> has too many domain-specific trade-offs
+is largely unsubstantiated.
+Allowing configuration of the <code><h- data-h=name>small_capacity</h-></code> and allocator
+provides sufficient flexibility for virtually every use case.
+Any remaining trade-off in the design of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> would be mildly annoying at worst.
+</p>
+<note-block><p><intro-></intro-> 
+That does not mean that that no one will ever have to make their own <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> type;
+there will always be people creating their own <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>vector</h-></code>, their own <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>sort</h-></code>,
+etc. because their use is simply too specialized for the standard library.
+Some people even make their own standard library.
+However, our <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is <q>basically good enough for everyone</q>,
+which is good enough for any standard feature.
+</p></note-block>
+
+<h3 id=use-of-committee-resources><a class=para href=#use-of-committee-resources></a>5.2. Use of committee resources</h3>
+
+<p>Another concern with <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is that it undoubtedly consumes
+committee resources both to standardize initially,
+and to maintain.
+This is naturally the case with any large feature.
+</p>
+<p>However, big integer types have many millions of uses throughout
+various programming languages already,
+and standardization will likely make that number skyrocket for C++,
+so this is simply committee time well-spent,
+however much time it is.
+</p>
+<h3 id=use-of-implementer-resources><a class=para href=#use-of-implementer-resources></a>5.3. Use of implementer resources</h3>
+
+<p>Another similar criticism is that <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> would consume a substantial amount
+of implementer resources,
+especially when the goal is to have a high-performance implementation.
+</p>
+<p>There are many factors that address this issue:
+</p><ul>
+  <li>
+    Standardizaton of the type concentrates the work of third-party libraries in
+    the standard library.
+    Many upgrades to e.g. Boost.Multiprecision might also be <q>backported</q>
+    to the standard library counterpart, and vice versa.
+  </li>
+  <li>
+    Due to how ridiculously widespread big integers are in C++ already
+    (see GitHub code search in <a href=#introduction>§1. Introduction</a>),
+    standardization would act as an invite to outside collaborators.
+  </li>
+  <li>
+    Every major compiler vendor already provids a big integer type,
+    such as <code><h- data-h=name>llvm</h-><h- data-h=sym_op>::</h-><h- data-h=name>APInt</h-></code>.
+    While some major refactoring would be required,
+    vendors could end up converting these types into wrappers around <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>
+    or could at least implement the numeric operations via <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
+    For example, <code><h- data-h=name>llvm</h-><h- data-h=sym_op>::</h-><h- data-h=name>APIntOps</h-><h- data-h=sym_op>::</h-><h- data-h=name>pext</h-></code> is the spiritual equivalent
+    of a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_compress</h-></code> overload for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
+    so why maintain both?
+  </li>
+</ul>
+
+<p>The biggest remaining concern is that standardization trifurcates the implementations into
+a libstdc++ <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
+a libc++ <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>, and
+an MSVC <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
+</p>
+<h2 id=implementation-experience><a class=para href=#implementation-experience></a>6. Implementation experience</h2>
 
 <p>Our reference implementation can be found at <a href="https://github%2ecom/eisenwave/std-big-int/">[Reference-Impl]</a>.
 </p>
-<h2 id=wording><a class=para href=#wording></a>5. Wording</h2>
+<h2 id=wording><a class=para href=#wording></a>7. Wording</h2>
 
 <p>The changes are relative to <a href="https://wg21%2elink/n5032">[N5032]</a>.
 </p>
@@ -2700,7 +3251,8 @@ as well as related type aliases.
   <h- data-h=kw>using</h-> <h- data-h=name_type>uint_multiprecision_t</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>see below</h-></i><h- data-h=sym_punc>;</h->
 
   <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> [big.int.class], class template </h-><code><h- data-h=name>basic_big_int</h-></code></f-serif>
-  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>min_inplace_capacity</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>Allocator</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>allocator</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;&gt;</h->
+  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>min_inplace_capacity</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>Limb</h-> <h- data-h=sym_op>=</h-> <h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_punc>,</h->
+         <h- data-h=kw>class</h-> <h- data-h=name>Allocator</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>allocator</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>Limb</h-><h- data-h=sym_op>&gt;&gt;</h->
     <h- data-h=kw>class</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> [big.int.expos], exposition-only helpers</h-></f-serif>
@@ -2741,15 +3293,15 @@ as well as related type aliases.
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>signed-or-unsigned</h-></i> <h- data-h=name>S</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=kw>namespace</h-> <h- data-h=name>pmr</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_op>&gt;</h->
+    <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>L</h-><h- data-h=sym_op>&gt;</h->
       <h- data-h=kw>using</h-> <h- data-h=name>basic_big_int</h-> <h- data-h=sym_op>=</h->
-        <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>polymorphic_allocator</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_punc>;</h->
+        <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>polymorphic_allocator</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>L</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_punc>;</h->
     <h- data-h=kw>using</h-> <h- data-h=name>big_int</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-><h- data-h=sym_op>::</h-><h- data-h=name>inplace_bits</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>;</h->
   <h- data-h=sym_brac>}</h->
 
   <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> [big.int.hash], hash support</h-></f-serif>
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>hash</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> [big.int.literal], literals</h-></f-serif>
   <h- data-h=kw>inline</h-> <h- data-h=kw>namespace</h-> <h- data-h=name>literals</h-> <h- data-h=sym_brac>{</h->
@@ -2796,7 +3348,8 @@ in architectures:
 
 <h3>X.3 Class template <code><h- data-h=name>basic_big_int</h-></code> <span class=stable-ref>[big.int.class]</span></h3>
 
-<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>min_inplace_capacity</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>Allocator</h-><h- data-h=sym_op>&gt;</h->
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>min_inplace_capacity</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>Limb</h-> <h- data-h=sym_op>=</h-> <h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_punc>,</h->
+         <h- data-h=kw>class</h-> <h- data-h=name>Allocator</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>allocator</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>Limb</h-><h- data-h=sym_op>&gt;&gt;</h->
 <h- data-h=kw>class</h-> <h- data-h=name>basic_big_int</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> [big.int.defns], types and constants</h-></f-serif>
   <h- data-h=kw>using</h-> <h- data-h=name>allocator_type</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>Allocator</h-><h- data-h=sym_punc>;</h->
@@ -3739,7 +4292,7 @@ and whose allocator is that of <code><h- data-h=name>x</h-></code>.
 
 <h4>X.3.11 Hash support <span class=stable-ref>[big.int.hash]</span></h4>
 
-<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_punc>;</h-></code-block>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>1
@@ -3817,10 +4370,9 @@ fits in <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>b
 
   <h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->           <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding</h-></f-serif>
                    <i><h- data-h=name>integer-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<ins>  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>inplace_bits</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>Allocator</h-><h- data-h=sym_op>&gt;</h->
+<ins>  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h->
     <h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->
-                                       <h- data-h=kw>const</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>inplace_bits</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>Allocator</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
-                                       <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
+                                       <h- data-h=kw>const</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
   <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->                     <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding</h-></f-serif>
                            <h- data-h=kw_type>bool</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw>delete</h-><h- data-h=sym_punc>;</h->
 
@@ -3828,10 +4380,9 @@ fits in <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>b
 
   <h- data-h=kw>constexpr</h-> <h- data-h=name>from_chars_result</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->   <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding</h-></f-serif>
                      <i><h- data-h=name>integer-type</h-></i><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<ins>  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>inplace_bits</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>Allocator</h-><h- data-h=sym_op>&gt;</h->
+<ins>  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h->
     <h- data-h=kw>constexpr</h-> <h- data-h=name>from_chars_result</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->
-                                           <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>inplace_bits</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>Allocator</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
-                                           <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
+                                           <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
 
   <h- data-h=name>from_chars_result</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->     <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding-deleted</h-></f-serif>
                                <h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
@@ -3920,8 +4471,8 @@ whichever is closer to the value of <code><h- data-h=name>x</h-></code>.
 </blockquote>
 
 <ins-block>
-<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>R</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>R</h-> <h- data-h=name>saturating_cast</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>R</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>R</h-> <h- data-h=name>saturating_cast</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>3
@@ -3961,7 +4512,8 @@ and it would be inconvenient in generic code.
 <h- data-h=name>string</h-> <h- data-h=name>to_string</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>float</h-> <h- data-h=name>val</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <h- data-h=name>string</h-> <h- data-h=name>to_string</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>double</h-> <h- data-h=name>val</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <h- data-h=name>string</h-> <h- data-h=name>to_string</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=name>val</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name>string</h-> <h- data-h=name>to_string</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>val</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins></code-block>
+<ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>string</h-> <h- data-h=name>to_string</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>val</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins></code-block>
 
 <div class=indent>
 <p><i>Returns</i>:
@@ -3979,7 +4531,8 @@ and it would be inconvenient in generic code.
 <h- data-h=name>wstring</h-> <h- data-h=name>to_wstring</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>float</h-> <h- data-h=name>val</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <h- data-h=name>wstring</h-> <h- data-h=name>to_wstring</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>double</h-> <h- data-h=name>val</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <h- data-h=name>wstring</h-> <h- data-h=name>to_wstring</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-> <h- data-h=name>val</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name>wstring</h-> <h- data-h=name>to_wstring</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>val</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins></code-block>
+<ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>wstring</h-> <h- data-h=name>to_wstring</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>val</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins></code-block>
 
 <div class=indent>
 <p><i>Returns</i>:
@@ -3991,7 +4544,7 @@ and it would be inconvenient in generic code.
 This requires formatting support.
 </p></todo-block>
 
-<h2 id=references><a class=para href=#references></a>6. References</h2>
+<h2 id=references><a class=para href=#references></a>8. References</h2>
 
 
 <div class=bib><div id=bib-item-N1692 class=bib-item>
@@ -4007,14 +4560,24 @@ This requires formatting support.
 <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2005/n1744%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1744.pdf</a></div><div id=bib-item-N4038 class=bib-item>
 <a href="https://wg21%2elink/n4038">[N4038]</a>
 <span class=bib-author>Pete Becker.</span>
-<span class=bib-title>Big Integer Library Proposal for C++0x</span>
+<span class=bib-title>Proposal for Unbounded-Precision Integer Types</span>
 <span class=bib-date>2014-05-23</span>
 <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2014/n4038%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4038.html</a></div><div id=bib-item-N5032 class=bib-item>
 <a href="https://wg21%2elink/n5032">[N5032]</a>
 <span class=bib-author>Thomas Köppe.</span>
 <span class=bib-title>Working Draft Programming Languages — C++</span>
 <span class=bib-date>2025-12-15</span>
-<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/n5032%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf</a></div><div id=bib-item-P3724R3 class=bib-item>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2025/n5032%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf</a></div><div id=bib-item-P2019R9 class=bib-item>
+<a href="https://wg21%2elink/p2019r9">[P2019R9]</a>
+<span class=bib-author>Corentin Jabot.</span>
+<span class=bib-title>Thread attributes</span>
+<span class=bib-date>2026-06-12</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/p2019r9%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2019r9.pdf</a></div><div id=bib-item-P3666R4 class=bib-item>
+<a href="https://wg21%2elink/p3666r4">[P3666R4]</a>
+<span class=bib-author>Jan Schultke.</span>
+<span class=bib-title>Bit-precise integers</span>
+<span class=bib-date>2026-05-12</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/p3666r4%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r4.html</a></div><div id=bib-item-P3724R3 class=bib-item>
 <a href="https://wg21%2elink/p3724r3">[P3724R3]</a>
 <span class=bib-author>Jan Schultke.</span>
 <span class=bib-title>Integer division</span>

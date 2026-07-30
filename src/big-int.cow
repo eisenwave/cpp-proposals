@@ -1,15 +1,29 @@
 \: cowel 0.10.2
 \cowel_include("libwg21-9.cow")
 
+\style{
+.toc h4 {
+  margin-left: 1.5em;
+}
+.toc h5 {
+  margin-left: 3em;
+}
+.toc h6 {
+  margin-left: 4.5em;
+}
+}
+
 \wg21_head(title={\tcode{std::big_int}}){
 \dl{
   \dt{Document number:} \dd{\docnum{D4444R0}}
-  \dt{Date:}            \dd{\tt{2026-07-16}}
+  \dt{Date:}            \dd{\tt{2026-07-30}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
-  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
+                            Christopher Kormanyos <\mail{ckormanyos@yahoo.com}>\br
+                            Matt Borland <\mail{matt@mattborland.com}>}
   \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P4444/github")}
-  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/big-int.cow")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/main/src/big-int.cow")}
 }
 \hr
 }
@@ -216,33 +230,54 @@ they are also used frequently:
 
 \table(class="center striped"){
   \tr{
+    \th{Language}
     \th{GitHub code search}
-    \th{Amount of files}
+    \th{# Files}
   }
   \tr{
+    \td{TypeScript}
     \td{
       \ref("https://github.com/search?q=language%3ATypeScript+%2F%5Cbbigint%2F+-is%3Afork&type=code"){\tt{language:TypeScript  /\\bbigint/ -is:fork}}
     }
-    \td{1.1M}
+    \td{1.4M}
   }
   \tr{
+    \td{Java}
     \td{
-      \ref("https://github.com/search?q=language%3AC%2B%2B+%2F%5Cb%28big%7Ccpp%29_%3Fu%3Fint%2F+-is%3Afork&type=code"){\tt{language:Java  /\\bbigint/ -is:fork}}
+      \ref("https://github.com/search?q=language%3AJava++%2F%5Cbbigint%2F+-is%3Afork&type=code"){\tt{language:Java  /\\bbigint/ -is:fork}}
     }
-    \td{762K}
+    \td{1.3M}
   }
   \tr{
+    \td{JavaScript}
     \td{
       \ref("https://github.com/search?q=language%3AJavaScript+%2F%5Cbbigint%2F+-is%3Afork&type=code"){\tt{language:JavaScript  /\\bbigint/ -is:fork}}
     }
-    \td{389K}
+    \td{811K}
   }
   \tr{
+    \td{C++}
     \td{
       \ref("https://github.com/search?q=language%3AC%2B%2B+%2F%5Cb%28big%7Ccpp%29_%3Fu%3Fint%2F+-is%3Afork&type=code"){\tt{language:C++ /\\b(big|cpp)_?u?int/ -is:fork}}
     }
-    \td{171K}
+    \td{404K}
   }
+  \tr{
+    \td{Rust}
+    \td{
+      \ref("https://github.com/search?q=language%3ARust+%2F%5Cbbig_%3Fint%2F+-is%3Afork&type=code"){\tt{language:Rust /\\bbig_?int/ -is:fork}}
+    }
+    \td{104K}
+  }
+}
+
+\Bnote{
+The amount of files shown here was captured at the time of writing,
+and is subject to change.
+
+The tables also does not include languages where no active choice to use infinite-precision integers
+over fixed-width integers is made.
+Otherwise, the results would be inflated by e.g. 107M files using \code("py"){int} in Python.
 }
 
 \h2{Motivation}
@@ -462,6 +497,9 @@ The most important anchor points of the design are:
   \li{
     \tcode{std::big_int} should grant access to the underlying representation
   }
+  \li{
+    \tcode{std::big_int} operations should be \tcode{constexpr}
+  }
 }
 
 This culminates in the following library declarations:
@@ -614,6 +652,74 @@ This layout ensures that \tcode{std::big_int}
   }
 }
 }
+
+\h3{\tt{constexpr} support}
+
+\tcode{std::big_int} also provides \tcode{constexpr} operations,
+similar to \tcode{std::string}.
+
+\Bnote{
+Being able to perform multiprecision arithmetic at compile time is actually
+part of the motivation for the paper.
+\ref("#big-int-compiler-intrinsic") goes into more detail.
+}
+
+Without any dedicated compiler intrinsics,
+this means that \tcode{std::big_int} manages an allocation,
+similar to \tcode{std::string}.
+That allocation is transient, i.e. it cannot persist to runtime.
+However, performing operations on a \tcode{std::big_int} and freeing all memory
+before the end of the constant expression is fine.
+
+There is another layer to the design here,
+which is that \tcode{std::big_int} is \em{mandated} to perform small object optimization,
+and this is exposed to the user in the public API,
+rather than just being an optional optimization like for \tcode{std::string}.
+Because of this, we can have \tcode{std::big_int} values persist to runtime
+as long as the value is small enough to require no allocation.
+
+\Bex{
+\cppblock{
+// error: allocation not freed before the end of the constant expression
+constexpr basic_big_int<64> x = static_cast<unsigned _BitInt(1024)>(-1);
+
+// OK, -1 is representable within the object, and 64 bits are guaranteed
+constexpr basic_big_int<64> x = -1;
+}
+}
+
+\h4{Circumventing transient allocations}
+
+One additional restriction on implementations to make this behavior reliable
+is that they must never represent a \tcode{basic_big_int} dynamically
+when inplace storage is sufficient.
+At runtime, implementations might hold onto an allocation until \tcode{shrink_to_fit}
+is called because that allocation may be immediately useful in the next operation.
+
+\Bex{
+We might do:
+\cppblock{
+basic_big_int<64> x = /* ... */; // pre-existing value which holds an allocation
+basic_big_int<64> y = (std::move(x) - 1000) << 5;
+}
+Even if subtracting \tcode{1000} would make the difference small enough to be represented
+as a 64-bit integer,
+we do not (and should not) require freeing the storage of \tcode{x} \em{at runtime}.
+That allocation is immediately useful to represent the result of the bit-shift.
+}
+
+However, \em{at compile time},
+we require that \em{every operation} behaves as if \tcode{shrink_to_fit()}
+was called on the result,
+so allocations are aggressively freed if at all possible.
+This is necessary because the result of the subtraction in the example
+might be stored in a \tcode{constexpr} variable,
+and this would fail unncessarily because of \tcode{constexpr} allocation restrictons.
+
+If we didn't have that behavior,
+\tcode{constexpr std::big_int} variables might \q{randomly} fail to compile
+from the perspective of the user, depending on the compiler,
+for no good reason.
 
 \h3{Sign and magnitude}
 
@@ -838,6 +944,56 @@ Overall, this idea is making things more complicated and dangerous,
 with the only benefit being a micro-optimization
 which we don't see as sufficiently important.
 
+\h3{Why not use reference counting?}
+
+An idea very early in the design process was to use reference counting in order to avoid
+the issue explained in \ref("#optimal-operator-overloads").
+That is, if \tcode{std::big_int} was essentially a
+\tcode{shared_ptr<uint_multiprecision_t[]>},
+it would be possible to pass it cheaply by value.
+
+\Bex{
+A function signature as follows would not be problematic:
+\cppblock{
+std::big_int abs(std::big_int x) {
+  return x < 0 ? -std:move(x) : std::move(x);
+}
+}
+If \tcode{x} has unique ownership (i.e. the reference count is 1),
+\tcode{-x} can modify the integer in-place;
+otherwise, \tcode{-x} performs a copy.
+}
+
+While this idea seems clever at first, there are several problems:
+\ul{
+  \li{
+    The same was historically attempted for types like \tcode{std::string} to no success.
+    Boost implementers gave negative feedback on this idea being pursued for
+    \tcode{std::big_int}, and Boost.Multiprecision performs no reference counting either.
+    A key problem is difficulty of implementation.
+  }
+  \li{
+    The reference counting needs to be atomic because in the standard library,
+    read-only access like copy constructors is generally thread-safe.
+    Atomic operations can have significant overhead.
+  }
+  \li{
+    Actually making use of the optimization opportunity in the example above
+    (that is, modifying \tcode{std::big_int}'s data in-place if it has unique ownership)
+    requires an atomic compare exchange (CAS):
+    if the reference counter is currently one, set it to zero,
+    otherwise other threads might believe they have unique ownership too.
+    That also makes the \tcode{std::move} in the example necessary;
+    we need permission to mess with the original object.
+    Even with no contention,
+    a CAS is a relatively expensive instruction.
+  }
+}
+
+By comparison, a \tcode{std::big_int} design with unique ownership
+avoids a lot of problems because is is statically known that it has unique ownership;
+no runtime check is needed.
+
 \h3{Why not provide lower-level operations for arithmetic?}
 
 A common idea in the committee is that rather than providing the \q{high-level construct}
@@ -889,7 +1045,7 @@ However, we don't propose any of these low-level operations in this paper for a 
     which does not have this vast amount of extra logic
     is not actually in their best interest.
     It would be like providing them with a \tcode{sqrt} function that doesn't handle
-    infinities and NaNs and telling them it's a lower-level building block.
+    infinities and NaNs and telling them that this \tcode{sqrt} is a lower-level building block.
     In the best case, their \tcode{big_int} operations would end up recreating
     the standard library implementation verbatim.
     In the worst (and much more likely case),
@@ -1040,7 +1196,7 @@ it still informs us that there is potential to improve UDLs and reduce some of t
 without breaking existing uses of \tcode{123n}.
 This makes UDLs a more compelling option right now.
 
-\h4{Why provide UDLs or string constructors? Why not neither?}
+\h4{Why provide UDLs or string constructors at all?}
 
 \em{Some} form of convenient construction is necessary.
 Otherwise, creating large constant \tcode{std::big_int} objects is simply too tedious.
@@ -1056,6 +1212,385 @@ but this feature is not yet available in the C++ standard,
 and even if it was,
 the \tcode{BITINT_MAXWIDTH} is only guaranteed to be at least \tcode{LLONG_WIDTH}.
 In other words, \tcode{_BitInt}s larger than 64-bit are an optional feature.
+
+\h3{Bit-precise integer interoperability}
+
+While \ref("P3666R4") has not been merged into C++29 yet,
+we still need to consider how \tcode{std::big_int} will interoperate with \tcode{_BitInt}.
+Notably, the constructor of \tcode{std::big_int} may or may not reject those integers,
+and the user-defined conversion to integer types may or may not be valid.
+
+We believe that this conversion should be valid in both directions because it exposes a
+fundamental and clearly useful bit of functionality.
+There is simply no good reason to prevent these conversions,
+other than wanting to prevent \tcode{_BitInt} from ever being a useful and fully supported
+type in the standard library.
+
+\Bex{
+One use case where \tcode{_BitInt} is specifically useful is for providing large integer literals.
+For example, \tcode{std::big_int{123wb}} can be used instead of \tcode{123n},
+which bypasses the user-defined \tcode{operator""n} literal,
+and that UDL's implementation is relatively complicated and heavy.
+As long as a sufficiently wide \tcode{_BitInt} type exists,
+its \gterm{integer-literal} is a more lightweigt alternative.
+}
+
+\Bex{
+Another use case is a cryptography library that uses \tcode{std::big_int} at its library bounds,
+but performs the underlying calculations (such as for RSA) using e.g. \tcode{_BitInt(8192)}.
+This clearly requires converting \tcode{std::big_int} to \tcode{_BitInt(8192)},
+and a user would need perform that conversion manually limb-by-limb
+if the standard library didn't provide it.
+
+Such a conversion is also clearly useful when handing the values of \tcode{std::big_int}
+off to a C library that uses \tcode{_BitInt(128)}, \tcode{_BitInt(256)}, etc. in its API.
+}
+
+\h3{Limb type parameter}
+
+When it comes to allowing configuration of the limb type,
+there is a spectrum of solutions:
+
+\ul{
+  \li{
+    Don't allow any limb type configuration and have no template parameter.
+    This is a simple design, but closes the door to future extensions forever
+    because adding another template parameter would be an API break.
+  }
+  \li{
+    \b{Ours:}
+    Have a limb type parameter \tcode{class Limb}
+    but only allow \tcode{std::uint_multiprecision_t} as an argument.
+    This enables future extension.
+  }
+  \li{
+    Allow types as arguments that are \q{functionally equivalent} to
+    \tcode{std::uint_multiprecision_t}.
+    That is, they are distinct types that have the same object and value representation,
+    like \tcode{unsigned long} and \tcode{unsinged long long} on 64-bit Linux.
+  }
+  \li{
+    Allow some subset of unsigned integer types,
+    like 32-bit and 64-bit.
+  }
+  \li{
+    Allow arbitrary unsigned integer types.
+  }
+}
+
+While we are not proposing any arguments other than \tcode{std::uint_multiprecision_t}
+in this paper,
+such future extension could be very reasonable for two reasons:
+\ul{
+  \li{
+    Existing code that uses either \tcode{unsigned long} or \tcode{unsigned long long}
+    as a limb type would experience friction
+    when working with spans of \tcode{std::uint_multiprecision_t},
+    even if those types are functionally equivalent.
+    For example, there would be no guarantee that an existing C API yielding a
+    \tcode{const unsigned long*} to the user could obtain that pointer
+    directly from \tcode{std::big_int::representation()}.
+  }
+  \li{
+    Some configuration of the limb type is reasonably implementable and quite useful.
+    For example, 64-bit code interfacing with 32-bit legacy code bases could benefit
+    from working with a 32-bit limb type.
+  }
+  \li{
+    Within a few decades, 128-bit arithmetic support may arrive on 64-bit platforms,
+    similar to how WASM32 supports 64-bit arithmetic opeations but has a 32-bit address space.
+    If so, there ought to be a way to create a \tcode{std::basic_big_int} with 128-bit limbs,
+    even if \tcode{std::uint_multiprecision_t} cannot be redefined due to ABI concerns.
+  }
+}
+
+Even if one doesn't find these arguments very compelling,
+is there strong enough reason to make it impossible to ever extend \tcode{basic_big_int}
+with a different limb type?
+Probably not.
+The template parameter only mildly inconveniences implementers and power users
+who don't just use \tcode{std::big_int},
+similar to how most users work with \tcode{std::string}
+rather than \tcode{std::basic_string}.
+
+\Bnote{
+A similar approach was recently taken in \ref("P2019R9") \q{Thread attributes},
+in \eelis{thread.thread.class.general}:
+\cppblock{
+template <same_as<char> T>
+  class name_hint;
+}
+}
+
+\Bnote{
+Supporting \q{functionally equivalent} unsigned integer types would ideally be done
+with some compiler support or by ignoring certain instances of UB.
+The underlying operations working with \tcode{span<uint_multiprecision_t>}
+could be \q{blessed} so that internally,
+e.g. \tcode{unsigned long} can alias \tcode{unsigned long long} and \tcode{_BitInt(64)}.
+This would allow having only one internal function while still handling all types.
+}
+
+\h3{Order of template parameters}
+
+For \tcode{std::basic_big_int},
+the order is generally \q{most likely to be specified as an argument first}:
+
+\cppblock{
+template<size_t min_inplace_capacity, class Limb = uint_multiprecision_t,
+         class Allocator = allocator<Limb>>
+  class basic_big_int;
+}
+
+The \tcode{Allocator} parameter needs to come after the \tcode{Limb} parameter
+so that the default argument \tcode{allocator<Limb>} can be spelled.
+This is unfortunate because the limb type cannot be configured at all
+(it must always be \tcode{uint_multiprecision_t}),
+but would not be so bad if it became genuinely configurable in the future.
+
+Fortunately, the only people inconvenienced are power users who use \tcode{std::basic_big_int}
+with a custom allocator,
+which is acceptablle.
+
+\h2{Future direction}
+
+The initial \tcode{std::big_int} proposal is only the start.
+There are many features that could be added subsequently
+but which are not in this paper to keep its scope focused.
+
+\h3{Integer numeric functions}
+
+This paper only provides \tcode{std::big_int} overloads for pre-existing functions,
+such as \tcode{std::abs}.
+However, infinite-precision libraries typically provide many more operations, such as
+\ul{
+  \li{modular arithmetic functions, like \tcode{powmod},}
+  \li{integer exponentiation (\tcode{ipow}),}
+  \li{integer logarithm (\tcode{ilog}),}
+  \li{integer square root (\tcode{isqrt}),}
+  \li{factional (\tcode{fact}),}
+  \li{binomial coefficient (\tcode{choose}),}
+  \li{\etc}
+}
+
+The key observation is that these functions are at least as useful for fundamental integer types,
+not just for \tcode{std::big_int},
+and they should be designed for integers in general.
+That makes all of them separate and orthogonal features,
+where a \tcode{std::big_int} overload is just one of the design aspects.
+
+\Bnote{
+The \code("ts"){bigint} type in JavScript was standardized in such a minimal form as well:
+only the numeric type itself is provided,
+while the additonal \tcode("ts"){Math} utilities are largely missing.
+}
+
+\h3{Fixed-point interoperability}
+
+To provide interoperability with fixed-point numbers,
+a conversion to/from such numbers could be provided.
+Concretely, this would require
+\ul{
+  \li{
+    a constructor taking the integer and its scale (in bits),
+  }
+  \li{
+    a conversion function that yields the integer and its scale.
+  }
+}
+
+Neither is truly necessary because
+conversion from fixed-point could also be implemented in terms of
+construction from an integer followed by \tcode{<<=} or \tcode{>>=}.
+conversion to fixed-point could also be implemented in terms of a
+\tcode{std::countl_zero} overload for \tcode{std::big_int} and in terms of \tcode{>>}.
+However, more direct implementations may provide some convenience.
+
+In any case,
+there is no urgent need to provide such convenience in this proposal,
+especially considering that there are zero-overhead workarounds using bit-shifting.
+
+\h2{Arguments against standardization}
+
+While there is strong motivation to include \tcode{std::big_int} in the standard,
+there are also some arguments against doing so, which need to be considered carefully.
+
+\h3{Many trade-offs}
+
+\tcode{std::big_int} is relatively complex,
+and any complex design comes with a number of trade-offs.
+This does provide some motivation against standardization.
+Generally speaking, if a feature has so many trade-offs that most
+users will have to make their own form of a feature,
+this suggests that the feature is unfit for standardization.
+
+Some concrete trade-offs for \tcode{std::big_int} (and our response to these) are:
+
+\style{
+.row-seps td {
+  border-top: 1px solid var(--border-color);
+}
+}
+
+\table(class="row-seps"){
+  \tr{
+    \th{Trade-off}
+    \th{Explanation}
+    \th{Our response}
+  }
+  \tr{
+    \td{SOO}
+    \td{
+      We force \ref("#small-object-optimizations"),
+      which does pessimize the use case where the values are always huge.
+    }
+    \td{
+      \ul{
+        \li{
+          Providing a single \tcode{std::big_int} non-template alias
+          prevents a pessimization of the interface
+          where the user would always have to provide the \tcode{small_capacity} and where
+          there would be no true vocabulary type.
+        }
+        \li{
+          In the use case where \tcode{std::big_int} always stores huge values,
+          the cost of allocation and arithmetic dominates the small added cost of increased
+          container size and branching.
+        }
+      }
+    }
+  }
+  \tr{
+    \td{SOO size}
+    \td{
+      Depending on the use case,
+      different \b{amounts of small object optimization} are appropriate.
+    }
+    \td{
+      We solve this by making the amount configurable like in \tcode{std::basic_big_int<128>}.
+    }
+  }
+  \tr{
+    \td{Allocation}
+    \td{
+      Different use cases require different \b{forms of allocation}.
+    }
+    \td{
+      We address this by making \tcode{std::big_int} allocator-aware.
+    }
+  }
+  \tr{
+    \td{Constant-time operations}
+    \td{
+      In certain applications such as in cryptography,
+      \b{constant-time operations} are desired, and \tcode{std::big_int}
+      is not designed around constant execution time.
+    }
+    \td{
+      Constant-time execution requires constant integer sizes,
+      so this use case is actually covered by \tcode{_BitInt}, not \tcode{std::big_int}.
+      It's fundamentally implausible for 1-bit integer operations to have the same cost
+      as 1024-bit integer operations,
+      no matter what design trade-offs are made.
+      In other words, there is no trade-off because
+      \tcode{std::big_int} would not be used for this purpose anyway.
+    }
+  }
+  \tr{
+    \td{Representation}
+    \td{
+      The \b{representation} could be \ref("#sign-and-magnitude"), two's complement,
+      or anything else.
+      The choice depends on what is most convenient for the surrounding code.
+    }
+    \td{
+      In theory, any representation could be chosen,
+      but for reasons explained in the referenced section,
+      this is almost always sign and magnitude.
+      The choice largely boils down to minimizing the cost of operations.
+      Two's complement types like \tcode{llvm::APInt} are a rare exception.
+    }
+  }
+  \tr{
+    \td{Elasticity}
+    \td{
+      \tcode{std::big_int} operations are \b{elastic}
+      (meaning growth happens automatically to fit the result),
+      but some use cases require \b{inelastic} results,
+      like \tcode{llvm::APInt}.
+    }
+    \td{
+      This is arguably not a trade-off because inelastic operations can always be added later,
+      via e.g. \tcode{std::fixed_add} or \tcode{std::wrapping_add} functions.
+      The trade-off is limited to the fact that those operations would not simply be spelled
+      \tcode{operator+}.
+    }
+  }
+}
+
+In summary, the idea that \tcode{std::big_int} has too many domain-specific trade-offs
+is largely unsubstantiated.
+Allowing configuration of the \tcode{small_capacity} and allocator
+provides sufficient flexibility for virtually every use case.
+Any remaining trade-off in the design of \tcode{std::big_int} would be mildly annoying at worst.
+
+\Bnote{
+That does not mean that that no one will ever have to make their own \tcode{std::big_int} type;
+there will always be people creating their own \tcode{std::vector}, their own \tcode{std::sort},
+etc. because their use is simply too specialized for the standard library.
+Some people even make their own standard library.
+However, our \tcode{std::big_int} is \q{basically good enough for everyone},
+which is good enough for any standard feature.
+}
+
+\h3{Use of committee resources}
+
+Another concern with \tcode{std::big_int} is that it undoubtedly consumes
+committee resources both to standardize initially,
+and to maintain.
+This is naturally the case with any large feature.
+
+However, big integer types have many millions of uses throughout
+various programming languages already,
+and standardization will likely make that number skyrocket for C++,
+so this is simply committee time well-spent,
+however much time it is.
+
+\h3{Use of implementer resources}
+
+Another similar criticism is that \tcode{std::big_int} would consume a substantial amount
+of implementer resources,
+especially when the goal is to have a high-performance implementation.
+
+There are many factors that address this issue:
+\ul{
+  \li{
+    Standardizaton of the type concentrates the work of third-party libraries in
+    the standard library.
+    Many upgrades to e.g. Boost.Multiprecision might also be \q{backported}
+    to the standard library counterpart, and vice versa.
+  }
+  \li{
+    Due to how ridiculously widespread big integers are in C++ already
+    (see GitHub code search in \ref("#introduction")),
+    standardization would act as an invite to outside collaborators.
+  }
+  \li{
+    Every major compiler vendor already provids a big integer type,
+    such as \tcode{llvm::APInt}.
+    While some major refactoring would be required,
+    vendors could end up converting these types into wrappers around \tcode{std::big_int}
+    or could at least implement the numeric operations via \tcode{std::big_int}.
+    For example, \tcode{llvm::APIntOps::pext} is the spiritual equivalent
+    of a \tcode{std::bit_compress} overload for \tcode{std::big_int},
+    so why maintain both?
+  }
+}
+
+The biggest remaining concern is that standardization trifurcates the implementations into
+a libstdc++ \tcode{std::big_int},
+a libc++ \tcode{std::big_int}, and
+an MSVC \tcode{std::big_int}.
 
 \h2{Implementation experience}
 
@@ -1101,7 +1636,8 @@ namespace std {
   using uint_multiprecision_t = \seebelow;
 
   //\serif{ [big.int.class], class template \ocode{basic_big_int}}
-  template<size_t min_inplace_capacity, class Allocator = allocator<uint_multiprecision_t>>
+  template<size_t min_inplace_capacity, class Limb = uint_multiprecision_t,
+         class Allocator = allocator<Limb>>
     class basic_big_int;
 
   //\serif{ [big.int.expos], exposition-only helpers}
@@ -1142,15 +1678,15 @@ namespace std {
   template<class T, \exposid{signed-or-unsigned} S> remove_cvref_t<T> operator>>(T&& x, S s);
 
   namespace pmr {
-    template<size_t b>
+    template<size_t b, class L>
       using basic_big_int =
-        std::basic_big_int<b, polymorphic_allocator<uint_multiprecision_t>>;
+        std::basic_big_int<b, L, polymorphic_allocator<L>>;
     using big_int = basic_big_int<std::big_int::inplace_bits>;
   }
 
   //\serif{ [big.int.hash], hash support}
   template<class T> struct hash;
-  template<size_t b, class A> struct hash<basic_big_int<b, A>>;
+  template<size_t b, class L, class A> struct hash<basic_big_int<b, L, A>>;
 
   //\serif{ [big.int.literal], literals}
   inline namespace literals {
@@ -1199,7 +1735,8 @@ in architectures:
 \cowel_html_element("h3"){X.\snum1 Class template \tcode{basic_big_int} \stable_ref{big.int.class}}
 
 \itemdecl{
-template<size_t min_inplace_capacity, class Allocator>
+template<size_t min_inplace_capacity, class Limb = uint_multiprecision_t,
+         class Allocator = allocator<Limb>>
 class basic_big_int {
   //\serif{ [big.int.defns], types and constants}
   using allocator_type = Allocator;
@@ -2247,7 +2784,7 @@ and whose allocator is that of \tcode{x}.
 \cowel_html_element("h4"){X.\cowel_var_get("snum1").\snum2 Hash support \stable_ref{big.int.hash}}
 
 \itemdecl{
-template<size_t b, class A> struct hash<basic_big_int<b, A>>;
+template<size_t b, class L, class A> struct hash<basic_big_int<b, L, A>>;
 }
 
 \itemdescr{
@@ -2329,10 +2866,9 @@ namespace std {
 
   constexpr to_chars_result to_chars(char* first, char* last,           //\serif{ freestanding}
                    \exposid{integer-type} value, int base = 10);
-\ins{  template<size_t inplace_bits, class Allocator>
+\ins{  template<size_t b, class L, class A>
     constexpr to_chars_result to_chars(char* first, char* last,
-                                       const basic_big_int<inplace_bits, Allocator>& value,
-                                       int base = 10);}
+                                       const basic_big_int<b, L, A>& value, int base = 10);}
   to_chars_result to_chars(char* first, char* last,                     //\serif{ freestanding}
                            bool value, int base = 10) = delete;
 
@@ -2340,10 +2876,9 @@ namespace std {
 
   constexpr from_chars_result from_chars(const char* first, const char* last,   //\serif{ freestanding}
                      \exposid{integer-type}& value, int base = 10);
-\ins{  template<size_t inplace_bits, class Allocator>
+\ins{  template<size_t b, class L, class A>
     constexpr from_chars_result from_chars(const char* first, const char* last,
-                                           basic_big_int<inplace_bits, Allocator>& value,
-                                           int base = 10);}
+                                           basic_big_int<b, L, A>& value, int base = 10);}
 
   from_chars_result from_chars(const char* first, const char* last,     //\serif{ freestanding-deleted}
                                floating-point-type& value,
@@ -2443,8 +2978,8 @@ whichever is closer to the value of \tcode{x}.
 
 \Bins{
 \itemdecl{
-template<class R, size_t b, class A>
-  constexpr R saturating_cast(const basic_big_int<b, A>& x) noexcept;
+template<class R, size_t b, class L, class A>
+  constexpr R saturating_cast(const basic_big_int<b, L, A>& x) noexcept;
 }
 
 \itemdescr{
@@ -2486,7 +3021,8 @@ constexpr string to_string(unsigned long long val);
 string to_string(float val);
 string to_string(double val);
 string to_string(long double val);
-\ins{template<size_t b, class A> constexpr string to_string(const basic_big_int<b, A>& val);}
+\ins{template<size_t b, class L, class A>
+  constexpr string to_string(const basic_big_int<b, L, A>& val);}
 }
 
 \itemdescr{
@@ -2506,7 +3042,8 @@ constexpr wstring to_wstring(unsigned long long val);
 wstring to_wstring(float val);
 wstring to_wstring(double val);
 wstring to_wstring(long double val);
-\ins{template<size_t b, class A> constexpr wstring to_wstring(const basic_big_int<b, A>& val);}
+\ins{template<size_t b, class L, class A>
+  constexpr wstring to_wstring(const basic_big_int<b, L, A>& val);}
 }
 
 \itemdescr{
@@ -2539,7 +3076,7 @@ This requires formatting support.
 )\
 \bib(
   id = "N4038",
-  title = "Big Integer Library Proposal for C++0x",
+  title = "Proposal for Unbounded-Precision Integer Types",
   date = "2014-05-23",
   author = "Pete Becker",
   link = "https://wg21.link/n4038",
@@ -2552,6 +3089,22 @@ This requires formatting support.
   author = "Thomas Köppe",
   link = "https://wg21.link/n5032",
   long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf",
+)\
+\bib(
+  id = "P2019R9",
+  title = "Thread attributes",
+  date = "2026-06-12",
+  author = "Corentin Jabot",
+  link = "https://wg21.link/p2019r9",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2019r9.pdf",
+)\
+\bib(
+  id = "P3666R4",
+  title = "Bit-precise integers",
+  date = "2026-05-12",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3666r4",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r4.html",
 )\
 \bib(
   id = "P3724R3",
