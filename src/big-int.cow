@@ -453,8 +453,8 @@ so the implementation quality could never match the potential of \tcode{std::big
 A closely related issue is the implementation of the user-defined literal,
 which has the following interface in our proposal:
 \cppblock{
-template<char... digits>
-  constexpr big_int operator""n();
+template<char... digits> constexpr big_int operator""n();
+template<char... digits> constexpr big_int operator""N();
 
 // now possible:
 big_int x = 123'456'789'012'345'678'901'234'567'890n;
@@ -1131,8 +1131,8 @@ we provide the following user-defined literal:
 \cppblock{
 inline namespace literals {
   inline namespace big_int_literals {
-    template<char... digits>
-      constexpr big_int operator""n() noexcept(\seebelow);
+    template<char... digits> constexpr big_int operator""n() noexcept(\seebelow);
+    template<char... digits> constexpr big_int operator""N() noexcept(\seebelow);
   }
 }
 }
@@ -1696,8 +1696,7 @@ namespace std {
 
   namespace pmr {
     template<size_t b, class L>
-      using basic_big_int =
-        std::basic_big_int<b, L, polymorphic_allocator<L>>;
+      using basic_big_int = std::basic_big_int<b, L, polymorphic_allocator<L>>;
     using big_int = basic_big_int<std::big_int::inplace_bits>;
   }
 
@@ -1708,8 +1707,8 @@ namespace std {
   //\serif{ [big.int.literal], literals}
   inline namespace literals {
     inline namespace big_int_literals {
-      template<char... digits>
-        constexpr big_int \keyword{operator}""n() noexcept(\seebelow);
+      template<char... digits> constexpr big_int \keyword{operator}""n() noexcept(\seebelow);
+      template<char... digits> constexpr big_int \keyword{operator}""N() noexcept(\seebelow);
     }
   }
 }
@@ -2691,13 +2690,23 @@ using big_int = basic_big_int<\seebelow>;
 \result
 A specialization of \tcode{basic_big_int} with an implementation-defined
 argument \math{\mi{B}} for the \tcode{min_inplace_capacity} constant template parameter,
-chosen so that \math{\mi{B}} equals \tcode{basic_big_int<\math{\mi{B}}>::inplace_\'SOFT HYPHEN'bits}.
+chosen so that
+\math{\mi{B}} is greater or equal to \tcode{numeric_limits<uint_multiprecison_t>::digits} and
+\math{\mi{B}} equals \tcode{basic_big_int<\math{\mi{B}}>::inplace_\'SOFT HYPHEN'bits}.
 
 \pnum
 \recommended
 \math{\mi{B}} should be sufficiently large so that \tcode{big_int}
 may represent the value of all commonly used integer types without allocating.
 }
+}
+
+\editnote{
+\tcode{big_int::min_inplace_bits} is typically \tcode{64} on a 64-bit architecture,
+and it cannot be any less because it needs to be at least one limb width.
+However, an implementation could also decide to choose \tcode{128}, \tcode{192}, etc.
+
+There is a trade-off between increasing container size and the need to allocate more.
 }
 
 \h4(show_number=false){[big.int.cmp]}
@@ -2716,14 +2725,6 @@ template<class L, \exposid{common-big-int-type-with}<L> R>
 \tcode{true} if the integer value of \tcode{x}
 is equal to the integer value of \tcode{y}, and
 \tcode{false} otherwise.
-
-\editnote{
-The \tcode{noexcept} requirement means that it's not a valid implementation strategy
-to wrap any integer in \tcode{basic_big_int} because that may allocate.
-Instead, either the integer value or each limb
-must be compared with the other object.
-This may involve multi-precision comparisons such as in \tcode{big_int == __int128}.
-}
 }
 
 \itemdecl{
@@ -2740,6 +2741,14 @@ is less than the integer value of \tcode{y},
 is greater than the integer value of \tcode{y}, and
 \tcode{strong_ordering::equal} otherwise.
 }
+}
+
+\editnote{
+The \tcode{noexcept} requirement means that it's not a valid implementation strategy
+to wrap any integer in \tcode{basic_big_int} because that may allocate.
+Instead, either the integer value or each limb
+must be compared with the other object.
+This may involve multi-precision comparisons such as in \tcode{big_int == __int128}.
 }
 
 \h4(show_number=false){[big.int.binary]}
@@ -2776,11 +2785,6 @@ where \tcode{T} is a hypothetical signed integer type with infinite range.
 Bitwise operations are performed as if on a two's-complement representation, where
 positive numbers have an infinite number of leading zeroes, and
 negative numbers have an infinite number of leading ones.
-}
-
-\Btodo{
-\tcode{std::atomic} has a similar specification with \tcode{operator@};
-maybe copy the wording from there.
 }
 }
 
@@ -2829,6 +2833,11 @@ and whose allocator is that of \tcode{x}.
 }
 }
 
+\Btodo{
+\tcode{std::atomic} has a similar specification with \tcode{operator@};
+maybe copy the wording from there.
+}
+
 \h4(show_number=false){[big.int.hash]}
 
 \Bins{
@@ -2867,8 +2876,8 @@ For an object \math{\mi{x}} of integral type \tcode{T},
 \big_int_h4{Literals \stable_ref{big.int.literal}}
 
 \itemdecl{
-template<char... digits>
-  constexpr big_int \keyword{operator}""n() noexcept(\seebelow);
+template<char... digits> constexpr big_int operator""n() noexcept(\seebelow);
+template<char... digits> constexpr big_int operator""N() noexcept(\seebelow);
 }
 
 \itemdescr{
@@ -2879,8 +2888,7 @@ the elements of \tcode{digits}.
 \pnum
 \mandates
 \math{\mi{s}} matches the syntax of an \grammarterm{integer-literal}
-with no \grammarterm{integer-suffix} and
-containing no digit separators.\iref{lex.icon}
+with no \grammarterm{integer-suffix}\iref{lex.icon}.
 
 \pnum
 \returns
@@ -2892,20 +2900,18 @@ of \math{\mi{s}} interpreted as an \grammarterm{integer-literal}.
 The function specialization has a non-throwing exception specification
 if the effective width of the integer value returned by a function call expression
 is less than or equal to \tcode{big_int::inplace_bits}.
+}
+}
 
 \editnote{
-This implies we have to perform two-stage parsing.
+The \remarks element implies we have to perform two-stage parsing.
 We first parse the literal and see if it can be represented as \tcode{big_int} with SBO.
 If so, the specialization is \tcode{noexcept}.
 Otherwise, each invocation of the UDL needs to allocate memory.
 
-Perhaps a good way of implementing this would be to have a variable template
-\tcode{template<char... digits> \exposid{big_int_parsed};}
-which holds \tcode{std::optional<std::big_int>},
-where a value is present only if the pre-parsed value
-fits in \tcode{std::big_int} without allocation.
-}
-}
+Our reference implementation strategy is to pre-parse a
+\tcode{static constexpr uint_multiprecision_t limbs[]},
+the size of which can be approximated using \tcode{sizeof...(digits)}.
 }
 
 \h3(show_number=false){[charconv]}
