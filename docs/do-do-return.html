@@ -1580,8 +1580,8 @@ if (theme !== null) {
 <div class=wg21-head><h1>Do <tt->do_return</tt->!</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/D4323R0>D4323R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-07-27</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P4323R0>P4323R0</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-08-11</tt-></dd>
   <dt>Audience:</dt>        <dd>EWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1591,9 +1591,12 @@ if (theme !== null) {
 <hr/>
 </div>
 
-<abstract-block><p><intro-></intro-> </p>
-
-</abstract-block>
+<abstract-block><p><intro-></intro-> 
+<a href="https://wg21%2elink/p2806r4">[P2806R4]</a> proposed to let the user omit the last semicolon
+in a <code><h- data-h=kw_ctrl>do</h-></code> expression
+to yield a result.
+This paper argues against that feature for a variety of reasons.
+</p></abstract-block>
 
 <h2 id=contents><a class=para href=#contents></a>Contents</h2>
 
@@ -1699,10 +1702,13 @@ for the purpose of reducing verbosity.
 These rules would no longer be universal rules.
 </p>
 <p>Furthermore, why is the design not applied to other constructs,
-even though it would be possible in principle, like for lambda expressions?
+even though it would be possible in principle?
 </p>
-<code-block><h- data-h=kw_type>int</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw_ctrl>do</h-> <h- data-h=sym_brac>{</h-> <h- data-h=num>42</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<example-block><p><intro-></intro-> 
+The proposed feature could just as well be applied to lambda expressions:
+</p><code-block><h- data-h=kw_type>int</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw_ctrl>do</h-> <h- data-h=sym_brac>{</h-> <h- data-h=num>42</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
 <h- data-h=kw_type>int</h-> <h- data-h=name>y</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_brac>{</h-> <h- data-h=num>42</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> equivalent to above</h-></code-block>
+</example-block>
 
 <p>There are two possible directions here:
 </p><ul>
@@ -1712,10 +1718,11 @@ even though it would be possible in principle, like for lambda expressions?
     We would still sacrifice the consistent and teachable rules
     by making <code><h- data-h=kw_ctrl>do</h-></code> expressions special,
     but we wouldn't get much value in return.
+    Verbosity of lambdas is a common complaint.
   </li>
   <li>
     Changing lambda expressions like this retroactively might be fine,
-    but it demonstrates that the <q>last statement is result</q> feature
+    but it demonstrates that the <q>last statement is the esult</q> feature
     is orthogonal to <code><h- data-h=kw_ctrl>do</h-></code> expressions,
     and that the design needs to be explored holistically.
   </li>
@@ -1736,11 +1743,12 @@ A C++ developer used to omitting <code><h- data-h=kw>do_return</h-></code> would
 where <code><h- data-h=kw>do_return</h-></code> is always required, and vice versa.
 </p>
 <p>While having some disagreement over style is natural in a programming language,
-C++ already has a ton of options without a clear winner (like initialization style),
+C++ already has a ton of options without a clear winner
+(initialization style, trailing return types, when to use <code><h- data-h=kw>auto</h-></code>, etc.),
 and this issue would be compounded.
 There is real cost to adding more and more competing styles
 which then either need to be litigated by each code base
-or lead to inconsistent code.
+or lead to inconsistent code within one code base.
 </p>
 <h3 id=visually-grepping-control-flow><a class=para href=#visually-grepping-control-flow></a>2.3. Visually grepping control flow</h3>
 
@@ -1941,7 +1949,7 @@ teachability,
 stylistic consistency,
 accessibility,
 visual and textual greppability,
-and other positives aspects of the language are sacrificed
+and other positives aspects of the language are affected
 where <code><h- data-h=kw_ctrl>do</h-></code> expressions are used without <code><h- data-h=kw>do_return</h-></code>.
 </p>
 <p>Either, that direction should not be pursued at all,
@@ -1949,23 +1957,13 @@ or it should be pursued holistically.
 That is:
 </p><ul>
   <li>
-    Do we want to allow omitting the <code><h- data-h=kw_ctrl>return</h-></code> statement in lambdas?
-  </li>
-  <li>
-    Do we want to allow omitting the <code><h- data-h=kw_ctrl>return</h-></code> statement in functions, in general?
-  </li>
-  <li>
-    Do we want to allow omitting <code><h- data-h=kw>do_return</h-></code>
-    in the last <code><h- data-h=kw_ctrl>if</h-></code> statement of a <code><h- data-h=kw_ctrl>do</h-></code> expression?
-    What if we want to make <code><h- data-h=kw_ctrl>if</h-></code> an expression in the future?
+    Do we want to allow omitting the <code><h- data-h=kw_ctrl>return</h-></code> statement in lambdas,
+    and/or in functions, in general?
   </li>
   <li>
     Do we want to allow omitting <code><h- data-h=kw>do_return</h-></code>
-    in the last <code><h- data-h=kw>try</h-></code> statement of a <code><h- data-h=kw_ctrl>do</h-></code> expression?
-    What if we want to make <code><h- data-h=kw>try</h-></code> an expression in the future?
-  </li>
-  <li>
-    Where else in the language do we want to allow omitting control flow keywords?
+    in the last <code><h- data-h=kw_ctrl>if</h-></code> and/or <code><h- data-h=kw>try</h-></code> statement of a <code><h- data-h=kw_ctrl>do</h-></code> expression?
+    What if we want to make <code><h- data-h=kw_ctrl>if</h-></code> and/or <code><h- data-h=kw>try</h-></code> an expression in the future?
   </li>
   <li>
     What other language constructs are affected by this, now and in the future?
@@ -1980,14 +1978,14 @@ That is:
 we risk losing sight of the big picture.
 This is unjustifiable, especially considering that the omission of <code><h- data-h=kw>do_return</h-></code>
 can be introduced at any point in the future without breaking changes,
-since it requires omitting a semicolon, which would be ill-formed by default.
+since the omitted-semicolon syntax used by the feature is currently ill-formed.
 </p>
 <h2 id=references><a class=para href=#references></a>4. References</h2>
 
 
 <div class=bib><div id=bib-item-P2806R4 class=bib-item>
 <a href="https://wg21%2elink/p2806r4">[P2806R4]</a>
-<span class=bib-author>Barry Revzin et al..</span>
+<span class=bib-author>Bruno Cardoso Lopes, Zach Laine, Michael Park, Barry Revzin.</span>
 <span class=bib-title>do expressions</span>
 <span class=bib-date>2026-07-15</span>
 <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/p2806r4%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2806r4.html</a></div></div>

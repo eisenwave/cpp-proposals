@@ -6,8 +6,8 @@
   title = {Do \tt{do_return}!}
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{D4323R0}}
-  \dt{Date:}            \dd{\tt{2026-07-27}}
+  \dt{Document number:} \dd{\docnum{P4323R0}}
+  \dt{Date:}            \dd{\tt{2026-08-11}}
   \dt{Audience:}        \dd{EWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -18,7 +18,10 @@
 }
 
 \Babstract{
-
+\ref("P2806R4") proposed to let the user omit the last semicolon
+in a \tcode{do} expression
+to yield a result.
+This paper argues against that feature for a variety of reasons.
 }
 
 \h2(listed=false){Contents}
@@ -111,11 +114,14 @@ for the purpose of reducing verbosity.
 These rules would no longer be universal rules.
 
 Furthermore, why is the design not applied to other constructs,
-even though it would be possible in principle, like for lambda expressions?
+even though it would be possible in principle?
 
+\Bex{
+The proposed feature could just as well be applied to lambda expressions:
 \cppblock{
 int x = do { 42 };
 int y = [] { 42 }(); // equivalent to above
+}
 }
 
 There are two possible directions here:
@@ -126,10 +132,11 @@ There are two possible directions here:
     We would still sacrifice the consistent and teachable rules
     by making \tcode{do} expressions special,
     but we wouldn't get much value in return.
+    Verbosity of lambdas is a common complaint.
   }
   \li{
     Changing lambda expressions like this retroactively might be fine,
-    but it demonstrates that the \q{last statement is result} feature
+    but it demonstrates that the \q{last statement is the esult} feature
     is orthogonal to \tcode{do} expressions,
     and that the design needs to be explored holistically.
   }
@@ -150,11 +157,12 @@ A C++ developer used to omitting \do_return would find it jarring to work on a c
 where \do_return is always required, and vice versa.
 
 While having some disagreement over style is natural in a programming language,
-C++ already has a ton of options without a clear winner (like initialization style),
+C++ already has a ton of options without a clear winner
+(initialization style, trailing return types, when to use \tcode{auto}, etc.),
 and this issue would be compounded.
 There is real cost to adding more and more competing styles
 which then either need to be litigated by each code base
-or lead to inconsistent code.
+or lead to inconsistent code within one code base.
 
 \h3{Visually grepping control flow}
 
@@ -371,7 +379,7 @@ teachability,
 stylistic consistency,
 accessibility,
 visual and textual greppability,
-and other positives aspects of the language are sacrificed
+and other positives aspects of the language are affected
 where \tcode{do} expressions are used without \do_return.
 
 Either, that direction should not be pursued at all,
@@ -379,23 +387,13 @@ or it should be pursued holistically.
 That is:
 \ul{
   \li{
-    Do we want to allow omitting the \tcode{return} statement in lambdas?
-  }
-  \li{
-    Do we want to allow omitting the \tcode{return} statement in functions, in general?
-  }
-  \li{
-    Do we want to allow omitting \do_return
-    in the last \tcode{if} statement of a \tcode{do} expression?
-    What if we want to make \tcode{if} an expression in the future?
+    Do we want to allow omitting the \tcode{return} statement in lambdas,
+    and/or in functions, in general?
   }
   \li{
     Do we want to allow omitting \do_return
-    in the last \tcode{try} statement of a \tcode{do} expression?
-    What if we want to make \tcode{try} an expression in the future?
-  }
-  \li{
-    Where else in the language do we want to allow omitting control flow keywords?
+    in the last \tcode{if} and/or \tcode{try} statement of a \tcode{do} expression?
+    What if we want to make \tcode{if} and/or \tcode{try} an expression in the future?
   }
   \li{
     What other language constructs are affected by this, now and in the future?
@@ -410,7 +408,7 @@ If we simply ignore these concerns,
 we risk losing sight of the big picture.
 This is unjustifiable, especially considering that the omission of \do_return
 can be introduced at any point in the future without breaking changes,
-since it requires omitting a semicolon, which would be ill-formed by default.
+since the omitted-semicolon syntax used by the feature is currently ill-formed.
 
 \h2{References}
 
@@ -418,7 +416,7 @@ since it requires omitting a semicolon, which would be ill-formed by default.
   id = "P2806R4",
   title = "do expressions",
   date = "2026-07-15",
-  author = "Barry Revzin et al.",
+  author = "Bruno Cardoso Lopes, Zach Laine, Michael Park, Barry Revzin",
   link = "https://wg21.link/p2806r4",
   long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2806r4.html",
 )\
