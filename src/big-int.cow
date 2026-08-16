@@ -40,9 +40,13 @@ We propose an infinite-precision integer in the form of a class template,
 with elastic operations.
 }
 
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
 \h2(listed=false){Contents}
 
 \make_contents
+
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 \h2{Introduction}
 
@@ -286,6 +290,8 @@ The tables also do not include languages where no active choice to use infinite-
 over fixed-width integers is made.
 Otherwise, the results would be inflated by e.g. 107M files using \code("py"){int} in Python.
 }
+
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 \h2{Motivation}
 
@@ -666,6 +672,8 @@ That being said,
 this new form of \tcode{operator""n"} is not part of this proposal,
 but it does demonstrate why some compiler support is needed.
 
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
 \h2{Design}
 
 \h3{Design strategy}
@@ -720,9 +728,11 @@ union {
 
 The underlying arithmetic is then implemented to operate on \dfn{limb arrays},
 i.e. arrays of \tcode{uint_multiprecision_t} objects,
-agnostic of whether the integer value is store in-place or dynamically.
+agnostic of whether the integer value is stored in-place or dynamically.
 
-\h3{\tcode{std::uint_multiprecision_t}}
+\h3{Layout}
+
+\h4{\tt{std::uint_multiprecision_t}}
 
 A user-facing integer type alias introduced by this paper is \tcode{std::uint_multiprecision_t},
 which is an unsigned integer type with the following important properties:
@@ -776,7 +786,7 @@ despite the abundance of type aliases in \header{cstdint} and \header{cstddef}:
   }
 }
 
-\h3{C compatibility}
+\h4{C compatibility}
 
 While \tcode{std::big_int} is not \em{really} C-compatible by virtue of being a class template
 full of C++ features,
@@ -822,7 +832,7 @@ predefined \tcode{__UINT_MULTIPRECISION_T__} macro.
 C compatibility ambitions are not in scope for the paper right now,
 but are worth exploring in the future.
 
-\h3{Small object optimizations}
+\h4{Small object optimizations}
 
 \tcode{std::big_int} (or generally, infinite-precision integer types)
 benefit from \dfn{small object optimization}
@@ -909,6 +919,160 @@ This layout ensures that \tcode{std::big_int}
 }
 }
 
+\h4{Sign and magnitude}
+
+\tcode{std::big_int} uses a sign-and-magnitude representation
+(as opposed to e.g. two's complement),
+and this is exposed to the user.
+While it may seem like constraining implementation freedom unnecessarily,
+the chosen representation impacts the complexity requirements of various operations.
+For example, if the sign bit is separately stored,
+then negation can be implemented in constant time by just flipping the sign bit,
+whereas for two's complement,
+it requires linear time because bits of the magnitude need updating.
+
+Most implementations of infinite-precision integers use sign-and-magnitude representation,
+as does our \ref("Reference-Impl").
+This is not only due to those beneficial complexity requirements,
+but also because it simplifies the implementation greatly.
+For example:
+multiplicative operators like multiplication and division can be implemented
+solely in terms of the magnitude,
+and the sign bit of the result can be computed separately.
+
+\h5{Bitwise operations}
+
+The only major downside of sign-and-magnitude representation is that it requires
+emulation of two's complement for bitwise operations,
+but this is relatively cheap and does not require an additional pass over the data.
+
+\Bex{
+Consider how to compute \tcode{a & b} with negative inputs
+in such a way that is consistent with the two's complement behavior.
+To do this in a single pass, for each limb, we need to
+\ol{
+  \li{negate each of the operand limbs if they belong to a negative \tcode{std::big_int},}
+  \li{perform a bitwise AND, and}
+  \li{negate the resulting limb if the sign bit of the result is negative.}
+}
+}
+
+\Bnote{
+\tcode{-x} is equivalent to \tcode{(~x + 1)},
+so these \q{on the fly negations} are done by performing a bitwise NOT and interleaving
+the whole operation with an add-with-carry.
+
+In bitwise operations,
+negative inputs are treated as if they were preceded by an infinite sequence of leading ones, and
+positive inputs are treated as if they were preceded by an infinite sequence of leading zeros.
+The sign bit of the result can be computed before any of the result limbs
+by performing the bitwise operation on the leading \q{infinite bit value} of the operands.
+}
+
+\h4{Access to the underlying representation}
+
+As mentioned in \ref("#design"),
+a \tcode{std::big_int} is conceptually a \tcode{union} of
+\tcode{uint_multiprecision_t inplace_storage[N];} and
+\tcode{uint_multiprecision_t* dynamic_storage;}.
+This storage should be directly accessible using a function.
+Currently, we facilitate this using:
+
+\cppblock{
+constexpr span<const uint_multiprecision_t> representation() const noexcept;
+}
+
+The obvious downside of giving the user such direct access is that it breaks encapsulation,
+and it constrains the \q{small object type} that the implementation could use.
+For example, it isn't possible to have an \tcode{__int128 inplace_storage}
+because \tcode{uint_multiprecision_t} cannot alias \tcode{__int128}.
+
+Despite those downsides,
+giving the user low-level access to the storage is necessary because it enables the user
+to provide additional operations on \tcode{std::big_int} without overhead.
+
+\Bex{
+Consider how a user would implement their own \tcode{std::popcount} function
+(counting the number of one-bits within the integer):
+\cppblock{
+int popcount(const std::big_int& x) noexcept {
+  int sum = 0;
+  for (std::uint_multiprecision_t d : x.representation()) {
+    sum += std::popcount(d);
+  }
+  return sum;
+}
+}
+Without this kind of low-level access,
+the user would have to repeatedly perform bitwise operations such as \tcode{>>} and \tcode{&}
+in order to perform the operation limb-by-limb.
+
+Furthermore, it is unclear how the operation could be performed without allocations.
+Even if the result of \tcode{(x >> N) & M} fits into a 64-bit integer and needs no allocation,
+any intermediate result of \tcode{(x >> N)} may require allocation.
+}
+
+\Bnote{
+Boost.Multiprecision provides access to the underlying representation
+via a \tcode{limbs()} member function.
+}
+
+Crucially, we only provide read access to the representation, not write access.
+Providing write access would make it easily possible to put the \tcode{std::big_int}
+into a corrupt state, like
+having a \tcode{size()} that doesn't match the number of bits in the representation, or
+producing negative zero.
+
+\h4{Why not use reference counting?}
+
+An idea very early in the design process was to use reference counting in order to avoid
+the issue explained in \ref("#optimal-operator-overloads").
+That is, if \tcode{std::big_int} was essentially a
+\tcode{shared_ptr<uint_multiprecision_t[]>},
+it would be possible to pass it cheaply by value.
+
+\Bex{
+A function signature as follows would not be problematic:
+\cppblock{
+std::big_int abs(std::big_int x) {
+  return x < 0 ? -std::move(x) : std::move(x);
+}
+}
+If \tcode{x} has unique ownership (i.e. the reference count is 1),
+\tcode{-x} can modify the integer in-place;
+otherwise, \tcode{-x} performs a copy.
+}
+
+While this idea seems clever at first, there are several problems:
+\ul{
+  \li{
+    The same was historically attempted for types like \tcode{std::string} to no success.
+    Boost implementers gave negative feedback on this idea being pursued for
+    \tcode{std::big_int}, and Boost.Multiprecision performs no reference counting either.
+    A key problem is difficulty of implementation.
+  }
+  \li{
+    Reference counting needs to be atomic because in the standard library,
+    read-only access like copy constructors is generally thread-safe.
+    Atomic operations can have significant overhead.
+  }
+  \li{
+    Actually making use of the optimization opportunity in the example above
+    (that is, modifying \tcode{std::big_int}'s data in-place if it has unique ownership)
+    requires an atomic compare exchange (CAS):
+    if the reference counter is currently one, set it to zero,
+    otherwise other threads might believe they have unique ownership too.
+    That also makes the \tcode{std::move} in the example necessary;
+    we need permission to mess with the original object.
+    Even with no contention,
+    a CAS is a relatively expensive instruction.
+  }
+}
+
+By comparison, a \tcode{std::big_int} design with unique ownership
+avoids a lot of problems because it is statically known that it has unique ownership;
+no runtime check is needed.
+
 \h3{\tt{constexpr} support}
 
 \tcode{std::big_int} also provides \tcode{constexpr} operations,
@@ -976,134 +1140,6 @@ If we didn't have that behavior,
 \tcode{constexpr std::big_int} variables might \q{randomly} fail to compile
 from the perspective of the user, depending on the compiler,
 for no good reason.
-
-\h3{Sign and magnitude}
-
-\tcode{std::big_int} uses a sign-and-magnitude representation
-(as opposed to e.g. two's complement),
-and this is exposed to the user.
-While it may seem like constraining implementation freedom unnecessarily,
-the chosen representation impacts the complexity requirements of various operations.
-For example, if the sign bit is separately stored,
-then negation can be implemented in constant time by just flipping the sign bit,
-whereas for two's complement,
-it requires linear time because bits of the magnitude need updating.
-
-Most implementations of infinite-precision integers use sign-and-magnitude representation,
-as does our \ref("Reference-Impl").
-This is not only due to those beneficial complexity requirements,
-but also because it simplifies the implementation greatly.
-For example:
-multiplicative operators like multiplication and division can be implemented
-solely in terms of the magnitude,
-and the sign bit of the result can be computed separately.
-
-\h4{Bitwise operations}
-
-The only major downside of sign-and-magnitude representation is that it requires
-emulation of two's complement for bitwise operations,
-but this is relatively cheap and does not require an additional pass over the data.
-
-\Bex{
-Consider how to compute \tcode{a & b} with negative inputs
-in such a way that is consistent with the two's complement behavior.
-To do this in a single pass, for each limb, we need to
-\ol{
-  \li{negate each of the operand limbs if they belong to a negative \tcode{std::big_int},}
-  \li{perform a bitwise AND, and}
-  \li{negate the resulting limb if the sign bit of the result is negative.}
-}
-}
-
-\Bnote{
-\tcode{-x} is equivalent to \tcode{(~x + 1)},
-so these \q{on the fly negations} are done by performing a bitwise NOT and interleaving
-the whole operation with an add-with-carry.
-
-In bitwise operations,
-negative inputs are treated as if they were preceded by an infinite sequence of leading ones, and
-positive inputs are treated as if they were preceded by an infinite sequence of leading zeros.
-The sign bit of the result can be computed before any of the result limbs
-by performing the bitwise operation on the leading \q{infinite bit value} of the operands.
-}
-
-\h3{Access to the underlying representation}
-
-As mentioned in \ref("#design"),
-a \tcode{std::big_int} is conceptually a \tcode{union} of
-\tcode{uint_multiprecision_t inplace_storage[N];} and
-\tcode{uint_multiprecision_t* dynamic_storage;}.
-This storage should be directly accessible using a function.
-Currently, we facilitate this using:
-
-\cppblock{
-constexpr span<const uint_multiprecision_t> representation() const noexcept;
-}
-
-The obvious downside of giving the user such direct access is that it breaks encapsulation,
-and it constrains the \q{small object type} that the implementation could use.
-For example, it isn't possible to have an \tcode{__int128 inplace_storage}
-because \tcode{uint_multiprecision_t} cannot alias \tcode{__int128}.
-
-Despite those downsides,
-giving the user low-level access to the storage is necessary because it enables the user
-to provide additional operations on \tcode{std::big_int} without overhead.
-
-\Bex{
-Consider how a user would implement their own \tcode{std::popcount} function
-(counting the number of one-bits within the integer):
-\cppblock{
-int popcount(const std::big_int& x) noexcept {
-  int sum = 0;
-  for (std::uint_multiprecision_t d : x.representation()) {
-    sum += std::popcount(d);
-  }
-  return sum;
-}
-}
-Without this kind of low-level access,
-the user would have to repeatedly perform bitwise operations such as \tcode{>>} and \tcode{&}
-in order to perform the operation limb-by-limb.
-
-Furthermore, it is unclear how the operation could be performed without allocations.
-Even if the result of \tcode{(x >> N) & M} fits into a 64-bit integer and needs no allocation,
-any intermediate result of \tcode{(x >> N)} may require allocation.
-}
-
-\Bnote{
-Boost.Multiprecision provides access to the underlying representation
-via a \tcode{limbs()} member function.
-}
-
-Crucially, we only provide read access to the representation, not write access.
-Providing write access would make it easily possible to put the \tcode{std::big_int}
-into a corrupt state, like
-having a \tcode{size()} that doesn't match the number of bits in the representation, or
-producing negative zero.
-
-\h3{Naming}
-
-The name \tcode{std::big_int} was chosen because it meets user expectations
-and makes its design instantly clear.
-In languages where infinite-precision integers are not built-in,
-the name is virtually always some variant of \q{big int} or \q{big integer}.
-The name \tcode{std::big_int} is also immediately recognizable
-as supporting infinite-precision arithmetic and as growing elastically as needed.
-
-Previous proposals used the name \tcode{std::integer},
-but this name doesn't convey the design well,
-and is too similar to concept names like \tcode{std::integral}.
-
-\h3{Choice of header}
-
-We propose a new \header{big_int} header that just provides \tcode{std::big_int}
-and its utility functions.
-
-While \tcode{std::big_int} could belong in \header{numeric},
-that header is already enormous,
-and \tcode{std::big_int} is essentially a standalone container.
-It could be seen as a \tcode{std::vector} with some operator overloads.
-Containers traditionally have their own headers, like \header{vector}.
 
 \h3{Optimal operator overloads}
 
@@ -1226,56 +1262,6 @@ Overall, this idea is making things more complicated and dangerous,
 with the only benefit being a micro-optimization
 which we don't see as sufficiently important.
 
-\h3{Why not use reference counting?}
-
-An idea very early in the design process was to use reference counting in order to avoid
-the issue explained in \ref("#optimal-operator-overloads").
-That is, if \tcode{std::big_int} was essentially a
-\tcode{shared_ptr<uint_multiprecision_t[]>},
-it would be possible to pass it cheaply by value.
-
-\Bex{
-A function signature as follows would not be problematic:
-\cppblock{
-std::big_int abs(std::big_int x) {
-  return x < 0 ? -std::move(x) : std::move(x);
-}
-}
-If \tcode{x} has unique ownership (i.e. the reference count is 1),
-\tcode{-x} can modify the integer in-place;
-otherwise, \tcode{-x} performs a copy.
-}
-
-While this idea seems clever at first, there are several problems:
-\ul{
-  \li{
-    The same was historically attempted for types like \tcode{std::string} to no success.
-    Boost implementers gave negative feedback on this idea being pursued for
-    \tcode{std::big_int}, and Boost.Multiprecision performs no reference counting either.
-    A key problem is difficulty of implementation.
-  }
-  \li{
-    Reference counting needs to be atomic because in the standard library,
-    read-only access like copy constructors is generally thread-safe.
-    Atomic operations can have significant overhead.
-  }
-  \li{
-    Actually making use of the optimization opportunity in the example above
-    (that is, modifying \tcode{std::big_int}'s data in-place if it has unique ownership)
-    requires an atomic compare exchange (CAS):
-    if the reference counter is currently one, set it to zero,
-    otherwise other threads might believe they have unique ownership too.
-    That also makes the \tcode{std::move} in the example necessary;
-    we need permission to mess with the original object.
-    Even with no contention,
-    a CAS is a relatively expensive instruction.
-  }
-}
-
-By comparison, a \tcode{std::big_int} design with unique ownership
-avoids a lot of problems because it is statically known that it has unique ownership;
-no runtime check is needed.
-
 \h3{Why not provide lower-level operations for arithmetic?}
 
 A common idea in the committee is that rather than providing the \q{high-level construct}
@@ -1328,7 +1314,8 @@ However, we don't propose any of these low-level operations in this paper for a 
     is not actually in their best interest.
     It would be like providing them with a \tcode{sqrt} function that doesn't handle
     infinities and NaNs and telling them that this \tcode{sqrt} is a lower-level building block.
-    In the best case, their \tcode{big_int} operations would end up recreating
+    In reality, it's simply an incomplete and less useful version of \tcode{std::sqrt}.
+    Analogously, in the best case, their \tcode{big_int} operations would end up recreating
     the standard library implementation verbatim.
     In the worst (and much more likely case),
     the user's \tcode{big_int} would end up worse than the standard library version.
@@ -1379,27 +1366,222 @@ wrapping a handle to \tcode{llvm::APint} is feasible.
 The more \tcode{std::big_int} is treated as a compiler intrinsic,
 the lower-level it conceptually becomes.
 
-\h3{Hash support for \tt{std::big_int}}
+\h3{Template parameters}
 
-We also provide \tt{std::hash} support.
-While the hashing algorithm is up to the implementation
-(there are various widely used algorithms for hashing a sequence of integers),
-there is an important restriction:
-for any \tcode{basic_big_int<b, A>} object,
-the \tcode{std::hash} result depends solely on the integer value
-(i.e. the mathematical value represented) by the object.
+\h4{Order of template parameters}
 
-This makes it possible to use a different \tcode{basic_big_int} as a key type
-than the type used for lookup (assuming transparent lookup in some container).
+For \tcode{std::basic_big_int},
+the order is generally \q{most likely to be specified as an argument first}:
 
-However, the hash might not be compatible with that of fundamental types,
-i.e. \tcode{1} may be hashed differently than \tcode{std::big_int{1}}.
-This was done to increase flexibility in the \tcode{hash<big_int>} implementation
-and to not pessimize the hash algorithm.
+\cppblock{
+template<size_t min_inplace_capacity,
+         class Limb = uint_multiprecision_t,
+         class Allocator = allocator<Limb>>
+  class basic_big_int;
+}
 
-\Bdecision{
-We should seriously consider whether we want hash parity between fundamental types
-and \tcode{basic_big_int}.
+The \tcode{Allocator} parameter needs to come after the \tcode{Limb} parameter
+so that the default argument \tcode{allocator<Limb>} can be spelled.
+This is unfortunate because the limb type cannot be configured at all
+(it must always be \tcode{uint_multiprecision_t}),
+but would not be so bad if it became genuinely configurable in the future.
+Fortunately, the only people inconvenienced are power users who use \tcode{std::basic_big_int}
+with a custom allocator,
+which is acceptable.
+
+\h4{Limb type parameter}
+
+When it comes to allowing configuration of the limb type,
+there is a spectrum of solutions:
+
+\ul{
+  \li{
+    Don't allow any limb type configuration and have no template parameter.
+    This is a simple design, but closes the door to future extensions forever
+    because adding another template parameter would be an API break.
+  }
+  \li{
+    \mark{\b{Ours:}}
+    Have a limb type parameter \tcode{class Limb}
+    but only allow \tcode{std::uint_multiprecision_t} as an argument.
+    This enables future extension.
+  }
+  \li{
+    Allow types as arguments that are \q{functionally equivalent} to
+    \tcode{std::uint_multiprecision_t}.
+    That is, they are distinct types that have the same object and value representation,
+    like \tcode{unsigned long} and \tcode{unsigned long long} on 64-bit Linux.
+  }
+  \li{
+    Allow some subset of unsigned integer types,
+    like 32-bit and 64-bit integers.
+  }
+  \li{
+    Allow arbitrary unsigned integer types.
+  }
+}
+
+While we are not proposing any arguments other than \tcode{std::uint_multiprecision_t}
+in this paper,
+such future extension could be very reasonable for a few reasons:
+\ul{
+  \li{
+    Existing code that uses either \tcode{unsigned long} or \tcode{unsigned long long}
+    as a limb type would experience friction
+    when working with spans of \tcode{std::uint_multiprecision_t},
+    even if those types are functionally equivalent.
+    For example, there would be no guarantee that an existing C API yielding a
+    \tcode{const unsigned long*} to the user could obtain that pointer
+    directly from \tcode{std::big_int::representation()}.
+  }
+  \li{
+    Some configuration of the limb type is reasonably implementable and quite useful.
+    For example, 64-bit code interfacing with 32-bit legacy code bases could benefit
+    from working with a 32-bit limb type.
+  }
+  \li{
+    Within a few decades, 128-bit arithmetic support may arrive on 64-bit platforms,
+    similar to how WASM32 supports 64-bit arithmetic operations
+    but has a 32-bit address space.
+    If so, there ought to be a way to create a \tcode{std::basic_big_int} with 128-bit limbs,
+    even if \tcode{std::uint_multiprecision_t} cannot be redefined due to ABI concerns.
+  }
+}
+
+Even if one doesn't find these arguments compelling,
+is there strong enough reason to make it impossible to ever extend \tcode{basic_big_int}
+with a different limb type?
+Probably not.
+The template parameter only mildly inconveniences implementers and power users
+who don't merely use \tcode{std::big_int}.
+Most users work with \tcode{std::string}
+rather than \tcode{std::basic_string},
+and we expect a similar pattern for \tcode{std::big_int} vs. \tcode{std::basic_big_int}.
+
+\Bnote{
+A similar approach was recently taken in \ref("P2019R9") \q{Thread attributes},
+in \eelis{thread.thread.class.general}:
+\cppblock{
+template <same_as<char> T>
+  class name_hint;
+}
+}
+
+\Bnote{
+Supporting \q{functionally equivalent} unsigned integer types would ideally be done
+with some compiler support or by ignoring certain instances of UB.
+The underlying operations working with \tcode{span<uint_multiprecision_t>}
+could be \q{blessed} so that internally,
+e.g. \tcode{unsigned long} can alias \tcode{unsigned long long} and \tcode{_BitInt(64)}.
+This would allow having only one internal function while still handling all types.
+}
+
+\h3{Conversions}
+
+\h4{Converting constructor}
+
+We provide the following constructor for implicit conversions:
+\cppblock{
+template<\exposid{arbitrary-arithmetic-type} T>
+  constexpr explicit(\seebelow) basic_big_int(T&& x)
+    noexcept(\exposid{no-alloc-constructible-from}<T>);
+}
+
+This allows:
+\ul{
+  \li{
+    An implicit conversion from any integer type.
+    This makes it possible to write functions such as \tcode{gcd(std::big_int, std::big_int)}
+    and call them like \tcode{gcd(x, 3)}.
+    The conversion should not be explicit because it would make initialization from literals
+    too tedious,
+    and the conversion is value-preserving anyway (not counting allocation failure).
+  }
+  \li{
+    An explicit conversion from any floating-point type.
+    This could be implicit, but is not value-preserving.
+    See also \ref("#explicit-conversions-to-arithmetic-types") for more rationale.
+    Similar to division by zero and analogous to converting \tcode{float} to \tcode{int},
+    converting non-finite values results in undefined behavior.
+    See also \ref("#error-handling").
+  }
+  \li{
+    An explicit conversion from any other specialization of \tcode{std::basic_big_int}.
+    This makes it possible to convert between \tcode{std::basic_big_int} with different allocators
+    and SOO sizes,
+    and make it possible to convert \tcode{std::big_int} literals like \tcode{123n}
+    to other specializations.
+    Similar constructors
+    like the \tcode{\exposid{string-view-like}} constructor of \tcode{basic_string}
+    are traditionally also \tcode{explicit}.
+  }
+}
+
+The \tcode{\exposid{no-alloc-constructible-from}<T>} part ensures
+that the constructor is \tcode{noexcept} if no allocation
+ever needs to take place to represent the value.
+
+\Bex{
+Consider converting \tcode{std::int32_t} to \tcode{basic_big_int<32>}.
+The \tcode{inplace_capacity} is at least 32 bits,
+so any \tcode{int32_t} can be represented without allocation,
+and the converting constructor is \tcode{noexcept}.
+}
+
+Since floating-point types may have non-finite values and converting those to \tcode{std::big_int}
+results in undefined behavior,
+conversions from floating-point types are never \tcode{noexcept},
+consistent with the Lakos rule.
+
+\h4{Explicit conversions to arithmetic types}
+
+\tcode{std::big_int} is generally designed to mirror the interface of fundamental integer types,
+though conversions are a notable exception.
+For example, any integer type can be implicitly converted to \tcode{int},
+but \tcode{std::big_int} makes this \tcode{explicit}.
+This follows the general design direction of more explicit conversions in new C++ types,
+like \tcode{std::float64_t} → \tcode{std::float32_t},
+non-value-preserving conversions in \header{simd}, etc.
+
+Besides following an established design direction,
+we also consider it surprising if one could convert a dynamically sized \tcode{std::big_int}
+which potentially holds thousands of bits to an \tcode{int},
+without ever expressing that intent in code.
+There would also be no way to catch such conversions with list-initialization
+since user-defined conversions are never narrowing.
+
+\h4{Bit-precise integer interoperability}
+
+While \ref("P3666R4") has not been merged into C++29 yet,
+we still need to consider how \tcode{std::big_int} will interoperate with \tcode{_BitInt}.
+Notably, the constructor of \tcode{std::big_int} may or may not reject those integers,
+and the user-defined conversion to integer types may or may not be valid.
+
+We believe that this conversion should be valid in both directions because it exposes a
+fundamental and clearly useful bit of functionality.
+There is simply no good reason to prevent these conversions,
+other than wanting to prevent \tcode{_BitInt} from ever being a useful and fully supported
+type in the standard library.
+
+\Bex{
+One use case where \tcode{_BitInt} is specifically useful is for providing large integer literals.
+For example, \tcode{std::big_int{123wb}} can be used instead of \tcode{123n},
+which bypasses the user-defined \tcode{operator""n} literal,
+and that UDL's implementation is relatively complicated and heavy.
+As long as a sufficiently wide \tcode{_BitInt} type exists,
+its \gterm{integer-literal} is a lighter-weight alternative.
+}
+
+\Bex{
+Another use case is a cryptography library
+that uses \tcode{std::big_int} at its library boundaries,
+but performs the underlying calculations (such as for RSA) using e.g. \tcode{_BitInt(8192)}.
+This clearly requires converting \tcode{std::big_int} to \tcode{_BitInt(8192)},
+and a user would need to perform that conversion manually limb-by-limb
+if the standard library didn't provide it.
+
+Such a conversion is also clearly useful when handing the values of \tcode{std::big_int}
+off to a C library that uses \tcode{_BitInt(128)}, \tcode{_BitInt(256)}, etc. in its API.
 }
 
 \h3{User-defined literals for \tt{std::big_int}}
@@ -1495,147 +1677,64 @@ and even if it was,
 the \tcode{BITINT_MAXWIDTH} is only guaranteed to be at least \tcode{LLONG_WIDTH}.
 In other words, \tcode{_BitInt}s larger than 64-bit are an optional feature.
 
-\h3{Bit-precise integer interoperability}
+\h3{Adjacent library utilities}
 
-While \ref("P3666R4") has not been merged into C++29 yet,
-we still need to consider how \tcode{std::big_int} will interoperate with \tcode{_BitInt}.
-Notably, the constructor of \tcode{std::big_int} may or may not reject those integers,
-and the user-defined conversion to integer types may or may not be valid.
+\h4{Hash support for \tt{std::big_int}}
 
-We believe that this conversion should be valid in both directions because it exposes a
-fundamental and clearly useful bit of functionality.
-There is simply no good reason to prevent these conversions,
-other than wanting to prevent \tcode{_BitInt} from ever being a useful and fully supported
-type in the standard library.
+We also provide \tt{std::hash} support.
+While the hashing algorithm is up to the implementation
+(there are various widely used algorithms for hashing a sequence of integers),
+there is an important restriction:
+for any \tcode{basic_big_int<b, A>} object,
+the \tcode{std::hash} result depends solely on the integer value
+(i.e. the mathematical value represented) by the object.
 
-\Bex{
-One use case where \tcode{_BitInt} is specifically useful is for providing large integer literals.
-For example, \tcode{std::big_int{123wb}} can be used instead of \tcode{123n},
-which bypasses the user-defined \tcode{operator""n} literal,
-and that UDL's implementation is relatively complicated and heavy.
-As long as a sufficiently wide \tcode{_BitInt} type exists,
-its \gterm{integer-literal} is a lighter-weight alternative.
+This makes it possible to use a different \tcode{basic_big_int} as a key type
+than the type used for lookup (assuming transparent lookup in some container).
+
+However, the hash might not be compatible with that of fundamental types,
+i.e. \tcode{1} may be hashed differently than \tcode{std::big_int{1}}.
+This was done to increase flexibility in the \tcode{hash<big_int>} implementation
+and to not pessimize the hash algorithm.
+
+\Bdecision{
+We should seriously consider whether we want hash parity between fundamental types
+and \tcode{basic_big_int}.
 }
 
-\Bex{
-Another use case is a cryptography library
-that uses \tcode{std::big_int} at its library boundaries,
-but performs the underlying calculations (such as for RSA) using e.g. \tcode{_BitInt(8192)}.
-This clearly requires converting \tcode{std::big_int} to \tcode{_BitInt(8192)},
-and a user would need to perform that conversion manually limb-by-limb
-if the standard library didn't provide it.
+\h4{\tt{std::numeric_limits} specialization}
 
-Such a conversion is also clearly useful when handing the values of \tcode{std::big_int}
-off to a C library that uses \tcode{_BitInt(128)}, \tcode{_BitInt(256)}, etc. in its API.
-}
+There should be a specialization of \tcode{std::numeric_limits}
+provided for \tcode{std::basic_big_int}.
+Doing so is tradition in third-party libraries that provide their own infinite-precision integers,
+and it provides useful capabilities such as writing generic code that works with
+\tcode{int}, \tcode{big_int}, and \tcode{boost::cpp_int},
+and distinguishing the infinite-precision integers via
+\tcode{numeric_limits::is_bounded}.
 
-\h3{Limb type parameter}
+\h3{Naming}
 
-When it comes to allowing configuration of the limb type,
-there is a spectrum of solutions:
+The name \tcode{std::big_int} was chosen because it meets user expectations
+and makes its design instantly clear.
+In languages where infinite-precision integers are not built-in,
+the name is virtually always some variant of \q{big int} or \q{big integer}.
+The name \tcode{std::big_int} is also immediately recognizable
+as supporting infinite-precision arithmetic and as growing elastically as needed.
 
-\ul{
-  \li{
-    Don't allow any limb type configuration and have no template parameter.
-    This is a simple design, but closes the door to future extensions forever
-    because adding another template parameter would be an API break.
-  }
-  \li{
-    \mark{\b{Ours:}}
-    Have a limb type parameter \tcode{class Limb}
-    but only allow \tcode{std::uint_multiprecision_t} as an argument.
-    This enables future extension.
-  }
-  \li{
-    Allow types as arguments that are \q{functionally equivalent} to
-    \tcode{std::uint_multiprecision_t}.
-    That is, they are distinct types that have the same object and value representation,
-    like \tcode{unsigned long} and \tcode{unsigned long long} on 64-bit Linux.
-  }
-  \li{
-    Allow some subset of unsigned integer types,
-    like 32-bit and 64-bit integers.
-  }
-  \li{
-    Allow arbitrary unsigned integer types.
-  }
-}
+Previous proposals used the name \tcode{std::integer},
+but this name doesn't convey the design well,
+and is too similar to concept names like \tcode{std::integral}.
 
-While we are not proposing any arguments other than \tcode{std::uint_multiprecision_t}
-in this paper,
-such future extension could be very reasonable for a few reasons:
-\ul{
-  \li{
-    Existing code that uses either \tcode{unsigned long} or \tcode{unsigned long long}
-    as a limb type would experience friction
-    when working with spans of \tcode{std::uint_multiprecision_t},
-    even if those types are functionally equivalent.
-    For example, there would be no guarantee that an existing C API yielding a
-    \tcode{const unsigned long*} to the user could obtain that pointer
-    directly from \tcode{std::big_int::representation()}.
-  }
-  \li{
-    Some configuration of the limb type is reasonably implementable and quite useful.
-    For example, 64-bit code interfacing with 32-bit legacy code bases could benefit
-    from working with a 32-bit limb type.
-  }
-  \li{
-    Within a few decades, 128-bit arithmetic support may arrive on 64-bit platforms,
-    similar to how WASM32 supports 64-bit arithmetic operations
-    but has a 32-bit address space.
-    If so, there ought to be a way to create a \tcode{std::basic_big_int} with 128-bit limbs,
-    even if \tcode{std::uint_multiprecision_t} cannot be redefined due to ABI concerns.
-  }
-}
+\h3{Choice of header}
 
-Even if one doesn't find these arguments compelling,
-is there strong enough reason to make it impossible to ever extend \tcode{basic_big_int}
-with a different limb type?
-Probably not.
-The template parameter only mildly inconveniences implementers and power users
-who don't merely use \tcode{std::big_int}.
-Most users work with \tcode{std::string}
-rather than \tcode{std::basic_string},
-and we expect a similar pattern for \tcode{std::big_int} vs. \tcode{std::basic_big_int}.
+We propose a new \header{big_int} header that just provides \tcode{std::big_int}
+and its utility functions.
 
-\Bnote{
-A similar approach was recently taken in \ref("P2019R9") \q{Thread attributes},
-in \eelis{thread.thread.class.general}:
-\cppblock{
-template <same_as<char> T>
-  class name_hint;
-}
-}
-
-\Bnote{
-Supporting \q{functionally equivalent} unsigned integer types would ideally be done
-with some compiler support or by ignoring certain instances of UB.
-The underlying operations working with \tcode{span<uint_multiprecision_t>}
-could be \q{blessed} so that internally,
-e.g. \tcode{unsigned long} can alias \tcode{unsigned long long} and \tcode{_BitInt(64)}.
-This would allow having only one internal function while still handling all types.
-}
-
-\h3{Order of template parameters}
-
-For \tcode{std::basic_big_int},
-the order is generally \q{most likely to be specified as an argument first}:
-
-\cppblock{
-template<size_t min_inplace_capacity, class Limb = uint_multiprecision_t,
-         class Allocator = allocator<Limb>>
-  class basic_big_int;
-}
-
-The \tcode{Allocator} parameter needs to come after the \tcode{Limb} parameter
-so that the default argument \tcode{allocator<Limb>} can be spelled.
-This is unfortunate because the limb type cannot be configured at all
-(it must always be \tcode{uint_multiprecision_t}),
-but would not be so bad if it became genuinely configurable in the future.
-
-Fortunately, the only people inconvenienced are power users who use \tcode{std::basic_big_int}
-with a custom allocator,
-which is acceptable.
+While \tcode{std::big_int} could belong in \header{numeric},
+that header is already enormous,
+and \tcode{std::big_int} is essentially a standalone container.
+It could be seen as a \tcode{std::vector} with some operator overloads.
+Containers traditionally have their own headers, like \header{vector}.
 
 \h3{Error handling}
 
@@ -1678,87 +1777,7 @@ making the type less attractive for some high-performance use cases.
 The proposed undefined behavior can be thought of as a placeholder,
 and undefined behavior can always be \q{filled in} with something better at a later point.
 
-\h3{Converting constructor}
-
-We provide the following constructor for implicit conversions:
-\cppblock{
-template<\exposid{arbitrary-arithmetic-type} T>
-  constexpr explicit(\seebelow) basic_big_int(T&& x)
-    noexcept(\exposid{no-alloc-constructible-from}<T>);
-}
-
-This allows:
-\ul{
-  \li{
-    An implicit conversion from any integer type.
-    This makes it possible to write functions such as \tcode{gcd(std::big_int, std::big_int)}
-    and call them like \tcode{gcd(x, 3)}.
-    The conversion should not be explicit because it would make initialization from literals
-    too tedious,
-    and the conversion is value-preserving anyway (not counting allocation failure).
-  }
-  \li{
-    An explicit conversion from any floating-point type.
-    This could be implicit, but is not value-preserving.
-    See also \ref("#explicit-conversions-to-arithmetic-types") for more rationale.
-    Similar to division by zero and analogous to converting \tcode{float} to \tcode{int},
-    converting non-finite values results in undefined behavior.
-    See also \ref("#error-handling").
-  }
-  \li{
-    An explicit conversion from any other specialization of \tcode{std::basic_big_int}.
-    This makes it possible to convert between \tcode{std::basic_big_int} with different allocators
-    and SOO sizes,
-    and make it possible to convert \tcode{std::big_int} literals like \tcode{123n}
-    to other specializations.
-    Similar constructors
-    like the \tcode{\exposid{string-view-like}} constructor of \tcode{basic_string}
-    are traditionally also \tcode{explicit}.
-  }
-}
-
-The \tcode{\exposid{no-alloc-constructible-from}<T>} part ensures
-that the constructor is \tcode{noexcept} if no allocation
-ever needs to take place to represent the value.
-
-\Bex{
-Consider converting \tcode{std::int32_t} to \tcode{basic_big_int<32>}.
-The \tcode{inplace_capacity} is at least 32 bits,
-so any \tcode{int32_t} can be represented without allocation,
-and the converting constructor is \tcode{noexcept}.
-}
-
-Since floating-point types may have non-finite values and converting those to \tcode{std::big_int}
-results in undefined behavior,
-conversions from floating-point types are never \tcode{noexcept},
-consistent with the Lakos rule.
-
-\h3{Explicit conversions to arithmetic types}
-
-\tcode{std::big_int} is generally designed to mirror the interface of fundamental integer types,
-though conversions are a notable exception.
-For example, any integer type can be implicitly converted to \tcode{int},
-but \tcode{std::big_int} makes this \tcode{explicit}.
-This follows the general design direction of more explicit conversions in new C++ types,
-like \tcode{std::float64_t} → \tcode{std::float32_t},
-non-value-preserving conversions in \header{simd}, etc.
-
-Besides following an established design direction,
-we also consider it surprising if one could convert a dynamically sized \tcode{std::big_int}
-which potentially holds thousands of bits to an \tcode{int},
-without ever expressing that intent in code.
-There would also be no way to catch such conversions with list-initialization
-since user-defined conversions are never narrowing.
-
-\h3{\tt{std::numeric_limits} specialization}
-
-There should be a specialization of \tcode{std::numeric_limits}
-provided for \tcode{std::basic_big_int}.
-Doing so is tradition in third-party libraries that provide their own infinite-precision integers,
-and it provides useful capabilities such as writing generic code that works with
-\tcode{int}, \tcode{big_int}, and \tcode{boost::cpp_int},
-and distinguishing the infinite-precision integers via
-\tcode{numeric_limits::is_bounded}.
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 \h2{Future direction}
 
@@ -1831,6 +1850,8 @@ As mentioned in \ref("#c-compatibility"),
 it may be beneficial to improve C compatibility
 by putting \tcode{std::uint_multiprecision_t} in \header{cstdint},
 and possibly by standardizing the type for C2y.
+
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 \h2{Arguments against standardization}
 
@@ -2219,6 +2240,8 @@ To be fair:
   }
 }
 
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
 \h2{Implementation experience}
 
 Our reference implementation can be found at \ref("Reference-Impl").
@@ -2240,6 +2263,7 @@ represents somewhat of a theoretical optimum,
 and our top-level API and implementation internals are so similar to those of Boost,
 not much should be gained or lost in terms of performance.
 
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 \h2{Wording}
 
@@ -3776,6 +3800,8 @@ wstring to_wstring(long double val);
 \Btodo{
 This requires formatting support.
 }
+
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 \h2{References}
 
