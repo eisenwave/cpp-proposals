@@ -2435,6 +2435,10 @@ namespace std {
   template<class T> struct hash;
   template<size_t b, class L, class A> struct hash<basic_big_int<b, L, A>>;
 
+  //\serif{ [big.int.fmt], formatter}
+  template<size_t b, class L, class A, class charT>
+    struct formatter<basic_big_int<b, L, A>, charT>;
+
   //\serif{ [big.int.literal], literals}
   inline namespace literals {
     inline namespace big_int_literals {
@@ -3554,6 +3558,37 @@ For an object \math{\mi{x}} of integral type \tcode{T},
 }
 }
 
+\h4(show_number=false){[big.int.fmt]}
+
+\Bins{
+\big_int_h4{Formatter \stable_ref{big.int.fmt}}
+
+\itemdecl{
+template<size_t b, class L, class A, class charT>
+struct formatter<basic_big_int<b, L, A>, charT> {
+  template <class ParseContext>
+    constexpr typename ParseContext::iterator parse(ParseContext& ctx);
+  template<class FormatContext>
+    constexpr typename FormatContext::iterator
+      format(const basic_big_int<b, L, A>& x, FormatContext& ctx) const;
+};
+}
+
+\itemdescr{
+\pnum
+There exists a constexpr-enabled\iref{format.formatter.spec} specialization
+of \tcode{formatter} for \tcode{basic_big_int<b, L, A>}
+which interpret the format specification as a \grammarterm{std-format-spec} and
+which format the integer value of the given parameter \tcode{x}
+same as a formatter for a signed integer type.
+
+\note{
+As explained in \eelis{format.string.std},
+character output is performed using \tcode{to_chars}.
+}
+}
+}
+
 \h4(show_number=false){[big.int.literal]}
 
 \Bins{
@@ -3795,10 +3830,6 @@ wstring to_wstring(long double val);
 \returns
 \tcode{format(L"{}", val)}.
 }
-}
-
-\Btodo{
-This requires formatting support.
 }
 
 \:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
