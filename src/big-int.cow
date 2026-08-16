@@ -2432,6 +2432,170 @@ namespace std {
 }
 }
 
+\h3(show_number=false){[numeric.sat.cast]}
+\cowel_var_set("pnum", 0)
+
+Change \eelis{numeric.sat.cast} as follows:
+
+\Bquote{
+\itemdecl{
+template<class R, class T>
+  constexpr R saturating_cast(T x) noexcept;
+}
+
+\itemdescr{
+\pnum
+\constraints
+\tcode{R} and \tcode{T} are signed or unsigned integer types\iref{basic.fundamental}.
+
+\pnum
+\returns
+If \tcode{x} is representable as a value of type \tcode{R}, \tcode{x};
+otherwise, either the largest or smallest representable value of type \tcode{R},
+whichever is closer to the value of \tcode{x}.
+}
+}
+
+\Bins{
+\itemdecl{
+template<class R, size_t b, class L, class A>
+  constexpr R saturating_cast(const basic_big_int<b, L, A>& x) noexcept;
+}
+
+\itemdescr{
+\pnum
+\constraints
+\tcode{R} is a signed or unsigned integer type\iref{basic.fundamental}.
+
+\pnum
+\returns
+If the integer value\iref{big.int.class} \math{\mi{v}} of \tcode{x}
+is representable as a value of type \tcode{R}, \math{\mi{v}};
+otherwise, either the largest or smallest representable value of type \tcode{R},
+whichever is closer to \math{\mi{v}}.
+}
+}
+
+\editnote{
+See also \ref("#std::saturating_cast").
+}
+
+\h3(show_number=false){[numeric.int.div]}
+
+\editnote{
+This is just a rough sketch of how to go about computing the quotient and remainder
+at the same time,
+which is extremely important to avoid overhead from performing division twice.
+
+There is a proposal \ref("P3724R3") in the pipeline which adds the initial set of functions.
+}
+
+\Bdiff{
+\itemdecl{
+template<class T>
+  constexpr div_result<T> div_rem_to_zero(T x, T y);
+\ins{template<class L, class R>
+  constexpr div_result<\exposid{common-big-int-type}<L, R>> div_rem_to_zero(L&& x, R&& y);}
+}
+}
+
+\h3(show_number=false){[string.syn]}
+\cowel_var_set("pnum", 0)
+
+Change \eelis{string.syn} as follows:
+
+\Bdiff{
+\itemdecl{
+\ins{#include <big_int>              //\serif{ see [big.int]}}
+#include <compare>              //\serif{ see \eelis{compare.syn}}
+#include <initializer_list>     //\serif{ see \eelis{initializer.list.syn}}
+
+namespace std {
+  \etc
+
+  //\serif{ \eelis{string.conversions}, string conversions}
+  \etc
+  constexpr string to_string(int val);
+  constexpr string to_string(unsigned val);
+  constexpr string to_string(long val);
+  constexpr string to_string(unsigned long val);
+  constexpr string to_string(long long val);
+  constexpr string to_string(unsigned long long val);
+  string to_string(float val);
+  string to_string(double val);
+  string to_string(long double val);
+  \ins{template<size_t b, class L, class A>
+    constexpr string to_string(const basic_big_int<b, L, A>& val);}
+
+  \etc
+  constexpr wstring to_wstring(int val);
+  constexpr wstring to_wstring(unsigned val);
+  constexpr wstring to_wstring(long val);
+  constexpr wstring to_wstring(unsigned long val);
+  constexpr wstring to_wstring(long long val);
+  constexpr wstring to_wstring(unsigned long long val);
+  wstring to_wstring(float val);
+  wstring to_wstring(double val);
+  wstring to_wstring(long double val);
+  \ins{template<size_t b, class L, class A>
+    constexpr wstring to_wstring(const basic_big_int<b, L, A>& val);}
+
+  \etc
+}
+}
+}
+
+\h3(show_number=false){[string.conversions]}
+\cowel_var_set("pnum", 0)
+
+Change \eelis{string.conversions} as follows:
+
+\Bdiff{
+\etc
+
+\itemdecl{
+constexpr string to_string(int val);
+constexpr string to_string(unsigned val);
+constexpr string to_string(long val);
+constexpr string to_string(unsigned long val);
+constexpr string to_string(long long val);
+constexpr string to_string(unsigned long long val);
+string to_string(float val);
+string to_string(double val);
+string to_string(long double val);
+\ins{template<size_t b, class L, class A>
+  constexpr string to_string(const basic_big_int<b, L, A>& val);}
+}
+
+\itemdescr{
+\returns
+\tcode{format("{}", val)}.
+}
+
+\etc
+
+\itemdecl{
+constexpr wstring to_wstring(int val);
+constexpr wstring to_wstring(unsigned val);
+constexpr wstring to_wstring(long val);
+constexpr wstring to_wstring(unsigned long val);
+constexpr wstring to_wstring(long long val);
+constexpr wstring to_wstring(unsigned long long val);
+wstring to_wstring(float val);
+wstring to_wstring(double val);
+wstring to_wstring(long double val);
+\ins{template<size_t b, class L, class A>
+  constexpr wstring to_wstring(const basic_big_int<b, L, A>& val);}
+}
+
+\itemdescr{
+\returns
+\tcode{format(L"{}", val)}.
+}
+
+\etc
+}
+
 \h3(show_number=false){[big.int]}
 
 In Clause \eelis{numerics},
@@ -3770,25 +3934,6 @@ namespace std {
 }
 }
 
-\h3(show_number=false){[numeric.int.div]}
-
-\editnote{
-This is just a rough sketch of how to go about computing the quotient and remainder
-at the same time,
-which is extremely important to avoid overhead from performing division twice.
-
-There is a proposal \ref("P3724R3") in the pipeline which adds the initial set of functions.
-}
-
-\Bdiff{
-\itemdecl{
-template<class T>
-  constexpr div_result<T> div_rem_to_zero(T x, T y);
-\ins{template<class L, class R>
-  constexpr div_result<\exposid{common-big-int-type}<L, R>> div_rem_to_zero(L&& x, R&& y);}
-}
-}
-
 \h3(show_number=false){[c.math.abs]}
 \cowel_var_set("pnum", 0)
 
@@ -3837,99 +3982,6 @@ constexpr long long int abs(long long int j);
 
 \editnote{
 See also \ref("#std::abs").
-}
-
-\h3(show_number=false){[numeric.sat.cast]}
-\cowel_var_set("pnum", 0)
-
-Change \eelis{numeric.sat.cast} as follows:
-
-\Bquote{
-\itemdecl{
-template<class R, class T>
-  constexpr R saturating_cast(T x) noexcept;
-}
-
-\itemdescr{
-\pnum
-\constraints
-\tcode{R} and \tcode{T} are signed or unsigned integer types\iref{basic.fundamental}.
-
-\pnum
-\returns
-If \tcode{x} is representable as a value of type \tcode{R}, \tcode{x};
-otherwise, either the largest or smallest representable value of type \tcode{R},
-whichever is closer to the value of \tcode{x}.
-}
-}
-
-\Bins{
-\itemdecl{
-template<class R, size_t b, class L, class A>
-  constexpr R saturating_cast(const basic_big_int<b, L, A>& x) noexcept;
-}
-
-\itemdescr{
-\pnum
-\constraints
-\tcode{R} is a signed or unsigned integer type\iref{basic.fundamental}.
-
-\pnum
-\returns
-If the integer value\iref{big.int.class} \math{\mi{v}} of \tcode{x}
-is representable as a value of type \tcode{R}, \math{\mi{v}};
-otherwise, either the largest or smallest representable value of type \tcode{R},
-whichever is closer to \math{\mi{v}}.
-}
-}
-
-\editnote{
-See also \ref("#std::saturating_cast").
-}
-
-\h3(show_number=false){[numeric.conversions]}
-\cowel_var_set("pnum", 0)
-
-\Bdiff{
-\itemdecl{
-constexpr string to_string(int val);
-constexpr string to_string(unsigned val);
-constexpr string to_string(long val);
-constexpr string to_string(unsigned long val);
-constexpr string to_string(long long val);
-constexpr string to_string(unsigned long long val);
-string to_string(float val);
-string to_string(double val);
-string to_string(long double val);
-\ins{template<size_t b, class L, class A>
-  constexpr string to_string(const basic_big_int<b, L, A>& val);}
-}
-
-\itemdescr{
-\returns
-\tcode{format("{}", val)}.
-}
-
-\etc
-
-\itemdecl{
-constexpr wstring to_wstring(int val);
-constexpr wstring to_wstring(unsigned val);
-constexpr wstring to_wstring(long val);
-constexpr wstring to_wstring(unsigned long val);
-constexpr wstring to_wstring(long long val);
-constexpr wstring to_wstring(unsigned long long val);
-wstring to_wstring(float val);
-wstring to_wstring(double val);
-wstring to_wstring(long double val);
-\ins{template<size_t b, class L, class A>
-  constexpr wstring to_wstring(const basic_big_int<b, L, A>& val);}
-}
-
-\itemdescr{
-\returns
-\tcode{format(L"{}", val)}.
-}
 }
 
 \:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
