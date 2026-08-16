@@ -1918,6 +1918,47 @@ and standardization will likely make that number skyrocket for C++,
 so this is simply committee time well-spent,
 however much time it is.
 
+\h3{Increased complexity of future integer features}
+
+The current design approach of \tcode{std::big_int} is to closely imitate
+the fundamental integer types.
+Rather than providing operations as member functions,
+existing standard library facilities like \tcode{std::gcd} and \tcode{std::popcount}
+should be extended to support \tcode{std::big_int}
+in addition to signed and/or unsigned integer types.
+Consequently, once a \q{decent amount} of coverage for \tcode{std::big_int} is provided,
+the expectation is that any new integer utility would also support \tcode{std::big_int}.
+This is very similar to how any new functions in \header{cmath} or \header{bit}
+are now expected to have \tcode{std::simd} overloads,
+for the sake of consistency.
+
+We don't consider this permanent increase in standardization effort
+to detract from \tcode{std::big_int} because
+\ul{
+  \li{
+    In a lot of cases,
+    those new integer utilities are a useful part of big integer libraries anyway.
+    For example, those libraries typically come with integer exponentiation functions,
+    so \tcode{std::big_int} support for such a new \tcode{std::ipow} function
+    would be added enthusiastically, not reluctantly.
+    See also \ref("#integer-numeric-functions").
+  }
+  \li{
+    It is quite easy to design the function signatures for new \tcode{std::big_int}
+    utilities once there are some examples in the standard library setting a precedent.
+  }
+  \li{
+    A naive implementation is often quite easy to provide for \tcode{std::big_int},
+    by simply doing the same as for the fixed-width integers.
+    This is very similar to how the naive implementation for \tcode{simd::vec} is to perform
+    the scalar operation elementwise.
+  }
+}
+
+In short, the added cost to new integer utilities is either low or effectively zero
+(if we would have added \tcode{std::big_int} support anyway,
+it's not really an additional cost).
+
 \h3{Use of implementer resources}
 
 Another similar criticism is that \tcode{std::big_int} would consume a substantial amount
@@ -1954,7 +1995,120 @@ a libstdc++ \tcode{std::big_int},
 a libc++ \tcode{std::big_int}, and
 an MSVC \tcode{std::big_int}.
 However, this work is already trifurcated among the vendors' existing big integer types (see above),
-so standardization does not create additional duplicated effort so much as relocate this exisiting work for the benefit of users.
+so standardization does not create additional duplicated effort
+so much as relocate this exisiting work for the benefit of users.
+
+\h3{Residual fragmentation}
+
+A possible criticism of \tcode{std::big_int} is that
+\q{everyone already has their own big integer}.
+Or more precisely, the ecosystem is already full of solutions
+such as GMP, Boost.Multiprecision, etc. or various internal implementations
+of multiprecision used in cryptographic libraries.
+Even if \tcode{std::big_int} was standardized,
+the ecosystem wouldn't simply drop their own solutions over night.
+
+While that is true,
+these arguments shouldn't stop any proposal on their own.
+Any new feature takes time to adopt,
+and even if it provides a better or more convenient solution to a problem,
+it's unrealistic for everyone to rewrite their existing solutions.
+Similarly, the addition of C++17 \tcode{std::string_view}
+does not mean that everyone would instantly move away
+from existing solutions like \tcode{gsl::string_view},
+but that doesn't make C++17's new type worthless.
+
+\h4{N-to-N conversion problem}
+
+Furthermore, there is an N-to-N conversion problem between all these existing solutions.
+How does one convert \tcode{boost::cpp_int} to e.g. OpenSSL's \tcode{BIGNUM}?
+The most universal form of conversion is to convert to a string and parse as another type,
+but this is comically expensive and involves multiprecision division operations.
+
+\tcode{std::big_int} provides at least an intermediate representation that turns this into a 1-to-N
+conversion problem.
+That is, any existing big integer type can be extended with a constructor taking
+\tcode{const std::big_int&} or \tcode{std::span<const std::uint_multiprecision_t>}
+to facilitate conversions,
+and any library with some existing internal integer type can at least provide new functions
+taking such parameters in its top-level API.
+
+\h3{Inability to change ABI}
+
+Since the standard library is typically kept in an ABI-stable state,
+standardizing \tcode{std::big_int} has the downside of losing some potential flexibility
+compared to third-party libraries.
+A crucial question is thus whether frequent changes to the representation
+of \tcode{std::big_int} are plausible and desirable,
+i.e. whether we forfeit much in this regard.
+
+We believe this is either not the case or can be mitigated with our design,
+for the following reasons:
+\ul{
+  \li{
+    The SOO size can be customized with the \tcode{min_inplace_capacity} parameter,
+    so even if a user realizes that the \tcode{std::big_int} layout is not suitable for them,
+    they can choose another \tcode{std::basic_big_int}.
+  }
+  \li{
+    The overall sign-and-magnitude layout is an industry standard that has not seen
+    meaningful change in the last decades.
+    Most big integer implementations use this layout.
+  }
+  \li{
+    Even more fundamentally,
+    the approach of performing multi-precision operations using limb arrays is an eternal standard.
+    For over 50 years, CPU instructions like \tt{adc} have been specifically designed
+    around performing multi-precision operations word-by-word,
+    and arranging words in an array has always been the obvious layout to make this seamless.
+  }
+  \li{
+    The layout of Boost.Multiprecision's \tcode{boost::cpp_int} has seen little change historically.
+  }
+  \li{
+    For really large integers (multi-limb case),
+    the underlying operations work with \tcode{span<uint_multiprecision_t>},
+    and the details of how those limbs are laid out in the container are somewhat irrelevant.
+  }
+}
+
+In conclusion,
+while the \q{ABI freeze} is a real concern with \tcode{std::big_int},
+the ABI is fairly stable in practice,
+for various innate reasons.
+However, it is plausible that some details of how \ref("#small-object-optimizations")
+are implemented may be imperfect at first,
+and tweaking those details would be difficult in the standard library.
+
+\h3{Header bloat}
+
+The design strategy for \tcode{std::big_int} is to provide supporting utilities as overloads
+of existing standard library functions.
+That is, \tcode{std::to_chars}, \tcode{std::gcd}, etc.
+receive new overloads accepting \tcode{std::big_int}.
+An unfortunate consequence is that this bloats any and all integer utilities with
+\tcode{std::big_int} support,
+including formerly lightweight headers like \header{charconv}.
+
+To be fair:
+\ul{
+  \li{
+    We have never really kept our headers minimal,
+    with some extreme example like including \header{memory} for \tcode{std::to_address}
+    and getting all of \tcode{std::atomic}, \tcode{std::shared_ptr},
+    and \tcode{uninitialized_*} algorithms.
+  }
+  \li{
+    None of this is a problem with \tcode{import std;}.
+  }
+  \li{
+    \header{big_int} is still relatively lightweight.
+    It manages its representation similar to \tcode{std::vector},
+    and the really complicated numeric parts like Toom-Cook multiplications
+    live in the runtime library anyway.
+    The \tcode{constexpr} paths use a much smaller implementation.
+  }
+}
 
 \h2{Implementation experience}
 
