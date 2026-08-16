@@ -732,19 +732,20 @@ which is an unsigned integer type with the following important properties:
 }
 
 In summary, it is the unsigned integer type most suitable for multiprecision.
+Colloquially it is the largest unsigned integer which has arithmetic instructions.
 
 Curiously, there is no existing type with the desired properties
 despite the abundance of type aliases in \header{cstdint} and \header{cstddef}:
 \ul{
   \li{
-    \tcode{std::int_fast32_t} is at least 32 bits wide,
+    \tcode{std::uint_fast32_t} is at least 32 bits wide,
     which means that on 16-bit architectures,
     the multiprecision code would have two layers:
     the emulation of 32-bit integers on 16-bit hardware,
     and then the multiprecision of \tcode{std::big_int} operations.
     This is highly questionable because the point of \tcode{std::uint_multiprecision_t}
     is to have a type whose operations correspond directly to hardware instructions.
-    Also, \tcode{std::int_fast32_t} is not consistently 64 bits wide on targets
+    Also, \tcode{std::uint_fast32_t} is not consistently 64 bits wide on targets
     with 64-bit arithmetic support.
   }
   \li{
@@ -753,7 +754,63 @@ despite the abundance of type aliases in \header{cstdint} and \header{cstddef}:
     it is only 32 bits wide despite WASM32 having 64-bit arithmetic instructions for \tt{i64}.
     It would be extremely wasteful to only use 32-bit operations when 64 bits are available.
   }
+  \li{
+    \tcode{std::uintptr_t} typically has the same problem as \tcode{std::size_t}.
+  }
+  \li{
+    \tcode{unsigned long} is only 32 bits wide on 64-bit Windows.
+  }
+  \li{
+    \tcode{unsigned long long} is always 64 bits wide,
+    even on 32-bit targets.
+  }
 }
+
+\h3{C compatibility}
+
+While \tcode{std::big_int} is not \em{really} C-compatible by virtue of being a class template
+full of C++ features,
+it is still possible to provide a C-compatible interface
+taking \tcode{uint_multiprecision_t[]} and implementing its functionality in C++.
+This relies on the fact that the internal layout of \tcode{std::big_int} is specified in detail.
+
+\Bex{
+One could write a header that is C-interoperable and implemented in C++:
+\cppblock{
+// header.h
+#ifdef __cplusplus
+using std::uint_multiprecision_t;
+#else
+typedef /* ... */ uint_multiprecision_t;
+#endif
+
+#ifdef __cplusplus
+extern "C"
+#endif
+void do_math(const uint_multiprecision_t* data, size_t size);
+}
+\cppblock{
+// source.cpp
+#include "header.h"
+extern "C" void do_math(const uint_multiprecision_t* data, size_t size) {
+  std::big_int x{std::from_range, std::span{data, size}};
+  // do math with x ...
+}
+}
+
+This is analogous to having a C header taking \tcode{const char*}
+and implementing the function internally using \tcode{std::string} in C++.
+}
+
+However, this somewhat assumes that \tcode{std::uint_multiprecision_t}
+also becomes available in C,
+possibly in \header{cstdint} / \header{stdint.h}.
+Not having the type in C means that C users would need to recreate the type choice
+the implementation makes or use implementation-specific definitions like a
+predefined \tcode{__UINT_MULTIPRECISION_T__} macro.
+
+C compatibility ambitions are not in scope for the paper right now,
+but are worth exploring in the future.
 
 \h3{Small object optimizations}
 
