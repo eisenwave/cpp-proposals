@@ -2648,6 +2648,8 @@ namespace std {
     concept \exposid{common-big-int-type-with} = requires { //\serif{ exposition only}
       typename \exposid{common-big-int-type}<T, U>;
     };
+  template<class F, class L, class R>
+    constexpr \exposid{common-big-int-type}<L, R> \exposid{big-int-combine}(F f, L&& x, R&& y);
 
   //\serif{ [big.int.alias], alias \ocode{big_int}}
   using big_int = basic_big_int<\seebelow>;
@@ -3005,6 +3007,61 @@ template<class T>
 whose width is less than or equal to \tcode{inplace_bits},
 and \tcode{false} otherwise.
 }
+
+\itemdecl{
+template<class L, class R, class F>
+  constexpr \exposid{common-big-int-type}<L, R> \exposid{big-int-combine}(F f, L&& x, R&& y);
+}
+
+\itemdescr{
+\pnum
+Let:
+\ul{
+  \li{\tcode{LT} be \tcode{remove_cvref_t<L>}.}
+  \li{\tcode{RT} be \tcode{remove_cvref_t<R>}.}
+  \li{\tcode{T} be a hypothetical signed integer type with infinite range.}
+}
+
+\pnum
+\returns
+A \tcode{basic_big_int} object
+whose integer value is that of \tcode{f(static_cast<T>(x), static_cast<T>(y))} and
+whose allocator is either that of \tcode{x} or \tcode{y},
+chosen as follows:\ul{
+  \li{
+    If exactly one of \tcode{LT} or \tcode{RT} is a specialization of \tcode{basic_big_int},
+    the allocator of its corresponding parameter is used.
+  }
+  \li{
+    Otherwise, if exactly one of \tcode{L} or \tcode{R} is not an lvalue reference,
+    the allocator of its corresponding parameter is used.
+  }
+  \li{
+    Otherwise, it is a property of the implementation which allocator is used.
+  }
+}
+
+\pnum
+\remarks
+If \tcode{LT} is a specialization of \tcode{basic_big_int},
+it is left in an unspecified but valid state.
+If \tcode{RT} is a specialization of \tcode{basic_big_int},
+it is left in an unspecified but valid state.
+\br\note{
+Both operands can be left in an unspecified state.
+}
+}
+}
+
+\editnote{
+The \tcode{\exposid{big-int-combine}} utility is needed for all sorts of operations,
+such as binary operators but also future extensions like \tcode{std::gcd} and \tcode{std::lcm}.
+
+The handling of allocators is similar to
+\tcode{operator+} between \tcode{basic_string}s\iref{string.op.plus}.
+In the case of two rvalue operands,
+both sides are left in a valid but unspecified state,
+which gives the implementation the freedom to choose either allocator.
 }
 
 \h4(show_number=false){[big.int.cons]}
@@ -3737,10 +3794,13 @@ the integer value of \tcode{y} is nonzero.
 \returns
 For each operator function template \tcode{operator@}
 where \tcode{@} is a placeholder for the token in the respective \tcode{operator@},
-a \tcode{basic_big_int} object whose integer value is that of performing
-the operation \tcode{static_cast<T>(x) @ static_cast<T>(y)},
-where \tcode{T} is a hypothetical signed integer type with infinite range.
-\br\note{
+equivalent to:
+\itemdecl{
+return \exposid{big-int-combine}([](auto x_int, auto y_int) {
+  return x_int @ y_int;
+}, std::forward<L>(x), std::forward<R>(y));
+}
+\note{
 Bitwise operations are performed as if on a two's-complement representation, where
 positive numbers have an infinite number of leading zeroes, and
 negative numbers have an infinite number of leading ones.
