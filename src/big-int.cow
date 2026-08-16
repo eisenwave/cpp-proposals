@@ -1712,6 +1712,69 @@ and it provides useful capabilities such as writing generic code that works with
 and distinguishing the infinite-precision integers via
 \tcode{numeric_limits::is_bounded}.
 
+\h4{\tt{std::abs}}
+
+We provide a \tcode{std::abs} overload for \tcode{std::big_int} as follows:
+
+\cppblock{
+template<class T> constexpr remove_cvref_t<T> abs(T&& x)
+  noexcept(noexcept(-std::forward<T>(x)));
+}
+
+\'HORIZONTAL ELLIPSIS' where \tcode{remove_cvref_t<T>}
+is any specialization of \tcode{basic_big_int}.
+
+This is an obviously useful overload that any user would expect to exist.
+
+Header management provides a problem:
+we don't want \header{cstdlib} and \header{cmath} to include \header{big_int},
+and both of these provide the overloads for other integer types.
+To solve this, \header{big_int} provides the overload
+as well as the rest of the overload set
+(not providing the rest of the overload set would risk ODR violations).
+
+\Bnote{
+There is still \em{some} risk of ODR violations if \tcode{std::big_int}
+leaks through some other header,
+the user included only \header{cstdlib} and
+their call to \tcode{std::abs} with \tcode{std::big_int} fails,
+but it's unclear how this problem could arise in practice.
+
+Both \header{numeric} and \header{charconv} properly include \header{big_int},
+so the user gets all the associated functionality.
+}
+
+\Bnote{
+The overload expects a forwarding reference
+because when given an rvalue of type \tcode{basic_big_int},
+allocations can be avoided;
+\tcode{std::abs} simply flips the sign bit of the object,
+enabled by the \ref("#sign-and-magnitude") representation.
+This is also why the \tcode{noexcept} requirement is delegated to \tcode{operator-}.
+By contrast, \tcode{std::abs} on lvalues may require allocation.
+}
+
+\h4{\tt{std::saturating_cast}}
+
+We provide a \tcode{std::saturating_cast} overload for \tcode{std::big_int} as follows:
+
+\cppblock{
+template<class R, size_t b, class L, class A>
+  constexpr R saturating_cast(const basic_big_int<b, L, A>& x) noexcept;
+}
+
+\'HORIZONTAL ELLIPSIS' where \tcode{R} is a signed or unsigned integer type.
+
+This is partially motivated by the fact that Boost's
+\tcode{static_cast} for \tcode{cpp_int} behaves in a saturating
+instead of truncating way.
+While that behavior is useful,
+it would be surprising to C++ users who expect conversions to truncate,
+and it would be inconvenient in generic code that tries to handle
+both \tcode{std::big_int} and fundamental integer types.
+In any case, providing \tcode{std::saturating_cast} provides an easy \q{upgrade path}
+from \tcode{boost::cpp_int} to \tcode{std::big_int}.
+
 \h3{Naming}
 
 The name \tcode{std::big_int} was chosen because it meets user expectations
@@ -2350,6 +2413,25 @@ namespace std {
 }
 }
 
+\h3(show_number=false){[numeric.ops.overview]}
+
+Change the synopsis \eelis{numeric.ops.overview} as follows:
+
+\Bdiff{
+\itemdecl{
+\ins{#include <big_int> //\serif{ see [big.int]}}
+
+//\serif{ mostly freestanding}
+namespace std {
+  \etc
+  template<class T, class U>
+    constexpr T saturating_cast(U x) noexcept;
+\ins{  template<class R, size_t b, class L, class A>
+    constexpr R saturating_cast(const basic_big_int<b, L, A>& x) noexcept;}
+}
+}
+}
+
 \h3(show_number=false){[big.int]}
 
 In Clause \eelis{numerics},
@@ -2379,8 +2461,9 @@ as well as related type aliases.
 #include <compare>
 #include <span>
 
+//\serif{ mostly freestanding}
 namespace std {
-  // alias \ocode{uint_multiprecision_t}
+  //\serif{ alias \ocode{uint_multiprecision_t}}
   using uint_multiprecision_t = \seebelow;
 
   //\serif{ [big.int.class], class template \ocode{basic_big_int}}
@@ -2453,6 +2536,14 @@ namespace std {
       template<char... digits> constexpr big_int \keyword{operator}""N() noexcept(\seebelow);
     }
   }
+
+  //\serif{ \eelis{c.math.abs}, absolute values}
+  constexpr int abs(int j);
+  constexpr long int abs(long int j);
+  constexpr long long int abs(long long int j);
+  constexpr \exposid{floating-point-type} abs(\exposid{floating-point-type} j);     //\serif{ freestanding-deleted}
+  template<class T> constexpr remove_cvref_t<T> abs(T&& x)
+    noexcept(noexcept(-std::forward<T>(x)));
 }
 }
 
@@ -3698,19 +3789,19 @@ template<class T>
 }
 }
 
-\h3(show_number=false){[numeric.abs]}
-
-\editnote{
-\tcode{std::abs} currently sits in \header{cmath} or in \eelis{c.math.abs},
-and it seems a bit absurd to require \header{cmath} to pull in \header{big_int}.
-I think it would make more sense for \header{numeric} to also expose \tcode{std::abs} instead
-(it probably already does in many standard libraries),
-and then extend the overload set:
-}
-
+\h3(show_number=false){[c.math.abs]}
 \cowel_var_set("pnum", 0)
 
-\Bquote{
+Change \eelis{c.math.abs} as follows:
+
+\Bdiff{
+\pnum
+\note{
+The headers \header{cstdlib} \del{and} \ins{,} \header{cmath}\ins{, and \header{big_int}}
+declare the functions described in this subclause\ins{,
+but only \header{big_int} declares the fourth overload of \tcode{abs}}.
+}
+
 \itemdecl{
 constexpr int abs(int j);
 constexpr long int abs(long int j);
@@ -3726,27 +3817,32 @@ constexpr long long int abs(long long int j);
 \remarks
 \etc
 }
-}
 
-\Bins{
 \itemdecl{
-template<class T> constexpr remove_cvref_t<T> abs(T&& x);
+\ins{template<class T> constexpr remove_cvref_t<T> abs(T&& x)
+  noexcept(noexcept(-std::forward<T>(x)));}
 }
 
 \itemdescr{
-\pnum
+\ins{\pnum
 \constraints
-\tcode{remove_cvref_t<T>} is a specialization of \tcode{basic_big_int}\iref{bit.int}.
+\tcode{remove_cvref_t<T>} is a specialization of \tcode{basic_big_int}\iref{bit.int}.}
 
-\pnum
+\ins{\pnum
 \returns
 \tcode{-std::forward<T>(x)} if the integer value of \tcode{x} is negative, and
-\tcode{std::forward<T>(x)} otherwise.
+\tcode{std::forward<T>(x)} otherwise.}
 }
+}
+
+\editnote{
+See also \ref("#std::abs").
 }
 
 \h3(show_number=false){[numeric.sat.cast]}
 \cowel_var_set("pnum", 0)
+
+Change \eelis{numeric.sat.cast} as follows:
 
 \Bquote{
 \itemdecl{
@@ -3788,14 +3884,7 @@ whichever is closer to \math{\mi{v}}.
 }
 
 \editnote{
-This is partially motivated by the fact that Boost's
-\tcode{static_cast} for \tcode{cpp_int} behaves in a saturating
-instead of truncating way.
-While that behavior is useful,
-it would be surprising to C++ users who expect conversions to truncate,
-and it would be inconvenient in generic code.
-
-Therefore, \tcode{saturating_cast} can act as an unsurprising spelling.
+See also \ref("#std::saturating_cast").
 }
 
 \h3(show_number=false){[numeric.conversions]}
