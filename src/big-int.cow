@@ -1679,6 +1679,16 @@ In other words, \tcode{_BitInt}s larger than 64-bit are an optional feature.
 
 \h3{Adjacent library utilities}
 
+There are a number of standard library utilities provided for fundamental integers,
+such as \tcode{std::abs} and \tcode{std::gcd}.
+These are all useful for \tcode{std::big_int} and
+even if we didn't add the overloads in this paper,
+someone would do it sooner or later.
+
+We do not add any new integer utilities such as integer exponentiation or modular arithmetic;
+these can always be added later,
+and are brand-new orthogonal features that equally make sense for fundamental integers.
+
 \h4{Hash support for \tt{std::big_int}}
 
 We also provide \tt{std::hash} support.
@@ -1752,6 +1762,33 @@ allocations can be avoided;
 enabled by the \ref("#sign-and-magnitude") representation.
 This is also why the \tcode{noexcept} requirement is delegated to \tcode{operator-}.
 By contrast, \tcode{std::abs} on lvalues may require allocation.
+}
+
+\h4{\tt{std::gcd}, \tt{std::lcm}, and \tt{std::midpoint}}
+
+We provide \tcode{std::gcd}, \tcode{std::lcm}, and \tcode{std::midpoint}
+overloads for \tcode{std::big_int} as follows:
+
+\cppblock{
+template<class M, class N>
+  constexpr \exposid{common-big-int-type}<M, N> gcd(M&& m, N&& n);
+template<class M, class N>
+  constexpr \exposid{common-big-int-type}<M, N> lcm(M&& m, N&& n);
+template<class M, class N>
+  constexpr \exposid{common-big-int-type}<M, N> midpoint(M&& m, N&& n);
+}
+
+All of these take forwarding references to allow for optimal allocation reuse.
+They work the same way as the binary operators,
+as described in \ref("#optimal-operator-overloads").
+
+\Bnote{
+The \tcode{std::midpoint} overload is notably different from that for fundamental integer types
+because it allows different types for the two arguments.
+This asymmetry is not nice,
+but necessary to allow using \tcode{std::big_int} as the left-hand side
+and e.g. \tcode{_BitInt(8192)} as the right-hand side.
+Forcing both arguments to be of the same type would force a pointless allocation.
 }
 
 \h4{\tt{std::saturating_cast}}
