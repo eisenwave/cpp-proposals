@@ -2751,13 +2751,14 @@ and \tcode{false} otherwise.
 \big_int_h4{Construct/copy/destroy \stable_ref{big.int.cons}}
 
 \itemdecl{
-constexpr basic_big_int() noexcept(noexcept(Allocator()));
+constexpr basic_big_int() noexcept;
 }
 
 \itemdescr{
 \pnum
 \effects
 Initializes the integer value to zero.
+Value-initializes the allocator.
 }
 
 \itemdecl{
@@ -2813,7 +2814,8 @@ template<\exposid{arbitrary-arithmetic-type} T>
 This constraint ensures that there is no ambiguity with the copy constructor
 or move constructor.
 Also note that we support construction from \tcode{basic_big_int}
-with other allocators.
+with other allocators
+or with the same allocator but different \tcode{min_inplace_capacity}.
 }
 
 \pnum
@@ -3132,6 +3134,8 @@ constexpr basic_big_int& operator=(const basic_big_int& x);
 \pnum
 \effects
 Sets the integer value to that of \tcode{x}.
+If \tcode{allocator_type::propagate_on_container_copy_assignment::value} is \tcode{true},
+assigns \tcode{x.get_allocator()} to the allocator of this object.
 
 \pnum
 \returns
@@ -3146,6 +3150,8 @@ constexpr basic_big_int& operator=(basic_big_int&& x) noexcept;
 \pnum
 \effects
 Sets the integer value to that of \tcode{x}.
+If \tcode{allocator_type::propagate_on_container_move_assignment::value} is \tcode{true},
+assigns \tcode{x.get_allocator()} to the allocator of this object.
 
 \pnum
 \returns
@@ -3232,8 +3238,8 @@ constexpr void swap(basic_big_int& x)
 \pnum
 \effects
 Exchanges the integer values of this object and of \tcode{x}.
-
-\Btodo{What does this do for allocators?}
+If \tcode{allocator_type::propagate_on_container_swap::value} is \tcode{true},
+exchanges \tcode{x.get_allocator()} and the allocator of this object.
 }
 }
 
