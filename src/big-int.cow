@@ -285,26 +285,88 @@ Otherwise, the results would be inflated by e.g. 107M files using \code("py"){in
 
 \h2{Motivation}
 
+\h3{Use cases}
+
 In terms of utility,
-\tcode{std::big_int} has two main use case:
+\tcode{std::big_int} use cases can be classified into two buckets:
 \ol{
   \li{
     The use case where integers are \dfn{potentially big}.
-    For example,
-    \tcode{std::big_int} could be the result of parsing an integer in a config file,
-    and while the numbers are likely small in practice,
-    it is \em{theoretically} possible that the user puts a huge value into the config file.
-    \tcode{std::big_int} is useful in many scenarios because it eliminates the need
-    for range checks,
-    and it eliminates the possibility of undefined behavior through signed integer overflow.
-    One could also describe this as the \q{correctness use case}.
+    That is, the numbers involved are typically still small,
+    but since no fixed-width integers are used,
+    they might sometimes be big.
   }
   \li{
     The use case where integers are \dfn{actually big}.
-    For example, when performing computations in cryptography, statistics, etc.
-    where the numbers involved simply don't fit into 64-bit integers.
   }
 }
+
+\tcode{std::big_int} has many use cases,
+falling into one of those buckets:
+
+\style{
+#use-cases-table td {
+  border-top: 1px solid var(--border-color);
+}
+}
+
+\table(id="use-cases-table"){
+  \tr{
+    \th{Use case}
+    \th{Goal}
+    \th{Bucket}
+  }
+  \tr{
+    \td{Serialization}
+    \td{
+      JSON, YAML, etc. support integers without any upper bound set by the markup format,
+      and large integers need to be represented somehow.
+    }
+    \td(rowspan="3"){Potentially big}
+  }
+  \tr{
+    \td{Safety}
+    \td{
+      Avoiding UB or correctness issues from integer overflow,
+      at some runtime cost.
+    }
+  }
+  \tr{
+    \td{Scripting engines}
+    \td{
+      Scripting languages often support infinite-precision integers
+      (e.g. Python's \tcode{int}),
+      and their engines needs to represent those.
+    }
+  }
+  \tr{
+    \td{Statistics/combinatorics}
+    \td{
+      Large factorials require much wider integers than 64-bit.
+    }
+    \td(rowspan="3"){Actually big}
+  }
+  \tr{
+    \td{Scientific computing}
+    \td{
+      Binomial coefficients,
+      primality tests,
+      integer relation algorithms,
+      partition numbers,
+      and many more
+      may be be computed with thousands of bits.
+    }
+  }
+  \tr{
+    \td{Cryptography}
+    \td{
+      Many cryptographic algorithms such as RSA require calculations with
+      hundreds or thousands of bits.
+    }
+  }
+}
+
+\: NOTE: Make sure to keep this list in sync with #many-trade-offs
 
 \h3{\tcode{std::big_int} is a vocabulary type}
 
