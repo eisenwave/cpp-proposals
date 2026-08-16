@@ -387,8 +387,116 @@ A single code base may depend on different libraries that all interact with \tco
   \li{
     The results are then stored by another library that serializes \tcode{std:big_int}
     to e.g. CSV.
+    Alternatively, the results are stored in a relational database,
+    using a C++ API that uses \tcode{std::big_int} for big integer columns in a table.
   }
 }
+}
+
+\Bex{
+In Java,
+a variety of cryptographic vocabulary types are built on top of \tcode{BigInteger},
+such as \tcode{RSAPublicKey} and \tcode{RSAPrivateKey}.
+These higher-level vocabulary types are then used in various other parts of the
+networking and cryptography stack,
+like the TLS implementation, Java Key Stores, etc.
+
+This is also a plausible use case in C++.
+While RSA calculations may internally use fixed-width integers,
+\tcode{std::big_int} simplifies top-level interfaces by \q{type-erasing} the width.
+That is, the integer type is the same,
+regardless of the RSA key size or other constants.
+}
+
+\Bex{
+Similar to Java's \tcode{BigDecimal},
+an infinite-precision decimal floating-point type can be formed as follows:
+\cppblock{
+struct big_decimal {
+  std::big_int unscaled;
+  int scale; // exponent for multiplication with base 10
+};
+}
+The value represented here is \tcode{(unscaled * pow(10, scale))}.
+
+Such a type would appear at a library boundary for communicating with a PostgreSQL database,
+which support \tcode{decimal} and \tcode{numeric} among its
+\ref("https://www.postgresql.org/docs/current/datatype-numeric.html"){Numeric Types}.
+Note that PostgreSQL supports potentially huge decimal types,
+like \q{up to 131072 before the decimal point},
+so even with C23 types like \tcode{_Decimal128},
+those could not be represented.
+These types map onto the \tcode{java.math.BigDecimal} type in Java libraries.
+}
+
+\Bex{
+Almost all relational databases support some kind of infinite-precision numeric type
+(subject to implementation limits),
+be that \q{big integer} or \q{big decimal}.
+The workaround for C's and C++'s lack of infinite-precision types in libpq
+(the PostgreSQL C library)
+is to either
+\ul{
+  \li{
+    represent integers and decimal numbers as strings, or
+  }
+  \li{
+    convert to libpq's binary numeric format
+    (and the conversion from e.g. \tcode{boost::cpp_int} to this format is fairly complicated).
+  }
+}
+In Java, such interfaces are obvious and ergonomic by comparison,
+operating on \tcode{java.math.BigInteger} or \tcode{java.math.BigDecimal}.
+This also makes it possible to build higher-level database abstractions
+like the \ref("https://docs.oracle.com/javase/8/docs/technotes/guides/jdbc/"){JDBC API}
+on top of concrete \q{database drivers}
+(for Microsoft SQL, PostgreSQL, MySQL, H2, etc.)
+without converting big numeric types at each layer.
+
+By comparison, if someone wanted to create a high-level, generic API for databases in C++,
+they would not have a common vocabulary type for big integers that can be passed through
+the various API layers unchanged.
+\tcode{std::big_int} is that crucial missing type.
+}
+
+\Bex{
+Symbolic math libraries typically create their own \q{big integer} class,
+possibly as a wrapper around gmp.
+For example, there is
+\ref("https://symengine.org/symengine/classSymEngine_1_1Integer.html"){SymEngine::Integer},
+\ref("https://www.ginac.de/reference/classGiNaC_1_1numeric.html"){GiNaC::numeric}, etc.
+This is also typically the case for scripting language engines if the language
+has a big integer type (like Python or JavaScript).
+This ultimately means that a single application can end up with several \q{big integer}
+implementations at the same time to implement those wrappers:
+some \q{manual},
+some using a statically linked \tt{gmp},
+some using Boost.Multiprecision,
+etc.
+
+\tcode{std::big_int} can solve that problem by turning all these fragmented wrappers
+into wrappers around a single standard type,
+or by removing the wrappers alltogether.
+Libraries can simply use \tcode{std::big_int} directly
+just like they use \tcode{std::string} directly.
+}
+
+\Bex{
+GUI toolkits in C++ typically don't bother with direct support for big integers,
+even though the runtime cost of using such integers
+compared to rendering the GUI is neglegible.
+For example,
+GTK's \ref("https://docs.gtk.org/gtk3/class.SpinButton.html"){\tt{SpinButton}}
+takes \tcode{double} inputs and
+Qt's \ref("https://doc.qt.io/qt-6/qspinbox.html"){\tt{QSpinBox}}
+uses \tcode{int}.
+
+Such limitations are arbitrary and unnecessary when infinite-precision numeric types
+are available for use in GUIs.
+While the internal editing state of a widget needs to be represented as text
+(to represent partial inputs like \q{\tt{123.}} before the user types the fractional part),
+input and output of a \tcode{big_int} or \tcode{big_decimal} value is clearly useful
+for number fields.
 }
 
 In some sense,
@@ -398,20 +506,29 @@ because there is no convenient fallback solution.
 If those containers were not available,
 users could still communicate at library boundaries by using pointers and sizes.
 Strings can be passed to other libraries as a \tcode{char*} (and maybe \tcode{size_t}),
-so while \tcode{std::string} is an important container type,
+so while \tcode{std::string} is an important container type
+and helps with managing allocation ownership,
 it is arguably gratuitous as a vocabulary type.
-By comparison,
+Similarly, if \tcode{std::span} and \tcode{std::string_view} were not available,
+they could easily be replaced with the pointer and the size that they wrap.
+
+By comparison to contiguous containers and views,
 there is no widely established convention for passing large integers between libraries in C++,
-and \tcode{std::big_int} could lay that foundation.
+other than using their string representation,
+which comes at significant cost.
+Consequently, we see a fragmented ecosystem in C++,
+where every logging, database, cryptography, and serialization library
+has its own solution to passing big integers and often its own types.
+\tcode{std::big_int} could lay the foundation for passing big integers between libraries
+just as easily as in other languages.
 
 \Bnote{
-Sometimes (such as in the case of loading JSON configs),
-large integers can be passed as decimal digit strings.
-However, this is really just a form of delaying deserialization
-in hopes that the library consumer can do it.
-
-It is not a good way of passing huge integers between libraries in general
-because conversion to/from strings for huge integers is very expensive.
+Even though \tcode{std::big_int} is not directly C-compatible,
+one could pair a \tcode{uint_multiprecision_t*} and \tcode{size_t},
+where the passed \q{limb array} has the same layout as \tcode{std::big_int::representation}.
+This means that such a C++ type might establish a valuable convention
+for passing big integers in C libraries,
+even if not directly available.
 }
 
 \h3{\tcode{std::big_int} for convenience and correctness}
