@@ -23,7 +23,7 @@ h1 {
 \wg21_head(title={\tcode{std::big_int}}){
 \dl{
   \dt{Document number:} \dd{\docnum{D4444R0}}
-  \dt{Date:}            \dd{\tt{2026-08-16}}
+  \dt{Date:}            \dd{\tt{2026-08-17}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -4086,6 +4086,8 @@ the size of which can be approximated using \tcode{sizeof...(digits)}.
 
 \h3(show_number=false){[charconv]}
 
+\h4(show_number=false){[charconv.syn]}
+
 Change the synopsis \eelis{charconv.syn} as follows:
 
 \Bdiff{
@@ -4096,7 +4098,7 @@ namespace std {
   \etc
 
   constexpr to_chars_result to_chars(char* first, char* last,           //\serif{ freestanding}
-                   \exposid{integer-type} value, int base = 10);
+                                     \exposid{integer-type} value, int base = 10);
 \ins{  template<size_t b, class L, class A>
     constexpr to_chars_result to_chars(char* first, char* last,
                                        const basic_big_int<b, L, A>& value, int base = 10);}
@@ -4112,11 +4114,94 @@ namespace std {
                                            basic_big_int<b, L, A>& value, int base = 10);}
 
   from_chars_result from_chars(const char* first, const char* last,     //\serif{ freestanding-deleted}
-                               floating-point-type& value,
+                               \exposid{floating-point-type}& value,
                                chars_format fmt = chars_format::general);
 }
 
 }
+}
+
+\h4(show_number=false){[charconv.to.chars]}
+\cowel_var_set("pnum", 3)
+
+Change \eelis{charconv.to.chars} as follows:
+
+\Bdiff{
+\etc
+\itemdecl{
+constexpr to_chars_result to_chars(char* first, char* last, \exposid{integer-type} value, int base = 10);
+\ins{template<size_t b, class L, class A>
+  constexpr to_chars_result to_chars(char* first, char* last,
+                                     const basic_big_int<b, L, A>& value, int base = 10);}
+}
+
+\itemdescr{
+\pnum
+\expects
+\tcode{base} has a value between \tcode{2} and \tcode{36} (inclusive).
+
+\pnum
+\effects
+The \ins{integer} value\ins{\iref{big.int.class}} of \tcode{value}
+is converted to a string of digits in the given base
+(with no redundant leading zeroes).
+Digits in the range 10..35 (inclusive) are represented as lowercase characters \tt{a..z}.
+If \tcode{value} is less than zero,
+the representation starts with \tcode{'-'}.
+
+\pnum
+\throws
+Nothing.
+}
+}
+
+\editnote{
+\ref("P4168R0") overhauls this specification.
+}
+
+\h4(show_number=false){[charconv.from.chars]}
+\cowel_var_set("pnum", 1)
+
+Change \eelis{charconv.from.chars} as follows:
+
+\Bdiff{
+\etc
+\itemdecl{
+constexpr from_chars_result from_chars(const char* first, const char* last,
+                                       \exposid{integer-type}& value, int base = 10);
+\ins{template<size_t b, class L, class A>
+  constexpr from_chars_result from_chars(const char* first, const char* last,
+                                         basic_big_int<b, L, A>& value, int base = 10);}
+}
+
+\itemdescr{
+\pnum
+\expects
+\tcode{base} has a value between \tcode{2} and \tcode{36} (inclusive).
+
+\pnum
+\effects
+The pattern is the expected form of the subject sequence in the \tcode{"C"} locale
+for the given nonzero base,
+as described for \tcode{strtol}, except that
+no \tcode{"0b"} or \tcode{"0B"} prefix shall appear if the value of base is 2,
+no \tcode{"0x"} or \tcode{"0X"} prefix shall appear if the value of base is 16, and
+except that \tcode{'-'} is the only sign that may appear,
+and only if value has a signed type.
+
+\pnum
+\throws
+Nothing.
+}
+}
+
+\editnote{
+Notice that there exists no wording that describes how the character sequence
+is interpreted as an integer value
+(neither for \tcode{\exposid{integer-type}} nor for \tcode{basic_big_int}).
+This pre-existing defect is why the \effects element is unchanged.
+
+\ref("P4168R0") overhauls this specification.
 }
 
 \h3(show_number=false){[c.math.abs]}
@@ -4228,6 +4313,14 @@ See also \ref("#std::abs").
   author = "Jan Schultke",
   link = "https://wg21.link/p3724r3",
   long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3724r3.html",
+)\
+\bib(
+  id = "P4168R0",
+  title = "Fix defects in floating-point std::from_chars(LWG3081, LWG3082, LWG3456)",
+  date = "2026-04-05",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p4168r0",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4168r0.html",
 )\
 \bib(
   id = "Reference-Impl",
