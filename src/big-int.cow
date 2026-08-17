@@ -1073,6 +1073,81 @@ By comparison, a \tcode{std::big_int} design with unique ownership
 avoids a lot of problems because it is statically known that it has unique ownership;
 no runtime check is needed.
 
+\h4{\tt{std::big_int} is not a container}
+
+When looking at the API of \tcode{std::big_int},
+one may be tempted to think of it as a contiguous container and even to define it as such.
+That is, rather than having \tcode{representation()},
+\tcode{std::big_int} could have \tcode{begin()} and \tcode{end()} iterators, etc.
+
+There are a few problems with this approach:
+\ul{
+  \li{
+    It would be surprising for \tcode{std::big_int} to simultaneously
+    act like an integer and a container.
+  }
+  \li{
+    Code that calls \tcode{size()} and other member functions
+    would always be interacting with \tcode{std::big_int} at the low-level representation level,
+    which is not what most users should do.
+    In our design, \tcode{std::big_int::size()} yields the size in bits,
+    which abstracts from the width of \tcode{std::uint_multiprecision_t}.
+  }
+  \li{
+    In our design, there is always at least one limb.
+    This is in part because with small object optimization,
+    there is always at least one limb of in-place storage anyway.
+    This is convenient for anyone relying on \tcode{representation().front()} always being valid,
+    but makes \tcode{clear()} and \tcode{resize()} weird since it's not actually possible
+    to downsize the container to zero limbs.
+  }
+  \li{
+    In our design, code that iterates over the representation does so using
+    \tcode{for (auto limb : x.representation())}, which makes it abundantly clear
+    that we are not iterating over, say, each bit.
+    This clarity would be lost if we iterated directly over \tcode{x}.
+  }
+  \li{
+    If \tcode{std::big_int} were a sequence container,
+    it should presumably have \tcode{push_back}, \tcode{append}, etc.
+    However, it's inherently confusing what \q{back} refers to in this context:
+    in English, numbers are written from most significant to least significant,
+    so the \q{back} is the least significant digit,
+    but in our \tcode{std::big_int} representation,
+    the \q{back} is the most significant limb.
+    By contrast, it is clear that \tcode{representation().back()} is the most significant limb
+    if the user knows how the representation is structured.
+  }
+  \li{
+    Because the sign in the representation is separate from the limbs,
+    it doesn't neatly fit into the mental model of a container.
+    If there was a \tcode{assign} function that assigns a range of limbs,
+    it couldn't assign the sign bit, so it would be a partial assignment
+    and should be called \tcode{assign_magnitude} or \tcode{assign_representation}.
+    However, if we need to clarify what we're assigning,
+    this indicates that the idea of \tcode{std::big_int} is simply a container is unnatural.
+    We would also need to check whether the call to \tcode{assign} generated a negative zero.
+  }
+  \li{
+    There is a difference in terminology between \tcode{std::big_int} and a container.
+    For example, reducing the size of an integer is called \q{truncating},
+    but the container function is called \tcode{resize()}.
+    Similarly, setting to zero should be spelled \tcode{set_zero()} or \tcode{= 0},
+    not \tcode{clear()}.
+  }
+}
+
+That being said,
+\tcode{std::big_int} still has an API that is similar to a contiguous container
+for the purpose of familiarity.
+This includes functions such as \tcode{shrink_to_fit()},
+\tcode{get_allocator()},
+\tcode{size()} (in bits),
+\tcode{reserve()} (amount of bits),
+etc.
+These are mostly about allocation management,
+not about iterating over the representation.
+
 \h3{\tt{constexpr} support}
 
 \tcode{std::big_int} also provides \tcode{constexpr} operations,

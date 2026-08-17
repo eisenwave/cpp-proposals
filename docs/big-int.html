@@ -1655,6 +1655,8 @@ with elastic operations.
 <a href=#access-to-the-underlying-representation><h4>Access to the underlying representation</h4></a>
 <div class=toc-num data-level=4>3.2.6</div>
 <a href=#why-not-use-reference-counting><h4>Why not use reference counting?</h4></a>
+<div class=toc-num data-level=4>3.2.7</div>
+<a href=#std::big_int-is-not-a-container><h4><tt->std::big_int</tt-> is not a container</h4></a>
 <div class=toc-num data-level=3>3.3</div>
 <a href=#constexpr-support><h3><tt->constexpr</tt-> support</h3></a>
 <div class=toc-num data-level=4>3.3.1</div>
@@ -2819,6 +2821,81 @@ otherwise, <code><h- data-h=sym_op>-</h-><h- data-h=name>x</h-></code> performs 
 <p>By comparison, a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> design with unique ownership
 avoids a lot of problems because it is statically known that it has unique ownership;
 no runtime check is needed.
+</p>
+<h4 id=std::big_int-is-not-a-container><a class=para href=#std::big_int-is-not-a-container></a>3.2.7. <tt->std::big_int</tt-> is not a container</h4>
+
+<p>When looking at the API of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
+one may be tempted to think of it as a contiguous container and even to define it as such.
+That is, rather than having <code><h- data-h=name>representation</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>,
+<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> could have <code><h- data-h=name>begin</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> and <code><h- data-h=name>end</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> iterators, etc.
+</p>
+<p>There are a few problems with this approach:
+</p><ul>
+  <li>
+    It would be surprising for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> to simultaneously
+    act like an integer and a container.
+  </li>
+  <li>
+    Code that calls <code><h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> and other member functions
+    would always be interacting with <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> at the low-level representation level,
+    which is not what most users should do.
+    In our design, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-><h- data-h=sym_op>::</h-><h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> yields the size in bits,
+    which abstracts from the width of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint_multiprecision_t</h-></code>.
+  </li>
+  <li>
+    In our design, there is always at least one limb.
+    This is in part because with small object optimization,
+    there is always at least one limb of in-place storage anyway.
+    This is convenient for anyone relying on <code><h- data-h=name>representation</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>.</h-><h- data-h=name>front</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> always being valid,
+    but makes <code><h- data-h=name>clear</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> and <code><h- data-h=name>resize</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> weird since it's not actually possible
+    to downsize the container to zero limbs.
+  </li>
+  <li>
+    In our design, code that iterates over the representation does so using
+    <code><h- data-h=kw_ctrl>for</h-> <h- data-h=sym_par>(</h-><h- data-h=kw>auto</h-> <h- data-h=name>limb</h-> <h- data-h=sym_punc>:</h-> <h- data-h=name>x</h-><h- data-h=sym_op>.</h-><h- data-h=name>representation</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code>, which makes it abundantly clear
+    that we are not iterating over, say, each bit.
+    This clarity would be lost if we iterated directly over <code><h- data-h=name>x</h-></code>.
+  </li>
+  <li>
+    If <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> were a sequence container,
+    it should presumably have <code><h- data-h=name>push_back</h-></code>, <code><h- data-h=name>append</h-></code>, etc.
+    However, it's inherently confusing what <q>back</q> refers to in this context:
+    in English, numbers are written from most significant to least significant,
+    so the <q>back</q> is the least significant digit,
+    but in our <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> representation,
+    the <q>back</q> is the most significant limb.
+    By contrast, it is clear that <code><h- data-h=name>representation</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>.</h-><h- data-h=name>back</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> is the most significant limb
+    if the user knows how the representation is structured.
+  </li>
+  <li>
+    Because the sign in the representation is separate from the limbs,
+    it doesn't neatly fit into the mental model of a container.
+    If there was a <code><h- data-h=name>assign</h-></code> function that assigns a range of limbs,
+    it couldn't assign the sign bit, so it would be a partial assignment
+    and should be called <code><h- data-h=name>assign_magnitude</h-></code> or <code><h- data-h=name>assign_representation</h-></code>.
+    However, if we need to clarify what we're assigning,
+    this indicates that the idea of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is simply a container is unnatural.
+    We would also need to check whether the call to <code><h- data-h=name>assign</h-></code> generated a negative zero.
+  </li>
+  <li>
+    There is a difference in terminology between <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> and a container.
+    For example, reducing the size of an integer is called <q>truncating</q>,
+    but the container function is called <code><h- data-h=name>resize</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>.
+    Similarly, setting to zero should be spelled <code><h- data-h=name>set_zero</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> or <code><h- data-h=sym_op>=</h-> <h- data-h=num>0</h-></code>,
+    not <code><h- data-h=name>clear</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>.
+  </li>
+</ul>
+
+<p>That being said,
+<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> still has an API that is similar to a contiguous container
+for the purpose of familiarity.
+This includes functions such as <code><h- data-h=name>shrink_to_fit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>,
+<code><h- data-h=name>get_allocator</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>,
+<code><h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> (in bits),
+<code><h- data-h=name>reserve</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> (amount of bits),
+etc.
+These are mostly about allocation management,
+not about iterating over the representation.
 </p>
 <h3 id=constexpr-support><a class=para href=#constexpr-support></a>3.3. <tt->constexpr</tt-> support</h3>
 
