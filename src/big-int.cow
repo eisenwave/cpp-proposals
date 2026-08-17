@@ -1724,15 +1724,14 @@ and distinguishing the infinite-precision integers via
 
 \h4{\tt{std::abs}}
 
-We provide a \tcode{std::abs} overload for \tcode{std::big_int} as follows:
+We provide \tcode{std::abs} overloads for \tcode{std::big_int} as follows:
 
 \cppblock{
-template<class T> constexpr remove_cvref_t<T> abs(T&& x)
-  noexcept(noexcept(-std::forward<T>(x)));
+template<size_t b, class L, class A>
+  constexpr basic_big_int<b, L, A> abs(const basic_big_int<b, L, A>& j);
+template<size_t b, class L, class A>
+  constexpr basic_big_int<b, L, A> abs(basic_big_int<b, L, A>&& j) noexcept;
 }
-
-\'HORIZONTAL ELLIPSIS' where \tcode{remove_cvref_t<T>}
-is any specialization of \tcode{basic_big_int}.
 
 This is an obviously useful overload that any user would expect to exist.
 
@@ -1755,13 +1754,11 @@ so the user gets all the associated functionality.
 }
 
 \Bnote{
-The overload expects a forwarding reference
+There is an rvalue overload
 because when given an rvalue of type \tcode{basic_big_int},
 allocations can be avoided;
-\tcode{std::abs} simply flips the sign bit of the object,
+\tcode{std::abs} simply flips the sign bit of the container,
 enabled by the \ref("#sign-and-magnitude") representation.
-This is also why the \tcode{noexcept} requirement is delegated to \tcode{operator-}.
-By contrast, \tcode{std::abs} on lvalues may require allocation.
 }
 
 \h4{\tt{std::gcd}, \tt{std::lcm}, and \tt{std::midpoint}}
@@ -2988,8 +2985,10 @@ namespace std {
   constexpr long int abs(long int j);
   constexpr long long int abs(long long int j);
   constexpr \exposid{floating-point-type} abs(\exposid{floating-point-type} j);     //\serif{ freestanding-deleted}
-  template<class T> constexpr remove_cvref_t<T> abs(T&& x)
-    noexcept(noexcept(-std::forward<T>(x)));
+  template<size_t b, class L, class A>
+    constexpr basic_big_int<b, L, A> abs(const basic_big_int<b, L, A>& j);
+  template<size_t b, class L, class A>
+    constexpr basic_big_int<b, L, A> abs(basic_big_int<b, L, A>&& j) noexcept;
 }
 }
 
@@ -4258,10 +4257,10 @@ namespace std {
 
   constexpr to_chars_result to_chars(char* first, char* last,           //\serif{ freestanding}
                                      \exposid{integer-type} value, int base = 10);
-\ins{  template<size_t b, class L, class A>
+\ins{  template<size_t b, class L, class A>                                  //\serif{ freestanding}
     constexpr to_chars_result to_chars(char* first, char* last,
                                        const basic_big_int<b, L, A>& value, int base = 10);
-  template<size_t b, class L, class A>
+  template<size_t b, class L, class A>                                  //\serif{ freestanding}
     constexpr to_chars_result to_chars(char* first, char* last,
                                        basic_big_int<b, L, A>&& value, int base = 10);}
   to_chars_result to_chars(char* first, char* last,                     //\serif{ freestanding}
@@ -4271,7 +4270,7 @@ namespace std {
 
   constexpr from_chars_result from_chars(const char* first, const char* last,   //\serif{ freestanding}
                      \exposid{integer-type}& value, int base = 10);
-\ins{  template<size_t b, class L, class A>
+\ins{  template<size_t b, class L, class A>                                          //\serif{ freestanding}
     constexpr from_chars_result from_chars(const char* first, const char* last,
                                            basic_big_int<b, L, A>& value, int base = 10);}
 
@@ -4320,8 +4319,14 @@ the representation starts with \tcode{'-'}.
 
 \pnum
 \throws
-Nothing \ins{for functions with a parameter of type \tcode{\exposid{integer-value}}
-or if \tcode{base} is a power of two}.
+Nothing \ins{for functions with a parameter of type \tcode{\exposid{integer-value}}.
+The overloads for \tcode{basic_big_int} may throw exceptions during allocation
+unless \tcode{base} is a power of two}.
+
+\ins{\pnum
+\remarks
+If \tcode{base} is a power of two,
+no allocation takes place.}
 }
 }
 
@@ -4361,7 +4366,13 @@ and only if value has a signed type.
 
 \pnum
 \throws
-Nothing \ins{for functions with a parameter of type \tcode{\exposid{integer-value}&}}.
+Nothing \ins{for overloads with a parameter of type \tcode{\exposid{integer-value}&}.
+The overload for \tcode{basic_big_int} may throw exceptions during allocation}.
+
+\ins{\pnum
+\remarks
+If \tcode{base} is a power of two,
+at most one allocation takes place.}
 }
 }
 
@@ -4384,7 +4395,7 @@ Change \eelis{c.math.abs} as follows:
 \note{
 The headers \header{cstdlib} \del{and} \ins{,} \header{cmath}\ins{, and \header{big_int}}
 declare the functions described in this subclause\ins{,
-but only \header{big_int} declares the fourth overload of \tcode{abs}}.
+but only \header{big_int} declares the overloads for \tcode{basic_big_int}}.
 }
 
 \itemdecl{
@@ -4404,19 +4415,25 @@ constexpr long long int abs(long long int j);
 }
 
 \itemdecl{
-\ins{template<class T> constexpr remove_cvref_t<T> abs(T&& x)
-  noexcept(noexcept(-std::forward<T>(x)));}
+\ins{template<size_t b, class L, class A>
+  constexpr basic_big_int<b, L, A> abs(const basic_big_int<b, L, A>& j);}
 }
 
 \itemdescr{
 \ins{\pnum
-\constraints
-\tcode{remove_cvref_t<T>} is a specialization of \tcode{basic_big_int}\iref{bit.int}.}
+\returns
+\tcode{j < 0 ? -j : j}.}
+}
 
+\itemdecl{
+\ins{template<size_t b, class L, class A>
+  constexpr basic_big_int<b, L, A> abs(basic_big_int<b, L, A>&& j) noexcept;}
+}
+
+\itemdescr{
 \ins{\pnum
 \returns
-\tcode{-std::forward<T>(x)} if the integer value of \tcode{x} is negative, and
-\tcode{std::forward<T>(x)} otherwise.}
+\tcode{j < 0 ? -std::move(j) : std::move(j)}.}
 }
 }
 
