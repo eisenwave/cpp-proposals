@@ -1812,6 +1812,36 @@ both \tcode{std::big_int} and fundamental integer types.
 In any case, providing \tcode{std::saturating_cast} provides an easy \q{upgrade path}
 from \tcode{boost::cpp_int} to \tcode{std::big_int}.
 
+\h4{\tt{std::to_chars} and \tcode{std::from_chars}}
+
+We also provide \tcode{std::to_chars} and \tcode{std::from_chars}
+overloads for \tcode{std::big_int}:
+
+\cppblock{
+template<class T>
+  constexpr to_chars_result to_chars(char* first, char* last, T&& value, int base = 10);
+
+template<size_t b, class L, class A>
+  constexpr from_chars_result from_chars(const char* first, const char* last,
+                                         basic_big_int<b, L, A>& value, int base = 10);
+}
+
+These are clearly useful.
+
+A notable quirk is that both \tcode{std::to_chars} and \tcode{std::from_chars}
+can potentially throw because they internally do arbitrary-precision arithmetic.
+This is also why \tcode{std::to_chars} takes a forwarding reference;
+it allows reusing the allocation of \tcode{value} for intermediate calculations.
+However, \tcode{std::to_chars} should be guaranteed not to throw if \tcode{base} is a power of two
+because converting to base-two digits can be performed limb-by-limb in a single pass.
+
+One could argue that providing \tcode{std::to_chars} is weird
+because it operates on a fixed-size buffer,
+while \tcode{std::big_int} is dynamically sized.
+However, most \tcode{std::big_int} objects in practice could easily fit into a buffer
+of a few hundred or thousand characters.
+If so, the user should not be forced to go through \tcode{std::format_to} to avoid an allocation.
+
 \h3{Naming}
 
 The name \tcode{std::big_int} was chosen because it meets user expectations
@@ -4099,9 +4129,8 @@ namespace std {
 
   constexpr to_chars_result to_chars(char* first, char* last,           //\serif{ freestanding}
                                      \exposid{integer-type} value, int base = 10);
-\ins{  template<size_t b, class L, class A>
-    constexpr to_chars_result to_chars(char* first, char* last,
-                                       const basic_big_int<b, L, A>& value, int base = 10);}
+\ins{  template<class T>
+    constexpr to_chars_result to_chars(char* first, char* last, T&&& value, int base = 10);}
   to_chars_result to_chars(char* first, char* last,                     //\serif{ freestanding}
                            bool value, int base = 10) = delete;
 
@@ -4130,12 +4159,15 @@ Change \eelis{charconv.to.chars} as follows:
 \etc
 \itemdecl{
 constexpr to_chars_result to_chars(char* first, char* last, \exposid{integer-type} value, int base = 10);
-\ins{template<size_t b, class L, class A>
-  constexpr to_chars_result to_chars(char* first, char* last,
-                                     const basic_big_int<b, L, A>& value, int base = 10);}
+\ins{template<class T>
+  constexpr to_chars_result to_chars(char* first, char* last, T&& value, int base = 10);}
 }
 
 \itemdescr{
+\pnum
+\constraints
+\tcode{remove_cvref_t<T>} is a specialization of \tcode{basic_big_int}.
+
 \pnum
 \expects
 \tcode{base} has a value between \tcode{2} and \tcode{36} (inclusive).
@@ -4151,7 +4183,8 @@ the representation starts with \tcode{'-'}.
 
 \pnum
 \throws
-Nothing.
+Nothing \ins{for functions with a parameter of type \tcode{\exposid{integer-value}}
+or if \tcode{base} is a power of two}.
 }
 }
 
@@ -4191,7 +4224,7 @@ and only if value has a signed type.
 
 \pnum
 \throws
-Nothing.
+Nothing \ins{for functions with a parameter of type \tcode{\exposid{integer-value}&}}.
 }
 }
 

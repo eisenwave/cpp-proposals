@@ -1699,6 +1699,8 @@ with elastic operations.
 <a href=#std::gcd-std::lcm-and-std::midpoint><h4><tt->std::gcd</tt->, <tt->std::lcm</tt->, and <tt->std::midpoint</tt-></h4></a>
 <div class=toc-num data-level=4>3.9.5</div>
 <a href=#std::saturating_cast><h4><tt->std::saturating_cast</tt-></h4></a>
+<div class=toc-num data-level=4>3.9.6</div>
+<a href=#std::to_chars-and-std::from_chars><h4><tt->std::to_chars</tt-> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>from_chars</h-></code></h4></a>
 <div class=toc-num data-level=3>3.10</div>
 <a href=#naming><h3>Naming</h3></a>
 <div class=toc-num data-level=3>3.11</div>
@@ -3514,6 +3516,34 @@ and it would be inconvenient in generic code that tries to handle
 both <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> and fundamental integer types.
 In any case, providing <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>saturating_cast</h-></code> provides an easy <q>upgrade path</q>
 from <code><h- data-h=name>boost</h-><h- data-h=sym_op>::</h-><h- data-h=name>cpp_int</h-></code> to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
+</p>
+<h4 id=std::to_chars-and-std::from_chars><a class=para href=#std::to_chars-and-std::from_chars></a>3.9.6. <tt->std::to_chars</tt-> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>from_chars</h-></code></h4>
+
+<p>We also provide <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_chars</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>from_chars</h-></code>
+overloads for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>:
+</p>
+<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>from_chars_result</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->
+                                         <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>These are clearly useful.
+</p>
+<p>A notable quirk is that both <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_chars</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>from_chars</h-></code>
+can potentially throw because they internally do arbitrary-precision arithmetic.
+This is also why <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_chars</h-></code> takes a forwarding reference;
+it allows reusing the allocation of <code><h- data-h=name>value</h-></code> for intermediate calculations.
+However, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_chars</h-></code> should be guaranteed not to throw if <code><h- data-h=name>base</h-></code> is a power of two
+because converting to base-two digits can be performed limb-by-limb in a single pass.
+</p>
+<p>One could argue that providing <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_chars</h-></code> is weird
+because it operates on a fixed-size buffer,
+while <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is dynamically sized.
+However, most <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> objects in practice could easily fit into a buffer
+of a few hundred or thousand characters.
+If so, the user should not be forced to go through <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>format_to</h-></code> to avoid an allocation.
 </p>
 <h3 id=naming><a class=para href=#naming></a>3.10. Naming</h3>
 
@@ -5655,9 +5685,8 @@ the size of which can be approximated using <code><h- data-h=kw>sizeof</h-><h- d
 
   <h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->           <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding</h-></f-serif>
                                      <i><h- data-h=name>integer-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<ins>  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->
-                                       <h- data-h=kw>const</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
+<ins>  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
+    <h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&amp;&amp;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins>
   <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->                     <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding</h-></f-serif>
                            <h- data-h=kw_type>bool</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw>delete</h-><h- data-h=sym_punc>;</h->
 
@@ -5683,16 +5712,19 @@ the size of which can be approximated using <code><h- data-h=kw>sizeof</h-><h- d
 <diff-block>
 <p>[…]
 </p><code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>integer-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h->
-                                     <h- data-h=kw>const</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins></code-block>
+<ins><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>base</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>10</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins></code-block>
 
 <div class=indent>
 <p>4
+<i>Constraints</i>:
+<code><h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> is a specialization of <code><h- data-h=name>basic_big_int</h-></code>.
+</p>
+<p>5
 <i>Preconditions</i>:
 <code><h- data-h=name>base</h-></code> has a value between <code><h- data-h=num>2</h-></code> and <code><h- data-h=num>36</h-></code> (inclusive).
 </p>
-<p>5
+<p>6
 <i>Effects</i>:
 The <ins>integer</ins> value<ins> (<a href=https://eel.is/c++draft/big.int.class>[big.int.class]</a>)</ins> of <code><h- data-h=name>value</h-></code>
 is converted to a string of digits in the given base
@@ -5701,9 +5733,10 @@ Digits in the range 10..35 (inclusive) are represented as lowercase characters <
 If <code><h- data-h=name>value</h-></code> is less than zero,
 the representation starts with <code><h- data-h=str_dlim>'</h-><h- data-h=str>-</h-><h- data-h=str_dlim>'</h-></code>.
 </p>
-<p>6
+<p>7
 <i>Throws</i>:
-Nothing.
+Nothing <ins>for functions with a parameter of type <code><i><h- data-h=name>integer-value</h-></i></code>
+or if <code><h- data-h=name>base</h-></code> is a power of two</ins>.
 </p></div>
 </diff-block>
 
@@ -5741,7 +5774,7 @@ and only if value has a signed type.
 </p>
 <p>4
 <i>Throws</i>:
-Nothing.
+Nothing <ins>for functions with a parameter of type <code><i><h- data-h=name>integer-value</h-></i><h- data-h=sym_op>&amp;</h-></code></ins>.
 </p></div>
 </diff-block>
 
