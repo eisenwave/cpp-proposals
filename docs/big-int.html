@@ -1705,6 +1705,8 @@ with elastic operations.
 <a href=#formatting-support><h4>Formatting support</h4></a>
 <div class=toc-num data-level=4>3.9.8</div>
 <a href=#std::to_string-and-std::from_string><h4><tt->std::to_string</tt-> and <tt->std::from_string</tt-></h4></a>
+<div class=toc-num data-level=4>3.9.9</div>
+<a href=#no-bit-support><h4>No <tt->&lt;bit&gt;</tt-> support</h4></a>
 <div class=toc-num data-level=3>3.10</div>
 <a href=#naming><h3>Naming</h3></a>
 <div class=toc-num data-level=3>3.11</div>
@@ -3587,6 +3589,51 @@ can be reused for intermediate calculations.
 <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_string</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_wstring</h-></code> also need such an overload
 to avoid pessimization.
 </p>
+<h4 id=no-bit-support><a class=para href=#no-bit-support></a>3.9.9. No <tt->&lt;bit&gt;</tt-> support</h4>
+
+<p>While bit-manipulation functions are useful for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
+these are not included in the proposal because there are too many design problems
+that need to be resolved,
+and this should better be done in a follow-up paper:
+</p>
+<ul>
+  <li>
+    Some of the functions such as <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>rotl</h-></code> don't really make sense
+    for an infinite-precision integer type.
+    It is unclear which ones to provide.
+  </li>
+  <li>
+    While <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>countr_zero</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>countr_one</h-></code> are useful,
+    there would need to be error handling for the case of
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>countr_zero</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=num_deco>n</h-><h- data-h=sym_par>)</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>countr_one</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>-</h-><h- data-h=num>1</h-><h- data-h=num_deco>n</h-><h- data-h=sym_par>)</h-></code>,
+    since the result is <q>infinity</q>.
+  </li>
+  <li>
+    <code><h- data-h=str>&lt;bit&gt;</h-></code> uses <code><h- data-h=kw_type>int</h-></code> to report results such as in <code><h- data-h=kw_type>int</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>popcount</h-></code>,
+    but this seems insufficient for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
+    That opens the question whether to use a fixed type like <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code>
+    or some implementation-defined signed integer type,
+    and whether that type should have a spelling exposed to the user.
+  </li>
+  <li>
+    It is unclear how <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_repeat</h-></code> should work for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
+    The function takes a <code><h- data-h=name>T</h-></code> pattern and <code><h- data-h=kw_type>int</h-></code> pattern length
+    and repeats that pattern as many times as possible.
+    For <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>, that would result in an infinite amount of repetitions.
+    Nonetheless, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_repeat</h-></code> would be useful for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>;
+    it just needs a different design that is not yet clear.
+  </li>
+  <li>
+    The <code><h- data-h=str>&lt;bit&gt;</h-></code> header currently accepts only unsigned integers in most functions,
+    but <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is signed,
+    seemingly contradicting the current design direction.
+  </li>
+  <li>
+    While <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_reverse</h-></code> could be useful for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
+    it's unclear how to define it for negative numbers.
+  </li>
+</ul>
+
 <h3 id=naming><a class=para href=#naming></a>3.10. Naming</h3>
 
 <p>The name <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> was chosen because it meets user expectations

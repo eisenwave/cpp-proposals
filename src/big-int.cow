@@ -1882,6 +1882,51 @@ can be reused for intermediate calculations.
 \tcode{std::to_string} and \tcode{std::to_wstring} also need such an overload
 to avoid pessimization.
 
+\h4{No \tt{<bit>} support}
+
+While bit-manipulation functions are useful for \tcode{std::big_int},
+these are not included in the proposal because there are too many design problems
+that need to be resolved,
+and this should better be done in a follow-up paper:
+
+\ul{
+  \li{
+    Some of the functions such as \tcode{std::rotl} don't really make sense
+    for an infinite-precision integer type.
+    It is unclear which ones to provide.
+  }
+  \li{
+    While \tcode{std::countr_zero} and \tcode{std::countr_one} are useful,
+    there would need to be error handling for the case of
+    \tcode{std::countr_zero(0n)} and \tcode{std::countr_one(-1n)},
+    since the result is \q{infinity}.
+  }
+  \li{
+    \header{bit} uses \tcode{int} to report results such as in \tcode{int std::popcount},
+    but this seems insufficient for \tcode{std::big_int}.
+    That opens the question whether to use a fixed type like \tcode{long long}
+    or some implementation-defined signed integer type,
+    and whether that type should have a spelling exposed to the user.
+  }
+  \li{
+    It is unclear how \tcode{std::bit_repeat} should work for \tcode{std::big_int}.
+    The function takes a \tcode{T} pattern and \tcode{int} pattern length
+    and repeats that pattern as many times as possible.
+    For \tcode{std::big_int}, that would result in an infinite amount of repetitions.
+    Nonetheless, \tcode{std::bit_repeat} would be useful for \tcode{std::big_int};
+    it just needs a different design that is not yet clear.
+  }
+  \li{
+    The \header{bit} header currently accepts only unsigned integers in most functions,
+    but \tcode{std::big_int} is signed,
+    seemingly contradicting the current design direction.
+  }
+  \li{
+    While \tcode{std::bit_reverse} could be useful for \tcode{std::big_int},
+    it's unclear how to define it for negative numbers.
+  }
+}
+
 \h3{Naming}
 
 The name \tcode{std::big_int} was chosen because it meets user expectations
