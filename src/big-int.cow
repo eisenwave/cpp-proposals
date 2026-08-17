@@ -1441,6 +1441,68 @@ wrapping a handle to \tcode{llvm::APint} is feasible.
 The more \tcode{std::big_int} is treated as a compiler intrinsic,
 the lower-level it conceptually becomes.
 
+\h3(id="why-no-big-int-view"){Why no \tt{std::big_int_view}?}
+
+Similar to \tcode{std::string_view},
+one might imagine a \tcode{std::big_int_view} (or view type with some other name).
+This could even be seen as an easier first step towards multiprecision arithmetic.
+
+However, we do not provide such a type for a number of reasons:
+\ul{
+  \li{
+    Unlike \tcode{std::string_view},
+    \tcode{std::big_int_view} cannot be used as a parameter type to accept any integer.
+    That is because large integers such as \tcode{_BitInt(1024)} need a stack-local buffer
+    to hold the value converted to \tcode{uint_multiprecision_t[N]},
+    and that would require two implicit conversions
+    (\tcode{_BitInt(1024)} → \tcode{\exposid{limb-buffer}} → \tcode{std::big_int_view}).
+    Thus, even if \tcode{std::big_int_view} had a constructor
+    with a \tcode{\exposid{limb-buffer}} parameter,
+    functions taking a \tcode{std::big_int_view} would not be able to accept
+    \tcode{_BitInt(1024)} or other large integers without an explicit conversion.
+  }
+  \li{
+    The allocation that \tcode{std::big_int} holds is actually
+    very useful for intermediate operations.
+    For example, thanks to \tcode{std::to_chars} having an rvalue overload for \tcode{std::big_int},
+    allocations can be avoided using repeated in-place division by the base.
+    Similarly, when \tcode{operator<<} receives an rvalue \tcode{std::big_int},
+    it shifts the limbs in-place.
+    See also \ref("#optimal-operator-overloads").
+    All of this happens automatically and ergonomically.
+    Operations on a \tcode{std::big_int_view}
+    would require the user to write more code to avoid allocations and unnecessary copies.
+  }
+  \li{
+    Looking at the standard library,
+    there would be little benefit to having a \tcode{std::big_int_view}.
+    Most operations we provide come with lvalue and rvalue overloads
+    in order to repurpose the allocations of the arguments.
+    A notable and rare exception is \tcode{std::saturating_cast},
+    which only takes a \tcode{const&} because the result is always a fundamental integer type.
+  }
+  \li{
+    Not a lot of operations could be performed on a \tcode{std::big_int_view}
+    without allocating a \tcode{std::big_int}.
+    Other than equality and relational comparison,
+    almost any useful operation on \tcode{std::big_int} produces another \tcode{std::big_int}.
+    Similar to how there is no \tcode{operator+} between two \tcode{std::string_view}s,
+    there shouldn't be an \tcode{operator+} between two \tcode{std::big_int_view}s.
+    By comparison, \tcode{std::string_view} provides the ability to search,
+    check prefixes, substrings, etc., and these are all immensely useful non-allocating operations.
+  }
+  \li{
+    It is also telling that third-party libraries typically do not provide a dedicated view type
+    for big integers.
+    There is a \tcode{boost::multiprecision::cpp_int}
+    but no \tcode{boost::multiprecision::cpp_int_view}.
+  }
+}
+
+That being said, a \tcode{std::big_int_view} type is not entirely useless;
+it's just not useful enough to be included in this paper,
+let alone be standardized before \tcode{std::big_int}.
+
 \h3{Template parameters}
 
 \h4{Order of template parameters}
