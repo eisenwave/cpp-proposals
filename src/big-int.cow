@@ -1812,14 +1812,18 @@ both \tcode{std::big_int} and fundamental integer types.
 In any case, providing \tcode{std::saturating_cast} provides an easy \q{upgrade path}
 from \tcode{boost::cpp_int} to \tcode{std::big_int}.
 
-\h4{\tt{std::to_chars} and \tcode{std::from_chars}}
+\h4{\tt{std::to_chars} and \tt{std::from_chars}}
 
 We also provide \tcode{std::to_chars} and \tcode{std::from_chars}
 overloads for \tcode{std::big_int}:
 
 \cppblock{
-template<class T>
-  constexpr to_chars_result to_chars(char* first, char* last, T&& value, int base = 10);
+template<size_t b, class L, class A>
+  constexpr to_chars_result to_chars(char* first, char* last,
+                                     const basic_big_int<b, L, A>& value, int base = 10);
+template<size_t b, class L, class A>
+  constexpr to_chars_result to_chars(char* first, char* last,
+                                     basic_big_int<b, L, A>&& value, int base = 10);
 
 template<size_t b, class L, class A>
   constexpr from_chars_result from_chars(const char* first, const char* last,
@@ -1830,7 +1834,7 @@ These are clearly useful.
 
 A notable quirk is that both \tcode{std::to_chars} and \tcode{std::from_chars}
 can potentially throw because they internally do arbitrary-precision arithmetic.
-This is also why \tcode{std::to_chars} takes a forwarding reference;
+This is also why \tcode{std::to_chars} has an rvalue overload;
 it allows reusing the allocation of \tcode{value} for intermediate calculations.
 However, \tcode{std::to_chars} should be guaranteed not to throw if \tcode{base} is a power of two
 because converting to base-two digits can be performed limb-by-limb in a single pass.
@@ -1841,6 +1845,42 @@ while \tcode{std::big_int} is dynamically sized.
 However, most \tcode{std::big_int} objects in practice could easily fit into a buffer
 of a few hundred or thousand characters.
 If so, the user should not be forced to go through \tcode{std::format_to} to avoid an allocation.
+
+\h4{Formatting support}
+
+\tcode{std::big_int} is also formattable out of the box,
+with \tcode{std::format}, \tcode{std::print}, etc.
+Once again, this is clearly useful and expected by users.
+
+The same options as for any fundamental integer type should be supported,
+so that e.g. \tcode{std::format("{:x}", x)} prints a \tcode{std::big_int x} in hexadecimal.
+
+\h4{\tt{std::to_string} and \tt{std::from_string}}
+
+We also provide \tcode{std::to_string} and \tcode{std::to_wstring}
+overloads for \tcode{std::big_int}:
+
+\cppblock{
+template<size_t b, class L, class A>
+  constexpr string to_string(const basic_big_int<b, L, A>& val);
+template<size_t b, class L, class A>
+  constexpr string to_string(basic_big_int<b, L, A>&& val);
+
+template<size_t b, class L, class A>
+  constexpr wstring to_wstring(const basic_big_int<b, L, A>& val);
+template<size_t b, class L, class A>
+  constexpr wstring to_wstring(basic_big_int<b, L, A>&& val);
+}
+
+Since these are defined in terms of \tcode{std::format} with a \tcode{{}} specifier,
+the specification is trivial and the same as for any fundamental integer type.
+In practice, an implementation would directly call \tcode{std::to_chars} to
+\q{cut out the middle-man} between \tcode{std::to_string} and \tcode{std::to_chars}.
+
+\tcode{std::to_chars} has an rvalue overload so that the allocation of \tcode{val}
+can be reused for intermediate calculations.
+\tcode{std::to_string} and \tcode{std::to_wstring} also need such an overload
+to avoid pessimization.
 
 \h3{Naming}
 
@@ -2680,7 +2720,9 @@ namespace std {
   string to_string(double val);
   string to_string(long double val);
   \ins{template<size_t b, class L, class A>
-    constexpr string to_string(const basic_big_int<b, L, A>& val);}
+    constexpr string to_string(const basic_big_int<b, L, A>& val);
+  template<size_t b, class L, class A>
+    constexpr string to_string(basic_big_int<b, L, A>&& val);}
 
   \etc
   constexpr wstring to_wstring(int val);
@@ -2693,7 +2735,9 @@ namespace std {
   wstring to_wstring(double val);
   wstring to_wstring(long double val);
   \ins{template<size_t b, class L, class A>
-    constexpr wstring to_wstring(const basic_big_int<b, L, A>& val);}
+    constexpr wstring to_wstring(const basic_big_int<b, L, A>& val);
+  template<size_t b, class L, class A>
+    constexpr wstring to_wstring(basic_big_int<b, L, A>&& val);}
 
   \etc
 }
@@ -2718,13 +2762,31 @@ constexpr string to_string(unsigned long long val);
 string to_string(float val);
 string to_string(double val);
 string to_string(long double val);
-\ins{template<size_t b, class L, class A>
-  constexpr string to_string(const basic_big_int<b, L, A>& val);}
 }
 
 \itemdescr{
 \returns
 \tcode{format("{}", val)}.
+}
+
+\itemdecl{
+\ins{template<size_t b, class L, class A>
+  constexpr string to_string(const basic_big_int<b, L, A>& val);}
+}
+
+\itemdescr{
+\ins{\returns
+\tcode{format("{}", val)}.}
+}
+
+\itemdecl{
+\ins{template<size_t b, class L, class A>
+  constexpr string to_string(basic_big_int<b, L, A>&& val);}
+}
+
+\itemdescr{
+\ins{\returns
+\tcode{format("{}", std::move(val))}.}
 }
 
 \etc
@@ -2739,13 +2801,31 @@ constexpr wstring to_wstring(unsigned long long val);
 wstring to_wstring(float val);
 wstring to_wstring(double val);
 wstring to_wstring(long double val);
-\ins{template<size_t b, class L, class A>
-  constexpr wstring to_wstring(const basic_big_int<b, L, A>& val);}
 }
 
 \itemdescr{
 \returns
 \tcode{format(L"{}", val)}.
+}
+
+\itemdecl{
+\ins{template<size_t b, class L, class A>
+  constexpr wstring to_wstring(const basic_big_int<b, L, A>& val);}
+}
+
+\itemdescr{
+\ins{\returns
+\tcode{format(L"{}", val)}.}
+}
+
+\itemdecl{
+\ins{template<size_t b, class L, class A>
+  constexpr wstring to_wstring(basic_big_int<b, L, A>&& val);}
+}
+
+\itemdescr{
+\ins{\returns
+\tcode{format(L"{}", std::move(val))}.}
 }
 
 \etc
@@ -4049,9 +4129,13 @@ template<size_t b, class L, class A, class charT>
 struct formatter<basic_big_int<b, L, A>, charT> {
   template <class ParseContext>
     constexpr typename ParseContext::iterator parse(ParseContext& ctx);
+
   template<class FormatContext>
     constexpr typename FormatContext::iterator
       format(const basic_big_int<b, L, A>& x, FormatContext& ctx) const;
+  template<class FormatContext>
+    constexpr typename FormatContext::iterator
+      format(basic_big_int<b, L, A>&& x, FormatContext& ctx) const;
 };
 }
 
@@ -4129,8 +4213,12 @@ namespace std {
 
   constexpr to_chars_result to_chars(char* first, char* last,           //\serif{ freestanding}
                                      \exposid{integer-type} value, int base = 10);
-\ins{  template<class T>
-    constexpr to_chars_result to_chars(char* first, char* last, T&&& value, int base = 10);}
+\ins{  template<size_t b, class L, class A>
+    constexpr to_chars_result to_chars(char* first, char* last,
+                                       const basic_big_int<b, L, A>& value, int base = 10);
+  template<size_t b, class L, class A>
+    constexpr to_chars_result to_chars(char* first, char* last,
+                                       basic_big_int<b, L, A>&& value, int base = 10);}
   to_chars_result to_chars(char* first, char* last,                     //\serif{ freestanding}
                            bool value, int base = 10) = delete;
 
@@ -4159,8 +4247,12 @@ Change \eelis{charconv.to.chars} as follows:
 \etc
 \itemdecl{
 constexpr to_chars_result to_chars(char* first, char* last, \exposid{integer-type} value, int base = 10);
-\ins{template<class T>
-  constexpr to_chars_result to_chars(char* first, char* last, T&& value, int base = 10);}
+\ins{template<size_t b, class L, class A>
+  constexpr to_chars_result to_chars(char* first, char* last,
+                                     const basic_big_int<b, L, A>& value, int base = 10);
+template<size_t b, class L, class A>
+  constexpr to_chars_result to_chars(char* first, char* last,
+                                     basic_big_int<b, L, A>&& value, int base = 10);}
 }
 
 \itemdescr{
