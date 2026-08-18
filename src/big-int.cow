@@ -1945,6 +1945,161 @@ Such a conversion is also clearly useful when handing the values of \tcode{std::
 off to a C library that uses \tcode{_BitInt(128)}, \tcode{_BitInt(256)}, etc. in its API.
 }
 
+\h3(id="expression-templates"){Expression templates (or lack thereof)}
+
+One possible direction is to provide expression templates for \tcode{std::big_int}
+operations, similar to Boost.Multiprecision (unless disabled).
+That is, for example, \tcode{operator+} would not return a \tcode{std::big_int} object,
+but rather a \tcode{std::big_int_expression<op, L, R>}
+which could be converted to a \tcode{std::big_int} object when needed.
+
+Expression templates enable two things:
+\ul{
+  \li{
+    Avoiding unnecessary temporaries and allocations.
+    This was a major motivation prior to C++11,
+    and is pretty much irrelevant thanks to move semantics.
+  }
+  \li{
+    Performing various mathematical optimizations.
+  }
+}
+
+Many transformations can be performed with expression templates, such as:
+\cppblock{
+// Some handling of sign bits can be simplified:
+-(-x)              →   x
+abs(abs(x))        →   abs(x)
+-(abs(x))          →   set_sign_bit(x)
+
+// Dramatically improves performance by avoiding a huge intermediate result:
+pow(x, y) % m      →   pow_mod(x, y, m)
+
+// Better for big_int because shift constants are small and can be added cheaply:
+x << a << b        →   x << (a + b)
+
+// Avoids two passes over the data because ANDNOT is still a single binary operation
+// between booleans, just with an altered truth table:
+x & ~y             →   and_not(x, y)
+
+(x * y) + z        →   mul_add(x, y, z)
+popcount(x << a)   →   popcount(x)
+// ...
+}
+
+For fundamental integers,
+the compiler typically performs these optimizations automatically,
+but \tcode{std::big_int} is too much of a black box for the compiler to reason about.
+
+\h4{Technical reasons against expression templates}
+
+While it seems promising to have expression templates in order to perform these optimizations,
+we decided against this direction for a number of reasons:
+\ul{
+  \li{
+    The design becomes substantially more complicated.
+    Instead of every operation simply returning \tcode{basic_big_int},
+    they now return an object representing the operation.
+  }
+  \li{
+    These simplifications are a double-edged sword:
+    if the user doesn't spell out \tcode{pow_mod(x, y, m)},
+    how can they be certain that \tcode{pow(x, y) % m} is equivalent?
+    Will they remember months after having written the code that it is substantially transformed?
+    Expression templates innately introduce complexity and uncertainty
+    even though the user's code is simpler.
+  }
+  \li{
+    Expression templates don't actually let the user express something new,
+    they just transform expressions.
+  }
+  \li{
+    Putting the burden on the compiler is not free.
+    Instead of instantiation the \tcode{operator@} templates with just
+    \tcode{basic_big_int} operands,
+    they would be instantiated with all sorts of distinct expression template types.
+  }
+  \li{
+    Since the return type isn't actually \tcode{basic_big_int},
+    it can be problematic to pass the result into function templates
+    or to store it in \tcode{auto} variables,
+    since \tcode{auto} doesn't deduce to \tcode{basic_big_int}.
+    This regularly forces users to cast to \tcode{std::big_int}
+    or to avoid the use of \tcode{auto}.
+    The interaction with \tcode{auto} expressions is especially weird:
+    \tcode{auto(++x)} no longer increments and copies \tcode{x};
+    it copies the \tcode{big_int_expression} object which is just a symbolic placeholder.
+  }
+}
+
+\Bnote{
+\ref("N4035") \q{Implicit Evaluation of “auto” Variables and Arguments}
+proposed a solution to the \tcode{auto} problem,
+so that even with expression templates,
+\tcode{auto} would deduce to \tcode{basic_big_int}.
+We do not endorse this proposal,
+but it is worth mentioning.
+}
+
+\h4{The problem with optional expression templates}
+
+It should also be noted that expression templates are often an optional feature;
+Boost.Multiprecision allows users to disable them
+via the backend of the \tcode{number} type.
+For the C++ standard library,
+making them optional this way is diametrically opposed to our goals:
+we are trying to provide a single concrete vocabulary type in the form of \tcode{std::big_int},
+which is in conflict with having 50% of the users use a different type
+based on their preference for expression templates.
+
+On the other hand, making expression templates mandatory without an opt-out
+forces the aforementioned compile-time cost down everyone's throat.
+
+\Bex{
+Even if a user hated expression templates
+and always preferred to write \tcode{pow_mod(x, y, m)} explicitly,
+they would pay for writing \tcode{pow(x, y) + z}
+with a distinct template instantiation.
+That is because \tcode{pow(x, y)} results in a distinct type representing the expression,
+not in \tcode{basic_big_int}.
+}
+
+If both making expression templates optional and mandatory are bad options,
+perhaps the only remaining option is to not have them at all.
+
+\h4{Expression templates in the ISO C++ process}
+
+Even if we decided that the benefits of expression templates outweigh the costs,
+the ISO C++ process is not conducive to adding them.
+Every single mathematical operation has some kind of interesting special forms
+that could be transformed,
+so any operation on \tcode{std::big_int} would produce a new expression template type.
+
+If the user actually wants to rely on these transformations,
+they need to be standardized instead of being left up to the implementation,
+which means that of the dozens of operations on \tcode{std::big_int},
+every combination with other operations needs to be investigated for special forms,
+possibly leading to hundreds of these transformation rules.
+
+If a C++ user discovers some interesting transformation,
+they would need to propose it to the committee,
+which is a perpetual maintenance burden for the committee.
+This also means that they won't get to use it until the next C++ standard is published
+and implemented, which means years of delay.
+
+\Bex{
+For the sake of argument,
+assume the aforementioned \tcode{pow(x, y) % m → pow_mod(x, y, m)} transformation
+is discovered \q{after the fact}.
+
+By the time people's \tcode{pow}s are being turned into \tcode{pow_mod}s automatically,
+users have already been taught to write \tcode{pow_mod} explicitly.
+They might also keep using \tcode{pow_mod} at that point
+because it is more portable;
+the \tcode{pow} transformation would only work in more recent standards
+and might not yet be implemented in all standard library implementations.
+}
+
 \h3{User-defined literals for \tt{std::big_int}}
 
 For convenient creation of \tcode{std::big_int},
@@ -4975,6 +5130,14 @@ See also \ref("#std::abs").
   author = "Michiel Salters",
   link = "https://wg21.link/n1744",
   long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1744.pdf",
+)\
+\bib(
+  id = "N4035",
+  title = "Implicit Evaluation of “auto” Variables and Arguments",
+  date = "2014-05-23",
+  author = "Joel Falcou, Peter Gottschling, Herb Sutter",
+  link = "https://wg21.link/n4035",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4035.html",
 )\
 \bib(
   id = "N4038",
