@@ -1676,6 +1676,10 @@ with elastic operations.
 <div class=toc-num data-level=4>3.7.1</div>
 <a href=#order-of-template-parameters><h4>Order of template parameters</h4></a>
 <div class=toc-num data-level=4>3.7.2</div>
+<a href=#min_inplace_capacity><h4><tt->min_inplace_capacity</tt-></h4></a>
+<div class=toc-num data-level=4>3.7.3</div>
+<a href=#min_inplace_capacity-restrictions><h4><tt->min_inplace_capacity</tt-> restrictions</h4></a>
+<div class=toc-num data-level=4>3.7.4</div>
 <a href=#limb-type-parameter><h4>Limb type parameter</h4></a>
 <div class=toc-num data-level=3>3.8</div>
 <a href=#conversions><h3>Conversions</h3></a>
@@ -3300,7 +3304,44 @@ Fortunately, the only people inconvenienced are power users who use <code><h- da
 with a custom allocator,
 which is acceptable.
 </p>
-<h4 id=limb-type-parameter><a class=para href=#limb-type-parameter></a>3.7.2. Limb type parameter</h4>
+<h4 id=min_inplace_capacity><a class=para href=#min_inplace_capacity></a>3.7.2. <tt->min_inplace_capacity</tt-></h4>
+
+<p>Consistently with the rest of the standard library
+(e.g. <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>array</h-></code>, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bitset</h-></code>, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>span</h-></code>),
+the type of <code><h- data-h=name>min_inplace_capacity</h-></code> is <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>size_t</h-></code>.
+</p>
+<h4 id=min_inplace_capacity-restrictions><a class=para href=#min_inplace_capacity-restrictions></a>3.7.3. <tt->min_inplace_capacity</tt-> restrictions</h4>
+
+<p>An interesting design question is whether
+<code><h- data-h=name>min_inplace_capacity</h-></code> arguments should be disallowed
+if the capacity is increased internally.
+This might make sense because <code><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>7</h-><h- data-h=sym_op>&gt;</h-></code> and <code><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>8</h-><h- data-h=sym_op>&gt;</h-></code>
+are functionally equivalent,
+but distinct types with distinct instantiated code.
+</p>
+<p>We decided not to restrict the argument because it may cause portability problems
+and disallows certain useful configurations.
+</p>
+<example-block><p><intro-></intro-> 
+Say a user needs at least 32 bits of in-place storage on a 32-bit platform.
+They might spell <code><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>32</h-><h- data-h=sym_op>&gt;</h-></code>.
+However, if the minimum in-place capacity is 64 (even on 32-bit platforms)
+in some particular implementation,
+this clearly reasonable code would be disallowed.
+</p></example-block>
+
+<p>Furthermore, it is very easy for the user to ensure no increase themselves:
+</p><code-block><h- data-h=kw>using</h-> <h- data-h=name>my_big_int</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>N</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>static_assert</h-><h- data-h=sym_par>(</h-><h- data-h=name>my_big_int</h-><h- data-h=sym_op>::</h-><h- data-h=name>inplace_capacity</h-> <h- data-h=sym_op>==</h-> <h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<note-block><p><intro-></intro-> 
+Hypothetically, if we really insisted on imposing a restriction,
+we could have a <code><h- data-h=name>basic_big_int_least</h-></code> alias template that would round up
+like <code><h- data-h=name>basic_big_int</h-></code> does,
+without creating a distinct type.
+</p></note-block>
+
+<h4 id=limb-type-parameter><a class=para href=#limb-type-parameter></a>3.7.4. Limb type parameter</h4>
 
 <p>When it comes to allowing configuration of the limb type,
 there is a spectrum of solutions:

@@ -1567,6 +1567,45 @@ Fortunately, the only people inconvenienced are power users who use \tcode{std::
 with a custom allocator,
 which is acceptable.
 
+\h4{\tt{min_inplace_capacity}}
+
+Consistently with the rest of the standard library
+(e.g. \tcode{std::array}, \tcode{std::bitset}, \tcode{std::span}),
+the type of \tcode{min_inplace_capacity} is \tcode{std::size_t}.
+
+\h4{\tt{min_inplace_capacity} restrictions}
+
+An interesting design question is whether
+\tcode{min_inplace_capacity} arguments should be disallowed
+if the capacity is increased internally.
+This might make sense because \tcode{basic_big_int<7>} and \tcode{basic_big_int<8>}
+are functionally equivalent,
+but distinct types with distinct instantiated code.
+
+We decided not to restrict the argument because it may cause portability problems
+and disallows certain useful configurations.
+
+\Bex{
+Say a user needs at least 32 bits of in-place storage on a 32-bit platform.
+They might spell \tcode{basic_big_int<32>}.
+However, if the minimum in-place capacity is 64 (even on 32-bit platforms)
+in some particular implementation,
+this clearly reasonable code would be disallowed.
+}
+
+Furthermore, it is very easy for the user to ensure no increase themselves:
+\cppblock{
+using my_big_int = basic_big_int<N>;
+static_assert(my_big_int::inplace_capacity == N);
+}
+
+\Bnote{
+Hypothetically, if we really insisted on imposing a restriction,
+we could have a \tcode{basic_big_int_least} alias template that would round up
+like \tcode{basic_big_int} does,
+without creating a distinct type.
+}
+
 \h4{Limb type parameter}
 
 When it comes to allowing configuration of the limb type,
