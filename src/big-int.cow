@@ -2762,6 +2762,10 @@ return \exposid{big-int-combine}([](auto m_int, auto n_int) {
 }
 }
 
+\editnote{
+See also \ref("#std::gcd-std::lcm-and-std::midpoint").
+}
+
 \h3(show_number=false){[numeric.ops.lcm]}
 \cowel_var_set("pnum", 0)
 
@@ -2784,6 +2788,10 @@ return \exposid{big-int-combine}([](auto m_int, auto n_int) {
 }
 }
 
+\editnote{
+See also \ref("#std::gcd-std::lcm-and-std::midpoint").
+}
+
 \h3(show_number=false){[numeric.ops.midpoint]}
 \cowel_var_set("pnum", 0)
 
@@ -2791,19 +2799,23 @@ Append a new item to \eelis{numeric.ops.midpoint} as follows:
 
 \Bins{
 \itemdecl{
-template<class M, class N>
-  constexpr \exposid{common-big-int-type}<M, N> midpoint(M&& a, N&& b);
+template<class A, class B>
+  constexpr \exposid{common-big-int-type}<A, B> midpoint(A&& a, B&& b);
 }
 
 \itemdescr{
 \effects
 Equivalent to:
 \itemdecl{
-return \exposid{big-int-combine}([](auto m_int, auto n_int) {
-  return midpoint(m_int, n_int);
-}, std::forward<M>(m), std::forward<N>(n));
+return \exposid{big-int-combine}([](auto a_int, auto b_int) {
+  return midpoint(a_int, b_int);
+}, std::forward<A>(a), std::forward<B>(b));
 }
 }
+}
+
+\editnote{
+See also \ref("#std::gcd-std::lcm-and-std::midpoint").
 }
 
 \h3(show_number=false){[numeric.sat.cast]}
@@ -3028,6 +3040,20 @@ insert a new subclause immediately following \eelis{complex.numbers}.
 The header \header{big_int} defines a class template for performing
 arbitrary-precision integer arithmetic,
 as well as related type aliases.
+
+\pnum
+Throughout subclause \eelis{big.int},
+\complexity elements for operations refer to the amount of operations
+performed on \tcode{uint_multiprecision_t} objects.
+}
+
+\editnote{
+Unfortunately, operations on \tcode{uint_multiprecision_t} are not observable,
+so measuring complexity in terms of those is wishy-washy.
+However, there is no real alternative
+that would let us measure complexity for e.g. \tcode{operator==},
+where it cannot be measured in terms of allocation size,
+since nothing is allocated.
 }
 
 \h3(show_number=false){[big.int.syn]}
@@ -3435,7 +3461,11 @@ Let:
 \ul{
   \li{\tcode{LT} be \tcode{remove_cvref_t<L>}.}
   \li{\tcode{RT} be \tcode{remove_cvref_t<R>}.}
-  \li{\tcode{T} be a hypothetical signed integer type with infinite range.}
+  \li{
+    \tcode{T} be a hypothetical signed integer type
+    with sufficient range to represent the integer values of
+    \tcode{x}, \tcode{y}, and of \tcode{f(static_cast<T>(x), static_cast<T>(y))}.
+  }
 }
 
 \pnum
@@ -3446,11 +3476,11 @@ whose allocator is either that of \tcode{x} or \tcode{y},
 chosen as follows:\ul{
   \li{
     If exactly one of \tcode{LT} or \tcode{RT} is a specialization of \tcode{basic_big_int},
-    the allocator of its corresponding parameter is used.
+    the allocator of \tcode{x} and \tcode{y} is used, respectively.
   }
   \li{
     Otherwise, if exactly one of \tcode{L} or \tcode{R} is not an lvalue reference,
-    the allocator of its corresponding parameter is used.
+    the allocator of \tcode{x} and \tcode{y} is used, respectively.
   }
   \li{
     Otherwise, it is a property of the implementation which allocator is used.
@@ -3459,10 +3489,10 @@ chosen as follows:\ul{
 
 \pnum
 \remarks
-If \tcode{LT} is a specialization of \tcode{basic_big_int},
-it is left in an unspecified but valid state.
-If \tcode{RT} is a specialization of \tcode{basic_big_int},
-it is left in an unspecified but valid state.
+If \tcode{L} is a specialization of \tcode{basic_big_int},
+\tcode{x} is left in an unspecified but valid state.
+If \tcode{R} is a specialization of \tcode{basic_big_int},
+\tcode{y} is left in an unspecified but valid state.
 \br\note{
 Both operands can be left in an unspecified state.
 }
@@ -3471,7 +3501,7 @@ Both operands can be left in an unspecified state.
 
 \editnote{
 The \tcode{\exposid{big-int-combine}} utility is needed for all sorts of operations,
-such as binary operators but also future extensions like \tcode{std::gcd} and \tcode{std::lcm}.
+such as binary operators and \tcode{std::gcd} and \tcode{std::lcm}.
 
 The handling of allocators is similar to
 \tcode{operator+} between \tcode{basic_string}s\iref{string.op.plus}.
@@ -3494,6 +3524,10 @@ constexpr basic_big_int() noexcept;
 \effects
 Initializes the integer value to zero.
 Value-initializes the allocator.
+
+\pnum
+\complexity
+Constant.
 }
 
 \itemdecl{
@@ -3505,6 +3539,10 @@ constexpr explicit basic_big_int(const Allocator& a) noexcept;
 \effects
 Initializes the integer value to zero.
 Initializes the allocator to \tcode{a}.
+
+\pnum
+\complexity
+Constant.
 }
 
 \itemdecl{
@@ -3522,6 +3560,10 @@ Initializes the allocator to \tcode{x.get_allocator()}.
 Nothing if the effective width of the integer value of \tcode{x}
 is less than or equal to \tcode{inplace_bits};
 otherwise, exceptions thrown during allocation.
+
+\pnum
+\complexity
+Linear in the size of the representation of \tcode{x}.
 }
 
 \itemdecl{
@@ -3533,6 +3575,10 @@ constexpr basic_big_int(basic_big_int&& x) noexcept;
 \effects
 Initializes the integer value to that of \tcode{x}.
 Initializes the allocator to \tcode{x.get_allocator()}.
+
+\pnum
+\complexity
+Constant.
 }
 
 \itemdecl{
@@ -3669,6 +3715,10 @@ I would expect it to be available by the time \tcode{big_int} is standardized.
 }
 
 \pnum
+\complexity
+Constant.
+
+\pnum
 \remarks
 If the integer value is greater or equal to zero,
 \tcode{basic_big_int(from_range, representation(), get_allocator())}
@@ -3747,6 +3797,10 @@ constexpr size_type representation_size() const noexcept;
 If the integer value is zero, \tcode{1};
 otherwise
 \tcode{div_to_pos_inf(size(), numeric_\'SOFT HYPHEN'limits\brk{}<uint_\'SOFT HYPHEN'multiprecision_t>::digits)}.
+
+\pnum
+\complexity
+Constant.
 }
 
 \itemdecl{
@@ -3757,6 +3811,10 @@ constexpr size_type max_size() const noexcept;
 \pnum
 \returns
 \tcode{max_representation_size() * numeric_limits<uint_multiprecision_t>::digits}.
+
+\pnum
+\complexity
+Constant.
 }
 
 \itemdecl{
@@ -3768,6 +3826,10 @@ constexpr size_type max_representation_size() const noexcept;
 \returns
 The maximum number of \tcode{uint_multiprecision_t} objects
 that can be part of the representation.
+
+\pnum
+\complexity
+Constant.
 }
 
 \itemdecl{
@@ -3778,6 +3840,10 @@ constexpr size_type capacity() const noexcept;
 \pnum
 \returns
 \tcode{representation_capacity() * numeric_limits<uint_multiprecision_t>::digits}.
+
+\pnum
+\complexity
+Constant.
 }
 
 \itemdecl{
@@ -3791,6 +3857,10 @@ constexpr size_type representation_capacity() const noexcept;
 * numeric_\'SOFT HYPHEN'limits\brk{}<uint_\'SOFT HYPHEN'multiprecision_t>::digits)},
 where \tcode{\exposid{dynamic-representation-capacity}()} is the number of currently allocated
 \tcode{uint_\'SOFT HYPHEN'multiprecision_t} objects.
+
+\pnum
+\complexity
+Constant.
 }
 
 \itemdecl{
@@ -3801,6 +3871,10 @@ constexpr allocator_type get_allocator() const noexcept;
 \pnum
 \returns
 The allocator of this object.
+
+\pnum
+\complexity
+Constant.
 }
 
 \itemdecl{
@@ -3876,6 +3950,10 @@ assigns \tcode{x.get_allocator()} to the allocator of this object.
 \pnum
 \returns
 \tcode{*this}.
+
+\pnum
+\complexity
+Linear in the size of the representation of \tcode{x}.
 }
 
 \itemdecl{
@@ -3893,6 +3971,10 @@ assigns \tcode{x.get_allocator()} to the allocator of this object.
 \pnum
 \returns
 \tcode{*this}.
+
+\pnum
+\complexity
+Constant.
 }
 
 \itemdecl{
@@ -3978,6 +4060,10 @@ Exchanges the integer values of this object and of \tcode{x}.
 If \tcode{allocator_traits<\brk{}Allocator\brk{}>::\brk{}propagate_\'SHY'on_\'SHY'container_swap::value}
 is \tcode{true},
 exchanges \tcode{x.get_allocator()} and the allocator of this object.
+
+\pnum
+\complexity
+Constant.
 }
 }
 
@@ -3993,8 +4079,7 @@ template<class T> constexpr explicit operator T() const noexcept;
 \itemdescr{
 \pnum
 Let \tcode{U} be a hypothetical signed integer type
-with sufficient width to represent the \tcode{basic_big_int}'s
-integer value \math{\mi{v}}.
+with sufficient range to represent this object's integer value.
 
 \pnum
 \constraints
@@ -4002,10 +4087,10 @@ integer value \math{\mi{v}}.
 
 \pnum
 \returns
-\tcode{static_cast<T>(static_cast<U>(\math{\mi{v}}))}.
+\tcode{static_cast<T>(static_cast<U>(*this))}.
 \br\note{
 If \tcode{T} is \tcode{bool},
-the result is \tcode{true} if \math{\mi{v}} is nonzero and
+the result is \tcode{true} if \tcode{*this} has nonzero integer value and
 \tcode{false} otherwise\iref{conv.integral}.
 If \tcode{T} is a floating-point type,
 the result value is determined as if by floating-integral conversion\iref{conv.fpint}.
@@ -4017,6 +4102,12 @@ the result value is determined as if by floating-integral conversion\iref{conv.f
 
 \Bins{
 \big_int_h4{Unary operations \stable_ref{big.int.unary}}
+
+\editnote{
+\tcode{operator+} are worded as equivalences
+because we want to inherit everything (including complexity requirements)
+from constructors.
+}
 
 \itemdecl{
 constexpr basic_big_int operator+() const&;
@@ -4038,14 +4129,29 @@ constexpr basic_big_int operator+() && noexcept;
 Equivalent to: \tcode{return std::move(*this);}
 }
 
+\editnote{
+\tcode{operator-} and \tcode{operator~} are worded only as \returns
+because the actual implementation strategy for negation is usually
+to perform a copy with the sign bit being flipped at the same time.
+
+For complement,
+it is to perform a flip of the sign bit and an increment of the magnitude,
+or the other way around,
+and we don't want to impose any particular order on these two steps.
+}
+
 \itemdecl{
 constexpr basic_big_int operator-() const&;
 }
 
 \itemdescr{
 \pnum
-\effects
-Equivalent to: \tcode{return 0 - *this;}
+\returns
+\tcode{0 - *this}.
+
+\pnum
+\complexity
+Linear in the size of the representation of \tcode{*this}.
 }
 
 \itemdecl{
@@ -4054,17 +4160,18 @@ constexpr basic_big_int operator-() && noexcept;
 
 \itemdescr{
 \pnum
-\effects
-Equivalent to: \tcode{return 0 - std::move(*this);}
+\returns
+\tcode{0 - std::move(*this)}.
 
 \pnum
 \complexity
 Constant.
 
 \pnum
-\remarks
+\note{
 The contents of the representation of the result
 are identical to those of \tcode{representation()} prior to the call.
+}
 }
 
 \itemdecl{
@@ -4073,8 +4180,12 @@ constexpr basic_big_int operator~() const&;
 
 \itemdescr{
 \pnum
-\effects
-Equivalent to: \tcode{return -1 - *this;}
+\returns
+\tcode{-*this - -1}.
+
+\pnum
+\complexity
+Linear in the size of the representation of \tcode{*this}.
 }
 
 \itemdecl{
@@ -4084,7 +4195,17 @@ constexpr basic_big_int operator~() &&;
 \itemdescr{
 \pnum
 \returns
-Equivalent to: \tcode{return -1 - std::move(*this);}
+\tcode{-std::move(*this) - 1}.
+
+\pnum
+\complexity
+Linear in the size of the representation of \tcode{*this}.
+}
+
+\editnote{
+Prefix \tcode{operator++} and \tcode{operator--} are worded as equivalences
+because this inherits everything.
+Postifx operators are defaulted.
 }
 
 \itemdecl{
@@ -4157,6 +4278,10 @@ template<class L, \exposid{common-big-int-type-with}<L> R>
 \tcode{true} if the integer value of \tcode{x}
 is equal to the integer value of \tcode{y}, and
 \tcode{false} otherwise.
+
+\pnum
+\complexity
+Linear in the minimum of the representation sizes of \tcode{x} and \tcode{y}.
 }
 
 \itemdecl{
@@ -4172,6 +4297,10 @@ is less than the integer value of \tcode{y},
 \tcode{strong_ordering::greater} if the integer value of \tcode{x}
 is greater than the integer value of \tcode{y}, and
 \tcode{strong_ordering::equal} otherwise.
+
+\pnum
+\complexity
+Linear in the minimum of the representation sizes of \tcode{x} and \tcode{y}.
 }
 }
 
@@ -4221,6 +4350,14 @@ Bitwise operations are performed as if on a two's-complement representation, whe
 positive numbers have an infinite number of leading zeroes, and
 negative numbers have an infinite number of leading ones.
 }
+
+\pnum
+\complexity
+For \tcode{operator+}, \tcode{operator-},
+\tcode{operator&}, \tcode{operator|}, and \tcode{operator^},
+linear in the sum of representation sizes of \tcode{x} and \tcode{y}.
+For \tcode{operator*}, \tcode{operator/}, and \tcode{operator%},
+linear in the product of representation sizes of \tcode{x} and \tcode{y}.
 }
 
 \itemdecl{
@@ -4242,6 +4379,10 @@ A \tcode{basic_big_int} whose integer value is
 \math{\mrow{\mi{v}\mo{×}\msup{\mn{2}\mi{s}}}},
 where \math{\mi{v}} is the integer value of \tcode{x},
 and whose allocator is that of \tcode{x}.
+
+\pnum
+\complexity
+Linear in the size of the representation of \tcode{x}.
 }
 
 \itemdecl{
@@ -4265,6 +4406,10 @@ A \tcode{basic_big_int} whose integer value is
 rounded towards negative infinity,
 where \math{\mi{v}} is the integer value of \tcode{x},
 and whose allocator is that of \tcode{x}.
+
+\pnum
+\complexity
+Linear in the size of the representation of \tcode{x}.
 }
 }
 
@@ -4560,6 +4705,11 @@ constexpr long long int abs(long long int j);
 \ins{\pnum
 \returns
 \tcode{j < 0 ? -j : j}.}
+
+\ins{\pnum
+\complexity
+Linear in the size of the representation of \tcode{j} if \tcode{j < 0} is \tcode{true};
+otherwise constant.}
 }
 
 \itemdecl{
@@ -4571,6 +4721,10 @@ constexpr long long int abs(long long int j);
 \ins{\pnum
 \returns
 \tcode{j < 0 ? -std::move(j) : std::move(j)}.}
+
+\ins{\pnum
+\complexity
+Constant.}
 }
 }
 
