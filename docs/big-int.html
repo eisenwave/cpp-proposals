@@ -1658,6 +1658,10 @@ with elastic operations.
 <div class=toc-num data-level=4>3.2.7</div>
 <a href=#why-not-use-reference-counting><h4>Why not use reference counting?</h4></a>
 <div class=toc-num data-level=4>3.2.8</div>
+<a href=#why-not-use-tagged-integers><h4>Why not use tagged integers?</h4></a>
+<div class=toc-num data-level=5>3.2.8.1</div>
+<a href=#problems-with-extendability><h5>Problems with extendability</h5></a>
+<div class=toc-num data-level=4>3.2.9</div>
 <a href=#std::big_int-is-not-a-container><h4><tt->std::big_int</tt-> is not a container</h4></a>
 <div class=toc-num data-level=3>3.3</div>
 <a href=#constexpr-support><h3><tt->constexpr</tt-> support</h3></a>
@@ -2871,7 +2875,147 @@ otherwise, <code><h- data-h=sym_op>-</h-><h- data-h=name>x</h-></code> performs 
 avoids a lot of problems because it is statically known that it has unique ownership;
 no runtime check is needed.
 </p>
-<h4 id=std::big_int-is-not-a-container><a class=para href=#std::big_int-is-not-a-container></a>3.2.8. <tt->std::big_int</tt-> is not a container</h4>
+<h4 id=why-not-use-tagged-integers><a class=para href=#why-not-use-tagged-integers></a>3.2.8. Why not use tagged integers?</h4>
+
+<p>A potential alternative layout can be provided using <q>tagged integer</q> techniques,
+as explained in <a href="https://www%2emicrosoft%2ecom/en-us/research/wp-content/uploads/2022/07/int%2epdf">[MSR-TR-2022-17]</a>.
+</p>
+<example-block><p><intro-></intro-> 
+In the most simple form,
+we can use the least significant bit of an integer to indicate whether it's actually a pointer
+to dynamic data.
+Such a pointer would have greater alignment,
+so that bit is always zero anyway.
+If the least significant bit is one, the integer is a <q>small</q> integer
+</p>
+<p>Addition would look something like:
+</p><code-block><h- data-h=name_type>intptr_t</h-> <h- data-h=name>add_tagged</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>intptr_t</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_type>intptr_t</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>unlikely</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Least significant bit is zero,</h->
+    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> so at least one of the operands is a pointer to dynamic data.</h->
+    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> The slow path in generic_data will figure out which one has what layout.</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=name>generic_add</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+  <h- data-h=name_type>intptr_t</h-> <h- data-h=name>z</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>const</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>overflow</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>__builtin_add_overflow</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>&amp;</h-><h- data-h=name>z</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> GCC builtin</h->
+  <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>overflow</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>unlikely</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Neither x nor y is a pointer, but the result doesn't fit into a tagged integer,</h->
+    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> so we call the slow path to allocate etc.</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=name>generic_add</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Mathematically, "small" integers are (2n + 1) where n is the integer value.</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> We need to subtract 1 to not produce a (2n + 2) result.</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_par>(</h-><h- data-h=name>z</h-> <h- data-h=sym_op>-</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>As stated in the paper:
+</p><blockquote>
+<p>This encoding is widely used, ranging from statically typed languages like OCaml
+to dynamic languages like Ruby, Common Lisp, and some JavaScript implementations.
+</p></blockquote>
+</example-block>
+
+<p>The paper explores further improvements upon the technique where two least significant bits
+are used in the short representation,
+which makes the <q>happy path</q> even faster because it eliminates the
+<code><h- data-h=kw_ctrl>if</h-></code> statement at the start,
+among other improvements.
+</p>
+<p>Overall, such techniques provide two key benefits:
+</p><ul>
+  <li>
+    The container size is aggressively reduced to just a single pointer.
+    By comparison, the layout in our reference implementation is two pointers large
+    on 64-bit.
+  </li>
+  <li>
+    The <q>happy path</q> for small integers is faster because it avoids a branch.
+    At the assembly level, in the improved approach described in the paper,
+    addition compiles down to just an <tt->add</tt-> instruction followed by two
+    cheap checks and easily predictable branches.
+  </li>
+</ul>
+
+<p>That being said, we decided not to pursue this approach for a number of reasons:
+</p><ul>
+  <li>
+    If one actually wants to reduce the size to just a single pointer,
+    not every 64-bit integer can be represented anymore.
+    Many use cases involve just that, such as reinterpreting <code><h- data-h=kw_type>double</h-></code> as an integer,
+    using 64-bit unsigned bit patterns, hashes, etc.
+  </li>
+  <li>
+    As explained in <a href=#access-to-the-underlying-representation>§3.2.6. Access to the underlying representation</a>,
+    it is crucial for us to provide direct access to the representation of the integer.
+    The tagged pointer approach implies we cannot simply return
+    a <code><h- data-h=name>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>const</h-> <h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;</h-></code>
+    but would need to return some kind of <code><h- data-h=kw>union</h-></code> between
+    an <code><h- data-h=name>array</h-></code> (for small values) and
+    a <code><h- data-h=name>span</h-></code> (for large values).
+    This is substantially more complicated and makes the <q>happy path</q> slower as well.
+  </li>
+  <li>
+    The tagged integer approach relies heavily on assumptions about pointer representation
+    and on the ability to reinterpret pointers as integers and vice versa.
+    The <code><h- data-h=kw>constexpr</h-></code> support is hard to implement without <q>compiler magic</q>
+    because we would do <q><code><h- data-h=kw>union</h-></code> type punning</q>,
+    which is undefined behavior in C++.
+    The only way around that is to always hold an allocation in the <code><h- data-h=kw>constexpr</h-></code> case,
+    which sacrifices the ability to hold any <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> values
+    in a <code><h- data-h=kw>constexpr</h-></code> variable (except zero perhaps),
+    increases the complexity of the implementation, and
+    presumably makes constant evaluation slower.
+  </li>
+</ul>
+
+<h5 id=problems-with-extendability><a class=para href=#problems-with-extendability></a>3.2.8.1. Problems with extendability</h5>
+
+<p>Furthermore,
+it is impossible for the user to extend the set of operations without overhead
+because the user has no access to the <q>lowest-level details</q> needed.
+Consider that in the example above, we can implement <code><h- data-h=name>add_tagged</h-></code> optimally,
+ending in <code><h- data-h=kw_ctrl>return</h-> <h- data-h=sym_par>(</h-><h- data-h=name>z</h-> <h- data-h=sym_op>-</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code>
+because we know exactly how the tagged integer is represented.
+</p>
+<p>Similarly, multiplication and division need to keep in mind that we are essentially
+performing a fixed-point operation with a constant fractional digit
+and require some bit-shifting and adjusting to handle that.
+Every operation deals with the issue slightly differently.
+</p>
+<example-block><p><intro-></intro-> 
+Consider how the user would implement a <code><h- data-h=name>popcount</h-></code> function ideally
+(which is a motivating example in <a href=#access-to-the-underlying-representation>§3.2.6. Access to the underlying representation</a>):
+</p>
+<code-block><h- data-h=kw_type>int</h-> <h- data-h=name>popcount_tagged</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>intptr_t</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>unlikely</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=name>generic_popcount</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Assume that for negative integers,</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> our popcount counts the bits in the two's complement representation.</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Remember that we mathematically have (2n + 1).</h->
+  <h- data-h=cmt_dlim>//</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> For negative integers, shifting to the left alters the bit count</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> since we have a bunch of leading ones.</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> The least significant tag bit equalizes the one lost bit.</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> For positive integers, we need to subtract 1 to not count the tag bit.</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>popcount</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>-</h-> <h- data-h=sym_par>(</h-><h- data-h=name>x</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>This example relies entirely on super-low-level, secret knowledge
+of representation details.
+A standard library implementer has access to that,
+but users would only have the public <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> API to work with.
+</p></example-block>
+
+<p>By comparison, the proposed layout involves a <code><h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>]</h-></code>
+directly exposed to the user,,
+so the <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> API does very little <q>hiding</q> and <q>abstracting</q>.
+The user could actually implement a <code><h- data-h=name>popcount</h-></code> function that is not a single CPU cycle
+slower than a standard library implementer
+when only using the <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> public API.
+</p>
+
+<h4 id=std::big_int-is-not-a-container><a class=para href=#std::big_int-is-not-a-container></a>3.2.9. <tt->std::big_int</tt-> is not a container</h4>
 
 <p>When looking at the API of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
 one may be tempted to think of it as a contiguous container and even to define it as such.
@@ -6407,6 +6551,11 @@ See also <a href=#std::abs>§3.10.3. <tt->std::abs</tt-></a>.
 <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/p4168r0%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4168r0.html</a></div><div id=bib-item-Reference-Impl class=bib-item>
 <a href="https://github%2ecom/eisenwave/std-big-int/">[Reference-Impl]</a>
 <span class=bib-title>eisenwave/std-big-int reference implementation</span>
-<a href="https://github%2ecom/eisenwave/std-big-int/" class=bib-link>https://github.com/eisenwave/std-big-int/</a></div></div>
+<a href="https://github%2ecom/eisenwave/std-big-int/" class=bib-link>https://github.com/eisenwave/std-big-int/</a></div><div id=bib-item-MSR-TR-2022-17 class=bib-item>
+<a href="https://www%2emicrosoft%2ecom/en-us/research/wp-content/uploads/2022/07/int%2epdf">[MSR-TR-2022-17]</a>
+<span class=bib-author>Daan Leijen.</span>
+<span class=bib-title>What About the Integer Numbers? – Fast Arithmetic with Tagged Integers – A Plea for Hardware Support</span>
+<span class=bib-date>2022-07-11</span>
+<a href="https://www%2emicrosoft%2ecom/en-us/research/wp-content/uploads/2022/07/int%2epdf" class=bib-link>https://www.microsoft.com/en-us/research/wp-content/uploads/2022/07/int.pdf</a></div></div>
 </main></body>
 </html>

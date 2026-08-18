@@ -1114,6 +1114,150 @@ By comparison, a \tcode{std::big_int} design with unique ownership
 avoids a lot of problems because it is statically known that it has unique ownership;
 no runtime check is needed.
 
+\h4{Why not use tagged integers?}
+
+A potential alternative layout can be provided using \q{tagged integer} techniques,
+as explained in \ref("MSR-TR-2022-17").
+
+\Bex{
+In the most simple form,
+we can use the least significant bit of an integer to indicate whether it's actually a pointer
+to dynamic data.
+Such a pointer would have greater alignment,
+so that bit is always zero anyway.
+If the least significant bit is one, the integer is a \q{small} integer
+
+Addition would look something like:
+\cppblock{
+intptr_t add_tagged(intptr_t x, intptr_t y) {
+  if (((x & y) & 1) == 0) [[unlikely]] {
+    // Least significant bit is zero,
+    // so at least one of the operands is a pointer to dynamic data.
+    // The slow path in generic_data will figure out which one has what layout.
+    return generic_add(x, y);
+  }
+  intptr_t z;
+  const bool overflow = __builtin_add_overflow(x, y, &z); // GCC builtin
+  if (overflow) [[unlikely]] {
+    // Neither x nor y is a pointer, but the result doesn't fit into a tagged integer,
+    // so we call the slow path to allocate etc.
+    return generic_add(x, y);
+  }
+  // Mathematically, "small" integers are (2n + 1) where n is the integer value.
+  // We need to subtract 1 to not produce a (2n + 2) result.
+  return (z - 1);
+}
+}
+
+As stated in the paper:
+\Bquote{
+This encoding is widely used, ranging from statically typed languages like OCaml
+to dynamic languages like Ruby, Common Lisp, and some JavaScript implementations.
+}
+}
+
+The paper explores further improvements upon the technique where two least significant bits
+are used in the short representation,
+which makes the \q{happy path} even faster because it eliminates the
+\tcode{if} statement at the start,
+among other improvements.
+
+Overall, such techniques provide two key benefits:
+\ul{
+  \li{
+    The container size is aggressively reduced to just a single pointer.
+    By comparison, the layout in our reference implementation is two pointers large
+    on 64-bit.
+  }
+  \li{
+    The \q{happy path} for small integers is faster because it avoids a branch.
+    At the assembly level, in the improved approach described in the paper,
+    addition compiles down to just an \tt{add} instruction followed by two
+    cheap checks and easily predictable branches.
+  }
+}
+
+That being said, we decided not to pursue this approach for a number of reasons:
+\ul{
+  \li{
+    If one actually wants to reduce the size to just a single pointer,
+    not every 64-bit integer can be represented anymore.
+    Many use cases involve just that, such as reinterpreting \tcode{double} as an integer,
+    using 64-bit unsigned bit patterns, hashes, etc.
+  }
+  \li{
+    As explained in \ref("#access-to-the-underlying-representation"),
+    it is crucial for us to provide direct access to the representation of the integer.
+    The tagged pointer approach implies we cannot simply return
+    a \tcode{span<const uint_multiprecision_t>}
+    but would need to return some kind of \tcode{union} between
+    an \tcode{array} (for small values) and
+    a \tcode{span} (for large values).
+    This is substantially more complicated and makes the \q{happy path} slower as well.
+  }
+  \li{
+    The tagged integer approach relies heavily on assumptions about pointer representation
+    and on the ability to reinterpret pointers as integers and vice versa.
+    The \tcode{constexpr} support is hard to implement without \q{compiler magic}
+    because we would do \q{\tcode{union} type punning},
+    which is undefined behavior in C++.
+    The only way around that is to always hold an allocation in the \tcode{constexpr} case,
+    which sacrifices the ability to hold any \tcode{std::big_int} values
+    in a \tcode{constexpr} variable (except zero perhaps),
+    increases the complexity of the implementation, and
+    presumably makes constant evaluation slower.
+  }
+}
+
+\h5{Problems with extendability}
+
+Furthermore,
+it is impossible for the user to extend the set of operations without overhead
+because the user has no access to the \q{lowest-level details} needed.
+Consider that in the example above, we can implement \tcode{add_tagged} optimally,
+ending in \tcode{return (z - 1);}
+because we know exactly how the tagged integer is represented.
+
+Similarly, multiplication and division need to keep in mind that we are essentially
+performing a fixed-point operation with a constant fractional digit
+and require some bit-shifting and adjusting to handle that.
+Every operation deals with the issue slightly differently.
+
+\Bex{
+Consider how the user would implement a \tcode{popcount} function ideally
+(which is a motivating example in \ref("#access-to-the-underlying-representation")):
+
+\cppblock{
+int popcount_tagged(intptr_t x) {
+  if ((x & 1) == 0) [[unlikely]] {
+    return generic_popcount(x);
+  }
+  // Assume that for negative integers,
+  // our popcount counts the bits in the two's complement representation.
+  // Remember that we mathematically have (2n + 1).
+  //
+  // For negative integers, shifting to the left alters the bit count
+  // since we have a bunch of leading ones.
+  // The least significant tag bit equalizes the one lost bit.
+  // For positive integers, we need to subtract 1 to not count the tag bit.
+  return std::popcount(x) - (x >= 0);
+}
+}
+
+This example relies entirely on super-low-level, secret knowledge
+of representation details.
+A standard library implementer has access to that,
+but users would only have the public \tcode{std::big_int} API to work with.
+}
+
+By comparison, the proposed layout involves a \tcode{uint_multiprecision_t[]}
+directly exposed to the user,,
+so the \tcode{std::big_int} API does very little \q{hiding} and \q{abstracting}.
+The user could actually implement a \tcode{popcount} function that is not a single CPU cycle
+slower than a standard library implementer
+when only using the \tcode{std::big_int} public API.
+
+
 \h4{\tt{std::big_int} is not a container}
 
 When looking at the API of \tcode{std::big_int},
@@ -4884,6 +5028,14 @@ See also \ref("#std::abs").
   id = "Reference-Impl",
   title = "eisenwave/std-big-int reference implementation",
   link = "https://github.com/eisenwave/std-big-int/"
+)\
+\bib(
+  id = "MSR-TR-2022-17",
+  title = "What About the Integer Numbers? – Fast Arithmetic with Tagged Integers – A Plea for Hardware Support",
+  date = "2022-07-11",
+  author = "Daan Leijen",
+  publisher = "Microsoft",
+  link = "https://www.microsoft.com/en-us/research/wp-content/uploads/2022/07/int.pdf",
 )\
 
 \make_bib
