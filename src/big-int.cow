@@ -23,7 +23,7 @@ h1 {
 \wg21_head(title={\tcode{std::big_int}}){
 \dl{
   \dt{Document number:} \dd{\docnum{D4444R0}}
-  \dt{Date:}            \dd{\tt{2026-08-17}}
+  \dt{Date:}            \dd{\tt{2026-08-18}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -968,6 +968,47 @@ positive inputs are treated as if they were preceded by an infinite sequence of 
 The sign bit of the result can be computed before any of the result limbs
 by performing the bitwise operation on the leading \q{infinite bit value} of the operands.
 }
+
+\h4{Representation endianness}
+
+There are two options for the \q{endianness} of the representation:
+\ul{
+  \li{Most significant limb first (big endian).}
+  \li{Least significant limb first (little endian).}
+}
+
+For some operations, there is no significant difference in performance between these two.
+However, these are far from equally good options in specific cases.
+In particular, there are many common operations that shrink or truncate, like
+\ul{
+  \li{\tcode{&= 0xFF},}
+  \li{\tcode{%= 10},}
+  \li{subtraction between two close values,}
+  \li{etc.}
+}
+
+Whenever these operations are performed in-place,
+and we are left with, say, a single limb,
+that limb is already in the right place;
+only the limb count stored in the container needs to be updated.
+
+The key insight is that truncation of little-endian representations is much cheaper
+because no limbs need to be moved.
+Similarly, zero-extension or sign-extension moves no limbs in a little-endian representation,
+but requires moving all limbs in a big-endian representation.
+
+\Bex{
+To implement an in-place \tcode{&= 0xFF} operation,
+for little-endian representation,
+we just need to perform a bitwise between the least significant limb and \tcode{0xFF}.
+The limb count is always set to \tcode{1} after this operation.
+
+For big-endian representation,
+we also need to move the least significant limb to the front of the representation.
+}
+
+In practice, every implementation known to us uses little-endian representation
+because it is strictly better for the operations that are performed on integers in practice.
 
 \h4{Access to the underlying representation}
 

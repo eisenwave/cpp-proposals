@@ -1599,7 +1599,7 @@ h1 {
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/D4444R0>D4444R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-08-17</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2026-08-18</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;<br/>
@@ -1652,10 +1652,12 @@ with elastic operations.
 <div class=toc-num data-level=5>3.2.4.1</div>
 <a href=#bitwise-operations><h5>Bitwise operations</h5></a>
 <div class=toc-num data-level=4>3.2.5</div>
-<a href=#access-to-the-underlying-representation><h4>Access to the underlying representation</h4></a>
+<a href=#representation-endianness><h4>Representation endianness</h4></a>
 <div class=toc-num data-level=4>3.2.6</div>
-<a href=#why-not-use-reference-counting><h4>Why not use reference counting?</h4></a>
+<a href=#access-to-the-underlying-representation><h4>Access to the underlying representation</h4></a>
 <div class=toc-num data-level=4>3.2.7</div>
+<a href=#why-not-use-reference-counting><h4>Why not use reference counting?</h4></a>
+<div class=toc-num data-level=4>3.2.8</div>
 <a href=#std::big_int-is-not-a-container><h4><tt->std::big_int</tt-> is not a container</h4></a>
 <div class=toc-num data-level=3>3.3</div>
 <a href=#constexpr-support><h3><tt->constexpr</tt-> support</h3></a>
@@ -2726,7 +2728,48 @@ The sign bit of the result can be computed before any of the result limbs
 by performing the bitwise operation on the leading <q>infinite bit value</q> of the operands.
 </p></note-block>
 
-<h4 id=access-to-the-underlying-representation><a class=para href=#access-to-the-underlying-representation></a>3.2.5. Access to the underlying representation</h4>
+<h4 id=representation-endianness><a class=para href=#representation-endianness></a>3.2.5. Representation endianness</h4>
+
+<p>There are two options for the <q>endianness</q> of the representation:
+</p><ul>
+  <li>Most significant limb first (big endian).</li>
+  <li>Least significant limb first (little endian).</li>
+</ul>
+
+<p>For some operations, there is no significant difference in performance between these two.
+However, these are far from equally good options in specific cases.
+In particular, there are many common operations that shrink or truncate, like
+</p><ul>
+  <li><code><h- data-h=sym_op>&amp;=</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>FF</h-></code>,</li>
+  <li><code><h- data-h=sym_op>%=</h-> <h- data-h=num>10</h-></code>,</li>
+  <li>subtraction between two close values,</li>
+  <li>etc.</li>
+</ul>
+
+<p>Whenever these operations are performed in-place,
+and we are left with, say, a single limb,
+that limb is already in the right place;
+only the limb count stored in the container needs to be updated.
+</p>
+<p>The key insight is that truncation of little-endian representations is much cheaper
+because no limbs need to be moved.
+Similarly, zero-extension or sign-extension moves no limbs in a little-endian representation,
+but requires moving all limbs in a big-endian representation.
+</p>
+<example-block><p><intro-></intro-> 
+To implement an in-place <code><h- data-h=sym_op>&amp;=</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>FF</h-></code> operation,
+for little-endian representation,
+we just need to perform a bitwise between the least significant limb and <code><h- data-h=num_deco>0x</h-><h- data-h=num>FF</h-></code>.
+The limb count is always set to <code><h- data-h=num>1</h-></code> after this operation.
+</p>
+<p>For big-endian representation,
+we also need to move the least significant limb to the front of the representation.
+</p></example-block>
+
+<p>In practice, every implementation known to us uses little-endian representation
+because it is strictly better for the operations that are performed on integers in practice.
+</p>
+<h4 id=access-to-the-underlying-representation><a class=para href=#access-to-the-underlying-representation></a>3.2.6. Access to the underlying representation</h4>
 
 <p>As mentioned in <a href=#design>§3. Design</a>,
 a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is conceptually a <code><h- data-h=kw>union</h-></code> of
@@ -2776,7 +2819,7 @@ into a corrupt state, like
 having a <code><h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> that doesn't match the number of bits in the representation, or
 producing negative zero.
 </p>
-<h4 id=why-not-use-reference-counting><a class=para href=#why-not-use-reference-counting></a>3.2.6. Why not use reference counting?</h4>
+<h4 id=why-not-use-reference-counting><a class=para href=#why-not-use-reference-counting></a>3.2.7. Why not use reference counting?</h4>
 
 <p>An idea very early in the design process was to use reference counting in order to avoid
 the issue explained in <a href=#optimal-operator-overloads>§3.4. Optimal operator overloads</a>.
@@ -2824,7 +2867,7 @@ otherwise, <code><h- data-h=sym_op>-</h-><h- data-h=name>x</h-></code> performs 
 avoids a lot of problems because it is statically known that it has unique ownership;
 no runtime check is needed.
 </p>
-<h4 id=std::big_int-is-not-a-container><a class=para href=#std::big_int-is-not-a-container></a>3.2.7. <tt->std::big_int</tt-> is not a container</h4>
+<h4 id=std::big_int-is-not-a-container><a class=para href=#std::big_int-is-not-a-container></a>3.2.8. <tt->std::big_int</tt-> is not a container</h4>
 
 <p>When looking at the API of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
 one may be tempted to think of it as a contiguous container and even to define it as such.
