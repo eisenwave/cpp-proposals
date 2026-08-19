@@ -23,7 +23,7 @@ h1 {
 \wg21_head(title={\tcode{std::big_int}}){
 \dl{
   \dt{Document number:} \dd{\docnum{D4444R0}}
-  \dt{Date:}            \dd{\tt{2026-08-18}}
+  \dt{Date:}            \dd{\tt{2026-08-19}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -2594,6 +2594,32 @@ As mentioned in \ref("#c-compatibility"),
 it may be beneficial to improve C compatibility
 by putting \tcode{std::uint_multiprecision_t} in \header{cstdint},
 and possibly by standardizing the type for C2y.
+
+\h3{Non-transient allocations}
+
+\tcode{std::big_int} would benefit from non-transient \tcode{constexpr} allocations
+because it would allow \tcode{constexpr} variables to hold any integer value.
+Currently, the limit is imposed by the \tcode{inplace_capacity}.
+
+However, this is a general problem, and any solution
+should include \tcode{std::string}, \tcode{std::vector}, etc.
+
+\h3{Structural type support}
+
+While \tcode{std::big_int}'s implementation doesn't meet the requirements
+of a structural type,
+it could be declared \q{magically structural} in the standard.
+Using some compiler support,
+the name mangling could be customized so that \tcode{std::big_int} becomes usable
+as a template parameter.
+That is, \tcode{123n} could be mangled as \tt{W123}
+similar to how \tcode{123} is mangled as \tt{i123}.
+
+However, again, this is is a general problem,
+and other types such as \tcode{std::string} could benefit from being structural as well.
+Even if we didn't provide a general customization point for name mangling,
+a paper should look holistically at which standard library types should be special-cased
+rather than only doing this for \tcode{std::big_int}.
 
 \:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 

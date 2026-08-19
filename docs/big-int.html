@@ -1599,7 +1599,7 @@ h1 {
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/D4444R0>D4444R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-08-18</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2026-08-19</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;<br/>
@@ -1745,6 +1745,10 @@ with elastic operations.
 <a href=#random-number-generation><h3>Random number generation</h3></a>
 <div class=toc-num data-level=3>4.4</div>
 <a href=#making-std::uint_multiprecision_t-c-compatible><h3>Making <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint_multiprecision_t</h-></code> C-compatible</h3></a>
+<div class=toc-num data-level=3>4.5</div>
+<a href=#non-transient-allocations><h3>Non-transient allocations</h3></a>
+<div class=toc-num data-level=3>4.6</div>
+<a href=#structural-type-support><h3>Structural type support</h3></a>
 <div class=toc-num data-level=2>5</div>
 <a href=#arguments-against-standardization><h2>Arguments against standardization</h2></a>
 <div class=toc-num data-level=3>5.1</div>
@@ -4314,6 +4318,32 @@ Presumably, the approach would be to allow <code><h- data-h=name>std</h-><h- dat
 it may be beneficial to improve C compatibility
 by putting <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint_multiprecision_t</h-></code> in <code><h- data-h=str>&lt;cstdint&gt;</h-></code>,
 and possibly by standardizing the type for C2y.
+</p>
+<h3 id=non-transient-allocations><a class=para href=#non-transient-allocations></a>4.5. Non-transient allocations</h3>
+
+<p><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> would benefit from non-transient <code><h- data-h=kw>constexpr</h-></code> allocations
+because it would allow <code><h- data-h=kw>constexpr</h-></code> variables to hold any integer value.
+Currently, the limit is imposed by the <code><h- data-h=name>inplace_capacity</h-></code>.
+</p>
+<p>However, this is a general problem, and any solution
+should include <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string</h-></code>, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>vector</h-></code>, etc.
+</p>
+<h3 id=structural-type-support><a class=para href=#structural-type-support></a>4.6. Structural type support</h3>
+
+<p>While <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>'s implementation doesn't meet the requirements
+of a structural type,
+it could be declared <q>magically structural</q> in the standard.
+Using some compiler support,
+the name mangling could be customized so that <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> becomes usable
+as a template parameter.
+That is, <code><h- data-h=num>123</h-><h- data-h=num_deco>n</h-></code> could be mangled as <tt->W123</tt->
+similar to how <code><h- data-h=num>123</h-></code> is mangled as <tt->i123</tt->.
+</p>
+<p>However, again, this is is a general problem,
+and other types such as <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string</h-></code> could benefit from being structural as well.
+Even if we didn't provide a general customization point for name mangling,
+a paper should look holistically at which standard library types should be special-cased
+rather than only doing this for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
 </p>
 
 <h2 id=arguments-against-standardization><a class=para href=#arguments-against-standardization></a>5. Arguments against standardization</h2>
