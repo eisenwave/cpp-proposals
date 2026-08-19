@@ -3652,12 +3652,12 @@ class basic_big_int {
   template<\exposid{arbitrary-arithmetic-type} T>
     constexpr explicit basic_big_int(const T& x, const Allocator& a)
       noexcept(\exposid{no-alloc-constructible-from}<T>);
-  template<input_range R>
-    requires \exposid{signed-or-unsigned}<ranges::range_value_t<R>>
-    constexpr explicit basic_big_int(from_range_t, R&&, const Allocator& a = Allocator());
   template <input_iterator I, sentinel_for<I> S>
     requires \exposid{signed-or-unsigned}<iter_value_t<I>>
     constexpr basic_big_int(I begin, S end, const Allocator& a = Allocator());
+  template<input_range R>
+    requires \exposid{signed-or-unsigned}<ranges::range_value_t<R>>
+    constexpr basic_big_int(from_range_t, R&&, const Allocator& a = Allocator());
   constexpr ~basic_big_int();
 
   //\serif{ [big.int.ops], operations}
@@ -4117,19 +4117,20 @@ otherwise, exceptions thrown during allocation.
 }
 
 \itemdecl{
-template<input_range R>
-  requires \exposid{signed-or-unsigned}<ranges::range_value_t<R>>
-  constexpr explicit basic_big_int(from_range_t, R&& r, const Allocator& a = Allocator());
+template <input_iterator I, sentinel_for<I> S>
+  requires \exposid{signed-or-unsigned}<iter_value_t<I>>
+  constexpr basic_big_int(I begin, S end, const Allocator& a = Allocator());
 }
 
 \itemdescr{
 \pnum
 \effects
 Initializes the integer value to an integer value formed
-by concatenating the base-2 representation of each element in \tcode{r},
-where the first element in \tcode{r} holds the least significant part
+by concatenating the base-2 representation of each element
+in the range \tcode{[begin, end)},
+where the first element in that range holds the least significant part
 of the concatenated base-2 representation.
-If \tcode{ranges::range_value_t<R>} is a signed type,
+If \tcode{iter_value_t<I>} is a signed type,
 the combined base-2 representation is interpreted as that of a signed integer,
 otherwise as that of an unsigned integer.
 Initializes the allocator to \tcode{a}.
@@ -4139,6 +4140,23 @@ Initializes the allocator to \tcode{a}.
 Nothing if the effective width of the combined integer value
 is less than or equal to \tcode{inplace_bits};
 otherwise, exceptions thrown during allocation.
+
+\pnum
+\complexity
+Linear in the size of \tcode{[begin, end)}.
+}
+
+\itemdecl{
+template<input_range R>
+  requires \exposid{signed-or-unsigned}<ranges::range_value_t<R>>
+  constexpr basic_big_int(from_range_t, R&& r, const Allocator& a = Allocator());
+}
+
+\itemdescr{
+\pnum
+\effects
+Equivalent to:
+\tcode{basic_big_int(ranges::begin(r), ranges::end(r), a)}.
 }
 }
 
