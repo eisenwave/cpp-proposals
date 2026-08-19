@@ -1844,6 +1844,8 @@ with elastic operations.
 <div class=toc-num data-level=3>7.16</div>
 <a href=#c%2emath%2eabs><h3>[c.math.abs]</h3></a>
 <div class=toc-num data-level=2>8</div>
+<a href=#acknowledgements><h2>Acknowledgements</h2></a>
+<div class=toc-num data-level=2>9</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
@@ -5111,8 +5113,23 @@ which is extremely important to avoid overhead from performing division twice.
 
 <div class=indent>
 <p><ins><i>Returns</i>:
-<code><h- data-h=name>format</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>{}</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>move</h-><h- data-h=sym_par>(</h-><h- data-h=name>val</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code>.</ins>
+<code><h- data-h=name>format</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>{}</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>val</h-><h- data-h=sym_par>)</h-></code>.</ins></p>
+
+<p><ins><i>Postconditions</i>:
+<code><h- data-h=name>val</h-></code> is in a valid but unspecified state.</ins>
 </p></div>
+
+<note-block class=edit><p><intro-></intro-> 
+The intent is to allow the implementation
+to call the rvalue overload of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_chars</h-></code>.
+Simply passing <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>move</h-><h- data-h=sym_par>(</h-><h- data-h=name>val</h-><h- data-h=sym_par>)</h-></code> into <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>format</h-></code> wouldn't do anything
+because formatting does not handle rvalues specially.
+</p>
+<p>It would also be possible to specify <code><h- data-h=name>to_string</h-></code> in terms of <code><h- data-h=name>to_chars</h-></code> directly
+(which more closely matches the actual implementation),
+but this is much more complicated and should probably be done consistently
+for the pre-existing overloads too.
+</p></note-block>
 
 <p>[…]</p>
 
@@ -5144,7 +5161,10 @@ which is extremely important to avoid overhead from performing division twice.
 
 <div class=indent>
 <p><ins><i>Returns</i>:
-<code><h- data-h=name>format</h-><h- data-h=sym_par>(</h-><h- data-h=str_deco>L</h-><h- data-h=str_dlim>"</h-><h- data-h=str>{}</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>move</h-><h- data-h=sym_par>(</h-><h- data-h=name>val</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code>.</ins>
+<code><h- data-h=name>format</h-><h- data-h=sym_par>(</h-><h- data-h=str_deco>L</h-><h- data-h=str_dlim>"</h-><h- data-h=str>{}</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>val</h-><h- data-h=sym_par>)</h-></code>.</ins></p>
+
+<p><ins><i>Postconditions</i>:
+<code><h- data-h=name>val</h-></code> is in a valid but unspecified state.</ins>
 </p></div>
 
 <p>[…]
@@ -6500,29 +6520,27 @@ See also <a href=#hash-support-for-std::big_int>§3.11.1. Hash support for <tt->
 <h- data-h=kw>struct</h-> <h- data-h=name>formatter</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>charT</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=kw>template</h-> <h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>ParseContext</h-><h- data-h=sym_op>&gt;</h->
     <h- data-h=kw>constexpr</h-> <h- data-h=kw>typename</h-> <h- data-h=name>ParseContext</h-><h- data-h=sym_op>::</h-><h- data-h=name>iterator</h-> <h- data-h=name>parse</h-><h- data-h=sym_par>(</h-><h- data-h=name>ParseContext</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>ctx</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>FormatContext</h-><h- data-h=sym_op>&gt;</h->
     <h- data-h=kw>constexpr</h-> <h- data-h=kw>typename</h-> <h- data-h=name>FormatContext</h-><h- data-h=sym_op>::</h-><h- data-h=name>iterator</h->
       <h- data-h=name>format</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>FormatContext</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>ctx</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>FormatContext</h-><h- data-h=sym_op>&gt;</h->
-    <h- data-h=kw>constexpr</h-> <h- data-h=kw>typename</h-> <h- data-h=name>FormatContext</h-><h- data-h=sym_op>::</h-><h- data-h=name>iterator</h->
-      <h- data-h=name>format</h-><h- data-h=sym_par>(</h-><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>FormatContext</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>ctx</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h-></code-block>
 
-<div class=indent>
 <p>1
-There exists a constexpr-enabled (<a href=https://eel.is/c++draft/format.formatter.spec>[format.formatter.spec]</a>) specialization
-of <code><h- data-h=name>formatter</h-></code> for <code><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-></code>
-which interpret the format specification as a <g-term>std-format-spec</g-term> and
-which format the integer value of the given parameter <code><h- data-h=name>x</h-></code>
-same as a formatter for a signed integer type.
+The specialization is enabled and constexpr-enabled (<a href=https://eel.is/c++draft/format.formatter.spec>[format.formatter.spec]</a>).
+</p>
+<p>2
+The <code><h- data-h=name>parse</h-></code> member function interprets the format specification
+as a <g-term>std-format-spec</g-term>.
+</p>
+<p>3
+For the purposes of <a href=https://eel.is/c++draft/format.string.std>[format.string.std]</a>,
+<code><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>A</h-><h- data-h=sym_op>&gt;</h-></code> is treated as a signed integer type.
 </p>
 <p>[<i>Note</i>: 
 As explained in <a href=https://eel.is/c++draft/format.string.std>[format.string.std]</a>,
 character output is performed using <code><h- data-h=name>to_chars</h-></code>.
  — <i>end note</i>]
-</p></div>
-</ins-block>
+</p></ins-block>
 
 <h4 id=big.int.literal><a class=para href=#big%2eint%2eliteral></a>[big.int.literal]</h4>
 
@@ -6762,7 +6780,13 @@ See also <a href=#std::abs>§3.11.3. <tt->std::abs</tt-></a>.
 </p></note-block>
 
 
-<h2 id=references><a class=para href=#references></a>8. References</h2>
+<h2 id=acknowledgements><a class=para href=#acknowledgements></a>8. Acknowledgements</h2>
+
+<p>Thanks to Victor Zverovich for assisting with wording in <a href=#big.int.fmt>§ [big.int.fmt]</a>
+and providing design guidance on formatting support.
+</p>
+
+<h2 id=references><a class=para href=#references></a>9. References</h2>
 
 
 <div class=bib><div id=bib-item-N1692 class=bib-item>

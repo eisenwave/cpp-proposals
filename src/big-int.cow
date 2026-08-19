@@ -3425,7 +3425,22 @@ string to_string(long double val);
 
 \itemdescr{
 \ins{\returns
-\tcode{format("{}", std::move(val))}.}
+\tcode{format("{}", val)}.}
+
+\ins{\ensures
+\tcode{val} is in a valid but unspecified state.}
+}
+
+\editnote{
+The intent is to allow the implementation
+to call the rvalue overload of \tcode{std::to_chars}.
+Simply passing \tcode{std::move(val)} into \tcode{std::format} wouldn't do anything
+because formatting does not handle rvalues specially.
+
+It would also be possible to specify \tcode{to_string} in terms of \tcode{to_chars} directly
+(which more closely matches the actual implementation),
+but this is much more complicated and should probably be done consistently
+for the pre-existing overloads too.
 }
 
 \etc
@@ -3464,7 +3479,10 @@ wstring to_wstring(long double val);
 
 \itemdescr{
 \ins{\returns
-\tcode{format(L"{}", std::move(val))}.}
+\tcode{format(L"{}", val)}.}
+
+\ins{\ensures
+\tcode{val} is in a valid but unspecified state.}
 }
 
 \etc
@@ -4928,28 +4946,26 @@ template<size_t b, class L, class A, class charT>
 struct formatter<basic_big_int<b, L, A>, charT> {
   template <class ParseContext>
     constexpr typename ParseContext::iterator parse(ParseContext& ctx);
-
   template<class FormatContext>
     constexpr typename FormatContext::iterator
       format(const basic_big_int<b, L, A>& x, FormatContext& ctx) const;
-  template<class FormatContext>
-    constexpr typename FormatContext::iterator
-      format(basic_big_int<b, L, A>&& x, FormatContext& ctx) const;
 };
 }
 
-\itemdescr{
 \pnum
-There exists a constexpr-enabled\iref{format.formatter.spec} specialization
-of \tcode{formatter} for \tcode{basic_big_int<b, L, A>}
-which interpret the format specification as a \grammarterm{std-format-spec} and
-which format the integer value of the given parameter \tcode{x}
-same as a formatter for a signed integer type.
+The specialization is enabled and constexpr-enabled\iref{format.formatter.spec}.
+
+\pnum
+The \tcode{parse} member function interprets the format specification
+as a \grammarterm{std-format-spec}.
+
+\pnum
+For the purposes of \eelis{format.string.std},
+\tcode{basic_big_int<b, L, A>} is treated as a signed integer type.
 
 \note{
 As explained in \eelis{format.string.std},
 character output is performed using \tcode{to_chars}.
-}
 }
 }
 
@@ -5204,6 +5220,13 @@ Constant.}
 \editnote{
 See also \ref("#std::abs").
 }
+
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+\h2{Acknowledgements}
+
+Thanks to Victor Zverovich for assisting with wording in \ref("#big.int.fmt")
+and providing design guidance on formatting support.
 
 \:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
