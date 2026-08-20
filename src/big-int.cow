@@ -2259,12 +2259,8 @@ than the type used for lookup (assuming transparent lookup in some container).
 However, the hash might not be compatible with that of fundamental types,
 i.e. \tcode{1} may be hashed differently than \tcode{std::big_int{1}}.
 This was done to increase flexibility in the \tcode{hash<big_int>} implementation
-and to not pessimize the hash algorithm.
-
-\Bdecision{
-We should seriously consider whether we want hash parity between fundamental types
-and \tcode{basic_big_int}.
-}
+and to not pessimize the hash algorithm. To maintain a degree of parity we ensure
+that as available \tcode{hash<big_int>(x)} equals \tcode{hash<_BitInt(N)>(static_cast<_BitInt(N)>(x))}.
 
 \h4{\tt{std::numeric_limits} specialization}
 
@@ -4924,6 +4920,15 @@ have equal integer value\iref{big.int.class}, then
 \tcode{hash<\brk{}basic_big_int<\math{\msub{\mi{b}\mn{1}}}, \math{\msub{\mi{L}\mn{1}}}, \math{\msub{\mi{A}\mn{1}}}>>()(\math{\msub{\mi{o}\mn{1}}})}
 equals
 \tcode{hash<\brk{}basic_big_int<\math{\msub{\mi{b}\mn{2}}}, \math{\msub{\mi{L}\mn{2}}}, \math{\msub{\mi{A}\mn{2}}}>>()(\math{\msub{\mi{o}\mn{2}}})}.
+
+\pnum
+\remarks
+Let \math{\msub{\mi{o}\mn{1}}} be an object of type
+\tcode{basic_big_int<\math{\msub{\mi{b}\mn{1}}}, \math{\msub{\mi{L}\mn{1}}}, \math{\msub{\mi{A}\mn{1}}}>},
+and let \math{\msub{\mi{o}\mn{1}}} contain \tcode{N} bits, then
+\tcode{hash<\brk{}basic_big_int<\math{\msub{\mi{b}\mn{1}}}, \math{\msub{\mi{L}\mn{1}}}, \math{\msub{\mi{A}\mn{1}}}>>()(\math{\msub{\mi{o}\mn{1}}})}
+equals
+\tcode{hash<\brk{}_BitInt(N)>}.
 
 \note{
 For an object \math{\mi{x}} of integral type \tcode{T},
