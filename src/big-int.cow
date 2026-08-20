@@ -1043,7 +1043,7 @@ because it is strictly better for the operations that are performed on integers 
 
 \h4{Access to the underlying representation}
 
-As mentioned in \ref("#design"),
+As mentioned in \ref("#design-strategy"),
 a \tcode{std::big_int} is conceptually a \tcode{union} of
 \tcode{uint_multiprecision_t inplace_storage[N];} and
 \tcode{uint_multiprecision_t* dynamic_storage;}.
@@ -1094,6 +1094,105 @@ Providing write access would make it easily possible to put the \tcode{std::big_
 into a corrupt state, like
 having a \tcode{size()} that doesn't match the number of bits in the representation, or
 producing negative zero.
+
+\h5{Why not provide access using a random access range?}
+
+Rather than providing a \tcode{std::span} to the underlying representation,
+it would also be possible to provide a random access range.
+This would grant some more flexibility in the representation, like:
+\ul{
+  \li{
+    Storing an \tcode{unsigned __int128} or other type rather than
+    a \tcode{uint_multiprecision_t[]} for in-place storage.
+  }
+  \li{
+    Using \q{tagged integer} representations
+    (see \ref("#why-not-use-tagged-integers")).
+  }
+}
+
+\Bnote{
+The argument of \q{not exposing implementation details}
+has also been used against providing access to the data of \tcode{BigUint}
+in \url{https://github.com/rust-num/num-bigint/issues/283}.
+That Rust crate instead provides a random-access iterator via
+\ref("https://docs.rs/num-bigint/latest/num_bigint/struct.BigUint.html#method.iter_u64_digits"){BigUint::iter_u64_digits}.
+
+However, that implementation stores a \tcode{BigDigit} (or array thereof)
+in the small and large case,
+so there is no concrete benefit to the encapsulation.
+}
+
+However, we decided against random access iterators for a number of reasons:
+\ul{
+  \li{
+    If the implementation actually makes use of the added design freedom and computes
+    the \tcode{uint_multiprecision_t} representation on the fly in the small case,
+    the iterator needs to check whether the integer is small or large on every iteration.
+    This is especially annoying when the \tcode{std::big_int} currently holds an allocation,
+    which is definitely just an array of \tcode{uint_multiprecision_t} in memory.
+    We are concerned about the performance overhead.
+  }
+  \li{
+    As explained above, the benefit of providing access to the limb array is that the user
+    can extend the type with additional operations without overhead.
+    If \tcode{representation()} returns a \tcode{std::span},
+    the user can actually do that.
+    Otherwise, there should actually be a \tcode{dynamic_representation()}
+    returning a \tcode{std::span} for the large case.
+    Such a function would inevitably be used by the standard library
+    to implement its operations without overhead.
+    Even if provided, users would now need to handle the small and large cases separately.
+  }
+  \li{
+    As explained in \ref("#c-compatibility"),
+    providing a \tcode{std::span} enables C interoperability.
+    The application may internally hold a \tcode{std::big_int} and pass its representations
+    to C APIs as \tcode{uint_multiprecision_t[]} and \tcode{size_t},
+    similar to how \tcode{std::string} can interface with C thanks to \tcode{c_str()}.
+  }
+}
+
+It is also important to understand that the C-compatible interface has implications
+even beyond \tcode{std::big_int}.
+
+\Bex{
+For example, to provide a \tcode{popcount} multiprecision operation
+(from the perspective of a C++ implementation),
+all sorts of code paths can converge on a single runtime library function:
+\cppblock{
+long __popcount_mp(const uint_multiprecision_t*, size_t) { /* ... */ }
+
+// Because we get a std::span, we can invoke the runtime library function
+// in both the small and large representation case.
+// If we only had a random access range,
+// we would first need to dump the representation into a temporary array.
+long popcount(const std::big_int& x) {
+  std::span<const uint_multiprecision_t> r = x.representation();
+  return __popcount_mp(r.data(), r.size());
+}
+
+// Currently, operations like __builtin_popcount all use a software expansion
+// rather than calling into the runtime library,
+// which can lead to massive increase in code size.
+// __builtin_elementwise_popcount(_BitInt(8192)) in Clang 22
+// literally just emits 'popcnt' 128 times and adds up the results.
+//
+// Delegating to a runtime library function would dramatically reduce code size.
+long popcount(const unsigned _BitInt(8192)& x) {
+  // In the x86_64 psABI, the representation of _BitInt(8192)
+  // is exactly the same as std::big_int with 128 limbs,
+  // so we can just reinterpret the data.
+  // Aliasing restrictions do not apply here.
+  return __popcount_mp(reinterpret_cast<const uint_multiprecision_t*>(&x),
+                       sizeof(x) / sizeof(uint_multiprecision_t));
+}
+}
+
+This would ultimately mean that \tcode{popcount} on \tcode{std::big_int},
+\tcode{std::popcount}, and
+\tcode{stdc_count_ones} can all utilize the same routine without overhead.
+}
 
 \h4{Why not use reference counting?}
 

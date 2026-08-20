@@ -1655,6 +1655,8 @@ with elastic operations.
 <a href=#representation-endianness><h4>Representation endianness</h4></a>
 <div class=toc-num data-level=4>3.2.6</div>
 <a href=#access-to-the-underlying-representation><h4>Access to the underlying representation</h4></a>
+<div class=toc-num data-level=5>3.2.6.1</div>
+<a href=#why-not-provide-access-using-a-random-access-range><h5>Why not provide access using a random access range?</h5></a>
 <div class=toc-num data-level=4>3.2.7</div>
 <a href=#why-not-use-reference-counting><h4>Why not use reference counting?</h4></a>
 <div class=toc-num data-level=4>3.2.8</div>
@@ -2824,7 +2826,7 @@ because it is strictly better for the operations that are performed on integers 
 </p>
 <h4 id=access-to-the-underlying-representation><a class=para href=#access-to-the-underlying-representation></a>3.2.6. Access to the underlying representation</h4>
 
-<p>As mentioned in <a href=#design>§3. Design</a>,
+<p>As mentioned in <a href=#design-strategy>§3.1. Design strategy</a>,
 a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is conceptually a <code><h- data-h=kw>union</h-></code> of
 <code><h- data-h=name_type>uint_multiprecision_t</h-> <h- data-h=name>inplace_storage</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>N</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>;</h-></code> and
 <code><h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>*</h-> <h- data-h=name>dynamic_storage</h-><h- data-h=sym_punc>;</h-></code>.
@@ -2872,6 +2874,103 @@ into a corrupt state, like
 having a <code><h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> that doesn't match the number of bits in the representation, or
 producing negative zero.
 </p>
+<h5 id=why-not-provide-access-using-a-random-access-range><a class=para href=#why-not-provide-access-using-a-random-access-range></a>3.2.6.1. Why not provide access using a random access range?</h5>
+
+<p>Rather than providing a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>span</h-></code> to the underlying representation,
+it would also be possible to provide a random access range.
+This would grant some more flexibility in the representation, like:
+</p><ul>
+  <li>
+    Storing an <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>__int128</h-></code> or other type rather than
+    a <code><h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>]</h-></code> for in-place storage.
+  </li>
+  <li>
+    Using <q>tagged integer</q> representations
+    (see <a href=#why-not-use-tagged-integers>§3.2.8. Why not use tagged integers?</a>).
+  </li>
+</ul>
+
+<note-block><p><intro-></intro-> 
+The argument of <q>not exposing implementation details</q>
+has also been used against providing access to the data of <code><h- data-h=name>BigUint</h-></code>
+in <a href=https://github.com/rust-num/num-bigint/issues/283 class=sans>https://github.com/rust-num/num-bigint/issues/283</a>.
+That Rust crate instead provides a random-access iterator via
+<a href=https://docs.rs/num-bigint/latest/num_bigint/struct.BigUint.html#method.iter_u64_digits>BigUint::iter_u64_digits</a>.
+</p>
+<p>However, that implementation stores a <code><h- data-h=name>BigDigit</h-></code> (or array thereof)
+in the small and large case,
+so there is no concrete benefit to the encapsulation.
+</p></note-block>
+
+<p>However, we decided against random access iterators for a number of reasons:
+</p><ul>
+  <li>
+    If the implementation actually makes use of the added design freedom and computes
+    the <code><h- data-h=name_type>uint_multiprecision_t</h-></code> representation on the fly in the small case,
+    the iterator needs to check whether the integer is small or large on every iteration.
+    This is especially annoying when the <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> currently holds an allocation,
+    which is definitely just an array of <code><h- data-h=name_type>uint_multiprecision_t</h-></code> in memory.
+    We are concerned about the performance overhead.
+  </li>
+  <li>
+    As explained above, the benefit of providing access to the limb array is that the user
+    can extend the type with additional operations without overhead.
+    If <code><h- data-h=name>representation</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> returns a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>span</h-></code>,
+    the user can actually do that.
+    Otherwise, there should actually be a <code><h- data-h=name>dynamic_representation</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>
+    returning a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>span</h-></code> for the large case.
+    Such a function would inevitably be used by the standard library
+    to implement its operations without overhead.
+    Even if provided, users would now need to handle the small and large cases separately.
+  </li>
+  <li>
+    As explained in <a href=#c-compatibility>§3.2.2. C compatibility</a>,
+    providing a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>span</h-></code> enables C interoperability.
+    The application may internally hold a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> and pass its representations
+    to C APIs as <code><h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>]</h-></code> and <code><h- data-h=name_type>size_t</h-></code>,
+    similar to how <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string</h-></code> can interface with C thanks to <code><h- data-h=name>c_str</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>.
+  </li>
+</ul>
+
+<p>It is also important to understand that the C-compatible interface has implications
+even beyond <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
+</p>
+<example-block><p><intro-></intro-> 
+For example, to provide a <code><h- data-h=name>popcount</h-></code> multiprecision operation
+(from the perspective of a C++ implementation),
+all sorts of code paths can converge on a single runtime library function:
+</p><code-block><h- data-h=kw_type>long</h-> <h- data-h=name>__popcount_mp</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>*</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_type>size_t</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>}</h->
+
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Because we get a std::span, we can invoke the runtime library function</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> in both the small and large representation case.</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> If we only had a random access range,</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> we would first need to dump the representation into a temporary array.</h->
+<h- data-h=kw_type>long</h-> <h- data-h=name>popcount</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>const</h-> <h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>r</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>x</h-><h- data-h=sym_op>.</h-><h- data-h=name>representation</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=name>__popcount_mp</h-><h- data-h=sym_par>(</h-><h- data-h=name>r</h-><h- data-h=sym_op>.</h-><h- data-h=name>data</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>r</h-><h- data-h=sym_op>.</h-><h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h->
+
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Currently, operations like __builtin_popcount all use a software expansion</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> rather than calling into the runtime library,</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> which can lead to massive increase in code size.</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> __builtin_elementwise_popcount(_BitInt(8192)) in Clang 22</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> literally just emits 'popcnt' 128 times and adds up the results.</h->
+<h- data-h=cmt_dlim>//</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Delegating to a runtime library function would dramatically reduce code size.</h->
+<h- data-h=kw_type>long</h-> <h- data-h=name>popcount</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>8192</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> In the x86_64 psABI, the representation of _BitInt(8192)</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> is exactly the same as std::big_int with 128 limbs,</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> so we can just reinterpret the data.</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Aliasing restrictions do not apply here.</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=name>__popcount_mp</h-><h- data-h=sym_par>(</h-><h- data-h=kw>reinterpret_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>const</h-> <h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>*</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>&amp;</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h->
+                       <h- data-h=kw>sizeof</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>/</h-> <h- data-h=kw>sizeof</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p>This would ultimately mean that <code><h- data-h=name>popcount</h-></code> on <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
+<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>popcount</h-></code>, and
+<code><h- data-h=name>stdc_count_ones</h-></code> can all utilize the same routine without overhead.
+</p></example-block>
+
 <h4 id=why-not-use-reference-counting><a class=para href=#why-not-use-reference-counting></a>3.2.7. Why not use reference counting?</h4>
 
 <p>An idea very early in the design process was to use reference counting in order to avoid
