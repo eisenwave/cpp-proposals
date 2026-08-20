@@ -1836,6 +1836,101 @@ That being said, a \tcode{std::big_int_view} type is not entirely useless;
 it's just not useful enough to be included in this paper,
 let alone be standardized before \tcode{std::big_int}.
 
+\h3(id="why-no-big-uint"){Why no \tt{std::big_uint}?}
+
+We do not propose an unsigned counterpart to \tcode{std::big_uint},
+nor any way to make \tcode{std::basic_big_int} unsigned.
+
+\Bnote{
+Note that it is quite rare for \q{unsigned big integers} to be provided in the first place.
+Boost.Multiprecision does not allow \tcode{cpp_integer_type::unsigned_magnitude}
+for arbitrary-precision \tcode{cpp_int_backend}.
+
+When there is an arbitrary-precision integer built into the language,
+it tends to be signed-only,
+which has the concrete benefit of \em{everyone} using a single integer type.
+}
+
+One reason against providing \tcode{std::big_uint} is that doing so
+contradicts the goal of providing safe and infallible operations
+(not counting allocation failure).
+Operations like subtraction, remainders, etc.
+can produce negative values.
+Saturating to zero is mathematically wrong
+for \math{\mi{ℕ}} and \math{\mi{ℤ}},
+so the most plausible way to handle the case is to throw an exception.
+
+\Bex{
+Subtracting two \tcode{BigUint} in Rust's \tt{num_bigint} crate panics
+when producing a negative value.
+See \ref("https://github.com/rust-num/num-bigint/blob/main/src/biguint/subtraction.rs"){\tt{assert!} calls in \tt{subtraction.rs}}.
+}
+
+\tcode{std::big_uint} also contracts the goal of providing a vocabulary type.
+Some users will inevitably use it for integers that can be large in value
+but not negative,
+which bifurcates the ecosystem into \tcode{std::big_int} and \tcode{std::big_uint}.
+
+Another observation is that unsigned integers become less motivated the larger the type is.
+For 8-bit integers, this allows representing up to \tcode{255} instead of \tcode{127},
+which is a meaningful difference.
+When looking at \ref("#layout-in-our-reference-implementation"),
+making \tcode{big_int} unsigned would raise the maximum bit count from
+137 billion bits to 274 billion bits.
+Who is supposed to benefit from this?
+
+To be fair, guaranteeing that the sign bit is always zero eliminates some runtime checks,
+but even that is fairly limited.
+For example, since \tcode{std::big_int} uses a sign and magnitude representation,
+most of the multiplication logic already ignores the sign.
+The sign bit can simply be computed using an XOR at the end of the operation.
+Overall, eliminating the sign bit is the pinnacle of micro-optimizations.
+
+\h4{Burning the \tt{std::big_uint} bridge}
+
+Not only is \tcode{std::big_uint} not part of this paper now,
+we also don't leave any room for integrating it into \tcode{basic_big_int}
+using the current set of template parameters.
+That is, we don't have a \tcode{bool} for configuring signedness.
+See also \ref("#template-parameters") below.
+
+\Bnote{
+A future extension is still theoretically possible.
+The \tcode{Limb} parameter could be generalized to an \q{ABI parameter} like:
+\cppblock{
+struct my_unsigned_abi {
+  using limb = std::uint_multiprecision_t;
+  using is_unsigned = std::true_type;
+};
+using my_big_uint = basic_big_int<big_int::inplace_capacity, my_unsigned_abi>;
+}
+However, this would be a fairly unprecedented change to an existing standard library type
+if made retroactively.
+}
+
+Even if the bridge was not burned,
+adding \tcode{std::big_uint} in the form of \tcode{std::basic_big_int} extensions
+would be problematic.
+The status quo is that any code that uses \tcode{std::basic_big_int} can assume
+that subtraction and negation of small values is non-throwing,
+and that the only failure mode is producing stupidly large values
+(with some rare exceptions like division by zero;
+see also \ref("#error-handling")).
+Making \tcode{std::basic_big_int} throw or abort on negative values
+would rug-pull these assumptions.
+
+\h4{Conclusion}
+
+Providing \tcode{std::big_uint} would be in direct contradiction with our design goals,
+so it is not provided.
+The performance benefits are minimal.
+
+Making \tcode{std::basic_big_int} possibly unsigned in the future is also problematic,
+so we don't provide any \q{reserved} template parameters which would enable that.
+A \q{big unsigned integer} type should either be provided immediately
+(which we do not want)
+or be an entirely separate \tcode{std::basic_big_uint}.
+
 \h3{Template parameters}
 
 \h4{Order of template parameters}
