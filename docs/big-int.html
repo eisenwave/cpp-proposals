@@ -3995,9 +3995,12 @@ than the type used for lookup (assuming transparent lookup in some container).
 </p>
 <p>However, the hash might not be compatible with that of fundamental types,
 i.e. <code><h- data-h=num>1</h-></code> may be hashed differently than <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-><h- data-h=sym_brac>{</h-><h- data-h=num>1</h-><h- data-h=sym_brac>}</h-></code>.
-This was done to increase flexibility in the <code><h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>big_int</h-><h- data-h=sym_op>&gt;</h-></code> implementation
-and to not pessimize the hash algorithm. To maintain a degree of parity we ensure
-that as available <code><h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>big_int</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-></code> equals <code><h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code>.
+Also note that <code><h- data-h=num>1</h-></code> is already hashed differently from <code><h- data-h=kw_type>__int128</h-></code>,
+so it's not possible to have hash parity with all integer types.
+To maintain <em>some</em> degree of parity,
+we ensure that as available,
+<code><h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>big_int</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-></code> equals <code><h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code>
+(where <code><h- data-h=name>N</h-></code> is the smallest possible <code><h- data-h=kw_type>_BitInt</h-></code> width that can represent <code><h- data-h=name>x</h-></code>).
 </p>
 <h4 id=std::numeric_limits-specialization><a class=para href=#std::numeric_limits-specialization></a>3.11.2. <tt->std::numeric_limits</tt-> specialization</h4>
 
@@ -6496,20 +6499,34 @@ have equal integer value (<a href=https://eel.is/c++draft/big.int.class>[big.int
 equals
 <code><h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><wbr/><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><math display=inline><msub><mi>b</mi><mn>2</mn></msub></math><h- data-h=sym_punc>,</h-> <math display=inline><msub><mi>L</mi><mn>2</mn></msub></math><h- data-h=sym_punc>,</h-> <math display=inline><msub><mi>A</mi><mn>2</mn></msub></math><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>(</h-><math display=inline><msub><mi>o</mi><mn>2</mn></msub></math><h- data-h=sym_par>)</h-></code>.
 </p>
-<p>3
-<i>Remarks</i>:
-Let <math display=inline><msub><mi>o</mi><mn>1</mn></msub></math> be an object of type
-<code><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><math display=inline><msub><mi>b</mi><mn>1</mn></msub></math><h- data-h=sym_punc>,</h-> <math display=inline><msub><mi>L</mi><mn>1</mn></msub></math><h- data-h=sym_punc>,</h-> <math display=inline><msub><mi>A</mi><mn>1</mn></msub></math><h- data-h=sym_op>&gt;</h-></code>,
-and let <math display=inline><msub><mi>o</mi><mn>1</mn></msub></math> contain <code><h- data-h=name>N</h-></code> bits, then
-<code><h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><wbr/><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><math display=inline><msub><mi>b</mi><mn>1</mn></msub></math><h- data-h=sym_punc>,</h-> <math display=inline><msub><mi>L</mi><mn>1</mn></msub></math><h- data-h=sym_punc>,</h-> <math display=inline><msub><mi>A</mi><mn>1</mn></msub></math><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>(</h-><math display=inline><msub><mi>o</mi><mn>1</mn></msub></math><h- data-h=sym_par>)</h-></code>
-equals
-<code><h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><wbr/><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-></code>.
-</p>
 <p>[<i>Note</i>: 
 For an object <math display=inline><mi>x</mi></math> of integral type <code><h- data-h=name>T</h-></code>,
 <code><h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>(</h-><math display=inline><mi>x</mi></math><h- data-h=sym_par>)</h-></code> can be unequal to <code><h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>big_int</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>(</h-><h- data-h=name>big_int</h-><h- data-h=sym_par>(</h-><math display=inline><mi>x</mi></math><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code>.
- — <i>end note</i>]
-</p></div>
+ — <i>end note</i>]</p>
+
+<note-block class=edit><p><intro-></intro-> 
+For example,
+<code><h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>int</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>(</h-><h- data-h=num>5</h-><h- data-h=sym_par>)</h-></code> is not equal ot <code><h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>__int128</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>(</h-><h- data-h=num>5</h-><h- data-h=sym_par>)</h-></code>,
+so hash parity with <em>all</em> integral types is not possible.
+</p></note-block>
+
+<p>3
+Let <math display=inline><mi>o</mi></math> be an object of type
+<code><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><math display=inline><mi>b</mi></math><h- data-h=sym_punc>,</h-> <math display=inline><mi>L</mi></math><h- data-h=sym_punc>,</h-> <math display=inline><mi>A</mi></math><h- data-h=sym_op>&gt;</h-></code>,
+and let <math display=inline><mi>N</mi></math> be the width of the smallest hypothetical signed integer type
+that can represent the integer value of <math display=inline><mi>o</mi></math>.
+If the implementation provides a type <code><i><h- data-h=name>bit-int</h-></i><h- data-h=sym_op>&lt;</h-><math display=inline><mi>N</mi></math><h- data-h=sym_op>&gt;</h-></code>
+to provide compatibility with type <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><math display=inline><mi>N</mi></math><h- data-h=sym_par>)</h-></code> defined in ISO/IEC 9899:2024,
+then
+<code><h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><wbr/><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><math display=inline><mi>b</mi></math><h- data-h=sym_punc>,</h-> <math display=inline><mi>L</mi></math><h- data-h=sym_punc>,</h-> <math display=inline><mi>A</mi></math><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>(</h-><math display=inline><mi>o</mi></math><h- data-h=sym_par>)</h-></code>
+equals
+<code><h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><wbr/><i><h- data-h=name>bit-int</h-></i><h- data-h=sym_op>&lt;</h-><math display=inline><mi>N</mi></math><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>(</h-><math display=inline><mi>o</mi></math><h- data-h=sym_par>)</h-></code>.
+</p>
+<note-block class=edit><p><intro-></intro-> 
+In other words:
+<q>hashing <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is the same as casting to <code><h- data-h=kw_type>_BitInt</h-></code> and hashing that</q>.
+</p></note-block>
+</div>
 </ins-block>
 
 <note-block class=edit><p><intro-></intro-> 

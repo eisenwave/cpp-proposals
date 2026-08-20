@@ -2258,9 +2258,12 @@ than the type used for lookup (assuming transparent lookup in some container).
 
 However, the hash might not be compatible with that of fundamental types,
 i.e. \tcode{1} may be hashed differently than \tcode{std::big_int{1}}.
-This was done to increase flexibility in the \tcode{hash<big_int>} implementation
-and to not pessimize the hash algorithm. To maintain a degree of parity we ensure
-that as available \tcode{hash<big_int>(x)} equals \tcode{hash<_BitInt(N)>(static_cast<_BitInt(N)>(x))}.
+Also note that \tcode{1} is already hashed differently from \tcode{__int128},
+so it's not possible to have hash parity with all integer types.
+To maintain \em{some} degree of parity,
+we ensure that as available,
+\tcode{hash<big_int>(x)} equals \tcode{hash<_BitInt(N)>(static_cast<_BitInt(N)>(x))}
+(where \tcode{N} is the smallest possible \tcode{_BitInt} width that can represent \tcode{x}).
 
 \h4{\tt{std::numeric_limits} specialization}
 
@@ -4921,18 +4924,32 @@ have equal integer value\iref{big.int.class}, then
 equals
 \tcode{hash<\brk{}basic_big_int<\math{\msub{\mi{b}\mn{2}}}, \math{\msub{\mi{L}\mn{2}}}, \math{\msub{\mi{A}\mn{2}}}>>()(\math{\msub{\mi{o}\mn{2}}})}.
 
-\pnum
-\remarks
-Let \math{\msub{\mi{o}\mn{1}}} be an object of type
-\tcode{basic_big_int<\math{\msub{\mi{b}\mn{1}}}, \math{\msub{\mi{L}\mn{1}}}, \math{\msub{\mi{A}\mn{1}}}>},
-and let \math{\msub{\mi{o}\mn{1}}} contain \tcode{N} bits, then
-\tcode{hash<\brk{}basic_big_int<\math{\msub{\mi{b}\mn{1}}}, \math{\msub{\mi{L}\mn{1}}}, \math{\msub{\mi{A}\mn{1}}}>>()(\math{\msub{\mi{o}\mn{1}}})}
-equals
-\tcode{hash<\brk{}_BitInt(N)>}.
-
 \note{
 For an object \math{\mi{x}} of integral type \tcode{T},
 \tcode{hash<T>()(\math{\mi{x}})} can be unequal to \tcode{hash<big_int>()(big_int(\math{\mi{x}}))}.
+}
+
+\editnote{
+For example,
+\tcode{hash<int>()(5)} is not equal ot \tcode{hash<__int128>()(5)},
+so hash parity with \em{all} integral types is not possible.
+}
+
+\pnum
+Let \math{\mi{o}} be an object of type
+\tcode{basic_big_int<\math{\mi{b}}, \math{\mi{L}}, \math{\mi{A}}>},
+and let \math{\mi{N}} be the width of the smallest hypothetical signed integer type
+that can represent the integer value of \math{\mi{o}}.
+If the implementation provides a type \tcode{\exposid{bit-int}<\math{\mi{N}}>}
+to provide compatibility with type \tcode{_BitInt(\math{\mi{N}})} defined in \IsoC{},
+then
+\tcode{hash<\brk{}basic_big_int<\math{\mi{b}}, \math{\mi{L}}, \math{\mi{A}}>>()(\math{\mi{o}})}
+equals
+\tcode{hash<\brk{}\exposid{bit-int}<\math{\mi{N}}>>()(\math{\mi{o}})}.
+
+\editnote{
+In other words:
+\q{hashing \tcode{std::big_int} is the same as casting to \tcode{_BitInt} and hashing that}.
 }
 }
 }
