@@ -468,7 +468,8 @@ is to either
   }
   \li{
     convert to libpq's binary numeric format
-    (and the conversion from e.g. \tcode{boost::cpp_int} to this format is fairly complicated).
+    (and the conversion from e.g. \tcode{boost::multiprecision::cpp_int}
+    to this format is fairly complicated).
   }
 }
 In Java, such interfaces are obvious and ergonomic by comparison,
@@ -565,7 +566,8 @@ even when it is the right tool for the job.
 For example, it could be quite plausible that a library has to handle integers
 with more than 64 bits in some edge cases,
 but if the library author needs to add a dependency on the whole of Boost.Multiprecision
-to replace 2-3 lines of code using \tcode{std::intmax_t} with \tcode{boost::cpp_int},
+to replace 2-3 lines of code using \tcode{std::intmax_t}
+with \tcode{boost::multiprecision::cpp_int},
 they may just not do it.
 
 C++ developers don't get a \em{fair} choice between
@@ -2495,7 +2497,7 @@ where \tcode{123n} is equivalent to \tcode{BigInt(123)}.
 
 It is worth noting that other libraries typically don't provide a UDL.
 For example, Boost.Multiprecision instead has a string constructor,
-expecting users to write \tcode{boost::cpp_int("123")}.
+expecting users to write \tcode{boost::multiprecision::cpp_int("123")}.
 We opted not to match that design because
 \ul{
   \li{
@@ -2594,7 +2596,7 @@ There should be a specialization of \tcode{std::numeric_limits}
 provided for \tcode{std::basic_big_int}.
 Doing so is tradition in third-party libraries that provide their own infinite-precision integers,
 and it provides useful capabilities such as writing generic code that works with
-\tcode{int}, \tcode{big_int}, and \tcode{boost::cpp_int},
+\tcode{int}, \tcode{big_int}, and \tcode{boost::multiprecision::cpp_int},
 and distinguishing the infinite-precision integers via
 \tcode{numeric_limits::is_bounded}.
 
@@ -2683,7 +2685,7 @@ it would be surprising to C++ users who expect conversions to truncate,
 and it would be inconvenient in generic code that tries to handle
 both \tcode{std::big_int} and fundamental integer types.
 In any case, providing \tcode{std::saturating_cast} provides an easy \q{upgrade path}
-from \tcode{boost::cpp_int} to \tcode{std::big_int}.
+from \tcode{boost::multiprecision::cpp_int} to \tcode{std::big_int}.
 
 \h4{\tt{std::to_chars} and \tt{std::from_chars}}
 
@@ -3270,7 +3272,7 @@ but that doesn't make C++17's new type worthless.
 \h4{N-to-N conversion problem}
 
 Furthermore, there is an N-to-N conversion problem between all these existing solutions.
-How does one convert \tcode{boost::cpp_int} to e.g. OpenSSL's \tcode{BIGNUM}?
+How does one convert \tcode{boost::multiprecision::cpp_int} to e.g. OpenSSL's \tcode{BIGNUM}?
 The most universal form of conversion is to convert to a string and parse as another type,
 but this is comically expensive and involves multiprecision division operations.
 
@@ -3312,7 +3314,8 @@ for the following reasons:
     and arranging words in an array has always been the obvious layout to make this seamless.
   }
   \li{
-    The layout of Boost.Multiprecision's \tcode{boost::cpp_int} has seen little change historically.
+    The layout of Boost.Multiprecision's \tcode{boost::multiprecision::cpp_int}
+    has seen little change historically.
   }
   \li{
     For really large integers (multi-limb case),
@@ -3372,8 +3375,9 @@ This implementation is still very recent and has no real-world deployment experi
 \h3{Benchmarks}
 
 See \url{https://eisenwave.github.io/std-big-int/benchmarks.html}.
-Overall, our \tcode{std::big_int} implementation is typically a bit slower than
-\tcode{gmp_int} (Boost wrapper around GMP) and on par with \tcode{boost::cpp_int}
+Overall, our \tcode{std::big_int} implementation is typically a bit
+slower than \tcode{gmp_int} (Boost wrapper around GMP) and
+on par with \tcode{boost::multiprecision::cpp_int}
 on identical generic driver code
 (that is, templates that perform computation for any of these integer types).
 These benchmarks are unsurprising:
