@@ -1599,7 +1599,7 @@ h1 {
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/D4444R0>D4444R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-08-19</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2026-08-21</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;<br/>
@@ -1681,6 +1681,12 @@ with elastic operations.
 <a href=#why-not-provide-lower-level-operations-for-arithmetic><h3>Why not provide lower-level operations for arithmetic?</h3></a>
 <div class=toc-num data-level=3>3.6</div>
 <a href=#why-no-big-int-view><h3>Why no <tt->std::big_int_view</tt->?</h3></a>
+<div class=toc-num data-level=4>3.6.1</div>
+<a href=#issues-with-std::big_int_view-parameters><h4>Issues with <tt->std::big_int_view</tt-> parameters</h4></a>
+<div class=toc-num data-level=4>3.6.2</div>
+<a href=#issues-with-std::big_int_view-allocation-management><h4>Issues with <tt->std::big_int_view</tt-> allocation management</h4></a>
+<div class=toc-num data-level=4>3.6.3</div>
+<a href=#std::big_int_view-is-just-not-useful-enough><h4><tt->std::big_int_view</tt-> is just not useful enough</h4></a>
 <div class=toc-num data-level=3>3.7</div>
 <a href=#why-no-big-uint><h3>Why no <tt->std::big_uint</tt->?</h3></a>
 <div class=toc-num data-level=4>3.7.1</div>
@@ -3542,32 +3548,109 @@ the lower-level it conceptually becomes.
 <p>Similar to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string_view</h-></code>,
 one might imagine a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int_view</h-></code> (or view type with some other name).
 This could even be seen as an easier first step towards multiprecision arithmetic.
+However, we do not provide such a type for a number of reasons below.
 </p>
-<p>However, we do not provide such a type for a number of reasons:
-</p><ul>
+<h4 id=issues-with-std::big_int_view-parameters><a class=para href=#issues-with-std::big_int_view-parameters></a>3.6.1. Issues with <tt->std::big_int_view</tt-> parameters</h4>
+
+<p>Remember that the point of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string_view</h-></code> as a parameter type
+is to accept anything string-like.
+</p>
+<example-block><p><intro-></intro-> 
+</p><code-block><h- data-h=kw_type>void</h-> <h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string_view</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>...</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, callable with const char[4]</h->
+<h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>+</h-><h- data-h=str_dlim>"</h-><h- data-h=str>...</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, callable with const char*</h->
+<h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>...</h-><h- data-h=str_dlim>"</h-><h- data-h=str_deco>s</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, callable with std::string</h->
+<h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>...</h-><h- data-h=str_dlim>"</h-><h- data-h=str_deco>sv</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, callable with std::string_view</h-></code-block>
+<p>It is also easy to make f callable for additional types
+by providing a user-defined conversion to std::string_view.
+</p></example-block>
+
+<p><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int_view</h-></code> cannot provide similar functionality for integer literals.
+Consider that we want the call <code><h- data-h=name>g</h-><h- data-h=sym_par>(</h-><h- data-h=num>123</h-><h- data-h=sym_par>)</h-></code> below to be valid:
+</p><code-block><h- data-h=kw>struct</h-> <h- data-h=name>big_int_view</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw>const</h-> <h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>*</h-> <h- data-h=name>data</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=name_type>size_t</h-> <h- data-h=name>size</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_type>bool</h-> <h- data-h=name>sign</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=name>big_int_view</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=kw_type>int</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>ref</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> how do we implement this?!</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=kw_type>void</h-> <h- data-h=name>g</h-><h- data-h=sym_par>(</h-><h- data-h=name>big_int_view</h-> <h- data-h=name>ref</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=name>g</h-><h- data-h=sym_par>(</h-><h- data-h=num>123</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>The key problem is turning the provided <code><h- data-h=kw_type>int</h-></code> into <code><h- data-h=name>data</h-></code> and <code><h- data-h=name>size</h-></code>.
+<code><h- data-h=name>ref</h-></code> binds to a temporary object with value <code><h- data-h=num>123</h-></code>
+(which is good because the lifetime of that object extends beyond the constructor call),
+but we cannot reinterpret that as a <code><h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>N</h-><h- data-h=sym_sqr>]</h-></code>.
+</p>
+<p>We could still turn <code><h- data-h=name>big_int_view</h-></code> int a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>variant</h-></code>-like type
+that can either hold
+a <code><h- data-h=name>array</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>N</h-><h- data-h=sym_op>&gt;</h-></code> or
+a <code><h- data-h=name>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;</h-></code>,
+but that does not solve the problem for large integers
+like <code><h- data-h=kw_type>__int128</h-></code>, <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1024</h-><h- data-h=sym_par>)</h-></code>, etc.
+That requires at least an additional function:
+</p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>N</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=kw>struct</h-> <h- data-h=name>limb_array</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=name>array</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>limbs</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_type>bool</h-> <h- data-h=name>sign</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=kw>struct</h-> <h- data-h=name>big_int_view</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
+  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>N</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>big_int_view</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>limb_array</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>N</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>ref</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=kw>auto</h-> <h- data-h=name>to_limb_array</h-><h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>integral</h-> <h- data-h=kw>auto</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>-&gt;</h-> <h- data-h=name>limb_array</h-><h- data-h=sym_op>&lt;</h-><h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>;</h->
+<h- data-h=name>g</h-><h- data-h=sym_par>(</h-><h- data-h=name>to_limb_array</h-><h- data-h=sym_par>(</h-><h- data-h=num>123</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK, big_int_view binds to limb_array argument,</h->
+                       <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> which is a temporary object</h->
+                       <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> that survives big_int_view constructor call</h-></code-block>
+
+<h4 id=issues-with-std::big_int_view-allocation-management><a class=para href=#issues-with-std::big_int_view-allocation-management></a>3.6.2. Issues with <tt->std::big_int_view</tt-> allocation management</h4>
+
+<p>The allocation that <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> holds is actually
+very useful for intermediate operations.
+</p>
+<example-block><p><intro-></intro-> 
+A quintessential examples is that in
+<code><h- data-h=name>x</h-> <h- data-h=sym_op>+</h-> <h- data-h=name>y</h-> <h- data-h=sym_op>+</h-> <h- data-h=name>z</h-></code>, since <code><h- data-h=name>x</h-> <h- data-h=sym_op>+</h-> <h- data-h=name>y</h-></code> is an rvalue,
+<code><h- data-h=kw>operator</h-><h- data-h=sym_op>+</h-></code> can reuse the allocation of <code><h- data-h=name>x</h-> <h- data-h=sym_op>+</h-> <h- data-h=name>y</h-></code> for the result.
+See also <a href=#optimal-operator-overloads>§3.4. Optimal operator overloads</a>.
+</p>
+<p>Also, thanks to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_chars</h-></code> having an rvalue overload for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
+allocations can be avoided using repeated in-place division by the base.
+Similarly, when <code><h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;&lt;</h-></code> receives an rvalue <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
+it shifts the limbs in-place as if by <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>shift_right</h-></code>
+if the allocation happens to be large enough.
+All of this happens automatically and ergonomically.
+</p></example-block>
+
+<p>Operations on a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int_view</h-></code>
+would require the user to write more code to avoid allocations and unnecessary copies.
+</p>
+<h4 id=std::big_int_view-is-just-not-useful-enough><a class=para href=#std::big_int_view-is-just-not-useful-enough></a>3.6.3. <tt->std::big_int_view</tt-> is just not useful enough</h4>
+
+<p>The nail in the coffin is that the user cannot do much with a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int_view</h-></code>:
+</p>
+<ul>
   <li>
-    Unlike <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string_view</h-></code>,
-    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int_view</h-></code> cannot be used as a parameter type to accept any integer.
-    That is because large integers such as <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1024</h-><h- data-h=sym_par>)</h-></code> need a stack-local buffer
-    to hold the value converted to <code><h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>N</h-><h- data-h=sym_sqr>]</h-></code>,
-    and that would require two implicit conversions
-    (<code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1024</h-><h- data-h=sym_par>)</h-></code> → <code><i><h- data-h=name>limb-buffer</h-></i></code> → <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int_view</h-></code>).
-    Thus, even if <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int_view</h-></code> had a constructor
-    with a <code><i><h- data-h=name>limb-buffer</h-></i></code> parameter,
-    functions taking a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int_view</h-></code> would not be able to accept
-    <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1024</h-><h- data-h=sym_par>)</h-></code> or other large integers without an explicit conversion.
-  </li>
-  <li>
-    The allocation that <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> holds is actually
-    very useful for intermediate operations.
-    For example, thanks to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_chars</h-></code> having an rvalue overload for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
-    allocations can be avoided using repeated in-place division by the base.
-    Similarly, when <code><h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;&lt;</h-></code> receives an rvalue <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
-    it shifts the limbs in-place.
-    See also <a href=#optimal-operator-overloads>§3.4. Optimal operator overloads</a>.
-    All of this happens automatically and ergonomically.
-    Operations on a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int_view</h-></code>
-    would require the user to write more code to avoid allocations and unnecessary copies.
+    Not a lot of operations could be performed on a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int_view</h-></code>
+    without allocating a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
+    Other than equality and relational comparison,
+    almost any useful operation on <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> produces another <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
+    Similar to how there is no <code><h- data-h=kw>operator</h-><h- data-h=sym_op>+</h-></code> between two <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string_view</h-></code>s,
+    there shouldn't be an <code><h- data-h=kw>operator</h-><h- data-h=sym_op>+</h-></code> between two <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int_view</h-></code>s.
+    To be fair, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int_view</h-></code> can at least provide
+    <code><h- data-h=kw>operator</h-><h- data-h=sym_op>-</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code>
+    because we use <a href=#sign-and-magnitude>§3.2.4. Sign and magnitude</a> for the representation,
+    so negation only requires flipping a sign bit in the container rather than modifying the limbs.
+    However, this alone does not justify the existence of the type.
+    By comparison, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string_view</h-></code> provides the ability to
+    search,
+    check prefixes and suffixes,
+    trim trailing/leading whitespace and other characters,
+    create substrings in general,
+    access random code units,
+    etc., and these are all immensely useful non-allocating operations.
   </li>
   <li>
     Looking at the standard library,
@@ -3578,18 +3661,7 @@ This could even be seen as an easier first step towards multiprecision arithmeti
     which only takes a <code><h- data-h=kw>const</h-><h- data-h=sym_op>&amp;</h-></code> because the result is always a fundamental integer type.
   </li>
   <li>
-    Not a lot of operations could be performed on a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int_view</h-></code>
-    without allocating a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
-    Other than equality and relational comparison,
-    almost any useful operation on <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> produces another <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
-    Similar to how there is no <code><h- data-h=kw>operator</h-><h- data-h=sym_op>+</h-></code> between two <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string_view</h-></code>s,
-    there shouldn't be an <code><h- data-h=kw>operator</h-><h- data-h=sym_op>+</h-></code> between two <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int_view</h-></code>s.
-    By comparison, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>string_view</h-></code> provides the ability to search,
-    check prefixes, substrings, etc., and these are all immensely useful non-allocating operations.
-  </li>
-  <li>
-    It is also telling that third-party libraries typically do not provide a dedicated view type
-    for big integers.
+    Third-party libraries typically do not provide a dedicated view type for big integers.
     There is a <code><h- data-h=name>boost</h-><h- data-h=sym_op>::</h-><h- data-h=name>multiprecision</h-><h- data-h=sym_op>::</h-><h- data-h=name>cpp_int</h-></code>
     but no <code><h- data-h=name>boost</h-><h- data-h=sym_op>::</h-><h- data-h=name>multiprecision</h-><h- data-h=sym_op>::</h-><h- data-h=name>cpp_int_view</h-></code>.
   </li>
@@ -3599,6 +3671,23 @@ This could even be seen as an easier first step towards multiprecision arithmeti
 it's just not useful enough to be included in this paper,
 let alone be standardized before <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
 </p>
+<note-block><p><intro-></intro-> 
+The aforementioned ability to do a non-allocating negation and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code>
+can always be provided later.
+In the meantime, the rvalue overload of <code><h- data-h=kw>operator</h-><h- data-h=sym_op>-</h-></code> provides the same functionality
+for mutable operands:
+</p><code-block><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_op>-</h-><h- data-h=name>x</h-><h- data-h=sym_punc>;</h->                     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> New big_int with copied allocation and flipped sign bit.</h->
+<h- data-h=sym_op>-</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>move</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->          <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> New big_int with same allocation but flipped sign bit.</h->
+<h- data-h=sym_op>-</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int_view</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Possible future way of creating a "negated view".</h-></code-block>
+
+<p>There is some evidence of user demand for such a <q>negated view</q> operation.
+GMP has a
+<a href=https://gmplib.org/manual/Integer-Special-Functions#index-mpz_005froinit_005fn><tt->mpz_roinit_n</tt-></a>
+function for creating non-owning big integers,
+where the third <code><h- data-h=name_type>mp_size_t</h-> <h- data-h=name>xs</h-></code> parameter can be used to specify the sign.
+</p></note-block>
+
 <h3 id=why-no-big-uint><a class=para href=#why-no-big-uint></a>3.7. Why no <tt->std::big_uint</tt->?</h3>
 
 <p>We do not propose an unsigned counterpart to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_uint</h-></code>,

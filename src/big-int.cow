@@ -23,7 +23,7 @@ h1 {
 \wg21_head(title={\tcode{std::big_int}}){
 \dl{
   \dt{Document number:} \dd{\docnum{D4444R0}}
-  \dt{Date:}            \dd{\tt{2026-08-19}}
+  \dt{Date:}            \dd{\tt{2026-08-21}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -1779,32 +1779,115 @@ the lower-level it conceptually becomes.
 Similar to \tcode{std::string_view},
 one might imagine a \tcode{std::big_int_view} (or view type with some other name).
 This could even be seen as an easier first step towards multiprecision arithmetic.
+However, we do not provide such a type for a number of reasons below.
 
-However, we do not provide such a type for a number of reasons:
+\h4{Issues with \tt{std::big_int_view} parameters}
+
+Remember that the point of \tcode{std::string_view} as a parameter type
+is to accept anything string-like.
+
+\Bex{
+\cppblock{
+void f(std::string_view s);
+f("...");    // OK, callable with const char[4]
+f(+"...");   // OK, callable with const char*
+f("..."s);   // OK, callable with std::string
+f("..."sv);  // OK, callable with std::string_view
+}
+It is also easy to make f callable for additional types
+by providing a user-defined conversion to std::string_view.
+}
+
+\tcode{std::big_int_view} cannot provide similar functionality for integer literals.
+Consider that we want the call \tcode{g(123)} below to be valid:
+\cppblock{
+struct big_int_view {
+  const uint_multiprecision_t* data;
+  size_t size;
+  bool sign;
+  big_int_view(const int& ref); // how do we implement this?!
+};
+
+void g(big_int_view ref);
+g(123);
+}
+
+The key problem is turning the provided \tcode{int} into \tcode{data} and \tcode{size}.
+\tcode{ref} binds to a temporary object with value \tcode{123}
+(which is good because the lifetime of that object extends beyond the constructor call),
+but we cannot reinterpret that as a \tcode{uint_multiprecision_t[N]}.
+
+We could still turn \tcode{big_int_view} int a \tcode{std::variant}-like type
+that can either hold
+a \tcode{array<uint_multiprecision_t, N>} or
+a \tcode{span<uint_multiprecision_t>},
+but that does not solve the problem for large integers
+like \tcode{__int128}, \tcode{_BitInt(1024)}, etc.
+That requires at least an additional function:
+\cppblock{
+template<size_t N>
+struct limb_array {
+  array<uint_multiprecision_t, N> limbs;
+  bool sign;
+};
+
+struct big_int_view {
+  // ...
+  template<size_t N> big_int_view(const limb_array<N>& ref);
+};
+
+auto to_limb_array(std::integral auto x) -> limb_array</* ... */>;
+g(to_limb_array(123)); // OK, big_int_view binds to limb_array argument,
+                       // which is a temporary object
+                       // that survives big_int_view constructor call
+}
+
+\h4{Issues with \tt{std::big_int_view} allocation management}
+
+The allocation that \tcode{std::big_int} holds is actually
+very useful for intermediate operations.
+
+\Bex{
+A quintessential examples is that in
+\tcode{x + y + z}, since \tcode{x + y} is an rvalue,
+\tcode{operator+} can reuse the allocation of \tcode{x + y} for the result.
+See also \ref("#optimal-operator-overloads").
+
+Also, thanks to \tcode{std::to_chars} having an rvalue overload for \tcode{std::big_int},
+allocations can be avoided using repeated in-place division by the base.
+Similarly, when \tcode{operator<<} receives an rvalue \tcode{std::big_int},
+it shifts the limbs in-place as if by \tcode{std::shift_right}
+if the allocation happens to be large enough.
+All of this happens automatically and ergonomically.
+}
+
+Operations on a \tcode{std::big_int_view}
+would require the user to write more code to avoid allocations and unnecessary copies.
+
+\h4{\tt{std::big_int_view} is just not useful enough}
+
+The nail in the coffin is that the user cannot do much with a \tcode{std::big_int_view}:
+
 \ul{
   \li{
-    Unlike \tcode{std::string_view},
-    \tcode{std::big_int_view} cannot be used as a parameter type to accept any integer.
-    That is because large integers such as \tcode{_BitInt(1024)} need a stack-local buffer
-    to hold the value converted to \tcode{uint_multiprecision_t[N]},
-    and that would require two implicit conversions
-    (\tcode{_BitInt(1024)} → \tcode{\exposid{limb-buffer}} → \tcode{std::big_int_view}).
-    Thus, even if \tcode{std::big_int_view} had a constructor
-    with a \tcode{\exposid{limb-buffer}} parameter,
-    functions taking a \tcode{std::big_int_view} would not be able to accept
-    \tcode{_BitInt(1024)} or other large integers without an explicit conversion.
-  }
-  \li{
-    The allocation that \tcode{std::big_int} holds is actually
-    very useful for intermediate operations.
-    For example, thanks to \tcode{std::to_chars} having an rvalue overload for \tcode{std::big_int},
-    allocations can be avoided using repeated in-place division by the base.
-    Similarly, when \tcode{operator<<} receives an rvalue \tcode{std::big_int},
-    it shifts the limbs in-place.
-    See also \ref("#optimal-operator-overloads").
-    All of this happens automatically and ergonomically.
-    Operations on a \tcode{std::big_int_view}
-    would require the user to write more code to avoid allocations and unnecessary copies.
+    Not a lot of operations could be performed on a \tcode{std::big_int_view}
+    without allocating a \tcode{std::big_int}.
+    Other than equality and relational comparison,
+    almost any useful operation on \tcode{std::big_int} produces another \tcode{std::big_int}.
+    Similar to how there is no \tcode{operator+} between two \tcode{std::string_view}s,
+    there shouldn't be an \tcode{operator+} between two \tcode{std::big_int_view}s.
+    To be fair, \tcode{std::big_int_view} can at least provide
+    \tcode{operator-} and \tcode{std::abs}
+    because we use \ref("#sign-and-magnitude") for the representation,
+    so negation only requires flipping a sign bit in the container rather than modifying the limbs.
+    However, this alone does not justify the existence of the type.
+    By comparison, \tcode{std::string_view} provides the ability to
+    search,
+    check prefixes and suffixes,
+    trim trailing/leading whitespace and other characters,
+    create substrings in general,
+    access random code units,
+    etc., and these are all immensely useful non-allocating operations.
   }
   \li{
     Looking at the standard library,
@@ -1815,18 +1898,7 @@ However, we do not provide such a type for a number of reasons:
     which only takes a \tcode{const&} because the result is always a fundamental integer type.
   }
   \li{
-    Not a lot of operations could be performed on a \tcode{std::big_int_view}
-    without allocating a \tcode{std::big_int}.
-    Other than equality and relational comparison,
-    almost any useful operation on \tcode{std::big_int} produces another \tcode{std::big_int}.
-    Similar to how there is no \tcode{operator+} between two \tcode{std::string_view}s,
-    there shouldn't be an \tcode{operator+} between two \tcode{std::big_int_view}s.
-    By comparison, \tcode{std::string_view} provides the ability to search,
-    check prefixes, substrings, etc., and these are all immensely useful non-allocating operations.
-  }
-  \li{
-    It is also telling that third-party libraries typically do not provide a dedicated view type
-    for big integers.
+    Third-party libraries typically do not provide a dedicated view type for big integers.
     There is a \tcode{boost::multiprecision::cpp_int}
     but no \tcode{boost::multiprecision::cpp_int_view}.
   }
@@ -1835,6 +1907,25 @@ However, we do not provide such a type for a number of reasons:
 That being said, a \tcode{std::big_int_view} type is not entirely useless;
 it's just not useful enough to be included in this paper,
 let alone be standardized before \tcode{std::big_int}.
+
+\Bnote{
+The aforementioned ability to do a non-allocating negation and \tcode{std::abs}
+can always be provided later.
+In the meantime, the rvalue overload of \tcode{operator-} provides the same functionality
+for mutable operands:
+\cppblock{
+std::big_int x;
+-x;                     // New big_int with copied allocation and flipped sign bit.
+-std::move(x);          // New big_int with same allocation but flipped sign bit.
+-std::big_int_view(x);  // Possible future way of creating a "negated view".
+}
+
+There is some evidence of user demand for such a \q{negated view} operation.
+GMP has a
+\ref("https://gmplib.org/manual/Integer-Special-Functions#index-mpz_005froinit_005fn"){\tt{mpz_roinit_n}}
+function for creating non-owning big integers,
+where the third \tcode{mp_size_t xs} parameter can be used to specify the sign.
+}
 
 \h3(id="why-no-big-uint"){Why no \tt{std::big_uint}?}
 
