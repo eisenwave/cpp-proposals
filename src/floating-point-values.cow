@@ -182,6 +182,32 @@ or forces us to litter every part of the specification with
 and also results in a significant deviation from the C23 wording,
 which we generally try to stay symmetrical with.
 
+\h4{Modeling excess precision}
+
+Another problem to solve is that C++ allows floating-point values
+to be represented with excess precision.
+
+\Bex{
+For example, \tcode{1.0e1000000f} may be a valid prvalue
+\math{\msup{\mn{1}\mn{1000000}}} of type \tcode{float}
+despite far exceeding the range of \tcode{float}.
+This results in funny behavior such as in:
+\cppblock{
+constexpr float x = 1.0e1000000f / 1.0e1000000f;
+}
+The value of \tcode{x} is either \tcode{1.f} or NaN
+depending on whether the \grammarterm{floating-point-literal}s
+are represented with excess precision.
+}
+
+Excess precision is not just a hypothetical issue;
+GCC uses excess precision for \tcode{std::float16_t} to use the hardware's binary32 support,
+rather than strictly rounding every \tcode{float16_t} operation to binary16.
+
+Excess precision with a Level 4 value is simply nonsensical.
+Clearly, \q{value} is somewhat abstract and detached from bit patterns,
+and there are some values that do not correspond to any bit pattern.
+
 \h4{Solution: \q{associated representations}}
 
 The standard is currently contradictory on what constitutes a \q{value},
@@ -220,6 +246,13 @@ This new term adds immense flexibility:
   \li{
     By leaving associated representations unspecified,
     we can express optimization opportunities and additional implementation freedom.
+  }
+  \li{
+    Excess precision is allowed in those situations
+    where the associated representation is unspecified.
+    Since \q{value} is Level 2,
+    it is still an abstract term and capable of referring to values
+    that do not have a corresponding bit pattern.
   }
   \li{
     We can word the behavior of CPU architectures where adjustments like canonicalization

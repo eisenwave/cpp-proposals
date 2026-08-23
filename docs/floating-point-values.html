@@ -1614,8 +1614,10 @@ of the standard.
 <div class=toc-num data-level=4>2.1.2</div>
 <a href=#issues-with-level-4-values><h4>Issues with Level 4 values</h4></a>
 <div class=toc-num data-level=4>2.1.3</div>
-<a href=#solution:-associated-representations><h4>Solution: <q>associated representations</q></h4></a>
+<a href=#modeling-excess-precision><h4>Modeling excess precision</h4></a>
 <div class=toc-num data-level=4>2.1.4</div>
+<a href=#solution:-associated-representations><h4>Solution: <q>associated representations</q></h4></a>
+<div class=toc-num data-level=4>2.1.5</div>
 <a href=#solving-the-problem-of-quiet_nan-and-signaling_nan><h4>Solving the problem of <tt->quiet_Nan()</tt-> and <tt->signaling_NaN()</tt-></h4></a>
 <div class=toc-num data-level=2>3</div>
 <a href=#qa><h2>Q&amp;A</h2></a>
@@ -1829,7 +1831,31 @@ or forces us to litter every part of the specification with
 and also results in a significant deviation from the C23 wording,
 which we generally try to stay symmetrical with.
 </p>
-<h4 id=solution:-associated-representations><a class=para href=#solution:-associated-representations></a>2.1.3. Solution: <q>associated representations</q></h4>
+<h4 id=modeling-excess-precision><a class=para href=#modeling-excess-precision></a>2.1.3. Modeling excess precision</h4>
+
+<p>Another problem to solve is that C++ allows floating-point values
+to be represented with excess precision.
+</p>
+<example-block><p><intro-></intro-> 
+For example, <code><h- data-h=num>1</h-><h- data-h=num_dlim>.</h-><h- data-h=num>0</h-><h- data-h=num_dlim>e</h-><h- data-h=num>1000000</h-><h- data-h=num_deco>f</h-></code> may be a valid prvalue
+<math display=inline><msup><mn>1</mn><mn>1000000</mn></msup></math> of type <code><h- data-h=kw_type>float</h-></code>
+despite far exceeding the range of <code><h- data-h=kw_type>float</h-></code>.
+This results in funny behavior such as in:
+</p><code-block><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>float</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>.</h-><h- data-h=num>0</h-><h- data-h=num_dlim>e</h-><h- data-h=num>1000000</h-><h- data-h=num_deco>f</h-> <h- data-h=sym_op>/</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>.</h-><h- data-h=num>0</h-><h- data-h=num_dlim>e</h-><h- data-h=num>1000000</h-><h- data-h=num_deco>f</h-><h- data-h=sym_punc>;</h-></code-block>
+<p>The value of <code><h- data-h=name>x</h-></code> is either <code><h- data-h=num>1</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-></code> or NaN
+depending on whether the <g-term>floating-point-literal</g-term>s
+are represented with excess precision.
+</p></example-block>
+
+<p>Excess precision is not just a hypothetical issue;
+GCC uses excess precision for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>float16_t</h-></code> to use the hardware's binary32 support,
+rather than strictly rounding every <code><h- data-h=name_type>float16_t</h-></code> operation to binary16.
+</p>
+<p>Excess precision with a Level 4 value is simply nonsensical.
+Clearly, <q>value</q> is somewhat abstract and detached from bit patterns,
+and there are some values that do not correspond to any bit pattern.
+</p>
+<h4 id=solution:-associated-representations><a class=para href=#solution:-associated-representations></a>2.1.4. Solution: <q>associated representations</q></h4>
 
 <p>The standard is currently contradictory on what constitutes a <q>value</q>,
 which is ultimately caused by using the same term to talk about different levels of abstraction.
@@ -1869,6 +1895,13 @@ so that <q>value</q> can be Level 2:
     we can express optimization opportunities and additional implementation freedom.
   </li>
   <li>
+    Excess precision is allowed in those situations
+    where the associated representation is unspecified.
+    Since <q>value</q> is Level 2,
+    it is still an abstract term and capable of referring to values
+    that do not have a corresponding bit pattern.
+  </li>
+  <li>
     We can word the behavior of CPU architectures where adjustments like canonicalization
     or flushing of subnormals to zero take place immediately upon lvalue-to-rvalue conversion,
     i.e. when loading a value into a register:
@@ -1895,7 +1928,7 @@ so that <q>value</q> can be Level 2:
   </li>
 </ul>
 
-<h4 id=solving-the-problem-of-quiet_nan-and-signaling_nan><a class=para href=#solving-the-problem-of-quiet_nan-and-signaling_nan></a>2.1.4. Solving the problem of <tt->quiet_Nan()</tt-> and <tt->signaling_NaN()</tt-></h4>
+<h4 id=solving-the-problem-of-quiet_nan-and-signaling_nan><a class=para href=#solving-the-problem-of-quiet_nan-and-signaling_nan></a>2.1.5. Solving the problem of <tt->quiet_Nan()</tt-> and <tt->signaling_NaN()</tt-></h4>
 
 <p>One pre-existing problem is that <code><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>::</h-><h- data-h=name>quiet_NaN</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> and
 <code><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>::</h-><h- data-h=name>signaling_NaN</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> return NaN values by value.
