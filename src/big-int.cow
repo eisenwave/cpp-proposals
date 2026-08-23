@@ -23,7 +23,7 @@ h1 {
 \wg21_head(title={\tcode{std::big_int}}){
 \dl{
   \dt{Document number:} \dd{\docnum{D4444R0}}
-  \dt{Date:}            \dd{\tt{2026-08-21}}
+  \dt{Date:}            \dd{\tt{2026-08-23}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -2600,6 +2600,37 @@ and it provides useful capabilities such as writing generic code that works with
 and distinguishing the infinite-precision integers via
 \tcode{numeric_limits::is_bounded}.
 
+\h4{\tt{std::in_range}}
+
+We provide \tcode{std::in_range} overloads for \tcode{std::big_int} as follows:
+
+\cppblock{
+template<class R, size_t b, class L, class A>
+  constexpr bool in_range(const basic_big_int<b, L, A>& t) noexcept;
+}
+
+While the same functionality can be achieved using
+\tcode{t >= numeric_limits<R>::min() && t <= numeric_limits<R>::max()},
+\tcode{std::in_range} provides a more convenient and efficient way to check
+if a \tcode{std::big_int} value can be represented in another integer type.
+
+\Bex{
+To check if the value can be represented using a 64-bit unsigned integer, one can write:
+\cppblock{
+std::in_range<std::uint64_t>(x)
+}
+
+The implementation of this check merely requires checking the sign bit
+and whether the limb count is 1 (on 64-bit platforms).
+}
+
+The other comparison functions in \eelis{utility.intcmp} are not overloaded
+because this is not very useful for \tcode{std::big_int}.
+The comparison operators already provide the mathematically correct result in all cases.
+We are also not convinced that much generic code would benefit;
+\tcode{std::cmp_*} functions are typically used when there is a known mismatch in signedness
+between two bounded integers.
+
 \h4{\tt{std::abs}}
 
 We provide \tcode{std::abs} overloads for \tcode{std::big_int} as follows:
@@ -3471,6 +3502,80 @@ namespace std {
   };
 }
 }
+}
+
+\h3(show_number=false){[utility]}
+
+\h4(show_number=false){[utility.syn]}
+
+Change the synopsis \eelis{utility.syn} as follows:
+
+\Bdiff{
+\itemdecl{
+//\serif{ all freestanding}
+#include <compare>              //\serif{ see \eelis{compare.syn}}
+#include <initializer_list>     //\serif{ see \eelis{initializer.list.syn}}
+\ins{#include <big_int>              //\serif{ see \eelis{big.int}}}
+
+namespace std {
+  \etc
+
+  template<class R, class T>
+    constexpr bool in_range(T t) noexcept;
+\ins{  template<class R, size_t b, class L, class A>
+    constexpr bool in_range(const basic_big_int<b, L, A>& t) noexcept;}
+
+  \etc
+}
+}
+}
+
+\h4(show_number=false){[utility.intcmp]}
+\cowel_var_set("pnum", 7)
+
+Change \eelis{utility.intcmp} as follows:
+
+\Bdiff{
+\etc
+
+\itemdecl{
+template<class R, class T>
+  constexpr bool in_range(T t) noexcept;
+}
+
+\itemdescr{
+\pnum
+\mandates
+Each of \tcode{T} and \tcode{R}
+is a signed or unsigned integer type\iref{basic.fundamental}.
+
+\pnum
+\effects
+Equivalent to:
+\itemdecl{
+return cmp_greater_equal(t, numeric_limits<R>::min()) &&
+       cmp_less_equal(t, numeric_limits<R>::max());
+}
+}
+
+\itemdecl{
+\ins{template<class R, size_t b, class L, class A>
+  constexpr bool in_range(const basic_big_int<b, L, A>& t) noexcept;}
+}
+
+\itemdescr{
+\ins{\pnum
+\mandates
+\tcode{R} is a signed or unsigned integer type\iref{basic.fundamental}.}
+
+\ins{\pnum
+\returns
+\tcode{t >= numeric_limits<R>::min() && t <= numeric_limits<R>::max()}.}
+}
+}
+
+\editnote{
+See also \ref("#std::in_range").
 }
 
 \h3(show_number=false){[numeric.ops.overview]}
