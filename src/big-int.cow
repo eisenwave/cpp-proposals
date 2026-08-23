@@ -4103,6 +4103,12 @@ See also \ref("#std::uint_multiprecision_t").
 \Bins{
 \big_int_h3{Class template \tcode{basic_big_int} \stable_ref{big.int.class}}
 
+\pnum
+The class template \tcode{basic_big_int} describes arbitrary-precision, signed integer types.
+Objects of such types may be capable of representing much greater integers
+than signed integer types\iref{basic.fundamental}.
+Arithmetic operations on these objects may dynamically allocate memory to fit the result.
+
 \itemdecl{
 template<size_t min_inplace_capacity, class Limb = uint_multiprecision_t,
          class Allocator = allocator<Limb>>
@@ -4200,6 +4206,10 @@ class basic_big_int {
 }
 
 \pnum
+The program is ill-formed if template parameter \tcode{Limb}
+is not \tcode{uint_multiprecision_t}.
+
+\pnum
 A \tcode{basic_big_int} represents an \dfn{integer value};
 the integer value of an object of integral type
 is the value\iref{basic.types.general} of that object.
@@ -4215,7 +4225,7 @@ able to represent  the magnitude of \math{\mi{x}}.
 
 \pnum
 Template parameter \tcode{min_inplace_capacity} specifies the minimum width of integers
-that a \tcode{basic_big_int} shall be capable of representing
+that a \tcode{basic_big_int} can represent
 using a subobject nested within.
 \tcode{min_inplace_capacity} shall be nonzero and
 less than or equal to an implementation-defined limit.
@@ -4229,19 +4239,31 @@ if the user specifies a sufficiently large \tcode{min_inplace_capacity}.
 In practice, this is trivial to implement because \tcode{min_inplace_capacity} simply specifies
 the size of the \tcode{uint_multiprecision_t[]} array inside \tcode{basic_big_int}.
 }
-
-\pnum
-During constant evaluation,
-if the effective width of the integer value of a \tcode{basic_big_int}
-is less than or equal to its \tcode{inplace_bits} member,
-the object shall not hold an allocation following any operation.
-\br\note{
-The behavior is as if \tcode{shrink_to_fit()} were called
-following every operation that may allocate.
 }
 
+\h4(show_number=false){[big.int.require]}
+
+\Bins{
+\big_int_h4{General requirements \stable_ref{big.int.require}}
+
+\pnum
+If any operation would cause \tcode{size()} to exceed \tcode{max_size()},
+that operation throws an exception object of type \tcode{length_error}.
+
+\pnum
+If any member function or operator of \tcode{basic_big_int} throws an exception,
+that function or operator has no other effect on the \tcode{basic_big_int} object.
+
+\pnum
+Every object of type \tcode{basic_big_int<min_inplace_capacity, Lim, Allocator}
+uses an object of type \tcode{Allocator} to allocate and free storage
+for the contained \tcode{uint_multiprecision_t} objects as needed.
+\tcode{Allocator} shall meet the \i{Cpp17Allocator}
+requirements\iref{allocator.requirements.general}.
+
 \editnote{
-See \ref("#circumventing-transient-allocations").
+This wording up to this point
+is copied almost verbatim from \eelis{string.require}.
 }
 
 \pnum
@@ -4263,6 +4285,20 @@ described in \eelis{big.int} \dfn{invalidates}
 the representation of the object,
 meaning that results previously returned by \tcode{representation()}
 are no longer valid.
+
+\pnum
+During constant evaluation,
+if the effective width of the integer value of a \tcode{basic_big_int}
+is less than or equal to its \tcode{inplace_bits} member,
+the object holds no allocation following any operation.
+\br\note{
+The behavior is as if \tcode{shrink_to_fit()} were called
+following every operation that may allocate.
+}
+
+\editnote{
+See \ref("#circumventing-transient-allocations").
+}
 }
 
 \h4(show_number=false){[big.int.defns]}
