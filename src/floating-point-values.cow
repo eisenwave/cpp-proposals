@@ -3,8 +3,8 @@
 
 \wg21_head(title={Values of floating-point types}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3938R1}}
-  \dt{Date:}            \dd{\tt{2026-02-20}}
+  \dt{Document number:} \dd{\docnum{P3938R2}}
+  \dt{Date:}            \dd{\tt{2026-08-23}}
   \dt{Audience:}        \dd{SG6, EWG, CWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -27,6 +27,26 @@ of the standard.
 
 \h2{Revision history}
 
+\h3{Changes since R1}
+
+\ul{
+  \li{
+    Simplified \ref("#introduction") to no longer duplicate \ref("#qa") questions
+  }
+  \li{
+    Added \ref("#representation-levels-and-defining-value"),
+    introducing a model of \q{value} consistent with Level 2 of ISO/IEC 60559,
+    as well as an \q{associated representation} property consistent with Level 4
+  }
+  \li{
+    Ensured in \ref("#basic") that zero is always representable in a floating-point type
+  }
+  \li{
+    Discussed in \ref("#can-an-extended-floating-point-type-have-no-finite-values")
+    that zero should always be representable in a floating-point type
+  }
+}
+
 \h3{Changes since R0}
 
 \ul{
@@ -44,66 +64,9 @@ of the standard.
 
 The core language wording in the C++ standard does not specify
 what values a floating-point type may represent.
-There are a few questions that have no obvious answer:
-
-\ul{
-  \li{
-    Do infinity and NaN exist from a core language perspective?
-  }
-  \li{
-    Can there be an unsigned zero, infinity, or NaN value,
-    or are all floating-point values signed?
-  }
-  \li{
-    Conversely, can there be a signed zero, infinity, or NaN value?
-  }
-  \li{
-    Can there be a negative zero and an unsigned infinity,
-    or is the "signedness requirement" all-or-none?
-  }
-  \li{
-    Are negative zero and positive zero distinct values?
-    That is, do they compare equal, and if so,
-    is there an observable difference (beyond looking at the sign bit) between them?
-  }
-  \li{
-    Is negative zero negative?
-    That is, when a \i{Preconditions} element requires a "non-negative" value,
-    is the behavior undefined when negative zero is provided?
-  }
-  \li{
-    Similarly, are negative infinity and negative NaN negative?
-  }
-  \li{
-    Is "negative NaN" distinct from "positive NaN",
-    or are these effectively the same NaN values with different "payloads"?
-  }
-  \li{
-    Are different NaN payloads distinct values?
-    If so, does that imply \tcode{std::has_unique_object_representations_v<std::float32_t>}
-    is \tcode{true}?
-  }
-  \li{
-    Can an extended floating-point type be so imprecise
-    that it is incapable of representing any number?
-    That is, could an \tcode{\exposid{infinity-t}}  type in the style of \tcode{nullptr_t}
-    be considered a floating-point type?
-  }
-  \li{
-    Does the core language need to distinguish between normal and subnormal numbers?
-  }
-  \li{
-    Are there any other possible categories of values beyond finite values, infinity, and NaN?
-  }
-  \li{
-    What does it mean for a type to \q{adhere to ISO/IEC 60559},
-    as mentioned in \tcode{std::numeric_limits::is_iec559}?
-  }
-  \li{Is \tcode{0.0} positive or negative zero, or is it implementation-defined/unspecified?}
-  \li{Are arithmetic operations required to preserve the sign of zero?}
-  \li{How does template argument equivalence work for floating-point types?}
-}
-
+There are a few questions that have no obvious answer,
+such as whether negative zero is distinct from positive zero,
+and many other questions listed in the Q&A.
 
 Bits of information may be found in various parts of the standard,
 such as in the concept of "adhering to ISO/IEC 60559",
@@ -115,6 +78,212 @@ alone wouldn't be sufficient to solve the problem.
 The goal of this paper is to answer these questions,
 not by making any evolutionary changes to the language,
 but by investigating what the status quo is and turning that into wording.
+
+\h3{Representation levels and defining \q{value}}
+
+When discussing R1 of this paper in Brno,
+SG6 discussed the issue of what constitutes distinct floating-point values,
+and agreed that there is only one NaN value:
+\Bquote{
+\b{POLL}:
+SG6 agrees that by “value” of a floating point type
+we generally mean the sense of value referred to as “Level 2”
+in Table 3.1 of ISO/IEC 60559 (2020):
+{-∞…-0} ∪ {+0…+∞} ∪ {NaN}; “Floating point data —
+an algebraically closed system”
+(As opposed to “Extended real numbers” or “Representations of floating point data”)
+
+\five_way_poll(5, 10, 0, 0, 0)
+\b{Outcome}: strong consensus!
+}
+This poll refers to the following table in ISO/IEC 60559:
+\Bquote{
+  Table 3.1 \'EM DASH'
+  Relationships between different specification levels for a particular format
+  \style{
+    #float-levels tr:not(:first-child) td {
+      border-top: 1px solid var(--border-color);
+    }
+  }
+  \table(id="float-levels"){
+    \tr{
+      \td{Level 1}
+      \td{{−∞ … 0 … +∞}}
+      \td{Extended real numbers.}
+    }
+    \tr{
+      \td{\nobr{many-to-one ↓}}
+      \td{\i{rounding}}
+      \td{↑ projection (except for NaN)}
+    }
+    \tr{
+      \td{Level 2}
+      \td{{−∞ … −0} ∪ {+0 … +∞} ∪ {NaN}}
+      \td{Floating point data — an algebraically closed system.}
+    }
+    \tr{
+      \td{one-to-many ↓}
+      \td{\i{representation specification}}
+      \td{↑ many-to-one}
+    }
+    \tr{
+      \td{Level 3}
+      \td{(sign, exponent, significand) ∪ {−∞, +∞} ∪ qNaN ∪ sNaN}
+      \td{Representations of floating-point data.}
+    }
+    \tr{
+      \td{one-to-many ↓}
+      \td{\i{encoding for representations of floating-point data}}
+      \td{↑ many-to-one}
+    }
+    \tr{
+      \td{Level 4}
+      \td{0111000...}
+      \td{Bit strings.}
+    }
+  }
+}
+
+\h4{Template argument equivalence problem}
+
+However, this \q{Level 2} model runs into a problem with the existing C++ mechanics:
+\ref("#how-does-template-argument-equivalence-work-for-floating-point-types")
+explains that every possible bit pattern of a floating-point type is treated as a distinct value,
+suggesting that our definition of \q{value} is Level 4.
+After all, a template argument is simply a value subject to lvalue-to-rvalue conversion,
+so this can only work if prvalues carry every minute detail of the object representation.
+
+\h4{Issues with Level 4 values}
+
+However, defining \q{value} to be at Level 4 is not a good idea
+because it lacks any kind of abstraction.
+Simply saying that \q{\tcode{std::acos(1)} returns the value zero} would be a wording defect
+because the wording is ambiguous.
+We didn't specify the the sign bit of the result,
+and we didn't specify the quantum exponent of the result in the case of decimal floating-point types.
+We would need to say something like
+\Bquote{
+\tcode{std::acos(1)} returns an implementation-defined value
+representing the number zero.
+}
+
+Another problem is that the wording in \eelis{conv.fpprom} would be defective because it states
+\Bquote{
+A prvalue of type \tcode{float} can be converted to a prvalue of type \tcode{double}.
+The value is unchanged.
+}
+If every bit pattern is a distinct value,
+then changing the amount of bits in the operand is obviously changing the value,
+so this requirement becomes unimplementable.
+
+In general, a Level 4 model of \q{value} either makes our wording defective
+or forces us to litter every part of the specification with
+\q{implementation-defined} or \q{unspecified},
+and also results in a significant deviation from the C23 wording,
+which we generally try to stay symmetrical with.
+
+\h4{Solution: \q{associated representations}}
+
+The standard is currently contradictory on what constitutes a \q{value},
+which is ultimately caused by using the same term to talk about different levels of abstraction.
+Simply saying that our \q{value} is Level 2 breaks some things,
+and saying it is Level 4 breaks other things.
+
+To solve this, I propose a new term \dfn{associated representation}
+that is a property of values and that provides the additional Level 4 information
+so that \q{value} can be Level 2:
+\ul{
+  \li{
+    The associated representation of a floating-point value inside an object
+    is the value representation of that object.
+  }
+  \li{
+    When lvalue-to-rvalue conversion loads the prvalue out of an object,
+    the associated representation is preserved.
+  }
+  \li{
+    In various other cases, the associated representation is unspecified,
+    such as when computing the sum of two floating-point numbers.
+  }
+}
+
+This new term adds immense flexibility:
+\ul{
+  \li{
+    By strictly specifying associated representations
+    or requiring them to be implementation-defined
+    (and thus deterministic),
+    we can express deterministic floating-point implementations in our wording.
+    This is useful if we ever want to add a \q{deterministic mode},
+    such as implemented by WASM's deterministic profile.
+  }
+  \li{
+    By leaving associated representations unspecified,
+    we can express optimization opportunities and additional implementation freedom.
+  }
+  \li{
+    We can word the behavior of CPU architectures where adjustments like canonicalization
+    or flushing of subnormals to zero take place immediately upon lvalue-to-rvalue conversion,
+    i.e. when loading a value into a register:
+    \ul{
+      \li{
+        Subnormal flushing would be expressed as the implementation not supporting
+        subnormals due to precision constraints.
+        When an object stores a subnormal anyway
+        (perhaps as the result of \tcode{std::start_lifetime_as}),
+        the flushing would result in no change in value (because the value is zero),
+        but would change the associated representation.
+      }
+      \li{
+        Similarly, canonicalization of NaNs does not change the value
+        (because there is only one NaN value),
+        but does change the NaN payload.
+      }
+    }
+  }
+  \li{
+    We can define template argument equivalence in terms of associated representations
+    and ensure that the lvalue-to-rvalue conversion taking place during template argument passing
+    preserves the associated representation.
+  }
+}
+
+\h4{Solving the problem of \tt{quiet_Nan()} and \tt{signaling_NaN()}}
+
+One pre-existing problem is that \tcode{numeric_limits::quiet_NaN()} and
+\tcode{numeric_limits::signaling_NaN()} return NaN values by value.
+Ever passing signaling NaNs by value is a problem because it disallows
+the implementation of raising floating-point exceptions when loading a signaling NaN from memory
+or when passing it around in registers.
+
+\Bnote{
+This is the motivation behind why C goes out of its way to avoid such scenarios,
+by e.g. passing \tcode{float} by pointer in \tcode{getpayload} and other \header{math.h} functions.
+Macros such as \tcode{issignaling} can also read the representation of the argument directly
+if given an lvalue.
+This is why there is no concrete \tcode{issignalingf} function.
+}
+
+The wording of these two functions only makes sense at Level 3,
+not at either previously mentioned specification level:
+\ul{
+  \li{
+    If \q{value} is Level 2, this actually means that both functions have the same result (a NaN),
+    and it could even mean that \tcode{quiet_NaN()} returns a signaling NaN and
+    \tcode{signaling_NaN()} returns a quiet NaN.
+  }
+  \li{
+    If \q{value} is Level 4, this wording is defective
+    because \q{quiet NaN} does not fully specify the bit pattern of the result.
+    We should have said something about the payload being implementation-defined or unspecified,
+    and should have said something about the sign bit.
+  }
+}
+
+The \q{associated representation} model lets us square that circle:
+we can say that both \tcode{quiet_NaN()} and \tcode{signaling_NaN()}
+return the same value
+but with different associated representations.
 
 \h2{Q&A}
 
@@ -214,9 +383,19 @@ none of the \tcode{f32} or \tcode{f64} instructions handle signaling NaNs.
 \h3{Can an extended floating-point type have no finite values?}
 
 No.
-This would make zero-initialization unimplementable,
-and would make \tcode{numeric_limits} members such as \tcode{epsilon()}
+This would make \tcode{numeric_limits} members such as \tcode{epsilon()}
 worded in a nonsensical way.
+
+Furthermore, \ref("https://cstd.eisie.net/c2y#6.7.11p14"){C23 §6.7.11 paragraph 14}
+involves initialization \q{to zero} of arithmetic types,
+so C23 necessitates zero.
+By proxy, \tcode{acos(1)} must return zero because zero exists,
+and C++'s \tcode{std::acos(1)} must return zero as well.
+This doesn't necessarily apply to an extended floating-point type
+that is not C-compatible,
+but any type that exists in practice is subject to these requirements.
+
+It is reasonable to clarify that zero exists explicitly in the wording.
 
 \h3{Does the core language need to distinguish between normal/subnormal numbers?}
 
@@ -454,26 +633,22 @@ The following change resolves
 }
 
 \Bins{
-A floating-point type shall at least represent a subset of rational numbers.
+A floating-point type shall at least represent a subset of rational numbers
+including zero.
 Depending on the implementation-defined value representation for the type,
 it may additionally represent the non-finite values
 \ul{
-  \li{infinity,}
-  \li{quiet \q{Not a Number} value,}
-  \li{signaling \q{Not a Number} value, and}
+  \li{negative infinity,}
+  \li{positive infinity,}
+  \li{\q{Not a Number},}
   \li{further implementation-defined values.}
 }
-
-For any of the above (including zero),
-a floating-point type may represent either a single unsigned value or
-two distinct values with negative and positive sign.
 
 \note{
 A floating-point type which adheres to ISO/IEC 60559 is capable of representing
 a negative and positive variant of finite values and infinity,
-an unsigned quiet NaN, and
-an unsigned signaling NaN.
-Such a type has multiple object representations for quiet NaN and signaling NaN.
+as well as NaN.
+Some representations of NaN are quiet and some are signaling.
 }
 }
 
