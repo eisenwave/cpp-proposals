@@ -3,13 +3,13 @@
 
 \wg21_head(title={\tcode{std::to_signed} and \tcode{std::to_unsigned}}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3643R2}}
-  \dt{Date:}            \dd{\tt{2025-09-29}}
+  \dt{Document number:} \dd{\docnum{P3643R3}}
+  \dt{Date:}            \dd{\tt{2026-08-23}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3643/github")}
-  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/to-signed-unsigned.cow")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/main/src/to-signed-unsigned.cow")}
 }
 \hr
 }
@@ -24,6 +24,14 @@ in the style of \tcode{std::to_underlying}.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R2}
+
+\ul{
+  \li{updated GitHub code search result count in \ref("#existing-developer-practice")}
+  \li{added \ref("#rust-cast_signed-and-cast_unsigned")}
+  \li{rebased \ref("#wording") on \ref("N5054")}
+}
 
 \h3{Changes since R1}
 
@@ -104,7 +112,7 @@ A GitHub code search for
 \br{}-is:fork language:c++}}}
 }
 
-\'HORIZONTAL ELLIPSIS' shows that roughly 13.8K C++ files
+\'HORIZONTAL ELLIPSIS' shows that roughly 115K C++ files
 already use a non-standard \tcode{to_unsigned} and \tcode{to_signed},
 or which \tcode{static_cast} to \tcode{make_signed} or \tcode{make_unsigned}.
 
@@ -115,12 +123,51 @@ By comparison,
 -is:fork language:c++}}}
 }
 
-\'HORIZONTAL ELLIPSIS' yields 43K C++ files
+\'HORIZONTAL ELLIPSIS' yields 165K C++ files
 which use \tcode{to_underlying},
 or which \tcode{static_cast} to \tcode{std::underlying_type}.
 
 The proposal \ref("P1682R3") for \tcode{std::to_underlying} had similar rationale, and at the time,
 the author was only able to discover 1000 search results for \tcode{to_underlying}.
+
+\h3{Rust \tt{cast_signed} and \tt{cast_unsigned}}
+
+As a point of reference,
+Rust also has \tcode{cast_signed} and \tcode{cast_unsigned} functions for integers.
+See also \ref("https://github.com/rust-lang/rust/issues/125882"){tracking issue for \tt{integer_sign_cast}}.
+
+The \ref("https://github.com/rust-lang/libs-team/issues/359"){problem statement on the libs-team issue}
+equally applies to C++:
+\Bquote{
+Casting using the as operator has some issues,
+in that it does not necessarily reflect the intent of the cast.
+Was the cast meant to be lossy or not?
+Was it meant to preserve the size?
+Constness?
+Signedness?
+}
+
+Similarly, a \tcode{static_cast<std::int32_t>(x)} from \tcode{std::uint32_t}
+does not reflect the purpose,
+while \tcode{std::to_signed(x)} expresses the intent of
+\q{give me the same size and value, but reinterpreted as a signed type}.
+
+A GitHub code search for
+
+\Bquote{
+\ref("https://github.com/search?q=%2F%5Cbcast_%28un%29signed%5Cb%2F+-is%3Afork+language%3Arust&type=code"
+){\small{\tt{/\\bcast_(un)signed\\b/ -is:fork/-is:fork language:rust}}}
+}
+
+\'HORIZONTAL ELLIPSIS' shows roughly 5.1K Rust files.
+
+\Bnote{
+While C++ and Rust have some amount of naming alignment such as with
+\tcode{std::saturating_add},
+that would not make sense here
+because the \tcode{cast_signed} name is motivated by older names such as \tcode{cast_mut}
+(\tcode{const_cast} in C++).
+}
 
 \h3{Dual purpose}
 
@@ -249,7 +296,7 @@ constexpr make_unsigned_t<T> to_unsigned(T x) noexcept {
 
 \h2{Wording}
 
-The proposed wording is relative to \ref("N5014").
+The proposed wording is relative to \ref("N5054").
 
 In subclause \eelis{version.syn},
 add the following feature-testing macro:
@@ -322,7 +369,7 @@ I don't attempt to fix this; I assume that the above specification "just works".
 
 In practice, compilers do not eagerly instantiate \tcode{make_signed_t}
 when the constraints of the function template are not satisfied,
-so this specification works.
+so this specification works if implemented literally.
 }
 
 \h2{Acknowledgements}
@@ -334,12 +381,12 @@ which discusses many design aspects in more detail.
 \h2{References}
 
 \bib(
-  id = "N5014",
+  id = "N5054",
   title = "Working Draft, Programming Languages — C++",
-  date = "2025-08-05",
+  date = "2026-07-16",
   author = "Thomas Köppe",
-  link = "https://wg21.link/n5014",
-  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5014.pdf",
+  link = "https://wg21.link/n5054",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
 )\
 \bib(
   id = "P1682R3",
