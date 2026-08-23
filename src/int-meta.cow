@@ -1,0 +1,271 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+
+\wg21_head(
+  title = {Integer metaprogramming utilities\br{}\small{Including but not limited to bit-precise integers}}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{P3766R0}}
+  \dt{Date:}            \dd{\tt{2026-08-23}}
+  \dt{Audience:}        \dd{LEWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3688/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/main/src/template-9.cow")}
+}
+\hr
+}
+
+\Babstract{
+
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+Currently, a few integer metaprogramming utilities feel distinctly lacking
+from the C++ standard library.
+This includes utilities for classifying integers into standard or extended integer types,
+utilities for obtaining integers of at least a certain bit width, and more.
+
+This proposals acts as an omnibus for such utilities.
+
+\h2{Integer classification}
+
+C++ has a long-standing taxonomy of integer types,
+but no means of classifying integers according to that taxonomy:
+
+\pre{
+integral types
+   ├── signed or unsigned integer types
+   │   ├── standard integers: \tcode{int}, \tcode{unsigned}, etc.
+   │   ├── extended integers: \tcode{__int128} etc.
+   │   └── P3666 bit-precise integers: (\tcode{unsigned}) \tcode{_BitInt(N)}
+   ├── character types: \tcode{char}, \tcode{wchar_t}, etc.
+   └── \tcode{bool}
+}
+
+\tcode{std::is_integral_v} covers the integral types,
+and \tcode{std::is_signed_v} and \tcode{std::is_unsigned_v} allow classifying arithmetic types
+as being signed or unsigned,
+but other useful classifications are not available.
+
+\h3(id="classification-traits-motivation"){Motivation}
+
+Being able to classify integers into these more specific categories
+is mostly useful for constraining templates.
+
+\Bex{
+A function wanting to accept any character type
+(for the purposes of forming \tcode{std::string_view} etc.)
+would be constrained using \tcode{std::is_character_v<T>}.
+
+A function wanting to accept only standard integer types
+(to avoid opting into an unbounded set which includes \tcode{__int128}, \tcode{_BitInt(N)}, etc.)
+should be constrained using \tcode{std::is_standard_integer_v<T>}.
+}
+
+\h3{Design}
+
+To address this problem,
+I propose the following type traits:
+\cppblock{
+// true if T is a standard integer type
+template<class T> struct is_standard_integer;
+template<class T> inline constexpr bool is_standard_integer_v =
+  is_standard_integer<T>::value;
+
+// true if T is an extended integer type
+template<class T> struct is_extended_integer;
+template<class T> inline constexpr bool is_extended_integer_v =
+  is_extended_integer<T>::value;
+
+// true if T is a bit-precise integer type
+// (conditional on P3666 being accepted)
+template<class T> struct is_bit_precise_integer;
+template<class T> inline constexpr bool is_bit_precise_integer_v =
+  is_bit_precise_integer<T>::value;
+
+// true if T is one of char, wchar_t, char8_t, char16_t, or char32_t
+template<class T> struct is_character;
+template<class T> inline constexpr bool is_character_v =
+  is_character<T>::value;
+}
+
+\h2{Minimum-width integer alias templates}
+
+It is commonly useful to obtain an integer type of at least a certain bit width.
+
+\h3(id="minimum-width-aliases-motivation"){Motivation}
+
+\Bex{
+In multiprecision arithmetic,
+one often wants an integer of at least double the bit width of another integer type,
+such as to hold the result of multiplying two integers of that type.
+Making functions such as the following generic is hard though:
+\cppblock{
+std::uint64_t widening_mul(std::uint32_t x, std::uint32_t y) {
+  return std::uint64_t(x) * std::uint64_t(y);
+}
+}
+How does on generically obtain an integer of double the width?
+Simply returning a \tcode{struct} containing two integers of the operand type
+and never attempting to spell the wider integer type
+does not solve the problem of performing an \q{intrinsic} \tcode{*} operation.
+If the compiler has a wider-type, we do want to use it.
+
+This also causes an issue for the 64-bit case:
+\cppblock{
+unsigned __int128 widening_mul(std::uint64_t x, std::uint64_t y) {
+  return static_cast<unsigned __int128>(x) * static_cast<unsigned __int128>(y);
+}
+}
+Not every compiler supports \tcode{unsigned __int128},
+and even if it does exist, we have to use a non-portable spelling of it.
+}
+
+\Bex{
+In modular arithmetic, we also commonly want an integer with double the width:
+\cppblock{
+std::uint32_t modular_mul(std::uint32_t x, std::uint32_t y, std::uint32_t mod) {
+  return std::uint32_t(std::uint64_t(x) * std::uint64_t(y) % mod);
+}
+}
+Without first converting to \tcode{std::uint64_t},
+the multiplication could wrap
+(which is effectively an operation modulo \math{\msup{\mn{2}\mn{32}}})
+and yield an incorrect result.
+
+Such modular arithmetic is used in e.g. \tcode{std::linear_congruential_engine}.
+}
+
+\h3(id="minimum-width-aliases-design"){Design}
+
+I propose alias templates in \header{type_traits}
+that allow obtaining an integer type of at least a certain bit width:
+
+\cppblock{
+template<std::size_t N> struct int_least;
+template<std::size_t N> using int_least_t = int_least<N>::type;
+template<std::size_t N> struct uint_least;
+template<std::size_t N> using uint_least_t = uint_least<N>::type;
+
+template<std::size_t N> struct int_fast;
+template<std::size_t N> using int_fast_t = int_fast<N>::type;
+template<std::size_t N> struct uint_fast;
+template<std::size_t N> using uint_fast_t = uint_fast<N>::type;
+}
+
+The crucial difference between \tcode{int_least_t} and \tcode{int_fast_t}
+is that the former optimizes for integer width,
+while the latter optimizes for speed.
+
+\Bex{
+On a 32-bit platform,
+\tcode{std::int_least_t<24>} might be a quirky 24-bit signed integer type with 8 bits of padding,
+whereas \tcode{std::int_fast_t<24>} should be a 32-bit signed integer type.
+}
+
+\h4{Consistency with existing aliases}
+
+For values of \tcode{N} for which there already exists a \tcode{std::int_leastN_t} alias,
+the alias templates should be equivalent to the existing alias.
+Otherwise, the inconsistency would be confusing and surprising.
+It is also unclear what benefit there might be to defining \tcode{std::int_least_t<32>}
+to be different from \tcode{std::int_least32_t}.
+
+\h4{Usage examples}
+
+\Bex{
+Firstly, \tcode{std::uint_least_t<128>}
+would be a portable spelling of an 128-bit unsigned integer type,
+if such a type is provided.
+This is already useful for silencing \tt{-Wpedantic} warnings
+about \tcode{unsigned __int128} being a non-standard extension.
+}
+
+\Bex{
+Secondly, a generic version of the \tcode{widening_mul} function could be written as follows:
+\cppblock{
+template<class T>
+std::uint_fast_t<2 * std::numeric_limits<T>::digits> widening_mul(T x, T y) {
+  return static_cast<std::uint_fast_t<2 * std::numeric_limits<T>::digits>>(x)
+       * static_cast<std::uint_fast_t<2 * std::numeric_limits<T>::digits>>(y);
+}
+}
+Of course, since \tcode{std::uint_fast_t<2 * ...>} might not be defined for all \tcode{T},
+it would be necessary to have a fallback solution returning a \tcode{struct} for those cases.
+}
+
+\h2{Arithmetic width}
+
+Querying the width of integer types is cumbersome at least,
+and in the case of floating-point types, not directly possible.
+\ul{
+  \li{
+    For an integer type \tcode{T}, the width is
+    \tcode{std::numeric_limits<std::make_unsigned_t<T>>::digits}.
+    The \tcode{std::make_unsigned_t} is necessary because
+    \tcode{std::numeric_limits<std::int32_t>::digits} is 31, not 32.
+  }
+  \li{
+    For a floating-point type \tcode{T},
+    there isn't really a way to obtain the \q{width}.
+    That is, the amount of bits part of actually representing the value.
+    \tcode{sizeof(T) * CHAR_BIT} can sometimes be used,
+    but reports the wrong result for e.g. x87 \tcode{long double},
+    which has an 80-bit representation but is padded to 128 bits.
+  }
+}
+
+\h3(id="arithmetic-width-design"){Design}
+
+I propose a \tcode{std::width} type trait in \header{type_traits}:
+\cppblock{
+template<class T> struct width;
+template<class T> inline constexpr std::size_t width_v = width<T>::value;
+}
+
+This trait is specialized for all arithmetic types
+and yields the number of bits in the value representation of the type.
+
+\h2{Wording}
+
+The changes are relative to \ref("N5046").
+
+\h3(show_number=false){[version.syn]}
+
+Add a feature-test macro to \eelis{version.syn} as follows:
+
+\Bins{
+\itemdecl{
+#define __cpp_my_new_feature 20XXXXL // \serif{freestanding, also in \tt{<header>}}
+}
+}
+
+A \tcode{std::vector} is a \exposid{std-vector}.
+
+\h2{References}
+
+
+\bib(
+  id = "N5046",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2026-05-12",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5046",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5046.pdf",
+)\
+\bib(
+  id = "P3666R4",
+  title = "Bit-precise integers",
+  date = "2026-05-12",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3666r4",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r4.html",
+)\
+
+\make_bib
