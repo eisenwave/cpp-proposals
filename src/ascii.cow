@@ -3,11 +3,22 @@
 \
 \cowel_macro("charset"){\tt{\hl("string"){[\cowel_put]}}}\
 \cowel_macro("ctype"){\exposid{character-type}}\
+\style{
+.toc h4 {
+  margin-left: 1.5em;
+}
+.toc h5 {
+  margin-left: 3em;
+}
+.toc h6 {
+  margin-left: 4.5em;
+}
+}\
 
 \wg21_head(title={ASCII character utilities}){
 \dl{
-  \dt{Document number:} \dd{\ref("https://wg21.link/P3688"){P3688R6}}
-  \dt{Date:}            \dd{\tt{2026-02-21}}
+  \dt{Document number:} \dd{\ref("https://wg21.link/P3688"){P3688R7}}
+  \dt{Date:}            \dd{\tt{2026-08-23}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-To:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -32,6 +43,18 @@ We propose lightweight, locale-independent alternatives.
 
 \h2{Revision history}
 
+\h3{Changes since R6}
+
+\ul{
+  \li{
+    Chang case collation in \tcode{ascii_case_insensitive_compare}
+    from \tcode{ascii_to_upper} to \tcode{ascii_to_lower};
+    see \ref("#collating-to-lower-vs.-to-upper-case")
+  }
+  \li{Expand \ref("#case-insensitive-comparison") in general}
+  \li{Rebase wording on \ref("N5054")}
+}
+
 \h3{Changes since R5}
 
 \ul{
@@ -39,7 +62,7 @@ We propose lightweight, locale-independent alternatives.
   \li{Replace a stray use of \tcode{is_ascii} with \tcode{ascii_is}}
   \li{Remove mention of \tcode{u32string_view} in wording for \tcode{ascii_is_punctuation}}
   \li{Revise the definition of \q{ASCII-compatible} once more}
-  \li{Rebase wording on \ref("N5032")}
+  \li{Rebase wording on N5032}
 }
 
 \h3{Changes since R4}
@@ -478,7 +501,7 @@ constexpr strong_ordering ascii_case_insensitive_compare(
     T a,
     T b
 ) {
-    return ascii_to_upper(a) <=> ascii_to_upper(b);
+    return ascii_to_lower(a) <=> ascii_to_lower(b);
 }
 
 template<\ctype T>
@@ -486,36 +509,16 @@ constexpr strong_ordering ascii_case_insensitive_equals(
     T a,
     T b
 ) {
-    return ascii_to_upper(a) == ascii_to_upper(b);
+    return ascii_to_lower(a) == ascii_to_lower(b);
 }
 }
 
 These functions deliberately have only one template type parameter.
 Comparing code units of different encodings is typically meaningless,
-and \tcode{ascii_to_upper} only has an effect if \tcode{ascii_is_lower} returns \tcode{true};
+and \tcode{ascii_to_lower} only has an effect if \tcode{ascii_is_upper} returns \tcode{true};
 therefore, a comparison such as
 \tcode{ascii_case_insensitive_equals(c, U'\\N{NO-BREAK SPACE}')}
 could yield false positives for some UTF-8 code unit \tcode{c} with value \tcode{0xA0}.
-
-Also note that the choice of \tcode{ascii_to_upper} over \tcode{ascii_to_lower} matters:
-\cppblock{
-// OK, passes because U'A' < U'^' is true, whereas U'a' < U'^' is false.
-static_assert(ascii_case_insensitive_compare(U'a', U'^') < 0);
-}
-The choice of \tcode{ascii_to_upper} is arbitrary, and this is fine.
-However, it may be worth pointing out that the ordering here is
-radically different from the case-insensitive string ordering
-using the DUCET (Default Unicode Collation Element Table),
-which reorders the Basic Latin block almost entirely.
-The use of \tcode{ascii_to_upper} deliberately produces different results than Unicode
-comparisons because those would essentially involve a 128-character lookup table,
-whereas \tcode{ascii_case_insensitive_compare} is easily SIMD-parallelizable
-and requires no memory lookup.
-Most users probably don't care whether \tcode{U'a'}
-compares case-insensitively-less than \tcode{U'^'},
-as long as they get a strict weak ordering and the implementation is fast and correct.
-The (possibly non-existent) minority who cares
-should either use the ICU or emulate the DUCET behavior using a lookup table.
 
 \Bnote{
 During the 2026-01-14 SG16 meeting,
@@ -531,6 +534,48 @@ the following poll was taken:
 }
 }
 }
+
+\h4{Collating to lower vs. to upper case}
+
+Also note that the choice of \tcode{ascii_to_upper} over \tcode{ascii_to_lower} matters:
+\cppblock{
+// OK, passes because U'A' < U'^' < U'a'
+static_assert(ascii_case_insensitive_compare(U'a', U'^') > 0);
+}
+While the choice of \tcode{ascii_to_lower} over \tcode{ascii_to_upper} is mostly arbitrary,
+it is consistent with
+\ref("https://man7.org/linux/man-pages/man3/strcasecmp.3.html"){POSIX \tcode{strcasecmp}}.
+That being said,
+most users probably don't care whether \tcode{U'a'}
+compares case-insensitively-less than \tcode{U'^'},
+as long as they get a strict weak ordering and the implementation is fast and correct.
+Both \tcode{ascii_to_lower} and \tcode{ascii_to_upper} can provide that.
+
+\h4{DUCET consistency}
+
+It may be worth pointing out that the ordering here is
+radically different from the case-insensitive string ordering
+using the DUCET (Default Unicode Collation Element Table),
+which reorders the Basic Latin block almost entirely.
+
+The use of \tcode{ascii_to_lower} deliberately produces different results than Unicode
+comparisons because those would essentially involve a 128-character lookup table,
+whereas \tcode{ascii_case_insensitive_compare} is easily SIMD-parallelizable
+and requires no memory lookup.
+The (possibly non-existent) minority who cares
+should either use the ICU or emulate the DUCET behavior using a lookup table.
+
+\h4{Ordering of negative values}
+
+For consistency with the behavior
+of \tcode{std::char_traits<char>::lt}\iref{char.traits.specializations.char} and
+of \tcode{std::strcmp},
+\tcode{ascii_case_insensitive_compare} should compare the \q{byte values}
+of a signed \tcode{char} rather than the integer value.
+
+That is, if an 8-bit \tcode{char} is signed,
+\tcode{-127} is treated like \tcode{128} for the purpose of comparison,
+\tcode{-126} is treated like \tcode{129}, and so on.
 
 \h3(id="why-no-function-objects"){Why no function objects?}
 
@@ -836,7 +881,7 @@ Character tests can be optimized using 128-bit or 256-bit bitsets.
 
 \h2{Wording}
 
-The wording changes are relative to \ref("N5032").
+The wording changes are relative to \ref("N5054").
 
 In \eelis{tab:headers.cpp}, add a new element to C++ library headers table:
 
@@ -1155,7 +1200,7 @@ template<\ctype T>
 }
 \itemdescr{
 \returns
-\tcode{ascii_to_upper(a) <=> ascii_to_upper(b)}.
+\tcode{ascii_to_lower(static_cast<char32_t>(a)) <=> ascii_to_lower(\brk{}static_cast\brk{}<\brk{}char32_t\brk{}>\brk{}(b))}.
 }
 
 \itemdecl{
@@ -1164,7 +1209,7 @@ template<\ctype T>
 }
 \itemdescr{
 \returns
-\tcode{ascii_to_upper(a) == ascii_to_upper(b)}.
+\tcode{ascii_to_lower(a) == ascii_to_lower(b)}.
 }
 
 }
@@ -1178,6 +1223,12 @@ but this approach was scrapped because it suggests a dependence between
 \header{ascii} and \header{string_view} which does not exist.
 
 The list of character literals is sorted by their integer values, ascending.
+}
+
+\editnote{
+The point of \tcode{static_cast<char32_t>} in \tcode{ascii_case_insensitive_compare}
+is to perform a comparison that does not depend on the signedness of \tcode{char}.
+See also \ref("#ordering-of-negative-values").
 }
 
 \editnote{
@@ -1197,12 +1248,12 @@ Thanks to Hubert Tong for suggesting improvements to discussion and wording.
 \h2{References}
 
 \bib(
-  id = "N5032",
+  id = "N5054",
   title = "Working Draft, Programming Languages — C++",
-  date = "2025-12-15",
+  date = "2026-07-16",
   author = "Thomas Köppe",
-  link = "https://wg21.link/n5032",
-  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf",
+  link = "https://wg21.link/n5054",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
 )\
 \bib(
   id = "P3312R1",
