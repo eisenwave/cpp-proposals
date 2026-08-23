@@ -1158,6 +1158,24 @@ However, we decided against random access iterators for a number of reasons:
     Even if provided, users would now need to handle the small and large cases separately.
   }
   \li{
+    Getting access to the underlying contiguous range allows for less overhead
+    and more SIMD-friendliness.
+    \Bex{
+    If the user wanted to compare \tcode{std::big_int}
+    to their own \tcode{std::span<const uint_multiprecision_t>}
+    (an operation we don't directly provide but might be added in the future
+    via a \tcode{std::big_int_view} type),
+    this could be done by directly loading (unaligned) from the \tcode{std::span} bytes
+    and from the \tcode{std::big_int} representation bytes into SIMD registers,
+    then comparing 16-64 bytes in one SIMD instruction.
+    In fact, our implementation delegates \tcode{operator<=>} to \tcode{std::memcmp}.
+
+    By contrast, if the user only had access to a random access iterator,
+    they would need to repeatedly assemble N results of \tcode{operator*};
+    they could not simply call \tcode{std::memcmp}.
+    }
+  }
+  \li{
     As explained in \ref("#c-compatibility"),
     providing a \tcode{std::span} enables C interoperability.
     The application may internally hold a \tcode{std::big_int} and pass its representations

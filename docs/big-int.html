@@ -2961,6 +2961,24 @@ so there is no concrete benefit to the encapsulation.
     Even if provided, users would now need to handle the small and large cases separately.
   </li>
   <li>
+    Getting access to the underlying contiguous range allows for less overhead
+    and more SIMD-friendliness.
+    <example-block><p><intro-></intro-> 
+    If the user wanted to compare <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>
+    to their own <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>const</h-> <h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;</h-></code>
+    (an operation we don't directly provide but might be added in the future
+    via a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int_view</h-></code> type),
+    this could be done by directly loading (unaligned) from the <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>span</h-></code> bytes
+    and from the <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> representation bytes into SIMD registers,
+    then comparing 16-64 bytes in one SIMD instruction.
+    In fact, our implementation delegates <code><h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;=&gt;</h-></code> to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>memcmp</h-></code>.
+</p>
+<p>    By contrast, if the user only had access to a random access iterator,
+    they would need to repeatedly assemble N results of <code><h- data-h=kw>operator</h-><h- data-h=sym_op>*</h-></code>;
+    they could not simply call <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>memcmp</h-></code>.
+    </p></example-block>
+  </li>
+  <li>
     As explained in <a href=#c-compatibility>§3.2.2. C compatibility</a>,
     providing a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>span</h-></code> enables C interoperability.
     The application may internally hold a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> and pass its representations
