@@ -1,0 +1,558 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+
+\wg21_head(
+  title = {Floating-point \tt{std::saturating_cast}}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D4355R0}}
+  \dt{Date:}            \dd{\tt{2026-08-24}}
+  \dt{Audience:}        \dd{SG6}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
+                            Matt Borland <\mail{matt@mattborland.com}>}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3688/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/main/src/template-9.cow")}
+}
+\hr
+}
+
+\Babstract{
+\tcode{std::saturating_cast} should accept floating-point operands.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+C++ is currently an outlier among programming languages
+in terms of the conversion between floating-point types and integer types.
+The behavior is specified in \eelis{conv.fpint#1}:
+
+\Bquote{
+A prvalue of a floating-point type can be converted to a prvalue of an integer type.
+The conversion truncates; that is, the fractional part is discarded.
+The behavior is undefined\iref{ub:conv.fpint.float.not.represented}
+if the truncated value cannot be represented in the destination type.
+}
+
+Notably, any infinities and NaNs result in UB,
+and any value outside the representable range
+(possibly as the result of some numerical instability) results in UB.
+
+\h3{Hardware support}
+
+The status quo actually makes sense because it allows for high performance on
+a variety of architectures.
+Mainstream architectures typically have an instruction for converting
+floating-point numbers to integers.
+Let's focus on the conversion from \tcode{float32_t} to \tcode{int32_t}.
+
+\style{
+.val-table td {
+  text-align: right;
+}
+
+.center {
+  margin-left: auto;
+  margin-right: auto;
+}
+}
+
+\table(class="val-table center"){
+  \tr{
+    \th{Input}
+    \th{\tt{CVTTSS2SI}\br (x86_64)}
+    \th{\tt{FCVT.W.S}\br (RISC-V)}
+    \th{\tt{FCVTZS}\br (AArch64)}
+    \th{\tt{i32.trunc_sat_s_f32}\br (WASM)}
+  }
+  \tr{
+    \td{\math{\mrow{\mo{−}\mi{∞}}}}
+    \td{\tcode{0x8000'0000}}
+    \td{\tcode{INT32_MIN}}
+    \td{\tcode{INT32_MIN}}
+    \td{\tcode{INT32_MIN}}
+  }
+  \tr{
+    \td{\math{\mrow{\mo{−}\msup{\mn{2}\mn{50}}}}}
+    \td{\tcode{0x8000'0000}}
+    \td{\tcode{INT32_MIN}}
+    \td{\tcode{INT32_MIN}}
+    \td{\tcode{INT32_MIN}}
+  }
+  \tr{
+    \td{small \math{\mi{x}}}
+    \td{\tcode{trunc(\math{\mi{x}})}}
+    \td{\tcode{trunc(\math{\mi{x}})}}
+    \td{\tcode{trunc(\math{\mi{x}})}}
+    \td{\tcode{trunc(\math{\mi{x}})}}
+  }
+  \tr{
+    \td{\math{\mrow{\mo{+}\msup{\mn{2}\mn{50}}}}}
+    \td{\tcode{0x8000'0000}}
+    \td{\tcode{INT32_MAX}}
+    \td{\tcode{INT32_MAX}}
+    \td{\tcode{INT32_MAX}}
+  }
+  \tr{
+    \td{\math{\mrow{\mo{+}\mi{∞}}}}
+    \td{\tcode{0x8000'0000}}
+    \td{\tcode{INT32_MAX}}
+    \td{\tcode{INT32_MAX}}
+    \td{\tcode{INT32_MAX}}
+  }
+  \tr{
+    \td{\math{\mi{NaN}}}
+    \td{\tcode{0x8000'0000}}
+    \td{\tcode{INT32_MAX}}
+    \td{\tcode{0}}
+    \td{\tcode{0}}
+  }
+}
+
+Because everything but the handling of small values which are actually representable
+as the resulting integer is UB,
+the \tcode{float → int} conversion can always be lowered to a single instruction.
+
+\Bnote{
+The \tcode{0x8000'0000} is just an error indicator.
+The IA flag is also raised, indicating an invalid instruction.
+
+For RISC-V, the assumption is that the \tcode{RTZ} (round to zero)
+rounding mode was explicitly specified.
+}
+
+\h3{Comparison with other languages}
+
+Similar to comparing hardware capabilities,
+we can also compare how other languages handle this conversion:
+
+\table(class="val-table center"){
+  \tr{
+    \th{Input}
+    \th{\ref("https://eel.is/c++draft/conv.fpint"){C++}}
+    \th{\ref("https://doc.rust-lang.org/reference/expressions/operator-expr.html#numeric-cast"){Rust}}
+    \th{\ref("https://docs.oracle.com/javase/specs/jls/se24/html/jls-5.html#jls-5.1.3"){Java}}
+    \th{\ref("https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/conversions#1032-explicit-numeric-conversions"){C# (checked)}}
+    \th{\ref("https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/conversions#1032-explicit-numeric-conversions"){C# (unchecked)}}
+  }
+  \tr{
+    \td{\math{\mrow{\mo{−}\mi{∞}}}}
+    \td{UB}
+    \td{\tcode{INT32_MIN}}
+    \td{\tcode{INT32_MIN}}
+    \td{exception thrown}
+    \td{unspecified}
+  }
+  \tr{
+    \td{\math{\mrow{\mo{−}\msup{\mn{2}\mn{50}}}}}
+    \td{UB}
+    \td{\tcode{INT32_MIN}}
+    \td{\tcode{INT32_MIN}}
+    \td{exception thrown}
+    \td{unspecified}
+  }
+  \tr{
+    \td{small \math{\mi{x}}}
+    \td{\tcode{trunc(\math{\mi{x}})}}
+    \td{\tcode{trunc(\math{\mi{x}})}}
+    \td{\tcode{trunc(\math{\mi{x}})}}
+    \td{\tcode{trunc(\math{\mi{x}})}}
+    \td{\tcode{trunc(\math{\mi{x}})}}
+  }
+  \tr{
+    \td{\math{\mrow{\mo{+}\msup{\mn{2}\mn{50}}}}}
+    \td{UB}
+    \td{\tcode{INT32_MAX}}
+    \td{\tcode{INT32_MAX}}
+    \td{exception thrown}
+    \td{unspecified}
+  }
+  \tr{
+    \td{\math{\mrow{\mo{+}\mi{∞}}}}
+    \td{UB}
+    \td{\tcode{INT32_MAX}}
+    \td{\tcode{INT32_MAX}}
+    \td{exception thrown}
+    \td{unspecified}
+  }
+  \tr{
+    \td{\math{\mi{NaN}}}
+    \td{UB}
+    \td{\tcode{0}}
+    \td{\tcode{0}}
+    \td{exception thrown}
+    \td{unspecified}
+  }
+}
+
+The key insight is that the saturating behavior is considered so useful
+that it is baked into the core language of Rust and Java.
+
+\Bnote{
+When specifying
+\ref("https://clang.llvm.org/docs/UsersManual.html#cmdoption-f-no-strict-float-cast-overflow"){\tt{-fno-strict-float-cast-overflow}},
+Clang's behavior matches that of Rust and Java.
+}
+
+\h3{The problem}
+
+The problem is that making almost every part of the tables above undefined behavior
+is not very useful for some domains.
+It is fairly common that when quantizing floating-point values to integers,
+some values are outside the representable range,
+especially in the domain of signal processing.
+
+In that domain, saturating behavior would be much more useful.
+Frustratingly, we have a \tcode{std::saturating_cast} function,
+but that function is only defined for integer types.
+
+\h3{Proposal}
+
+The way to solve the problem would be to extend
+\tcode{std::saturating_cast} to also support floating-point types.
+
+It would also be possible to make changes to the core language,
+aligning C++ with Rust and Java,
+but this would have considerable performance cost
+which massive amounts of existing code would silently incur.
+Clang users would all have to start using \tt{-fstrict-float-cast-overflow}
+to restore the old behavior,
+but this flag would no longer be a compliant extension because it would introduced UB
+where the standard defines behavior.
+
+\h2{Motivation}
+
+We already see some evidence that a saturating cast from floating-point to integer is useful.
+This is the behavior of the core-language conversion in Rust and Java,
+and AAarch64 has an instruction which implements this behavior exactly.
+
+In C++, one can similarly imagine many applications for this behavior:
+
+\h3{Quantization}
+
+It is common in calculations related to RGB colors to represent the linearized
+color values as floating-point numbers in the range [0, 1].
+When stored as pixel values,
+they are typically quantized to 8-bit integers.
+It is also common for some values to fall outside the [0, 1] range
+due to numerical instability or because the original color space had a wider gamut.
+That makes the UB in the conversion from \tcode{float} to \tcode{std::uint8_t} a safety hazard.
+
+While the problem can be solved by clamping to the range [0, 1] before the conversion,
+this is pessimistic because on e.g. ARM,
+the underlying \tt{FCVTZU} instruction already clamps.
+
+\h4{Optimal output using Rust}
+
+Looking at
+\ref("https://godbolt.org/z/6a6z4h1rf"){\tt{rustc} output}
+lets us compare to the theoretical optimum:
+\codeblock("rust"){
+pub fn clamped(x: f32) -> u8 {
+    return (x.clamp(0.0, 1.0) * 255f32) as u8;
+}
+pub fn unclamped(x: f32) -> u8 {
+    return (x * 255f32) as u8;
+}
+}
+
+\codeblock("txt"){
+example[ceccecd8beb92274]::clamped:
+        movi    d1, #0000000000000000
+        fcmp    s0, #0.0
+        mov     w8, #1132396544
+        mov     w9, #255
+        fcsel   s0, s1, s0, mi
+        fmov    s1, #1.00000000
+        fcmp    s0, s1
+        fcsel   s0, s1, s0, gt
+        fmov    s1, w8
+        fmul    s0, s0, s1
+        fcvtzu  w8, s0
+        cmp     w8, #255
+        csel    w0, w8, w9, lo
+        ret
+
+example[ceccecd8beb92274]::unclamped:
+        mov     w8, #1132396544
+        mov     w9, #255
+        fmov    s1, w8
+        fmul    s0, s0, s1
+        fcvtzu  w8, s0
+        cmp     w8, #255
+        csel    w0, w8, w9, lo
+        ret
+}
+The output for \tcode{unclamped} shows that \code("rust"){f32 as u8}
+was simply lowered to a \tt{fcvtzu} instruction,
+then clamped to the range [0, 255] via \tt{cmp} and \tt{csel}.
+This is the theoretical optimum we would expect.
+
+\h4{Low-quality output using C++}
+
+C++ developers are essentially forced to get the \tcode{clamped} output
+(see \url{https://godbolt.org/z/dqofdPW7a})
+because without clamping,
+they would run into UB for infinities and large values:
+\cppblock{
+#include <algorithm>
+#include <cstdint>
+#include <numeric>
+std::uint8_t clamped(float x) {
+    return std::saturate_cast<std::uint8_t>(unsigned(std::clamp(x, 0.f, 1.f) * 255));
+}
+}
+\codeblock("txt"){
+clamped(float):
+        movi    d1, #0000000000000000
+        fcmp    s0, #0.0
+        mov     w8, #1132396544
+        fcsel   s0, s1, s0, mi
+        fmov    s1, #1.00000000
+        fcmp    s0, s1
+        fcsel   s0, s1, s0, gt
+        fmov    s1, w8
+        fmul    s0, s0, s1
+        fcvtzu  w8, s0
+        cmp     w8, #256
+        csinv   w0, w8, wzr, lo
+        ret
+}
+
+The frustrating part is that the \q{theoretical optimum} on ARM is known,
+but there is no way to express it in the C++ language without UB.
+Getting to the optimal compiler output simply through optimizations
+also seems unrealistic.
+
+If \tcode{std::saturating_cast} accepted floating-point types,
+we could go straight from \tcode{float} to \tcode{std::uint8_t},
+producing the same output as Rust's \code("rust"){f32 as u8} conversion.
+
+\h3{Safety}
+
+Another obvious problem with a language facility that has so much UB is safety.
+If someone wanted to avoid core language UB,
+\tcode{float → int} conversions would present a minefield,
+and there is no clear alternative.
+
+\tcode{std::saturating_cast} is that safer alternative:
+whenever a C++ developer is unsure whether a \tcode{float → int} conversion is safe,
+they can use \tcode{std::saturating_cast} to avoid UB.
+For the conversions that are already well-defined,
+this results in no change in behavior,
+and on platforms like AAarch64 or WASM,
+it results in no performance cost either.
+
+\h3{Engine implementation}
+
+The saturating behavior is gradually becoming the de-facto standard for how to handle
+conversions from floating-point to integer types.
+Languages like Rust and Java handle conversions like this and
+architectures like AAarch64 and WASM have instructions for this behavior.
+
+That makes it increasingly relevant for C++ to have such an operation as well,
+to make the implementation of compilers,
+WASM runtimes,
+emulators,
+etc. easier and more efficient.
+
+\h2{Design}
+
+\h3{Strategy}
+
+The overall strategy for \tcode{std::saturating_cast}
+is to match the Rust and Java behavior,
+as well as the \tt{FCVTZS} and \tt{i32.trunc_sat_s_f32} instructions.
+
+\h3{Handling of NaN}
+
+The proposed behavior is to return zero for NaN inputs,
+which matches the aforementioned precedent.
+
+One could also match the RISC-V \tt{FCVT.W.S} behavior
+of returning \tt{INT32_MAX} for NaN inputs,
+but there is a real benefit to keeping the result for NaN inputs distinct:
+If \tcode{std::isfinite(x)} is \tcode{false} for the original input,
+the result of the saturating cast also provides information about which
+non-finite value was passed in
+(\math{\mrow{\mo{−}\mi{∞}}}, \math{\mi{+}\mi{∞}}, or \math{\mi{NaN}}).
+
+\h3{Other saturating operations}
+
+The rest of the saturation arithmetic library is not affected.
+That is, there is no floating-point support for \tcode{std::saturating_add} etc.
+These functions are simply not in scope for the paper,
+and the motivation does not apply to them because floating-point operations
+are already saturating
+(in the sense that they clamp to \math{\mo{−}\mi{∞}} and \math{\mi{+}\mi{∞}}).
+
+I also don't propose floating-point types as a result of \tcode{std::saturating_cast}
+because converting to floating-point types is already quasi-saturating.
+
+\h2{Impact on existing code}
+
+The proposed change only relaxes the constraints on
+\tcode{std::saturating_cast} to allow floating-point types.
+Existing uses with integer operands are not affected.
+
+\h2{Implementation experience}
+
+The proposed behavior is available in LLVM as the
+\ref("https://llvm.org/docs/LangRef.html#llvm-fptoui-sat-intrinsic"){\tt{llvm.fptoui.sat.*}} and
+\ref("https://llvm.org/docs/LangRef.html#llvm-fptosi-sat-intrinsic"){\tt{llvm.fptosi.sat.*}}
+family of intrinsics.
+However, these are not yet exposed as a standalone Clang intrinsic.
+To emit them, one must specify
+\ref("https://clang.llvm.org/docs/UsersManual.html#cmdoption-f-no-strict-float-cast-overflow"){\tt{-fno-strict-float-cast-overflow}},
+and that doesn't have any effect on constant evaluation.
+
+\h3{Possible implementation}
+
+A pure library implementation with some \tcode{if} statements for range checks
+is theoretically possible, but a waste of time from an implementer viewpoint.
+The goal is to emit exactly one e.g. \tt{FCVTZS}
+instruction for the conversion
+(or whatever the minimal equivalent is on other architectures),
+and this requires compiler intrinsics.
+Nonetheless, a library implementation looks as follows:
+
+\cppblock{
+#include <limits>
+#include <cmath>
+#include <bit>
+
+template<class R, class F>
+constexpr R saturating_cast(F x) noexcept {
+  if (std::isnan(x)) {
+    return R(0);
+  }
+
+  if constexpr (std::numeric_limits<R>::digits >= std::numeric_limits<F>::max_exponent) {
+    // Every truncated finite number is representable as an integer of type R,
+    // so we don't have to worry about numbers with large magnitude when casting.
+    // Infinities and NaNs are the only non-representable values.
+    //
+    // In practice, this happens in e.g. float32_t → unsigned __int128
+    if (std::isinf(x)) {
+      return x < F(0) ? std::numeric_limits<R>::lowest()
+                      : std::numeric_limits<R>::max();
+    }
+  } else if (std::is_signed_v<R>) {
+    // Otherwise, we need to compute the bounds of the range (min, max)
+    // (i.e. exclusive on both ends).
+    // that does not cause casting to have undefined behavior.
+    // Infinities also fall outside that range and need no explicit handling.
+
+    // Since integers use two's complement,
+    // this is one past the greatest integer,
+    // so already the bound we are looking for.
+    constexpr F max = -F(std::numeric_limits<R>::lowest());
+    if (x >= max) {
+      return std::numeric_limits<R>::max();
+    }
+
+    // We use lowest() because it is a power of two,
+    // so there is no risk of rounding.
+    // It can only overflow to infinity.
+    constexpr F min = F(std::numeric_limits<R>::lowest());
+
+    if constexpr (min - 1 < min) {
+      // Numbers within 1 distance of lowest() get truncated to lowest(),
+      // so lowest() is not the bound; the next lower integer is the bound.
+      if (x <= min - 1) {
+        return std::numeric_limits<R>::lowest();
+      }
+    } else if (x < min) {
+      // In this case, there exists no integer directly below lowest()
+      // due to limited floating-point precision.
+      // This makes lowest() a genuine exclusive bound.
+      return std::numeric_limits<R>::lowest();
+    }
+  } else {
+    // We use bit_floor to get a power of two, avoiding rounding issues.
+    // Multiplication by two then gets us one past the greatest integer.
+    constexpr F max = F(std::bit_floor(std::numeric_limits<R>::max())) * 2;
+    if (x >= max) {
+      return std::numeric_limits<R>::max();
+    }
+    // Since the conversion truncates, negative values greater than -1 result in 0.
+    // Cast UB only happens if the truncated value is not representable in the result.
+    if (x <= F(-1)) {
+      return std::numeric_limits<R>::lowest();
+    }
+  }
+
+  return R(x);
+}
+}
+
+\h2{Wording}
+
+The changes are relative to \ref("N5054").
+
+\h3(show_number=false){[version.syn]}
+
+In \eelis{version.syn}, bump the \tcode{__cpp_lib_saturation_arithmetic} feature-test macro.
+
+\Bdiff{
+\itemdecl{
+#define __cpp_lib_saturation_arithmetic \del{202603L} \ins{20XXXXL} // \serif{freestanding, also in \tt{<numeric>}}
+}
+}
+
+\h3(show_number=false){[numeric.sat.cast]}
+
+Change \eelis{numeric.sat.cast} as follows:
+
+\Bdiff{
+\itemdecl{
+template<class R, class T>
+  constexpr R saturating_cast(T x) noexcept;
+}
+
+\itemdescr{
+\constraints
+\tcode{R} \del{and \tcode{T} are} \ins{is a}
+signed or unsigned integer type\del{s}\iref{basic.fundamental}.
+\ins{\tcode{T} is a signed or unsigned integer type or a floating-point type.}
+
+\returns
+\del{If \tcode{x} is representable as a value of type \tcode{R}, \tcode{x};
+otherwise, either the largest or smallest representable value of type \tcode{R},
+whichever is closer to the value of \tcode{x}.}
+\ul{
+  \li{
+    \ins{If \tcode{x} is NaN, zero.}
+  }
+  \li{
+    \ins{Otherwise, if \tcode{x} is less than the smallest representable value of type \tcode{R},
+    the smallest representable value of type \tcode{R}.}
+  }
+  \li{
+    \ins{Otherwise, if \tcode{x} is greater than the largest representable value of type \tcode{R},
+    the largest representable value of type \tcode{R}.}
+  }
+  \li{
+    \ins{Otherwise, \tcode{x} with the fractional part (if any) discarded.}
+  }
+}
+}
+}
+
+\h2{References}
+
+
+\bib(
+  id = "N5054",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2026-07-16",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5054",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
+)\
+
+\make_bib
