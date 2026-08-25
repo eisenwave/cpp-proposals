@@ -5,8 +5,8 @@
   title = {Floating-point \tt{std::saturating_cast}}
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{D4355R0}}
-  \dt{Date:}            \dd{\tt{2026-08-24}}
+  \dt{Document number:} \dd{\docnum{P4355R0}}
+  \dt{Date:}            \dd{\tt{2026-08-25}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -64,10 +64,10 @@ Let's focus on the conversion from \tcode{float32_t} to \tcode{int32_t}.
 \table(class="val-table center"){
   \tr{
     \th{Input}
-    \th{\tt{CVTTSS2SI}\br (x86_64)}
-    \th{\tt{FCVT.W.S}\br (RISC-V)}
-    \th{\tt{FCVTZS}\br (AArch64)}
-    \th{\tt{i32.trunc_sat_s_f32}\br (WASM)}
+    \th{\ref("https://www.felixcloutier.com/x86/cvttss2si"){\tt{CVTTSS2SI}}\br (x86_64)}
+    \th{\ref("https://docs.riscv.org/reference/isa/v20260120/unpriv/f-st-ext.html#20-1-7-single-precision-floating-point-conversion-and-move-instructions"){\tt{FCVT.W.S}}\br (RISC-V)}
+    \th{\ref("https://support.arm.com/documentation/dui0801/h/A64-Floating-point-Instructions/FCVTZS--scalar--integer-"){\tt{FCVTZS}}\br (AArch64)}
+    \th{\ref("https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-sat-mathrm-trunc-sat-s-m-n-z"){\tt{i32.trunc_sat_s_f32}}\br (WASM)}
   }
   \tr{
     \td{\math{\mrow{\mo{−}\mi{∞}}}}
@@ -241,10 +241,10 @@ they are typically quantized to 8-bit integers.
 It is also common for some values to fall outside the [0, 1] range
 due to numerical instability or because the original color space had a wider gamut.
 That makes the UB in the conversion from \tcode{float} to \tcode{std::uint8_t} a safety hazard.
-
 While the problem can be solved by clamping to the range [0, 1] before the conversion,
 this is pessimistic because on e.g. ARM,
-the underlying \tt{FCVTZU} instruction already clamps.
+the underlying \tt{FCVTZU} instruction already clamps
+(saturating has a clamping effect).
 
 \h4{Optimal output using Rust}
 
@@ -303,7 +303,7 @@ they would run into UB for infinities and large values:
 #include <cstdint>
 #include <numeric>
 std::uint8_t clamped(float x) {
-    return std::saturate_cast<std::uint8_t>(unsigned(std::clamp(x, 0.f, 1.f) * 255));
+    return std::saturating_cast<std::uint8_t>(unsigned(std::clamp(x, 0.f, 1.f) * 255));
 }
 }
 \codeblock("txt"){
@@ -327,7 +327,6 @@ The frustrating part is that the \q{theoretical optimum} on ARM is known,
 but there is no way to express it in the C++ language without UB.
 Getting to the optimal compiler output simply through optimizations
 also seems unrealistic.
-
 If \tcode{std::saturating_cast} accepted floating-point types,
 we could go straight from \tcode{float} to \tcode{std::uint8_t},
 producing the same output as Rust's \code("rust"){f32 as u8} conversion.
@@ -353,7 +352,6 @@ The saturating behavior is gradually becoming the de-facto standard for how to h
 conversions from floating-point to integer types.
 Languages like Rust and Java handle conversions like this and
 architectures like AAarch64 and WASM have instructions for this behavior.
-
 That makes it increasingly relevant for C++ to have such an operation as well,
 to make the implementation of compilers,
 WASM runtimes,
@@ -408,7 +406,8 @@ family of intrinsics.
 However, these are not yet exposed as a standalone Clang intrinsic.
 To emit them, one must specify
 \ref("https://clang.llvm.org/docs/UsersManual.html#cmdoption-f-no-strict-float-cast-overflow"){\tt{-fno-strict-float-cast-overflow}},
-and that doesn't have any effect on constant evaluation.
+and that doesn't have any effect on constant evaluation,
+so infinities and NaNs need explicit handling at compile time.
 
 \h3{Possible implementation}
 
@@ -494,8 +493,6 @@ constexpr R saturating_cast(F x) noexcept {
 
 The changes are relative to \ref("N5054").
 
-\h3(show_number=false){[version.syn]}
-
 In \eelis{version.syn}, bump the \tcode{__cpp_lib_saturation_arithmetic} feature-test macro.
 
 \Bdiff{
@@ -503,8 +500,6 @@ In \eelis{version.syn}, bump the \tcode{__cpp_lib_saturation_arithmetic} feature
 #define __cpp_lib_saturation_arithmetic \del{202603L} \ins{20XXXXL} // \serif{freestanding, also in \tt{<numeric>}}
 }
 }
-
-\h3(show_number=false){[numeric.sat.cast]}
 
 Change \eelis{numeric.sat.cast} as follows:
 

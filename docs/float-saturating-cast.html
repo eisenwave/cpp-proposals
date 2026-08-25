@@ -1579,8 +1579,8 @@ if (theme !== null) {
 <div class=wg21-head><h1>Floating-point <tt->std::saturating_cast</tt-></h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/D4355R0>D4355R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-08-24</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P4355R0>P4355R0</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-08-25</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;<br/>
@@ -1635,10 +1635,6 @@ if (theme !== null) {
 <a href=#possible-implementation><h3>Possible implementation</h3></a>
 <div class=toc-num data-level=2>6</div>
 <a href=#wording><h2>Wording</h2></a>
-<div class=toc-num data-level=3>6.1</div>
-<a href=#version%2esyn><h3>[version.syn]</h3></a>
-<div class=toc-num data-level=3>6.2</div>
-<a href=#numeric%2esat%2ecast><h3>[numeric.sat.cast]</h3></a>
 <div class=toc-num data-level=2>7</div>
 <a href=#references><h2>References</h2></a>
 </div>
@@ -1682,10 +1678,10 @@ Let's focus on the conversion from <code><h- data-h=name_type>float32_t</h-></co
 <table class="val-table center">
   <tr>
     <th>Input</th>
-    <th><tt->CVTTSS2SI</tt-><br/> (x86_64)</th>
-    <th><tt->FCVT.W.S</tt-><br/> (RISC-V)</th>
-    <th><tt->FCVTZS</tt-><br/> (AArch64)</th>
-    <th><tt->i32.trunc_sat_s_f32</tt-><br/> (WASM)</th>
+    <th><a href=https://www.felixcloutier.com/x86/cvttss2si><tt->CVTTSS2SI</tt-></a><br/> (x86_64)</th>
+    <th><a href=https://docs.riscv.org/reference/isa/v20260120/unpriv/f-st-ext.html#20-1-7-single-precision-floating-point-conversion-and-move-instructions><tt->FCVT.W.S</tt-></a><br/> (RISC-V)</th>
+    <th><a href=https://support.arm.com/documentation/dui0801/h/A64-Floating-point-Instructions/FCVTZS--scalar--integer-><tt->FCVTZS</tt-></a><br/> (AArch64)</th>
+    <th><a href=https://webassembly.github.io/spec/core/exec/numerics.html#xref-exec-numerics-op-trunc-sat-mathrm-trunc-sat-s-m-n-z><tt->i32.trunc_sat_s_f32</tt-></a><br/> (WASM)</th>
   </tr>
   <tr>
     <td><math display=inline><mrow><mo>−</mo><mi>∞</mi></mrow></math></td>
@@ -1859,10 +1855,10 @@ they are typically quantized to 8-bit integers.
 It is also common for some values to fall outside the [0, 1] range
 due to numerical instability or because the original color space had a wider gamut.
 That makes the UB in the conversion from <code><h- data-h=kw_type>float</h-></code> to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint8_t</h-></code> a safety hazard.
-</p>
-<p>While the problem can be solved by clamping to the range [0, 1] before the conversion,
+While the problem can be solved by clamping to the range [0, 1] before the conversion,
 this is pessimistic because on e.g. ARM,
-the underlying <tt->FCVTZU</tt-> instruction already clamps.
+the underlying <tt->FCVTZU</tt-> instruction already clamps
+(saturating has a clamping effect).
 </p>
 <h4 id=optimal-output-using-rust><a class=para href=#optimal-output-using-rust></a>2.1.1. Optimal output using Rust</h4>
 
@@ -1916,7 +1912,7 @@ they would run into UB for infinities and large values:
 <h- data-h=name_mac>#include &lt;cstdint&gt;</h->
 <h- data-h=name_mac>#include &lt;numeric&gt;</h->
 <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint8_t</h-> <h- data-h=name>clamped</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>float</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=kw_ctrl>return</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>saturate_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint8_t</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>unsigned</h-><h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>clamp</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>255</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>saturating_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint8_t</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>unsigned</h-><h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>clamp</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>0</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>.</h-><h- data-h=num_deco>f</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>255</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h-></code-block>
 <code-block>clamped(float):
         movi    d1, #0000000000000000
@@ -1937,8 +1933,7 @@ they would run into UB for infinities and large values:
 but there is no way to express it in the C++ language without UB.
 Getting to the optimal compiler output simply through optimizations
 also seems unrealistic.
-</p>
-<p>If <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>saturating_cast</h-></code> accepted floating-point types,
+If <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>saturating_cast</h-></code> accepted floating-point types,
 we could go straight from <code><h- data-h=kw_type>float</h-></code> to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint8_t</h-></code>,
 producing the same output as Rust's <code><h- data-h=name_type_pre>f32</h-> <h- data-h=kw>as</h-> <h- data-h=name_type_pre>u8</h-></code> conversion.
 </p>
@@ -1963,8 +1958,7 @@ it results in no performance cost either.
 conversions from floating-point to integer types.
 Languages like Rust and Java handle conversions like this and
 architectures like AAarch64 and WASM have instructions for this behavior.
-</p>
-<p>That makes it increasingly relevant for C++ to have such an operation as well,
+That makes it increasingly relevant for C++ to have such an operation as well,
 to make the implementation of compilers,
 WASM runtimes,
 emulators,
@@ -2018,7 +2012,8 @@ family of intrinsics.
 However, these are not yet exposed as a standalone Clang intrinsic.
 To emit them, one must specify
 <a href=https://clang.llvm.org/docs/UsersManual.html#cmdoption-f-no-strict-float-cast-overflow><tt->-fno-strict-float-cast-overflow</tt-></a>,
-and that doesn't have any effect on constant evaluation.
+and that doesn't have any effect on constant evaluation,
+so infinities and NaNs need explicit handling at compile time.
 </p>
 <h3 id=possible-implementation><a class=para href=#possible-implementation></a>5.1. Possible implementation</h3>
 
@@ -2102,15 +2097,11 @@ Nonetheless, a library implementation looks as follows:
 
 <p>The changes are relative to <a href="https://wg21%2elink/n5054">[N5054]</a>.
 </p>
-<h3 id=version.syn><a class=para href=#version%2esyn></a>[version.syn]</h3>
-
 <p>In <a href=https://eel.is/c++draft/version.syn>[version.syn]</a>, bump the <code><h- data-h=name>__cpp_lib_saturation_arithmetic</h-></code> feature-test macro.
 </p>
 <diff-block>
 <code-block class=borderless><h- data-h=name_mac>#define __cpp_lib_saturation_arithmetic </h-><del><h- data-h=name_mac>202603L</h-></del><h- data-h=name_mac> </h-><ins><h- data-h=name_mac>20XXXXL</h-></ins><h- data-h=name_mac> </h-><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding, also in </h-><tt-><h- data-h=cmt>&lt;numeric&gt;</h-></tt-></f-serif></code-block>
 </diff-block>
-
-<h3 id=numeric.sat.cast><a class=para href=#numeric%2esat%2ecast></a>[numeric.sat.cast]</h3>
 
 <p>Change <a href=https://eel.is/c++draft/numeric.sat.cast>[numeric.sat.cast]</a> as follows:
 </p>
