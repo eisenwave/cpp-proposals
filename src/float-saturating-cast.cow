@@ -379,6 +379,42 @@ the result of the saturating cast also provides information about which
 non-finite value was passed in
 (\math{\mrow{\mo{−}\mi{∞}}}, \math{\mi{+}\mi{∞}}, or \math{\mi{NaN}}).
 
+\h3{Floating-point exceptions and constant expressions}
+
+The handling of floating-point exceptions should be
+consistent with the rest of the standard library,
+such as any functions in \header{cmath},
+and should try to be consistent with the \tt{FCVTZS} instruction.
+The Arm Architecture Reference Manual Armv8 specifies:
+
+\Bquote{
+\b{Invalid Operation}
+
+Occurs if the floating-point input is a NaN,
+infinity, or a numerical value that cannot be represented
+in the destination register.
+An out of range integer or fixed-point result is saturated to the size of the
+destination register.
+
+\b{Inexact}
+
+Occurs if the numeric result that differs from the input value.
+}
+
+Curiously, C's Annex F leaves it unspecified whether a \tcode{float → int}
+conversion raises the \q{inexact} exception,
+so out of caution and to grant some implementation freedom,
+we should not mandate it either.
+
+A domain error should only take if the input is NaN.
+Otherwise, \tcode{std::saturating_cast} is quasi-useless during constant evaluation.
+\tcode{static_cast} and \tcode{std::saturating_cast} would be equivalent in that case
+because everything that is UB in \tcode{static_cast}
+turns into a domain error in \tcode{std::saturating_cast},
+and domain errors disqualify expressions from being constant expressions in the standard library.
+It also doesn't make any design sense for an operation that is explicitly saturating
+to report a domain error when it saturates.
+
 \h3{Other saturating operations}
 
 The rest of the saturation arithmetic library is not affected.
@@ -513,29 +549,31 @@ template<class R, class T>
 \constraints
 \tcode{R} \del{and \tcode{T} are} \ins{is a}
 signed or unsigned integer type\del{s}\iref{basic.fundamental}.
-\ins{\tcode{T} is a signed or unsigned integer type or a floating-point type.}
+\ins{\tcode{T} is a signed or unsigned integer type or
+a cv-unqualified floating-point type.}
 
 \returns
-\del{If \tcode{x} is representable as a value of type \tcode{R}, \tcode{x};
-otherwise, either the largest or smallest representable value of type \tcode{R},
-whichever is closer to the value of \tcode{x}.}
-\ul{
-  \li{
-    \ins{If \tcode{x} is NaN, zero.}
-  }
-  \li{
-    \ins{Otherwise, if \tcode{x} is less than the smallest representable value of type \tcode{R},
-    the smallest representable value of type \tcode{R}.}
-  }
-  \li{
-    \ins{Otherwise, if \tcode{x} is greater than the largest representable value of type \tcode{R},
-    the largest representable value of type \tcode{R}.}
-  }
-  \li{
-    \ins{Otherwise, \tcode{x} with the fractional part (if any) discarded.}
-  }
+\ins{If \tcode{x} is NaN, zero.
+Otherwise, let \math{\mi{v}} be the value of \tcode{x}
+with the fractional part (if any) discarded.}
+If \del{\tcode{x}} \ins{\math{\mi{v}}}
+is representable as a value of type \tcode{R},
+\ins{return} \del{\tcode{x}} \ins{\math{\mi{v}}};
+otherwise, \ins{returns} either the largest or smallest representable value of type \tcode{R},
+whichever is closer to
+\del{the value of \tcode{x}} \ins{\math{\mi{v}}}.
+
+\ins{\remarks
+If and only if \tcode{T} is is a floating-point type,
+floating-point exceptions may be raised,
+unless the value of \tcode{x} is exactly representable in type \tcode{R}.
+Whether the \q{inexact} exception is raised is a property of the implementation.
+A domain error occurs if \tcode{x} is NaN,
+in which case a function call expression is not a constant expression.
 }
 }
+
+\ins{SEE ALSO: ISO/IEC 9899:2024 7.12.1}
 }
 
 \h2{References}

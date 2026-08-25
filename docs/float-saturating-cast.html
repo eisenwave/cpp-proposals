@@ -1626,6 +1626,8 @@ if (theme !== null) {
 <div class=toc-num data-level=3>3.2</div>
 <a href=#handling-of-nan><h3>Handling of NaN</h3></a>
 <div class=toc-num data-level=3>3.3</div>
+<a href=#floating-point-exceptions-and-constant-expressions><h3>Floating-point exceptions and constant expressions</h3></a>
+<div class=toc-num data-level=3>3.4</div>
 <a href=#other-saturating-operations><h3>Other saturating operations</h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#impact-on-existing-code><h2>Impact on existing code</h2></a>
@@ -1985,7 +1987,43 @@ the result of the saturating cast also provides information about which
 non-finite value was passed in
 (<math display=inline><mrow><mo>−</mo><mi>∞</mi></mrow></math>, <math display=inline><mi>+</mi><mi>∞</mi></math>, or <math display=inline><mi>NaN</mi></math>).
 </p>
-<h3 id=other-saturating-operations><a class=para href=#other-saturating-operations></a>3.3. Other saturating operations</h3>
+<h3 id=floating-point-exceptions-and-constant-expressions><a class=para href=#floating-point-exceptions-and-constant-expressions></a>3.3. Floating-point exceptions and constant expressions</h3>
+
+<p>The handling of floating-point exceptions should be
+consistent with the rest of the standard library,
+such as any functions in <code><h- data-h=str>&lt;cmath&gt;</h-></code>,
+and should try to be consistent with the <tt->FCVTZS</tt-> instruction.
+The Arm Architecture Reference Manual Armv8 specifies:
+</p>
+<blockquote>
+<p><b>Invalid Operation</b></p>
+
+<p>Occurs if the floating-point input is a NaN,
+infinity, or a numerical value that cannot be represented
+in the destination register.
+An out of range integer or fixed-point result is saturated to the size of the
+destination register.
+</p>
+<p><b>Inexact</b></p>
+
+<p>Occurs if the numeric result that differs from the input value.
+</p></blockquote>
+
+<p>Curiously, C's Annex F leaves it unspecified whether a <code><h- data-h=kw_type>float</h-> → <h- data-h=kw_type>int</h-></code>
+conversion raises the <q>inexact</q> exception,
+so out of caution and to grant some implementation freedom,
+we should not mandate it either.
+</p>
+<p>A domain error should only take if the input is NaN.
+Otherwise, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>saturating_cast</h-></code> is quasi-useless during constant evaluation.
+<code><h- data-h=kw>static_cast</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>saturating_cast</h-></code> would be equivalent in that case
+because everything that is UB in <code><h- data-h=kw>static_cast</h-></code>
+turns into a domain error in <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>saturating_cast</h-></code>,
+and domain errors disqualify expressions from being constant expressions in the standard library.
+It also doesn't make any design sense for an operation that is explicitly saturating
+to report a domain error when it saturates.
+</p>
+<h3 id=other-saturating-operations><a class=para href=#other-saturating-operations></a>3.4. Other saturating operations</h3>
 
 <p>The rest of the saturation arithmetic library is not affected.
 That is, there is no floating-point support for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>saturating_add</h-></code> etc.
@@ -2113,30 +2151,32 @@ Nonetheless, a library implementation looks as follows:
 <p><i>Constraints</i>:
 <code><h- data-h=name>R</h-></code> <del>and <code><h- data-h=name>T</h-></code> are</del> <ins>is a</ins>
 signed or unsigned integer type<del>s</del> (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>).
-<ins><code><h- data-h=name>T</h-></code> is a signed or unsigned integer type or a floating-point type.</ins></p>
+<ins><code><h- data-h=name>T</h-></code> is a signed or unsigned integer type or
+a cv-unqualified floating-point type.</ins></p>
 
 <p><i>Returns</i>:
-<del>If <code><h- data-h=name>x</h-></code> is representable as a value of type <code><h- data-h=name>R</h-></code>, <code><h- data-h=name>x</h-></code>;
-otherwise, either the largest or smallest representable value of type <code><h- data-h=name>R</h-></code>,
-whichever is closer to the value of <code><h- data-h=name>x</h-></code>.</del>
-</p><ul>
-  <li>
-    <ins>If <code><h- data-h=name>x</h-></code> is NaN, zero.</ins>
-  </li>
-  <li>
-    <ins>Otherwise, if <code><h- data-h=name>x</h-></code> is less than the smallest representable value of type <code><h- data-h=name>R</h-></code>,
-    the smallest representable value of type <code><h- data-h=name>R</h-></code>.</ins>
-  </li>
-  <li>
-    <ins>Otherwise, if <code><h- data-h=name>x</h-></code> is greater than the largest representable value of type <code><h- data-h=name>R</h-></code>,
-    the largest representable value of type <code><h- data-h=name>R</h-></code>.</ins>
-  </li>
-  <li>
-    <ins>Otherwise, <code><h- data-h=name>x</h-></code> with the fractional part (if any) discarded.</ins>
-  </li>
-</ul>
-</div>
-</diff-block>
+<ins>If <code><h- data-h=name>x</h-></code> is NaN, zero.
+Otherwise, let <math display=inline><mi>v</mi></math> be the value of <code><h- data-h=name>x</h-></code>
+with the fractional part (if any) discarded.</ins>
+If <del><code><h- data-h=name>x</h-></code></del> <ins><math display=inline><mi>v</mi></math></ins>
+is representable as a value of type <code><h- data-h=name>R</h-></code>,
+<ins>return</ins> <del><code><h- data-h=name>x</h-></code></del> <ins><math display=inline><mi>v</mi></math></ins>;
+otherwise, <ins>returns</ins> either the largest or smallest representable value of type <code><h- data-h=name>R</h-></code>,
+whichever is closer to
+<del>the value of <code><h- data-h=name>x</h-></code></del> <ins><math display=inline><mi>v</mi></math></ins>.
+</p>
+<p><ins><i>Remarks</i>:
+If and only if <code><h- data-h=name>T</h-></code> is is a floating-point type,
+floating-point exceptions may be raised,
+unless the value of <code><h- data-h=name>x</h-></code> is exactly representable in type <code><h- data-h=name>R</h-></code>.
+Whether the <q>inexact</q> exception is raised is a property of the implementation.
+A domain error occurs if <code><h- data-h=name>x</h-></code> is NaN,
+in which case a function call expression is not a constant expression.
+</ins>
+</p></div>
+
+<p><ins>SEE ALSO: ISO/IEC 9899:2024 7.12.1</ins>
+</p></diff-block>
 
 <h2 id=references><a class=para href=#references></a>7. References</h2>
 
