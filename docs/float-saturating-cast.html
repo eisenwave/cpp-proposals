@@ -1580,7 +1580,7 @@ if (theme !== null) {
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/P4355R0>P4355R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-08-25</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2026-08-30</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;<br/>
@@ -1629,6 +1629,8 @@ if (theme !== null) {
 <a href=#floating-point-exceptions-and-constant-expressions><h3>Floating-point exceptions and constant expressions</h3></a>
 <div class=toc-num data-level=3>3.4</div>
 <a href=#other-saturating-operations><h3>Other saturating operations</h3></a>
+<div class=toc-num data-level=3>3.5</div>
+<a href=#std::simd-overloads><h3><tt->std::simd</tt-> overloads</h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#impact-on-existing-code><h2>Impact on existing code</h2></a>
 <div class=toc-num data-level=2>5</div>
@@ -1637,6 +1639,12 @@ if (theme !== null) {
 <a href=#possible-implementation><h3>Possible implementation</h3></a>
 <div class=toc-num data-level=2>6</div>
 <a href=#wording><h2>Wording</h2></a>
+<div class=toc-num data-level=3>6.1</div>
+<a href=#version%2esyn><h3>[version.syn]</h3></a>
+<div class=toc-num data-level=3>6.2</div>
+<a href=#numeric><h3>[numeric]</h3></a>
+<div class=toc-num data-level=3>6.3</div>
+<a href=#simd><h3>[simd]</h3></a>
 <div class=toc-num data-level=2>7</div>
 <a href=#references><h2>References</h2></a>
 </div>
@@ -2035,6 +2043,14 @@ are already saturating
 <p>I also don't propose floating-point types as a result of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>saturating_cast</h-></code>
 because converting to floating-point types is already quasi-saturating.
 </p>
+<h3 id=std::simd-overloads><a class=para href=#std::simd-overloads></a>3.5. <tt->std::simd</tt-> overloads</h3>
+
+<p><a href="https://wg21%2elink/p2956r3">[P2956R3]</a> proposes <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>simd</h-></code> overloads for saturation arithmetic,
+including <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>saturating_cast</h-></code>.
+At the time of writing,
+the paper is in LWG, so we expect it to be included in C++29.
+Naturally, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>simd</h-><h- data-h=sym_op>::</h-><h- data-h=name>saturating_cast</h-></code> should also support floating-point types.
+</p>
 <h2 id=impact-on-existing-code><a class=para href=#impact-on-existing-code></a>4. Impact on existing code</h2>
 
 <p>The proposed change only relaxes the constraints on
@@ -2070,7 +2086,16 @@ Nonetheless, a library implementation looks as follows:
 <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>R</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>F</h-><h- data-h=sym_op>&gt;</h->
 <h- data-h=kw>constexpr</h-> <h- data-h=name>R</h-> <h- data-h=name>saturating_cast</h-><h- data-h=sym_par>(</h-><h- data-h=name>F</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>isnan</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=kw_ctrl>return</h-> <h- data-h=name>R</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw_ctrl>if</h-> <h- data-h=kw>consteval</h-> <h- data-h=sym_brac>{</h->
+      <h- data-h=kw_ctrl>return</h-> <h- data-h=name>R</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Make the call not a constant expression.</h->
+    <h- data-h=sym_brac>}</h-> <h- data-h=kw_ctrl>else</h-> <h- data-h=sym_brac>{</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> TODO: Emit domain error.</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       On platforms like ARM where NaN gets converted to zero by static_cast,</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       we could simply return R(x) here,</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       but that also depends on whether R(NaN) is treated</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt>       as an optimization opportunity (poison value) instead of being zero.</h->
+      <h- data-h=kw_ctrl>return</h-> <h- data-h=name>R</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=sym_brac>}</h->
   <h- data-h=sym_brac>}</h->
 
   <h- data-h=kw_ctrl>if</h-> <h- data-h=kw>constexpr</h-> <h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>R</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>digits</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>F</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>max_exponent</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
@@ -2083,7 +2108,7 @@ Nonetheless, a library implementation looks as follows:
       <h- data-h=kw_ctrl>return</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=name>F</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>?</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>R</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>lowest</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h->
                       <h- data-h=sym_punc>:</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>R</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>max</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
     <h- data-h=sym_brac>}</h->
-  <h- data-h=sym_brac>}</h-> <h- data-h=kw_ctrl>else</h-> <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_signed_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>R</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=sym_brac>}</h-> <h- data-h=kw_ctrl>else</h-> <h- data-h=kw_ctrl>if</h-> <h- data-h=kw>constexpr</h-> <h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_signed_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>R</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Otherwise, we need to compute the bounds of the range (min, max)</h->
     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> (i.e. exclusive on both ends).</h->
     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> that does not cause casting to have undefined behavior.</h->
@@ -2135,11 +2160,15 @@ Nonetheless, a library implementation looks as follows:
 
 <p>The changes are relative to <a href="https://wg21%2elink/n5054">[N5054]</a>.
 </p>
+<h3 id=version.syn><a class=para href=#version%2esyn></a>[version.syn]</h3>
+
 <p>In <a href=https://eel.is/c++draft/version.syn>[version.syn]</a>, bump the <code><h- data-h=name>__cpp_lib_saturation_arithmetic</h-></code> feature-test macro.
 </p>
 <diff-block>
 <code-block class=borderless><h- data-h=name_mac>#define __cpp_lib_saturation_arithmetic </h-><del><h- data-h=name_mac>202603L</h-></del><h- data-h=name_mac> </h-><ins><h- data-h=name_mac>20XXXXL</h-></ins><h- data-h=name_mac> </h-><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding, also in </h-><tt-><h- data-h=cmt>&lt;numeric&gt;</h-></tt-></f-serif></code-block>
 </diff-block>
+
+<h3 id=numeric><a class=para href=#numeric></a>[numeric]</h3>
 
 <p>Change <a href=https://eel.is/c++draft/numeric.sat.cast>[numeric.sat.cast]</a> as follows:
 </p>
@@ -2178,6 +2207,41 @@ in which case a function call expression is not a constant expression.
 <p><ins>SEE ALSO: ISO/IEC 9899:2024 7.12.1</ins>
 </p></diff-block>
 
+<h3 id=simd><a class=para href=#simd></a>[simd]</h3>
+
+<p>If <a href="https://wg21%2elink/p2956r3">[P2956R3]</a> has been applied,
+change <a href=https://eel.is/c++draft/simd.syn>[simd.syn]</a> as follows:
+</p>
+<diff-block>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>U</h-><h- data-h=sym_punc>,</h-> <del><i><h- data-h=name>simd-integral</h-></i></del> <ins><i><h- data-h=name>simd-vec-type</h-></i></ins> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name_type>rebind_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>U</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>saturating_cast</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>v</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+</diff-block>
+
+<p>If <a href="https://wg21%2elink/p2956r3">[P2956R3]</a> has been applied,
+change <a href=https://eel.is/c++draft/simd.alg>[simd.alg]</a> as follows:
+</p>
+<diff-block>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>U</h-><h- data-h=sym_punc>,</h-> <del><i><h- data-h=name>simd-integral</h-></i></del> <ins><i><h- data-h=name>simd-vec-type</h-></i></ins> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name_type>rebind_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>U</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>saturating_cast</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>v</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p><i>Constraints</i>:
+<del>Both</del> <code><h- data-h=name>U</h-></code>
+<del>and <code><h- data-h=kw>typename</h-> <h- data-h=name>V</h-><h- data-h=sym_op>::</h-><h- data-h=name>value_type</h-></code> are</del>
+<ins>is a</ins>
+signed or unsigned integer type<del>s</del> (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>).
+<ins><code><code><h- data-h=kw><h- data-h=kw>typename</h-></h-> <h- data-h=name><h- data-h=name>V</h-></h-><h- data-h=sym_op><h- data-h=sym_op>::</h-></h-><h- data-h=name><h- data-h=name>value_type</h-></h-></code></code> is
+a signed or unsigned integer type or
+a cv-unqualified floating-point type.</ins></p>
+
+<p><i>Returns</i>:
+A <code><h- data-h=name_type>rebind_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>U</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>V</h-><h- data-h=sym_op>&gt;</h-></code> where the <math display=inline><msup><mi>i</mi><mtext>th</mtext></msup></math> element is
+initialized to the result of
+<code><h- data-h=name>saturating_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>U</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>v</h-><h- data-h=sym_sqr>[</h-><math display=inline><mi>i</mi></math><h- data-h=sym_sqr>]</h-><h- data-h=sym_par>)</h-></code>
+for all <math display=inline><mi>i</mi></math> in the range [<code><h- data-h=num>0</h-></code>, <code><h- data-h=name>V</h-><h- data-h=sym_op>::</h-><h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>).
+</p></div>
+</diff-block>
+
 <h2 id=references><a class=para href=#references></a>7. References</h2>
 
 
@@ -2187,6 +2251,11 @@ in which case a function call expression is not a constant expression.
 <span class=bib-author>Thomas Köppe.</span>
 <span class=bib-title>Working Draft, Programming Languages — C++</span>
 <span class=bib-date>2026-07-16</span>
-<a href="https://open-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/n5054%2epdf" class=bib-link>https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf</a></div></div>
+<a href="https://open-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/n5054%2epdf" class=bib-link>https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf</a></div><div id=bib-item-P2956R3 class=bib-item>
+<a href="https://wg21%2elink/p2956r3">[P2956R3]</a>
+<span class=bib-author>Daniel Towner, Ruslan Arutyunyan.</span>
+<span class=bib-title>Allow std::simd overloads for saturating operations</span>
+<span class=bib-date>2026-06-11</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/p2956r3%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2956r3.html</a></div></div>
 </main></body>
 </html>

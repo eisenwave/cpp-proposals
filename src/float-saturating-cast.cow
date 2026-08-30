@@ -6,7 +6,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{P4355R0}}
-  \dt{Date:}            \dd{\tt{2026-08-25}}
+  \dt{Date:}            \dd{\tt{2026-08-30}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -427,6 +427,14 @@ are already saturating
 I also don't propose floating-point types as a result of \tcode{std::saturating_cast}
 because converting to floating-point types is already quasi-saturating.
 
+\h3{\tt{std::simd} overloads}
+
+\ref("P2956R3") proposes \tcode{std::simd} overloads for saturation arithmetic,
+including \tcode{std::saturating_cast}.
+At the time of writing,
+the paper is in LWG, so we expect it to be included in C++29.
+Naturally, \tcode{std::simd::saturating_cast} should also support floating-point types.
+
 \h2{Impact on existing code}
 
 The proposed change only relaxes the constraints on
@@ -463,7 +471,16 @@ Nonetheless, a library implementation looks as follows:
 template<class R, class F>
 constexpr R saturating_cast(F x) noexcept {
   if (std::isnan(x)) {
-    return R(0);
+    if consteval {
+      return R(x); // Make the call not a constant expression.
+    } else {
+      // TODO: Emit domain error.
+      //       On platforms like ARM where NaN gets converted to zero by static_cast,
+      //       we could simply return R(x) here,
+      //       but that also depends on whether R(NaN) is treated
+      //       as an optimization opportunity (poison value) instead of being zero.
+      return R(0);
+    }
   }
 
   if constexpr (std::numeric_limits<R>::digits >= std::numeric_limits<F>::max_exponent) {
@@ -476,7 +493,7 @@ constexpr R saturating_cast(F x) noexcept {
       return x < F(0) ? std::numeric_limits<R>::lowest()
                       : std::numeric_limits<R>::max();
     }
-  } else if (std::is_signed_v<R>) {
+  } else if constexpr (std::is_signed_v<R>) {
     // Otherwise, we need to compute the bounds of the range (min, max)
     // (i.e. exclusive on both ends).
     // that does not cause casting to have undefined behavior.
@@ -529,6 +546,8 @@ constexpr R saturating_cast(F x) noexcept {
 
 The changes are relative to \ref("N5054").
 
+\h3(show_number=false){[version.syn]}
+
 In \eelis{version.syn}, bump the \tcode{__cpp_lib_saturation_arithmetic} feature-test macro.
 
 \Bdiff{
@@ -536,6 +555,8 @@ In \eelis{version.syn}, bump the \tcode{__cpp_lib_saturation_arithmetic} feature
 #define __cpp_lib_saturation_arithmetic \del{202603L} \ins{20XXXXL} // \serif{freestanding, also in \tt{<numeric>}}
 }
 }
+
+\h3(show_number=false){[numeric]}
 
 Change \eelis{numeric.sat.cast} as follows:
 
@@ -576,6 +597,45 @@ in which case a function call expression is not a constant expression.
 \ins{SEE ALSO: ISO/IEC 9899:2024 7.12.1}
 }
 
+\h3(show_number=false){[simd]}
+
+If \ref("P2956R3") has been applied,
+change \eelis{simd.syn} as follows:
+
+\Bdiff{
+\itemdecl{
+template<class U, \del{\exposid{simd-integral}} \ins{\exposid{simd-vec-type}} V>
+  constexpr rebind_t<U, V> saturating_cast(const V& v) noexcept;
+}
+}
+
+If \ref("P2956R3") has been applied,
+change \eelis{simd.alg} as follows:
+
+\Bdiff{
+\itemdecl{
+template<class U, \del{\exposid{simd-integral}} \ins{\exposid{simd-vec-type}} V>
+  constexpr rebind_t<U, V> saturating_cast(const V& v) noexcept;
+}
+
+\itemdescr{
+\constraints
+\del{Both} \tcode{U}
+\del{and \tcode{typename V::value_type} are}
+\ins{is a}
+signed or unsigned integer type\del{s}\iref{basic.fundamental}.
+\ins{\tcode{\tcode{typename V::value_type}} is
+a signed or unsigned integer type or
+a cv-unqualified floating-point type.}
+
+\returns
+A \tcode{rebind_t<U, V>} where the \math{\msup{\mi{i}\mtext{th}}} element is
+initialized to the result of
+\tcode{saturating_cast<U>(v[\math{\mi{i}}])}
+for all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}).
+}
+}
+
 \h2{References}
 
 
@@ -586,6 +646,14 @@ in which case a function call expression is not a constant expression.
   author = "Thomas Köppe",
   link = "https://wg21.link/n5054",
   long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
+)\
+\bib(
+  id = "P2956R3",
+  title = "Allow std::simd overloads for saturating operations",
+  date = "2026-06-11",
+  author = "Daniel Towner, Ruslan Arutyunyan",
+  link = "https://wg21.link/p2956r3",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2956r3.html",
 )\
 
 \make_bib
