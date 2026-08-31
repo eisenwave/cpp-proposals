@@ -1683,6 +1683,9 @@ with essentially the same behavior.
   <li>
     fixed in <a href=#charconv.from.chars>§ [charconv.from.chars]</a>: <q>output style</q> → <q>input style</q>
   </li>
+  <li>
+    reworded changes to <a href=https://eel.is/c++draft/charconv.from.chars#1>[charconv.from.chars] paragraph 1</a> based on SG16 feedback
+  </li>
   <li>rebased <a href=#wording>§6. Wording</a> on <a href="https://wg21%2elink/n5054">[N5054]</a> with the changes in <a href="https://cplusplus%2egithub%2eio/LWG/issue4421">[LWG4421]</a> applied</li>
 </ul>
 
@@ -2556,9 +2559,14 @@ modify all the added overloads as follows:
 </p>
 <diff-block>
 <p>All functions named <code><h- data-h=name>from_chars</h-></code>
-analyze the string [<code><h- data-h=name>first</h-></code>, <code><h- data-h=name>last</h-></code>) for a pattern,
-where [<code><h- data-h=name>first</h-></code>, <code><h- data-h=name>last</h-></code>) is required to be a valid range.
-If no <del>characters</del> <ins>code units</ins> match the pattern, <code><h- data-h=name>value</h-></code> is unmodified,
+<del>analyze the string [<code><h- data-h=name>first</h-></code>, <code><h- data-h=name>last</h-></code>) for a pattern,
+where [<code><h- data-h=name>first</h-></code>, <code><h- data-h=name>last</h-></code>) is required to be a valid range.</del>
+<ins>attempt to match a pattern
+in the range [<code><h- data-h=name>first</h-></code>, <code><h- data-h=name>last</h-></code>), starting at <code><h- data-h=name>first</h-></code>.
+The behavior is undefined if [<code><h- data-h=name>first</h-></code>, <code><h- data-h=name>last</h-></code>) is not a valid range.</ins>
+If no <del>characters match the pattern</del>
+<ins>valid match can be found for the pattern</ins>,
+<code><h- data-h=name>value</h-></code> is unmodified,
 the member <code><h- data-h=name>ptr</h-></code> of the return value is <code><h- data-h=name>first</h-></code>
 and the member <code><h- data-h=name>ec</h-></code> is equal to <code><h- data-h=name>err</h-><h- data-h=sym_op>::</h-><h- data-h=name>invalid_argument</h-></code>.
 </p>
@@ -2568,7 +2576,9 @@ but the string has no digit <del>characters</del> <ins>code units</ins> followin
 no <del>characters</del> <ins>code units</ins> match the pattern.
  — <i>end note</i>]</p>
 
-<p>Otherwise, the <del>characters</del> <ins>code units</ins> matching the pattern are interpreted
+<p>Otherwise, the <del>characters</del>
+<ins>maximal sequence of code units starting from <code><h- data-h=name>first</h-></code></ins>
+matching the pattern are interpreted
 as a representation of a value of the type of <code><h- data-h=name>value</h-></code>.
 The member <code><h- data-h=name>ptr</h-></code> of the return value points to the first <del>character</del> <ins>code unit</ins>
 not matching the pattern, or has the value <code><h- data-h=name>last</h-></code>
@@ -2582,16 +2592,33 @@ and the member <code><h- data-h=name>ec</h-></code> is value-initialized.
 </p></diff-block>
 
 <note-block class=edit><p><intro-></intro-> 
-The current use of "character" in the wording is unclear
-because it could equally mean that the <code><h- data-h=name>from_chars</h-></code>
-operates on the decoded code points or on the code units of the string.
-<code><h- data-h=name>from_chars</h-></code> leans on the "subject sequence" of <code><h- data-h=name>strtol</h-></code> for wording
-(see <a href=https://cigix.me/c23#7.24.1.7>C23 §7.24.1.7</a>),
-which is worded in terms of "characters",
-presumably referring to "character" as in "single-byte character"
-(see <a href=https://cigix.me/c23#3.10.1>C23 §3.10.1</a>).
-This means that <code><h- data-h=name>from_chars</h-></code> is already intended to operate on bytes or code units.
-</p></note-block>
+Some of the changes above have been seen by SG16; some are a consequence of SG16 review.
+They are intended to fix a number of defects:
+</p><ul>
+  <li>
+    The current use of "character" in the wording is unclear
+    because it could equally mean that the <code><h- data-h=name>from_chars</h-></code>
+    operates on the decoded code points or on the code units of the string.
+    <code><h- data-h=name>from_chars</h-></code> leans on the "subject sequence" of <code><h- data-h=name>strtol</h-></code> for wording
+    (see <a href=https://cigix.me/c23#7.24.1.7>C23 §7.24.1.7</a>),
+    which is worded in terms of "characters",
+    presumably referring to "character" as in "single-byte character"
+    (see <a href=https://cigix.me/c23#3.10.1>C23 §3.10.1</a>).
+    This means that <code><h- data-h=name>from_chars</h-></code> is already intended to operate on bytes or code units.
+  </li>
+  <li>
+    The wording <q>required to be a valid range</q> is unclear
+    because it is not obvious that this <q>required</q> imposes UB,
+    but that is presumably the intent.
+  </li>
+  <li>
+    It should be clarified that <code><h- data-h=name>from_chars</h-></code> uses maximum munch.
+    That is, it should be clear that <code><h- data-h=name>from_chars</h-></code> will parse all of <code><h- data-h=str_dlim>"</h-><h- data-h=str>123</h-><h- data-h=str_dlim>"</h-></code>
+    instead of just the first digit
+    because the first digit by itself matches the pattern.
+  </li>
+</ul>
+</note-block>
 
 <p>Immediately following <a href=https://eel.is/c++draft/charconv.from.chars#1>[charconv.from.chars] paragraph 1</a>,
 insert a new paragraph:

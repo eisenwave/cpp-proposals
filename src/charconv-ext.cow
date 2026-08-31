@@ -45,6 +45,9 @@ with essentially the same behavior.
   \li{
     fixed in \ref("#charconv.from.chars"): \q{output style} → \q{input style}
   }
+  \li{
+    reworded changes to \eelis{charconv.from.chars#1} based on SG16 feedback
+  }
   \li{rebased \ref("#wording") on \ref("N5054") with the changes in \ref("LWG4421") applied}
 }
 
@@ -954,9 +957,14 @@ Modify \eelis{charconv.from.chars#1} as follows:
 
 \Bdiff{
 All functions named \tcode{from_chars}
-analyze the string [\tcode{first}, \tcode{last}) for a pattern,
-where [\tcode{first}, \tcode{last}) is required to be a valid range.
-If no \del{characters} \ins{code units} match the pattern, \tcode{value} is unmodified,
+\del{analyze the string [\tcode{first}, \tcode{last}) for a pattern,
+where [\tcode{first}, \tcode{last}) is required to be a valid range.}
+\ins{attempt to match a pattern
+in the range [\tcode{first}, \tcode{last}), starting at \tcode{first}.
+The behavior is undefined if [\tcode{first}, \tcode{last}) is not a valid range.}
+If no \del{characters match the pattern}
+\ins{valid match can be found for the pattern},
+\tcode{value} is unmodified,
 the member \tcode{ptr} of the return value is \tcode{first}
 and the member \tcode{ec} is equal to \tcode{err::invalid_argument}.
 
@@ -966,7 +974,9 @@ but the string has no digit \del{characters} \ins{code units} following the sign
 no \del{characters} \ins{code units} match the pattern.
 }
 
-Otherwise, the \del{characters} \ins{code units} matching the pattern are interpreted
+Otherwise, the \del{characters}
+\ins{maximal sequence of code units starting from \tcode{first}}
+matching the pattern are interpreted
 as a representation of a value of the type of \tcode{value}.
 The member \tcode{ptr} of the return value points to the first \del{character} \ins{code unit}
 not matching the pattern, or has the value \tcode{last}
@@ -980,15 +990,32 @@ and the member \tcode{ec} is value-initialized.
 }
 
 \editnote{
-The current use of "character" in the wording is unclear
-because it could equally mean that the \tcode{from_chars}
-operates on the decoded code points or on the code units of the string.
-\tcode{from_chars} leans on the "subject sequence" of \tcode{strtol} for wording
-(see \ref("https://cigix.me/c23#7.24.1.7"){C23 §7.24.1.7}),
-which is worded in terms of "characters",
-presumably referring to "character" as in "single-byte character"
-(see \ref("https://cigix.me/c23#3.10.1"){C23 §3.10.1}).
-This means that \tcode{from_chars} is already intended to operate on bytes or code units.
+Some of the changes above have been seen by SG16; some are a consequence of SG16 review.
+They are intended to fix a number of defects:
+\ul{
+  \li{
+    The current use of "character" in the wording is unclear
+    because it could equally mean that the \tcode{from_chars}
+    operates on the decoded code points or on the code units of the string.
+    \tcode{from_chars} leans on the "subject sequence" of \tcode{strtol} for wording
+    (see \ref("https://cigix.me/c23#7.24.1.7"){C23 §7.24.1.7}),
+    which is worded in terms of "characters",
+    presumably referring to "character" as in "single-byte character"
+    (see \ref("https://cigix.me/c23#3.10.1"){C23 §3.10.1}).
+    This means that \tcode{from_chars} is already intended to operate on bytes or code units.
+  }
+  \li{
+    The wording \q{required to be a valid range} is unclear
+    because it is not obvious that this \q{required} imposes UB,
+    but that is presumably the intent.
+  }
+  \li{
+    It should be clarified that \tcode{from_chars} uses maximum munch.
+    That is, it should be clear that \tcode{from_chars} will parse all of \tcode{"123"}
+    instead of just the first digit
+    because the first digit by itself matches the pattern.
+  }
+}
 }
 
 Immediately following \eelis{charconv.from.chars#1},
