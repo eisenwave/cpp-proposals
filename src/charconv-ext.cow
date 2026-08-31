@@ -29,10 +29,20 @@ with essentially the same behavior.
 
 \h2{Revision history}
 
+\h3{Changes since R2}
+
+\ul{
+  \li{
+    mentioned in \ref("#new-alias-templates")
+    that name mangling is affected by implementation
+  }
+  \li{rebased \ref("#wording") on \ref("N5054") with the changes in \ref("LWG4421") applied}
+}
+
 \h3{Changes since R1}
 
 \ul{
-  \li{rebased wording on \ref("N5032") with the changes in \ref("LWG4522") applied}
+  \li{rebased \ref("#wording") on N5032 with the changes in \ref("LWG4522") applied}
 }
 
 \h3{Changes since R0}
@@ -60,7 +70,7 @@ Consequently, only some minor improvements were made:
     explained in \ref("#charconv.from.chars") why using "code unit" is correct
     (and effectively the status quo)
   }
-  \li{rebased \ref("#wording") on \ref("N5032")}
+  \li{rebased \ref("#wording") on N5032}
 }
 
 \h2{Introduction}
@@ -222,11 +232,8 @@ Since this proposal argues for \tcode{wchar_t} support in \tcode{std::to_chars},
 it makes sense to re-specify \tcode{std::format} to call \tcode{std::to_chars} "directly".
 The current wording following \ref("LWG4522") being merged into the working draft
 specifies transcoding to the wide literal encoding.
-
 Once \tcode{std::to_chars} supports \tcode{wchar_t},
 \tcode{std::format} should simply call that overload directly, without transcoding.
-Assuming \ref("LWG4522") is accepted and transcoding already happens,
-this effectively produces the same result but with simpler wording.
 
 \h3{Function signature and result types}
 
@@ -535,8 +542,8 @@ not the name of the alias template.
 
 \h2{Wording}
 
-The following changes are relative to \ref("N5032")
-with the changes in \ref("LWG4522") applied.
+The following changes are relative to \ref("N5054")
+with the changes in \ref("LWG4421") applied.
 
 \h3(show_number=false){[version.syn]}
 
@@ -753,7 +760,8 @@ constexpr to_chars_result to_chars(char* first, char* last, \exposid{integer-typ
 
 \effects
 The value of \tcode{value} is converted to a string of digits in the given base
-(with no redundant leading zeroes).
+(with no redundant leading zeroes)
+\del{in the ordinary literal encoding\iref{lex.charset}}.
 Digits
 \ins{in the range 0..9
 are represented as U+0030..U+0039 DIGIT ZERO..NINE, and digits}
@@ -769,8 +777,6 @@ Nothing.
 }
 
 \editnote{
-This change has a merge conflict with \ref("LWG4421").
-
 The "(inclusive)" is removed because the range notation "A..B"
 is universally inclusive,
 with no disambiguation required.
@@ -1117,25 +1123,15 @@ as specified by the format specifiers.
 }
 }
 
-\editnote{
-The additional transcoding from the ordinary literal encoding
-to the wide literal encoding used to be necessary
-because \tcode{to_chars} only supported \tcode{char}.
-With the changes in this paper,
-\tcode{to_chars} can simply produce output with the same character type
-and encoding as \tcode{format},
-so additional transcoding becomes unnecessary.
-}
-
 \h2{References}
 
 \bib(
-  id = "N5032",
+  id = "N5054",
   title = "Working Draft, Programming Languages — C++",
-  date = "2025-12-15",
+  date = "2026-07-16",
   author = "Thomas Köppe",
-  link = "https://wg21.link/n5032",
-  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf",
+  link = "https://wg21.link/n5054",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
 )\
 \bib(
   id = "P2007R0",
