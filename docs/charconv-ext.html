@@ -1635,6 +1635,8 @@ with essentially the same behavior.
 <a href=#result-type><h4>Result type</h4></a>
 <div class=toc-num data-level=4>3.5.2</div>
 <a href=#summary><h4>Summary</h4></a>
+<div class=toc-num data-level=4>3.5.3</div>
+<a href=#incompatibility-with-existing-overloads><h4>Incompatibility with existing overloads</h4></a>
 <div class=toc-num data-level=3>3.6</div>
 <a href=#constexpr-floating-point-overloads><h3><code><h- data-h=kw>constexpr</h-></code> floating-point overloads</h3></a>
 <div class=toc-num data-level=3>3.7</div>
@@ -1674,6 +1676,9 @@ with essentially the same behavior.
   </li>
   <li>
     explained purpose of blanket wording in <a href=#charconv.to.chars>§ [charconv.to.chars]</a> in plain
+  </li>
+  <li>
+    added <a href=#incompatibility-with-existing-overloads>§3.5.3. Incompatibility with existing overloads</a>
   </li>
   <li>
     fixed in <a href=#charconv.from.chars>§ [charconv.from.chars]</a>: <q>output style</q> → <q>input style</q>
@@ -2001,6 +2006,45 @@ changes aggregate initialization.
 <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character-type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>integer-type-concept</h-></i> <h- data-h=name>U</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=name_type>from_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>from_chars</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>U</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h->
                                     <h- data-h=name>chars_format</h-> <h- data-h=name>fmt</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>chars_format</h-><h- data-h=sym_op>::</h-><h- data-h=name>general</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<h4 id=incompatibility-with-existing-overloads><a class=para href=#incompatibility-with-existing-overloads></a>3.5.3. Incompatibility with existing overloads</h4>
+
+<p>As a consequence of providing templates for the non-<code><h- data-h=kw_type>char</h-></code> overloads,
+there is an incompatibility:
+</p>
+<code-block><h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> overload for </h-><code><h- data-h=kw_type><h- data-h=cmt>char</h-></h-></code></f-serif>
+<h- data-h=name>to_chars_result</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>char</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> overload for </h-><code><h- data-h=kw_type><h- data-h=cmt>char8_t</h-></h-></code><h- data-h=cmt> etc.</h-></f-serif>
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>character-type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>floating-point-type-concept</h-></i> <h- data-h=name>U</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=name_type>to_chars_result_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>to_chars</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_op>*</h-> <h- data-h=name>first</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-><h- data-h=sym_op>*</h-> <h- data-h=name>last</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>U</h-> <h- data-h=name>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>Notably, the existing overload set would accept types that are
+convertible to <code><h- data-h=kw_type>float</h-></code>, not just <code><h- data-h=kw_type>float</h-></code> itself.
+We are not particularly concerned about this because:
+</p><ul>
+  <li>
+    Standard libraries don't faithfully implement the <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_chars</h-></code> overload set anyway.
+    For example, <a href=https://github.com/llvm/llvm-project/blob/5fe9365695490151613358f2213e5a0df90d8fd6/libcxx/include/__charconv/to_chars_integral.h><tt->to_chars_integral.h</tt-> in libc++</a>
+    implements the integral overload as a template instead of as an overload set.
+  </li>
+  <li>
+    Examples where someone tries to use <code><h- data-h=name>to_chars</h-></code>
+    with <q>proxy types</q> are relatively contrived.
+    Even committee members are often surprised
+    at <code><h- data-h=name>to_chars</h-></code> not being a template and accepting such types,
+    so it seems unlikely that users rely on this capability.
+  </li>
+</ul>
+
+<p>It may even be worth changing the existing <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_chars</h-></code>
+overloads for <code><h- data-h=kw_type>char</h-></code> to be covered by the new templates.
+</p>
+<note-block><p><intro-></intro-> 
+It is possible to come up with a contrived incompatible example for <code><h- data-h=name>from_chars</h-></code> too;
+it would take a type with an <code><h- data-h=kw>operator</h-> <h- data-h=kw_type>float</h-><h- data-h=sym_op>&amp;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>,
+i.e. some kind of proxy-reference to <code><h- data-h=kw_type>float</h-></code>.
+</p></note-block>
 
 <h3 id=constexpr-floating-point-overloads><a class=para href=#constexpr-floating-point-overloads></a>3.6. <code><h- data-h=kw>constexpr</h-></code> floating-point overloads</h3>
 

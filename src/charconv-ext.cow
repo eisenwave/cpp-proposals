@@ -40,6 +40,9 @@ with essentially the same behavior.
     explained purpose of blanket wording in \ref("#charconv.to.chars") in plain
   }
   \li{
+    added \ref("#incompatibility-with-existing-overloads")
+  }
+  \li{
     fixed in \ref("#charconv.from.chars"): \q{output style} → \q{input style}
   }
   \li{rebased \ref("#wording") on \ref("N5054") with the changes in \ref("LWG4421") applied}
@@ -374,6 +377,47 @@ from_chars_result from_chars(const char* first, const char* last,
 template<\exposid{character-type} T, \exposid{integer-type-concept} U>
   from_chars_result_t<T> from_chars(T* first, T* last, U& value,
                                     chars_format fmt = chars_format::general);
+}
+
+\h4{Incompatibility with existing overloads}
+
+As a consequence of providing templates for the non-\tcode{char} overloads,
+there is an incompatibility:
+
+\cppblock{
+//\serif{ overload for \tcode{char}}
+to_chars_result to_chars(char* first, char* last, \exposid{floating-point-type} value);
+
+//\serif{ overload for \tcode{char8_t} etc.}
+template<\exposid{character-type} T, \exposid{floating-point-type-concept} U>
+  to_chars_result_t<T> to_chars(T* first, T* last, U value);
+}
+
+Notably, the existing overload set would accept types that are
+convertible to \tcode{float}, not just \tcode{float} itself.
+We are not particularly concerned about this because:
+\ul{
+  \li{
+    Standard libraries don't faithfully implement the \tcode{std::to_chars} overload set anyway.
+    For example, \ref("https://github.com/llvm/llvm-project/blob/5fe9365695490151613358f2213e5a0df90d8fd6/libcxx/include/__charconv/to_chars_integral.h"){\tt{to_chars_integral.h} in libc++}
+    implements the integral overload as a template instead of as an overload set.
+  }
+  \li{
+    Examples where someone tries to use \tcode{to_chars}
+    with \q{proxy types} are relatively contrived.
+    Even committee members are often surprised
+    at \tcode{to_chars} not being a template and accepting such types,
+    so it seems unlikely that users rely on this capability.
+  }
+}
+
+It may even be worth changing the existing \tcode{std::to_chars}
+overloads for \tcode{char} to be covered by the new templates.
+
+\Bnote{
+It is possible to come up with a contrived incompatible example for \tcode{from_chars} too;
+it would take a type with an \tcode{operator float&()},
+i.e. some kind of proxy-reference to \tcode{float}.
 }
 
 \h3{\tcode{constexpr} floating-point overloads}
