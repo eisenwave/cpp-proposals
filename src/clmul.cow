@@ -3,9 +3,9 @@
 
 \wg21_head(title={Carry-less product: \tt{std::clmul}}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3642R6}}
-  \dt{Date:}            \dd{\tt{2026-07-14}}
-  \dt{Audience:}        \dd{LEWG, LWG}
+  \dt{Document number:} \dd{\docnum{D3642R6}}
+  \dt{Date:}            \dd{\tt{2026-08-09}}
+  \dt{Audience:}        \dd{LWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3642/github")}
@@ -23,6 +23,30 @@ Add widening and non-widening carry-less multiplication functions.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R6}
+
+\Bnote{
+The paper was reviewed by LEWG during a telecon.
+The changes below were approved, but are tentative
+and need to be affirmed by electronic polling.
+}
+
+\ul{
+  \li{
+    Convert \tcode{std::wide_result} from an aggregate type to a class
+    with \tcode{low()} and \tcode{high()} accessors
+  }
+  \li{
+    Turn the former sections containing LWG suggestions
+    into subsections of \ref("#widening")
+  }
+}
+
+\Btodo{
+Something about wording the widening operation
+in terms of coefficients in the base-2 representation\iref{expr.xor}.
+}
 
 \h3{Changes since R5}
 
@@ -42,8 +66,8 @@ Also, following LWG review during the 2026 Brno meeting:
 
 \ul{
   \li{Apply various wording adjustments during review}
-  \li{Add \ref("#lwg-design-changes")}
-  \li{Add wording for those design changes in \ref("#alt-wording-a") and \ref("#alt-wording-b")}
+  \li{Add section discussing potential design changes discussed in LWG review}
+  \li{Add wording for those design changes in optional wording sections}
 }
 
 Furthermore, some editorial changes:
@@ -63,7 +87,7 @@ Furthermore, some editorial changes:
 \ul{
   \li{Rename \tcode{std::clmul_wide} to \tcode{std::widening_clmul}}
   \li{Fix \tcode{std::simd::clmul} specified as a unary function (should be binary)}
-  \li{Rebase \ref("#wording") on \ref("N5032") with post-Croydon changes applied}
+  \li{Rebase \ref("#wording") on N5032 with post-Croydon changes applied}
 }
 
 \h3{Changes since R3}
@@ -145,13 +169,6 @@ template<class T>
 
 I also propose a widening operation in the style of \ref("P3161R4"), as follows:
 \cppblock{
-template<class T>
-struct wide_result {
-  T low_bits;
-  T high_bits;
-  // ...
-};
-
 template<class T>
   constexpr wide_result<T> widening_clmul(T x, T y) noexcept;
 }
@@ -494,8 +511,8 @@ wide_result<uint64_t> widening_clmul(uint64_t x, uint64_t y) noexcept {
   __m128i y_128 = _mm_set_epi64x(0, y);
   __m128i result_128 = _mm_clmulepi64_si128(x_128, y_128, 0);
   return {
-    .low_bits  = uint64_t(_mm_extract_epi64(result_128, 0)),
-    .high_bits = uint64_t(_mm_extract_epi64(result_128, 1))
+    /* high= */ uint64_t(_mm_extract_epi64(result_128, 1)),
+    /* low=  */ uint64_t(_mm_extract_epi64(result_128, 0))
   };
 }
 }
@@ -540,19 +557,26 @@ and because it is widespread:
   }
 }
 
-\h3(id="widening"){Widening operation}
+\h3(id="widening"){Widening operation and \tt{std::wide_result}}
 
 In addition to the \tcode{std::clmul} function template,
 there exists a \tcode{std::widening_clmul} function template:
 
 \cppblock{
 template<class T>
-struct wide_result {
-  T low_bits;
-  T high_bits;
+class wide_result {
+public:
+  constexpr wide_result(T high, T low) noexcept
+    : \exposid{high-bits}(high), \exposid{low-bits}(low) {}
+
+  constexpr T high() const noexcept { return \exposid{high-bits}; }
+  constexpr T low() const noexcept { return \exposid{low-bits}; }
+
   friend constexpr bool operator==(const wide_result&, const wide_result&) = default;
   friend constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
     noexcept;
+private:
+  T \exposid{high-bits}, \exposid{low-bits}; // \serif{exposition-only}
 };
 
 template<class T>
@@ -579,10 +603,10 @@ into consideration:
     which avoids creating an ever-growing set of equivalent (but distinct) types.
   }
   \li{
-    The \tcode{low_bits} appear before the \tcode{high_bits},
-    so that on the more widespread little-endian architectures,
-    the layout of the \tcode{struct} is identical to that of an integer,
-    which is slightly better for calling conventions.
+    \ref("P3161R4") orders the low bits before the high bits
+    to cater to little-endian architectures.
+    This choice is not enforced, but made possible for implementations
+    (see \ref("#aggregate-type-std::wide_result")).
   }
 }
 
@@ -605,6 +629,76 @@ It would not be possible to simply return an integer with twice the
 width of the input because it is not guaranteed that such a type exists,
 especially in the case of \tcode{unsigned long long} inputs.
 }
+
+\h4{Aggregate type \tt{std::wide_result}}
+
+Earlier revisions of this paper made \tcode{std::wide_result} an aggregate type,
+largely because of the simplicity in specification and usability this provides.
+LEWG reviewed this issue extensively during 2026 telecons,
+and the decision to use a non-aggregate type was made for a number of reasons:
+\ul{
+  \li{
+    With an aggregate type, the order of members is fixed,
+    so some having a layout that is optimal for the native endianness is not always possible.
+  }
+  \li{
+    An aggregate type permits structured bindings,
+    which may be bug-prone because the order of members may not match the user's
+    \tcode{auto [high, low]} expected order.
+  }
+  \li{
+    To optimize for more popular little-endian architectures,
+    the low bits would ideally come first,
+    which conflicts with how we write integer literals (most significant digit first).
+  }
+}
+
+\h4{Alignment of \tcode{std::wide_result<std::uint64_t>}}
+
+It may be reasonable to over-align \tcode{std::wide_result}.
+For example, \tcode{std::wide_result<std::uint32_t>} could be over-aligned to 64 bits,
+and \tcode{std::wide_result<std::uint64_t>} could be over-aligned to 128 bits,
+rather than having the \q{natural alignment} of a \tcode{struct}
+containing two objects of type \tcode{T}.
+
+This decision should be left up to implementers,
+and is a freedom generally available.
+Whether the decision to over-align makes sense depends on the target architecture,
+among other factors.
+
+\Bnote{
+Over-aligning is somewhat contentious in ABIs.
+\tcode{__int128} is aligned to 128 bits,
+while \tcode{_BitInt(128)} is aligned to 64 bits in typical ABIs.
+}
+
+\h4{Integer interoperability}
+
+While \tcode{std::wide_result<std::uint32_t>} is strongly implied
+to have the same layout as \tcode{std::uint64_t},
+and while this is desired,
+it's not actually guaranteed.
+We could guarantee that
+\tcode{std::wide_result<_BitInt(N)> has the same layout as \tcode{_BitInt(N * 2)}}
+(though phrased generally, not just for bit-precise integers).
+
+However, this would arguably over-specify the layout.
+A conversion \tcode{wide_result} and integers could just as well be provided
+as a \tcode{operator T}.
+Such a conversion operator can always be added in a future paper.
+
+\h4{Naming of \tt{low()} and \tt{high()}}
+
+The names \tt{low} and \tt{high} are concise and sufficiently clear.
+Earlier revisions used \tcode{low_bits} and \tcode{high_bits} for
+either non-static data members or for member functions,
+but this was seen as problematic during LEWG review,
+in part because the C++ standard doesn't use the \q{bits} terminology generally
+in respect to integers.
+Core wording talks about coefficients in the base-2 representation of integers.
+
+Furthermore, the \tcode{bits} part provides little additional clarity.
+\tcode{widening_clmul(x, y).low()} should be sufficiently clear.
 
 \h3(id="simd"){SIMD support}
 
@@ -643,79 +737,9 @@ This is a broad design space.
 In conclusion, a proposal for widening SIMD operations \em{in general} would be well-motivated.
 For \tcode{std::clmul}, designing SIMD widening operations would be scope creep.
 
-\h2(id="lwg-design-changes"){Potential design changes following LWG review}
-
-\Bnote{
-The design in the preceding section is what has been approved by LEWG
-and what is reflected in \ref("#wording").
-This section discusses potentional additioal changes.
-}
-
-During LWG review,
-some minor wording changes were fixed.
-In addition, certain design questions have been raised during LWG review of the paper:
-
-\h3{Aggregate type \tcode{std::wide_result}}
-
-Should \tcode{std::wide_result} actually be an aggregate type?
-A notable problem is that this permits structured bindings and list initialization,
-and the \q{low bits first} order was perceived as more surprising than the other way around.
-Furthermore, while big-endian architectures are uncommon,
-they do exist, and \tcode{std::wide_result} is less friendly in its layout to those.
-To solve this:
-\ul{
-  \li{
-    The type could be converted to a non-aggregate,
-    with member functions for accessing the data members rather than making them public.
-  }
-  \li{
-    Structured bindings access could simply not be provided,
-    which would prevent the potential resulting bugs.
-  }
-}
-
-The wording for this option is provided in \ref("#alt-wording-a").
-
-\h3{Alignment of \tcode{std::wide_result<std::uint64_t>}}
-
-Should \tcode{std::wide_result<std::uint64_t>} be required to be \q{over-aligned}
-to 128 bits?
-This would be consistent with \tcode{__int128} but inconsistent with \tcode{_BitInt(128)};
-the latter is only aligned to 64 bits.
-
-I personally believe that the standard should not mandate either one.
-Both options are plausible ipmlementation choices,
-and if the neither the C nor the C++ standard mandates specific alignment for integer types,
-why would we mandate it here?
-Mandating 128-bit alignment for \tcode{std::wide_result<std::uint64_t>}
-also suggests that several ABIs have made a mistake by \q{under-aligning} \tcode{_BitInt(128)},
-which is not a claim we should be making without \em{extremely} strong evidence
-and ABI expertise.
-
-\Bnote{
-No wording for such a requirement is provided in this paper.
-}
-
-\h3{Integer interoperability}
-
-While \tcode{std::wide_result<std::uint32_t>} is strongly implied
-to have the same layout as \tcode{std::uint64_t},
-and while this is desired,
-it's not actually guaranteed.
-There also seems to be no good reason why that guarantee wouldn't be possible to provide,
-at least if \tcode{std::wide_result} is not an aggregate and the implementation
-has some more freedom regarding its layout.
-
-That is, we could guarantee that
-\tcode{std::wide_result<_BitInt(N)> has the same layout as \tcode{_BitInt(N * 2)}}
-(though phrased generally, not just for bit-precise integers).
-
-The wording for this option is provided in \ref("#alt-wording-b").
-
 \h2(id="wording"){Proposed wording}
 
-The proposed changes are relative to \ref("N5032"),
-with the changes accepted during the 2026-02 Croydon meeting applied.
+The proposed changes are relative to \ref("N5054").
 
 \h3(show_number=false){[version.syn]}
 
@@ -739,12 +763,19 @@ immediately following the declarations associated with \eelis{numeric.sat}:
 \itemdecl{
 // \serif{[numeric.clmul], carry-less product}
 template<class T>
-struct wide_result {
-  T low_bits;
-  T high_bits;
+class wide_result {
+public:
+  constexpr wide_result(T high, T low) noexcept
+    : \exposid{high-bits}(high), \exposid{low-bits}(low) {}
+
+  constexpr T high() const noexcept { return \exposid{high-bits}; }
+  constexpr T low() const noexcept { return \exposid{low-bits}; }
+
   friend constexpr bool operator==(const wide_result&, const wide_result&) = default;
   friend constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
     noexcept;
+private:
+  T \exposid{high-bits}, \exposid{low-bits}; // \serif{exposition-only}
 };
 
 template<class T>
@@ -765,6 +796,12 @@ append a subclause immediately following \eelis{numeric.sat}:
 A specialization \tcode{wide_result<T>} is ill-formed
 unless \tcode{T} is an unsigned integer type\iref{basic.fundamental}.
 
+\pnum
+A specialization \tcode{wide_result<T>} is a standard-layout,
+trivially copyable class type.
+The members \tcode{\exposid{high-bits}} and \tcode{\exposid{low-bits}}
+of any specialization of \tcode{wide_result} may be reordered.
+
 \itemdecl{
 constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
   noexcept;
@@ -773,7 +810,7 @@ constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y
 \itemdescr{
 \pnum
 \returns
-\tcode{tie(x.high_bits, x.low_bits) <=> tie(y.high_bits, y.low_bits)}.
+\tcode{tie(x.\exposid{high-bits}, x.\exposid{low-bits}) <=> tie(y.\exposid{high-bits}, y.\exposid{low-bits})}.
 }
 
 \itemdecl{
@@ -813,8 +850,8 @@ is given by Formula\'NO-BREAK SPACE'\tt{?.?},
 \mathvar{y} is \tcode{y}.
 The result object is initialized so that
 \ul{
-  \li{\tcode{low_bits} stores the \mathvar{N} least significant bits of \mathvar{c}, and}
-  \li{\tcode{high_bits} stores the subsequent \mathvar{N} bits of \mathvar{c}.}
+  \li{\tcode{\exposid{low-bits}} stores the \mathvar{N} least significant bits of \mathvar{c}, and}
+  \li{\tcode{\exposid{high-bits}} stores the subsequent \mathvar{N} bits of \mathvar{c}.}
 }
 
 \style{
@@ -876,20 +913,19 @@ template<class T>
 
 \pnum
 \returns
-\tcode{widening_clmul(x, y).low_bits}.
+\tcode{widening_clmul(x, y).\exposid{low-bits}}.
 }
 }
 
 \comment{Proof for math formula at https://godbolt.org/z/8YsnTGdvz}
 
-\Bwarn{
-If the mathematical notation in the block above does not render for you,
-you are using an old browser with no MathML support.
-Please open the document in a recent version of Firefox or Chrome.
-}
-
 \editnote{
-The formula is taken from \ref("IntelClmul"), with different variable names,
+The option to make \tcode{wide_result} structural was also considered,
+but not polled in LEWG.
+The use case of \tcode{wide_result} in template parameters
+is not deliberately supported.
+
+The formula above is taken from \ref("IntelClmul"), with different variable names,
 and with no special case for the upper \mathvar{N} bits;
 we can simply treat the integers as mathematical integers with
 \math{\mrow{\mn{2}\mi{N}}} width.
@@ -952,108 +988,15 @@ for all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}).
 }
 }
 
-\h2(id="alt-wording-a"){Optional wording changes A}
-
-Optionally, if \tcode{std::wide_result} is not to be an aggregate type,
-immediately apply the following changes
-on top of the preceding changes.
-
-Change the declaration of \tcode{std::wide_result} in \eelis{numeric.ops.overview}
-as follows:
-
-\Bdiff{
-\itemdecl{
-template<class T>
-\del{struct} \ins{class} wide_result {
-  \del{T low_bits;}
-  \del{T high_bits;}
-\ins{public:}
-  \ins{constexpr wide_result(T high, T low) noexcept
-    : \exposid{high-bits}(high), \exposid{low-bits}(low) {}}
-
-  \ins{constexpr T high_bits() const noexcept { return \exposid{high-bits}; }}
-  \ins{constexpr T low_bits() const noexcept { return \exposid{low-bits}; }}
-
-  friend constexpr bool operator==(const wide_result&, const wide_result&) = default;
-  friend constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
-    noexcept;
-\ins{private:
-  T \exposid{high-bits}, \exposid{low-bits}; // \serif{exposition-only}}
-};
-}
-}
-
-\cowel_var_set("pnum", 0)
-
-Change \eelis{numeric.clmul} as follows:
-
-\Bdiff{
-\pnum
-A specialization \tcode{wide_result<T>} is ill-formed
-unless \tcode{T} is an unsigned integer type\iref{basic.fundamental}.
-
-\ins{
-\pnum
-A specialization of \tcode{wide_result} is a standard-layout,
-trivially copyable class type.
-The members \tcode{\exposid{high-bits}} and \tcode{\exposid{low-bits}}
-of any specialization of \tcode{wide_result} may be reordered.
-}
-
-\ins{
-\pnum
-\recommended
-The member \tcode{\exposid{low-bits}} should precede
-the member \tcode{\exposid{high-bits}}
-in all specializations of \tcode{wide_result}
-if \tcode{endian::native} equals \tcode{endian::little}\iref{bit.endian}.
-}
-}
-
-\b{Bulk edit}:
-In the remainder of \eelis{numeric.clmul}, replace
-any mention of \del{\tcode{high_bits}} with \ins{\tcode{\exposid{high-bits}}} and
-any mention of \del{\tcode{low_bits}} with \ins{\tcode{\exposid{low-bits}}}.
-
-\h2(id="alt-wording-b"){Optional wording changes B}
-
-Optionally, if we want to provide stricter guarantees regarding integer layout compatibility,
-immediately apply the following changes
-on top of the preceding changes.
-
-If the changes from \ref("#alt-wording-a") have been applied,
-delete the \i{Recommended practice} element in \eelis{numeric.clmul}:
-
-\Bdel{
-\recommended
-The member \tcode{\exposid{low-bits}} should precede
-the member \tcode{\exposid{high-bits}}
-in all specializations of \tcode{wide_result}
-if \tcode{endian::native} equals \tcode{endian::little}\iref{bit.endian}.
-}
-
-In any case, insert a new paragraph
-immediately preceding the library declarations in \eelis{numeric.clmul}:
-
-\Bins{
-For two objects \math{\msub{\mi{w}\mn{0}}} and \math{\msub{\mi{w}\mn{1}}}
-of a type \tcode{wide_result<T>},
-if \tcode{T} has no padding bits and there exists an unsigned integer type
-\tcode{W} with twice the width of \tcode{T} and with no padding bits, then
-\tcode{\math{\msub{\mi{w}\mn{0}}} <=> \math{\msub{\mi{w}\mn{1}}}} shall be equivalent to
-\tcode{bit_cast<W>(\math{\msub{\mi{w}\mn{0}}}) <=> bit_cast<W>(\math{\msub{\mi{w}\mn{1}}})}
-and \tcode{wide_result<T>} shall have the same size and alignment as \tcode{W}.
-}
-
 \h2{References}
 
 \bib(
-  id = "N5032",
-  title = "Working Draft Programming Languages — C++",
-  date = "2025-12-15",
+  id = "N5054",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2026-07-16",
   author = "Thomas Köppe",
-  link = "https://wg21.link/n5032",
-  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/n5032.pdf",
+  link = "https://wg21.link/n5054",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
 )\
 \bib(
   id = "P0543R3",
