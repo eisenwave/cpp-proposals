@@ -41,11 +41,17 @@ and need to be affirmed by electronic polling.
     Turn the former sections containing LWG suggestions
     into subsections of \ref("#widening")
   }
-}
-
-\Btodo{
-Something about wording the widening operation
-in terms of coefficients in the base-2 representation\iref{expr.xor}.
+  \li{
+    Make various minor updates to discussion based on recent developments,
+    such as Rust's \tt{widening_carryless_mul} operation
+  }
+  \li{
+    Extend drafting note in \ref("#numeric.ops")
+    with reference to \eelis{bit.permute}
+  }
+  \li{
+    Rebase \ref("#wording") on \ref("N5054")
+  }
 }
 
 \h3{Changes since R5}
@@ -595,7 +601,13 @@ into consideration:
     The function is named \tcode{widening_clmul} to be symmetrical
     with \tcode{std::saturating_mul} from \ref("P4052R0") (merged into C++26).
     That proposal broadly advocated for a naming scheme leaning on Rust,
-    and the Rust standard library has a \tcode{widening_mul} function.
+    and the Rust standard library has a nightly-only
+    \ref("https://doc.rust-lang.org/std/primitive.u32.html#method.widening_mul"){\tt{widening_mul}}
+    function.
+    Rust also has a nightly-only
+    \ref("https://doc.rust-lang.org/std/primitive.u32.html#method.widening_carryless_mul"){\tt{widening_carryless_mul}} function,
+    but that name seems comically long and is being contested
+    \ref("https://github.com/rust-lang/rust/issues/152080"){on the tracking issue}.
   }
   \li{
     The result type is deliberately not named \tcode{wide_clmul_result}
@@ -605,7 +617,9 @@ into consideration:
   \li{
     \ref("P3161R4") orders the low bits before the high bits
     to cater to little-endian architectures.
-    This choice is not enforced, but made possible for implementations
+    That choice is not enforced in this paper
+    (\tcode{\exposid{high-bits}} and \tcode{\exposid{low-bits}} may be reordered),
+    but made possible for implementations
     (see \ref("#aggregate-type-std::wide_result")).
   }
 }
@@ -620,9 +634,10 @@ used out of the box with \tcode{std::sort}, etc.
 There is an obvious and mathematically meaningful ordering of \tcode{wide_result}s,
 so it would be strange not to add a comparison operator.
 
-Also, \tcode{wide_result} should be a broadly useful vocabulary type
-which may be instantiated with user-defined numeric types,
-simply because that seems like a useful side product of this proposal.
+For now, \tcode{T} is constrained to be an unsigned integer type.
+If the aforementioned \tcode{std::widening_mul} operation were added to the standard,
+those constraints could be relaxed, but for now,
+only unsigned integer types are needed since \tcode{std::widening_clmul} has that constraint.
 
 \Bnote{
 It would not be possible to simply return an integer with twice the
@@ -924,20 +939,29 @@ The option to make \tcode{wide_result} structural was also considered,
 but not polled in LEWG.
 The use case of \tcode{wide_result} in template parameters
 is not deliberately supported.
+}
 
-The formula above is taken from \ref("IntelClmul"), with different variable names,
-and with no special case for the upper \mathvar{N} bits;
-we can simply treat the integers as mathematical integers with
-\math{\mrow{\mn{2}\mi{N}}} width.
-
+\editnote{
 See \eelis{iterator.concept.wine}
 for precedent on using \mathvar{N} to denote the width of a type.
+
+See \eelis{bit.permute} for precedent for the
+\q{\math{\msup{\mi{i}\mtext{th}}} least significant bit
+in the base-2 representation} idiom.
+It has been pointed out that \q{bit} and \q{bits} are not really defined in the C++ standard,
+and the term \q{coefficient} may be better,
+but this should be fixed consistently throughout the standard, if at all.
 
 See \eelis{sf.cmath.riemann.zeta}
 for precedent on wording which includes formulae.
 }
 
 \editnote{
+The formula above is taken from \ref("IntelClmul"), with different variable names,
+and with no special case for the upper \mathvar{N} bits;
+we can simply treat the integers as mathematical integers with
+\math{\mrow{\mn{2}\mi{N}}} width.
+
 The formula above in TeX notation is:
 \codeblock("tex"){
 c_i = \\bigoplus_{j = 0}^i x_i y_{i - j}

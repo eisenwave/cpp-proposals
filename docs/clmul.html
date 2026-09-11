@@ -1675,12 +1675,18 @@ and need to be affirmed by electronic polling.
     Turn the former sections containing LWG suggestions
     into subsections of <a href=#widening>§5.2. Widening operation and <tt->std::wide_result</tt-></a>
   </li>
+  <li>
+    Make various minor updates to discussion based on recent developments,
+    such as Rust's <tt->widening_carryless_mul</tt-> operation
+  </li>
+  <li>
+    Extend drafting note in <a href=#numeric.ops>§ [numeric.ops]</a>
+    with reference to <a href=https://eel.is/c++draft/bit.permute>[bit.permute]</a>
+  </li>
+  <li>
+    Rebase <a href=#wording>§6. Proposed wording</a> on <a href="https://wg21%2elink/n5054">[N5054]</a>
+  </li>
 </ul>
-
-<todo-block><p><intro-></intro-> 
-Something about wording the widening operation
-in terms of coefficients in the base-2 representation (<a href=https://eel.is/c++draft/expr.xor>[expr.xor]</a>).
-</p></todo-block>
 
 <h3 id=changes-since-r5><a class=para href=#changes-since-r5></a>1.2. Changes since R5</h3>
 
@@ -2212,7 +2218,13 @@ into consideration:
     The function is named <code><h- data-h=name>widening_clmul</h-></code> to be symmetrical
     with <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>saturating_mul</h-></code> from <a href="https://wg21%2elink/p4052r0">[P4052R0]</a> (merged into C++26).
     That proposal broadly advocated for a naming scheme leaning on Rust,
-    and the Rust standard library has a <code><h- data-h=name>widening_mul</h-></code> function.
+    and the Rust standard library has a nightly-only
+    <a href=https://doc.rust-lang.org/std/primitive.u32.html#method.widening_mul><tt->widening_mul</tt-></a>
+    function.
+    Rust also has a nightly-only
+    <a href=https://doc.rust-lang.org/std/primitive.u32.html#method.widening_carryless_mul><tt->widening_carryless_mul</tt-></a> function,
+    but that name seems comically long and is being contested
+    <a href=https://github.com/rust-lang/rust/issues/152080>on the tracking issue</a>.
   </li>
   <li>
     The result type is deliberately not named <code><h- data-h=name>wide_clmul_result</h-></code>
@@ -2222,7 +2234,9 @@ into consideration:
   <li>
     <a href="https://wg21%2elink/p3161r4">[P3161R4]</a> orders the low bits before the high bits
     to cater to little-endian architectures.
-    This choice is not enforced, but made possible for implementations
+    That choice is not enforced in this paper
+    (<code><i><h- data-h=name>high-bits</h-></i></code> and <code><i><h- data-h=name>low-bits</h-></i></code> may be reordered),
+    but made possible for implementations
     (see <a href=#aggregate-type-std::wide_result>§5.2.1. Aggregate type <tt->std::wide_result</tt-></a>).
   </li>
 </ul>
@@ -2237,9 +2251,10 @@ used out of the box with <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h->
 There is an obvious and mathematically meaningful ordering of <code><h- data-h=name>wide_result</h-></code>s,
 so it would be strange not to add a comparison operator.
 </p>
-<p>Also, <code><h- data-h=name>wide_result</h-></code> should be a broadly useful vocabulary type
-which may be instantiated with user-defined numeric types,
-simply because that seems like a useful side product of this proposal.
+<p>For now, <code><h- data-h=name>T</h-></code> is constrained to be an unsigned integer type.
+If the aforementioned <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>widening_mul</h-></code> operation were added to the standard,
+those constraints could be relaxed, but for now,
+only unsigned integer types are needed since <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>widening_clmul</h-></code> has that constraint.
 </p>
 <note-block><p><intro-></intro-> 
 It would not be possible to simply return an integer with twice the
@@ -2529,21 +2544,30 @@ The option to make <code><h- data-h=name>wide_result</h-></code> structural was 
 but not polled in LEWG.
 The use case of <code><h- data-h=name>wide_result</h-></code> in template parameters
 is not deliberately supported.
-</p>
-<p>The formula above is taken from <a href="https://www%2eintel%2ecom/content/dam/develop/external/us/en/documents/clmul-wp-rev-2-02-2014-04-20%2epdf">[IntelClmul]</a>, with different variable names,
-and with no special case for the upper <math display=inline><mi>N</mi></math> bits;
-we can simply treat the integers as mathematical integers with
-<math display=inline><mrow><mn>2</mn><mi>N</mi></mrow></math> width.
-</p>
-<p>See <a href=https://eel.is/c++draft/iterator.concept.wine>[iterator.concept.wine]</a>
+</p></note-block>
+
+<note-block class=edit><p><intro-></intro-> 
+See <a href=https://eel.is/c++draft/iterator.concept.wine>[iterator.concept.wine]</a>
 for precedent on using <math display=inline><mi>N</mi></math> to denote the width of a type.
+</p>
+<p>See <a href=https://eel.is/c++draft/bit.permute>[bit.permute]</a> for precedent for the
+<q><math display=inline><msup><mi>i</mi><mtext>th</mtext></msup></math> least significant bit
+in the base-2 representation</q> idiom.
+It has been pointed out that <q>bit</q> and <q>bits</q> are not really defined in the C++ standard,
+and the term <q>coefficient</q> may be better,
+but this should be fixed consistently throughout the standard, if at all.
 </p>
 <p>See <a href=https://eel.is/c++draft/sf.cmath.riemann.zeta>[sf.cmath.riemann.zeta]</a>
 for precedent on wording which includes formulae.
 </p></note-block>
 
 <note-block class=edit><p><intro-></intro-> 
-The formula above in TeX notation is:
+The formula above is taken from <a href="https://www%2eintel%2ecom/content/dam/develop/external/us/en/documents/clmul-wp-rev-2-02-2014-04-20%2epdf">[IntelClmul]</a>, with different variable names,
+and with no special case for the upper <math display=inline><mi>N</mi></math> bits;
+we can simply treat the integers as mathematical integers with
+<math display=inline><mrow><mn>2</mn><mi>N</mi></mrow></math> width.
+</p>
+<p>The formula above in TeX notation is:
 </p><code-block>c<h- data-h=sym_op>_</h->i = <h- data-h=mk_tag>\</h-><h- data-h=mk_tag>bigoplus</h-><h- data-h=sym_op>_</h-><h- data-h=sym_brac>{</h->j = 0<h- data-h=sym_brac>}</h-><h- data-h=sym_op>^</h->i x<h- data-h=sym_op>_</h->i y<h- data-h=sym_op>_</h-><h- data-h=sym_brac>{</h->i - j<h- data-h=sym_brac>}</h-></code-block>
 </note-block>
 
