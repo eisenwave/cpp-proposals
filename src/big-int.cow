@@ -4157,8 +4157,7 @@ class basic_big_int {
   using allocator_type = Allocator;
   using size_type = \exposid{implementation-defined};
   static constexpr size_type inplace_representation_capacity = \seebelow;
-  static constexpr size_type inplace_capacity =
-    inplace_representation_capacity * numeric_limits<uint_multiprecision_t>::digits;
+  static constexpr size_type inplace_capacity = \seebelow;
 
   //\serif{ [big.int.expos], exposition-only helpers}
   template<class T>
@@ -4360,8 +4359,27 @@ and which participates in representing its integer value.
 \pnum
 \remarks
 The value of \tcode{inplace_representation_capacity} shall be at least
-\tcode{div_to_pos_inf(min_inplace_capacity, numeric_limits<uint_multiprecision_t>::digits)}.
+\tcode{div_to_pos_inf(\brk{}min_inplace_capacity, numeric_limits<uint_multiprecision_t>::digits)}.
 }
+
+\itemdecl{
+static constexpr size_type inplace_capacity =
+  inplace_representation_capacity * numeric_limits<uint_multiprecision_t>::digits;
+}
+
+\itemdescr{
+\pnum
+\remarks
+The instantiation is ill-formed
+if the multiplication is not the mathematical product of the two factors.
+}
+}
+
+\editnote{
+The last remark deals with the edge case where \tcode{inplace_representation_capacity}
+is representable in \tcode{size_type},
+but the multiplication leads to overflow/wrapping.
+It effectively imposes a limit on the user-provided \tcode{min_inplace_capacity}.
 }
 
 \h4(show_number=false){[big.int.expos]}
