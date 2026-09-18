@@ -1,0 +1,378 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+
+\wg21_head(
+  title = {Decomposing floating-point numbers}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{DXXXXR0}}
+  \dt{Date:}            \dd{\tt{2026-09-18}}
+  \dt{Audience:}        \dd{SG6}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3688/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/main/src/template-9.cow")}
+}
+\hr
+}
+
+\Babstract{
+
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+The C++ standard library is currently lacking an elementary operation
+for decomposing floating-point numbers into integers.
+Such an operation is useful for a wide variety of applications,
+internally present in standard libraries already,
+and should be exposed to the user.
+
+The C23 standard draft \ref("N3220")
+describes the model of floating-point numbers in
+§5.2.5.3.3 as follows:
+\Bquote{
+The following parameters are used to define the model for each floating type:
+
+\style{
+#float-parameters,
+#float-parameters tr,
+#float-parameters tbody,
+#float-parameters td {
+  border: none;
+}
+
+math[display=block] {
+  font-size: 125%;
+}
+}
+\table(id="float-parameters"){
+  \tr{
+    \td{\math{\mi{s}}}
+    \td{sign (\math{\mo{±}\mn{1}})}
+  }
+  \tr{
+    \td{\math{\mi{b}}}
+    \td{
+      base or radix of exponent representation
+      (an integer \math{\mo{>}\mn{1}})
+    }
+  }
+  \tr{
+    \td{\math{\mi{e}}}
+    \td{
+      exponent (an integer between
+      a minimum \math{\msub{\mi{e}\mi{min}}} and
+      a maximum \math{\msub{\mi{e}\mi{max}}})
+    }
+  }
+  \tr{
+    \td{\math{\mi{p}}}
+    \td{precision (the number of base-\math{\mi{b}} digits in the significand)}
+  }
+  \tr{
+    \td{\math{\msub{\mi{f}\mi{k}}}}
+    \td{nonnegative integers less than \math{\mi{b}} (the significand digits)}
+  }
+}
+
+For each floating type, the parameters \math{\mi{b}}, \math{\mi{p}},
+\math{\msub{\mi{e}\mi{min}}}, and \math{\msub{\mi{e}\mi{max}}} are fixed constants.
+
+For each floating type,
+a \dfn{floating-point number} (\math{\mi{x}}) is defined by
+the following model:
+
+\mathblock{
+  \mi{x}
+  \mspace(width="0.25em"){}\mi{=}\mspace(width="0.25em"){}
+  \mi{s}
+  \msup{\mrow{\mi{b}}\mrow{\mi{e}}}
+  \munderover{
+    \mi{∑}
+    \mrow{\mi{k}\mi{=}\mn{1}}
+    \mi{p}
+  }
+  \msub{\mi{f}\mi{k}}
+  \msup{\mi{b}\mrow{\mi{−}\mi{k}}}
+  \mi{,}\mspace(width="1em"){}
+  \msub{\mi{e}\mi{min}}
+  \mspace(width="0.15em"){}\mi{≤}\mspace(width="0.15em"){}
+  \mi{e}
+  \mspace(width="0.15em"){}\mi{≤}\mspace(width="0.15em"){}
+  \msub{\mi{e}\mi{max}}
+}
+}
+
+Or more simply and ignoring the exponent constraints,
+one could say:
+\mathblock{
+  \mi{x}
+  \mspace(width="0.25em"){}\mi{=}\mspace(width="0.25em"){}
+  \mi{s}
+  \msup{\mrow{\mi{b}}\mrow{\mi{e}}}
+  \mi{q}
+  \mi{,}\mspace(width="1em"){}
+  \mi{q}
+  \mo{∈}
+  \mi{ℕ}
+}
+
+This decomposition is not just a theoretical basis,
+but relevant in practice for implementing floating-point operations.
+
+\Bex{
+To implement \tcode{std::scalbn(double \math{\mi{x}}, int \math{\mi{n}})}
+(which multiplies \math{\mi{x}} with
+\math{\msup{\mi{b}\mi{n}}} given \math{\mi{n}}), one needs to
+\ol{
+  \li{decompose \math{\mi{x}} into its floating-point components}
+  \li{adjust the exponent by \math{\mi{n}}, and}
+  \li{recompose the floating-point number with the adjusted exponent.}
+}
+}
+
+\Bex{
+To implement \tcode{std::to_chars} with output in hex notation,
+where \math{\mrow{\mi{b}\mo{=}\mn{2}}}, one needs to:
+\ol{
+  \li{decompose the input into its floating-point components,}
+  \li{bit-shift and convert the significand (integer) to hexadecimal digits,}
+  \li{add/remove trailing zeros and/or insert a decimal point, and}
+  \li{print '\tt{p}' followed by the (adjusted) exponent in decimal.}
+}
+
+Of course, this is a gross simplification,
+and decomposing the floating-point number happens in decimal notation too,
+but there is a less direct relationship between the significand and the printed digits.
+}
+
+Frustratingly, this decomposition is already implemented in standard libraries,
+just not exposed to the user.
+It is also difficult for the user to implement this operation manually,
+especially with good performance.
+The standard library only offers much higher level operations such as
+\tcode{std::frexp}
+(which decomposes into a normalized fraction in ranges ±[0.5, 1) and an exponent);
+it does not provide the low-level building block that could be used to implement
+\tcode{std::frexp}, \tcode{std::scalbn}, \tcode{std::to_chars}, etc.
+
+I therefore propose adding \tcode{std::decompose_float} function.
+
+\h2{Motivation}
+
+The key benefit of a \tcode{std::decompose_float} function
+is that it allows the user to implement floating-point operations
+without needing special knowledge about the layout of the floating-point type.
+
+\Bex{
+When implementing a conversion from a \tcode{float} to a \tcode{BigInt} type
+(i.e. an arbitrary-precision integer),
+one would need to split the \tcode{float}
+into an integer \math{\mi{q}} and binary exponent \math{\mi{e}}, then
+\cppblock{
+return \tcode{BigInt(\math{\mi{q}}) * pow(\math{\mi{b}}, BigInt(\math{\mi{q}})}); // << \math{\mi{e}} for binary floats
+}
+
+This approach can be found in various arbitrary-precision arithmetic libraries in practice.
+}
+
+\h2{Design}
+
+The signature of the function is as follows:
+
+\cppblock{
+template<class F>
+struct float_decomposition {
+  static constexpr int radix = numeric_limits<F>::radix;
+  using significand_type = \exposid{unsigned integer type};
+
+  constexpr int              sign() const noexcept;        // returns -1 or 1
+  constexpr bool             sign_bit() const noexcept;    // returns std::signbit(x)
+  constexpr int              exponent() const noexcept;    // returns base-radix exponent
+  constexpr significand_type significand() const noexcept;
+};
+
+template<class T>
+constexpr float_decomposition<T> decompose_float(const T& x) noexcept; // freestanding
+}
+
+A lot of design questions can be quickly answered in a few sentences:
+
+\dl{
+  \dt{Why is \tcode{float_decomposition} not simply an aggregate?}
+  \dd{
+    Because this gives the implementation more flexibility regarding the layout,
+    including the use of bit-fields.
+    Also, structured bindings would be undesirable due to potential bugs
+    from getting the order of the members wrong.
+  }
+
+  \dt{Why is it \tcode{constexpr}?}
+  \dd{
+    Most floating-point operations
+    (but especially inspection operations like \tcode{std::isinf})
+    are already \tcode{constexpr}, so this one should be as well.
+  }
+
+  \dt{Why is it freestanding?}
+  \dd{
+    The operation is elementary and does not raise any floating-point exceptions,
+    nor does it interact with \tcode{errno}.
+    There is no technical reason it couldn't or shouldn't be freestanding.
+  }
+
+  \dt{What is \tcode{significand_type}?}
+  \dd{
+    It is an implementation-defined unsigned integer type.
+    This is needed because there are types such as \tcode{std::float128_t}
+    where the result would not fit into other types like \tcode{unsigned long long}.
+  }
+
+  \dt{Why does \tcode{exponent()} return \tcode{int}?}
+  \dd{
+    Because \tcode{int} is sufficient for every real-world floating-point format,
+    even if it has the minimum width of 16 bits.
+    \tcode{std::float128_t} has only 15 exponent bits.
+    The return type can be changed in the future should a floating-point format ever emerge
+    that requires more than \tcode{int} can provide.
+  }
+
+  \dt{Why is \tcode{radix} provided as a static member?}
+  \dd{
+    Of all the \tcode{numeric_limits} properties,
+    \tcode{radix} is the most important property in this context.
+    It provides the minimum knowledge required for \tcode{float_decomposition}
+    to be interpreted correctly.
+    That justifies providing easy access to it.
+  }
+
+  \dt{Should \tcode{float_decomposition} not have a constructor?}
+  \dd{
+    No, the implementation might internally have a constructor,
+    but there is no need to provide a user-exposed one.
+    If there was a constructor taking, say, \tcode{F},
+    this would just create competing styles where some people \q{skip}
+    \tcode{std::decompose_float}.
+    Any other constructor provides pointless implementation work.
+    As mentioned, there is a lot of representation freedom,
+    so there might not even be a constructor,
+    with all initialization taking place via \tcode{std::bit_cast<std::float_decomposition>}.
+  }
+}
+
+More involved design questions are addressed below.
+
+\h3{Handling of non-finite inputs}
+
+Firstly, it should be noted that determining whether a number is finite
+is typically extremely fast and would be a side product of the decomposition process.
+ISO/IEC 60555 binary interchange floating-point types are
+non-finite if and only if the exponent consist of all one-bits.
+
+\Bex{
+The finiteness check for \tcode{std::float32_t x}
+within \tcode{std::decompose_float} boils down to:
+\cppblock{
+// if (!std::isfinite(x))
+if ((std::bit_cast<std::uint32_t>(x) << 1) >= 0xff000000) [[unlikely]] {
+  // ...
+}
+}
+The \tcode{bit_cast} is essentially a no-op and performed anyway,
+the left-shift and integer comparison are extremely cheap operations,
+and the branch should be easily predictable,
+with the finite path being favored.
+}
+
+In the even that even this tiny check is too costly,
+it can be eliminated via \tcode{[[assume(std::isfinite(x))]]} up front.
+
+The question is then what \tcode{std::decompose_float}
+should do for non-finite inputs.
+The most useful behavior were if
+\ul{
+  \li{
+    \tcode{significand()}
+    simply returned the contents of the significand representation
+    reinterpreted as an integer.
+    This is useful for examining NaN payloads.
+  }
+  \li{
+    \tcode{exponent()}
+    returned the exponent adjusted using the same bias as for finite numbers.
+    For ISO/IEC 60559 binary interchange floating-point types,
+    this means that the exponent of ±infinity would be greater than that of any finite numbers,
+    which makes comparisons of \tcode{exponent()} between results meaningful,
+    unless NaN is involved.
+  }
+}
+
+\h3{Why not a \tt{<cmath>} function?}
+
+Another design option would be to go through WG14 and standardize a function
+similar to \tcode{frexp}, like:
+
+\cppblock{
+double frexpq(double x, int* exp) {
+  // sample implementation assuming that numeric_limits<double>::radix == 2
+  double d = std::frexp(x, &exp);
+  exp -= std::numeric_limits<double>::digits;
+  return std::ldexp(d, std::numeric_limits<double>::digits);
+}
+}
+
+Unlike \tcode{frexp},
+which returns a normalized fraction,
+this could return a number that is always a (small) integer.
+The significand integer can then be obtained via \tcode{static_cast},
+and that conversion would always be exact given an integer
+with enough bits to represent the significand (except for non-finite inputs).
+
+\h2{Wording}
+
+The changes are relative to \ref("N5054").
+
+\h3(show_number=false){[version.syn]}
+
+Add a feature-test macro to \eelis{version.syn} as follows:
+
+\Bins{
+\itemdecl{
+#define __cpp_my_new_feature 20XXXXL // \serif{freestanding, also in \tt{<header>}}
+}
+}
+
+A \tcode{std::vector} is a \exposid{std-vector}.
+
+\h2{References}
+
+\bib(
+  id = "N3220",
+  title = "SO/IEC 9899:2024 Working Draft",
+  date = "2024-02-22",
+  author = "JeanHey Meneide",
+  link = "https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3220.pdf",
+)\
+\bib(
+  id = "N5054",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2026-07-16",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5054",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
+)\
+\bib(
+  id = "P3666R4",
+  title = "Bit-precise integers",
+  date = "2026-05-12",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3666r4",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r4.html",
+)\
+
+\make_bib
