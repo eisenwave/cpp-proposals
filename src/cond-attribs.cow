@@ -1,0 +1,198 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+
+\wg21_head(
+  title = {Conditional attributes}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{DXXXXR0}}
+  \dt{Date:}            \dd{\tt{2026-05-55}}
+  \dt{Audience:}        \dd{EWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
+                            Nikolas Klauser <?>}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/DXXXX/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/main/src/cond-attribs.cow")}
+}
+\hr
+}
+
+\Babstract{
+
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+Currently, there is no way to apply attributes or annotations conditionally.
+That is, based on a constant expression,
+similar to \tcode{noexcept(\exposid{constant-expression})}.
+We propose the following functionality:
+
+\cppblock{
+template<class T>
+struct S {
+  [[if (std::is_floating_point_v<T>) deprecated("f() is only available for integers")]]
+  T f();
+
+  // Applying no_unique_address for certain types may be problematic
+  [[if (/* ... */) no_unique_address, msvc::no_unique_address]]
+  T x;
+};
+}
+
+Without this capability,
+the user always needs to provide distinct declarations
+where one has the attribute applied and the other doesn't.
+
+\h2{Motivation}
+
+In recent history, there have been several RFCs in standard library implementations
+to provide conditional attributes, such as:
+\ul{
+  \li{
+    \ref("https://discourse.llvm.org/t/extending-clang-lifetimebound-to-take-a-condition/91475"){Extending \tt{[[clang::lifetimebound]]} to take a condition} (LLVM)
+  }
+  \li{
+    \ref("https://discourse.llvm.org/t/rfc-add-a-conditional-no-unique-address-attribute/91530/11"){[RFC] Add a conditional \tt{no_unique_address} attribute} (LLVM)
+  }
+}
+
+In the latter thread,
+several implementers have expressed interest in solving this problem via WG21.
+Certain vendor-specific attributes such as \tcode{gnu::no_dangling}
+already take a condition.
+Furthermore, with C++26 annotations,
+the users can essentially create their own attributes,
+and those may need to be applied conditionally as well.
+Overall, there is clear demand for conditional attributes in a variety of places.
+
+Rather than solving the same problem over and over for each attribute and annotation,
+there ought to be a general solution that solves the issue permanently and generally.
+
+\h2{Design}
+
+As shown above, the proposed syntax is:
+\cppblock{
+// attributes:
+[[if (condition) attr0, attr1]] [[attr2]] /* ... */
+
+// annotations:
+[[if (condition) =0, =1]] [[=2]] /* ... */
+}
+
+The \tcode{if (condition)} part applies to everything
+in the following \grammarterm{attribute-list} or \grammarterm{annotation-list}.
+To add further attributes or annotations that are not affected by the condition,
+one can put these into a separate \grammarterm{attribute-specifier}
+(like \tcode{attr2} and \tcode{=2}).
+
+The \tcode{condition} is a converted constant expression of type \tcode{bool},
+which is the same approach as for other existing such conditions.
+
+\h3{Alternative syntax considered}
+
+Several alternatives have been considered:
+\ul{
+  \li{
+    \tcode{[[attr0, attr1 requires (condition)]]}.
+    The problem with this notation is that it's less clear whether \tcode{requires}
+    applies to \tcode{attr1} or to the whole list.
+    It looks like an infix operator that applies only to \tcode{attr1}.
+    Also, this syntax is more verbose without a clear technical benefit.
+  }
+  \li{
+    \tcode{[[requires (condition) attr0, attr1]]}.
+    This is just a more verbose version of the same using \tcode{if}.
+  }
+}
+
+A key benefit of the \tcode{if} syntax is that there is syntactic precedent.
+The user can write
+\cppblock{
+if (condition) f(), g(), h();
+}
+\'HORIZONTAL ELLIPSIS' where the \tcode{if} statement
+makes all three function calls conditional.
+This precedent makes it intuitive that the precedence would work the same in attributes.
+
+\h3{SFINAE-friendliness}
+
+Errors in the condition of the attribute should not be SFINAE-friendly
+because this is consistent with the design
+of annotations in C++26\iref{dcl.attr.annotation}.
+Formally, substituting into the condition is not in the immediate context:
+
+\cppblock{
+template<class T>
+  [[=T::type()]] void f(T t);
+template<class T>
+  [[if (T::cond) =0]] void h(T t);
+
+void f(int);
+void h(int);
+
+void g() {
+  f(0);   // OK, selects f(int)
+  f('0'); // error: substituting into the annotation
+          // results in an invalid expression T::type
+
+  h(0);   // OK, selects h(int)
+  h('0'); // error: substituting into the annotation
+          // results in an invalid expression T::cond
+}
+}
+
+Crucially, the fact that \tcode{char::type} or \tcode{char::cond} is invalid
+does not disqualify the respective overloads of \tcode{f} or \tcode{h},
+which would have resulted in the \tcode{(int)} overloads being called.
+
+\h3{Interaction with reflection}
+
+If the condition is \tcode{false},
+the behavior is as if the attribute or annotation disappeared entirely.
+That is, \tcode{std::meta::annotations_of} would yield nothing.
+
+A possible alternative is to add a query \tcode{std::meta::is_enabled},
+but this would mean that the user always needs to check whether annotations
+are not only present but also enabled.
+Existing code which assumes that annotations are always enabled would have its assumption broken.
+
+\h2{Wording}
+
+The changes are relative to \ref("N5054").
+
+\h3(show_number=false){[cpp.predefined]}
+
+Add a feature-test macro to the table in \eelis{cpp.predefined} as follows:
+
+\Bins{
+\itemdecl{
+__cpp_conditional_attributes 20XXXXL
+}
+}
+
+\h2{References}
+
+
+\bib(
+  id = "N5054",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2026-07-16",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5054",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
+)\
+\bib(
+  id = "P3666R4",
+  title = "Bit-precise integers",
+  date = "2026-05-12",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3666r4",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r4.html",
+)\
+
+\make_bib
