@@ -1611,6 +1611,14 @@ if (theme !== null) {
 <div class=toc-num data-level=3>4.1</div>
 <a href=#version%2esyn><h3>[version.syn]</h3></a>
 <div class=toc-num data-level=2>5</div>
+<a href=#appendix--sample-implementations><h2>Appendix — Sample implementations</h2></a>
+<div class=toc-num data-level=3>5.1</div>
+<a href=#impl-decompose-float><h3><tt->decompose_float(float64_t)</tt-></h3></a>
+<div class=toc-num data-level=3>5.2</div>
+<a href=#impl-frexp><h3><tt->frexp(float64_t, int*)</tt-></h3></a>
+<div class=toc-num data-level=3>5.3</div>
+<a href=#impl-frexpq><h3><tt->frexpq(float64_t, int*)</tt-></h3></a>
+<div class=toc-num data-level=2>6</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
@@ -1775,13 +1783,39 @@ into an integer <math display=inline><mi>q</mi></math> and binary exponent <math
 </p>
 <code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>F</h-><h- data-h=sym_op>&gt;</h->
 <h- data-h=kw>struct</h-> <h- data-h=name>float_decomposition</h-> <h- data-h=sym_brac>{</h->
+<h- data-h=kw>private</h-><h- data-h=sym_punc>:</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <i><h- data-h=name>is-iec559</h-></i> <h- data-h=sym_op>=</h-> <h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>F</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_iec559</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>public</h-><h- data-h=sym_punc>:</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> radix for the result of exponent()</h->
   <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>radix</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>F</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>radix</h-><h- data-h=sym_punc>;</h->
+
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> lowest possible result of exponent()</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>min_exponent_result</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>implementation-defined</h-></i><h- data-h=sym_punc>;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> greatest possible result of exponent()</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>max_exponent_result</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>implementation-defined</h-></i><h- data-h=sym_punc>;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> greatest possible result of exponent() for finite values</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>max_finite_exponent_result</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>implementation-defined</h-></i><h- data-h=sym_punc>;</h->
+
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> greatest possible result of significand()</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>max_significand</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>implementation-defined</h-></i><h- data-h=sym_punc>;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> bit width of greatest possible significand() result,</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> which may be lower than the width of significand_type</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>significand_width</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>implementation-defined</h-></i><h- data-h=sym_punc>;</h->
+
   <h- data-h=kw>using</h-> <h- data-h=name>significand_type</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>unsigned integer type</h-></i><h- data-h=sym_punc>;</h->
 
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h->              <h- data-h=name>sign</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->        <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> returns -1 or 1</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h->             <h- data-h=name>sign_bit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> returns std::signbit(x)</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h->              <h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> returns base-radix exponent</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=name>significand_type</h-> <h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_finite</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=kw>requires</h-> <i><h- data-h=name>is-iec559</h-></i><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_inf</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=kw>requires</h-> <i><h- data-h=name>is-iec559</h-></i><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_nan</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=kw>requires</h-> <i><h- data-h=name>is-iec559</h-></i><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_normal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=kw>requires</h-> <i><h- data-h=name>is-iec559</h-></i><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_signaling</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=kw>requires</h-> <i><h- data-h=name>is-iec559</h-></i><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_subnormal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=kw>requires</h-> <i><h- data-h=name>is-iec559</h-></i><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_zero</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
 
 <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
@@ -1898,7 +1932,8 @@ The most useful behavior were if
 
 <h3 id=why-not-a-cmath-function><a class=para href=#why-not-a-cmath-function></a>3.2. Why not a <tt->&lt;cmath&gt;</tt-> function?</h3>
 
-<p>Another design option would be to go through WG14 and standardize a function
+<p>Another design option would be to go through WG14 and
+standardize a quantized function
 similar to <code><h- data-h=name>frexp</h-></code>, like:
 </p>
 <code-block><h- data-h=kw_type>double</h-> <h- data-h=name>frexpq</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>double</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-><h- data-h=sym_op>*</h-> <h- data-h=name>exp</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
@@ -1915,6 +1950,114 @@ The significand integer can then be obtained via <code><h- data-h=kw>static_cast
 and that conversion would always be exact given an integer
 with enough bits to represent the significand (except for non-finite inputs).
 </p>
+<p>The key reason against this direction
+is that <code><h- data-h=name>frexpq</h-></code> does only a portion of the work.
+</p>
+<example-block><p><intro-></intro-> 
+Consider how to actually implement a <code><h- data-h=name>BigInt</h-></code> constructor
+as in the motivating example with <code><h- data-h=name>BigInt</h-></code> in <a href=#motivation>§2. Motivation</a>
+using the hypothetical <mark><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexpq</h-></code></mark>
+vs. the hypothetical <mark><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>decompose_float</h-></code></mark>:
+</p>
+<code-block><h- data-h=kw>struct</h-> <h- data-h=name>BigInt</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> typical BigInt implementations use a sign-and-magnitude representation</h->
+  <h- data-h=kw_type>bool</h-> <h- data-h=name>sign</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-><h- data-h=sym_op>*</h-> <h- data-h=name>limbs</h-><h- data-h=sym_punc>;</h->
+
+  <h- data-h=name>BigInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>unsigned_integral</h-> <h- data-h=kw>auto</h-> <h- data-h=name>value</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>sign</h-><h- data-h=sym_par>)</h->
+    <h- data-h=sym_punc>:</h-> <h- data-h=name>sign</h-><h- data-h=sym_par>(</h-><h- data-h=name>sign</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>limbs</h-><h- data-h=sym_par>(</h-><h- data-h=name>do_alloc_limb_array</h-><h- data-h=sym_par>(</h-><h- data-h=name>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h->
+
+<h- data-h=name_mac>#ifdef USE_FREXPQ</h->
+  <h- data-h=name>BigInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>float64_t</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_punc>:</h-> <h- data-h=name>BigInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=sym_punc>,</h-> <h- data-h=bool>false</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=sym_op>!</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>isfinite</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+      <h- data-h=kw>throw</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>invalid_argument</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>non-finite input</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=sym_brac>}</h->
+    <h- data-h=kw_type>int</h-> <h- data-h=name>e</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw_type>double</h-> <h- data-h=name>xi</h-> <h- data-h=sym_op>=</h-> <mark><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexpq</h-></mark><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>&amp;</h-><h- data-h=name>e</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>BigInt</h-><h- data-h=sym_par>(</h-><h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint64_t</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>fabs</h-><h- data-h=sym_par>(</h-><h- data-h=name>xi</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>signbit</h-><h- data-h=sym_par>(</h-><h- data-h=name>xi</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-> <h- data-h=sym_op>&lt;&lt;=</h-> <h- data-h=name>e</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+<h- data-h=name_mac>#else</h->
+  <h- data-h=name>BigInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>float64_t</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_punc>:</h-> <h- data-h=name>BigInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=sym_punc>,</h-> <h- data-h=bool>false</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw>auto</h-> <h- data-h=name>d</h-> <h- data-h=sym_op>=</h-> <mark><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>decompose_float</h-></mark><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=sym_op>!</h-><h- data-h=name>d</h-><h- data-h=sym_op>.</h-><h- data-h=name>is_finite</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+      <h- data-h=kw>throw</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>invalid_argument</h-><h- data-h=sym_par>(</h-><h- data-h=str_dlim>"</h-><h- data-h=str>non-finite input</h-><h- data-h=str_dlim>"</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=sym_brac>}</h->
+    <h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>BigInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>d</h-><h- data-h=sym_op>.</h-><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>d</h-><h- data-h=sym_op>.</h-><h- data-h=name>sign_bit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-> <h- data-h=sym_op>&lt;&lt;=</h-> <h- data-h=name>d</h-><h- data-h=sym_op>.</h-><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+<h- data-h=name_mac>#endif</h->
+
+  <h- data-h=name>BigInt</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;&lt;=</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>s</h-> <h- data-h=sym_op>&gt;</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-> <h- data-h=name>do_shift_left</h-><h- data-h=sym_par>(</h-><h- data-h=name>s</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>s</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-> <h- data-h=name>do_shift_right</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>-</h-><h- data-h=name>s</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>The key observation is that <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>decompose_float</h-></code> does the work
+of four functions simultaneously:
+</p><ul>
+  <li>
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexpq</h-></code>, by yielding the significand as an integer
+    as well as the corresponding base-2 exponent;
+  </li>
+  <li>
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>isfinite</h-></code>, by identifying infinities and NaNs by their exponent;
+  </li>
+  <li>
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>fabs</h-></code>, by splitting the sign bit from the significand; and
+  </li>
+  <li>
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>signbit</h-></code>, by extracting the sign bit separately.
+  </li>
+</ul>
+</example-block>
+
+<p>Miraculously, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>decompose_float</h-></code>
+is also a potentially cheaper operation than <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexpq</h-></code>
+despite being vastly more useful.
+Specifically, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexpq</h-></code>
+would be required to normalize subnormal normals
+rather than merely adjusting the exponent like for normal numbers.
+By comparison,
+<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>decompose_float</h-></code>
+can reinterpret the significand of both zeros and subnormal numbers directly.
+</p>
+<p>In summary, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>decompose_float</h-></code> is the better solution
+for decomposing floating-point numbers because
+</p><ul>
+  <li>
+    it provides a cleaner interface;
+  </li>
+  <li>
+    it is a swiss-army knife that tends to solve several problems simultaneously,
+    like computing <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexpq</h-></code>, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>fabs</h-></code>, and
+    various boolean tests simultaneously;
+  </li>
+  <li>
+    it does not waste any work,
+    whereas <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexpq</h-></code> needs to test whether a number is subnormal or infinity
+    but stores an unspecified value in <code><h- data-h=sym_op>*</h-><h- data-h=name>e</h-></code> for such inputs
+    (perhaps it could be defined not to waste this work,
+    but <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexp</h-></code> stores an unspecified value,
+    so <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexpq</h-></code> should presumably behave the same);
+  </li>
+  <li>
+    it is easy to implement a variety of operations on top of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>decompose_float</h-></code>,
+    but not on top of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexpq</h-></code>;
+    for example, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexpq</h-></code>
+    does not seem like it should be involved in <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>signbit</h-></code>,
+    but <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>signbit</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-></code> is <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>decompose_float</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>.</h-><h- data-h=name>sign_bit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>; and
+  </li>
+  <li>
+    it has cheaper handling of subnormals
+    because it can reinterpret the significand directly,
+    suggesting that it is a lower-level or more elementary operation.
+  </li>
+</ul>
+
 <h2 id=wording><a class=para href=#wording></a>4. Wording</h2>
 
 <p>The changes are relative to <a href="https://wg21%2elink/n5054">[N5054]</a>.
@@ -1924,12 +2067,444 @@ with enough bits to represent the significand (except for non-finite inputs).
 <p>Add a feature-test macro to <a href=https://eel.is/c++draft/version.syn>[version.syn]</a> as follows:
 </p>
 <ins-block>
-<code-block class=borderless><h- data-h=name_mac>#define __cpp_my_new_feature 20XXXXL </h-><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding, also in </h-><tt-><h- data-h=cmt>&lt;header&gt;</h-></tt-></f-serif></code-block>
+<code-block class=borderless><h- data-h=name_mac>#define __cpp_lib_decompose_float 20XXXXL </h-><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding, also in </h-><tt-><h- data-h=cmt>&lt;header&gt;</h-></tt-></f-serif></code-block>
 </ins-block>
 
-<p>A <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>vector</h-></code> is a <i><h- data-h=name>std-vector</h-></i>.
+<ins-block>
+<h3>Floating-point decomposition <span class=stable-ref>[float.decompose]</span></h3>
+
+<p>¶
+Class template <code><h- data-h=name>float_decomposition</h-></code>
+stores information about individual components of
+an <dfn>underlying value</dfn> of a floating-point type <code><h- data-h=name>T</h-></code>.
 </p>
-<h2 id=references><a class=para href=#references></a>5. References</h2>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>float_decomposition</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> [float.decompose.properties]</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>radix</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>radix</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>min_exponent_result</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>max_exponent_result</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>max_finite_exponent_result</h-><h- data-h=sym_punc>;</h->
+
+  <h- data-h=kw>using</h-> <h- data-h=name>significand_type</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>implementation-defined</h-></i><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name>significand_type</h-> <h- data-h=name>max_significand</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>significand_width</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>bit_width</h-><h- data-h=sym_par>(</h-><h- data-h=name>max_significand</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> [float.decompose.accessors]</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h->              <h- data-h=name>sign</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h->              <h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>significand_type</h-> <h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> [float.decompose.boolean]</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>sign_bit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_zero</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_finite</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_inf</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->       <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_nan</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->       <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_normal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_signaling</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_subnormal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h-></code-block>
+</ins-block>
+
+<ins-block>
+<h3>Properties <span class=stable-ref>[float.decompose.properties]</span></h3>
+
+<code-block class=borderless><h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>min_exponent_result</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p>¶
+<i>Returns</i>:
+The lowest possible result of <code><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>.
+</p></div>
+
+<code-block class=borderless><h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>max_exponent_result</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p>¶
+<i>Returns</i>:
+The greatest possible result of <code><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>.
+</p></div>
+
+<code-block class=borderless><h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>max_finite_exponent_result</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p>¶
+<i>Returns</i>:
+The greatest possible result of <code><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>
+if the underlying value is finite.
+</p></div>
+
+<code-block class=borderless><h- data-h=kw>using</h-> <h- data-h=name>significand_type</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>implementation-defined</h-></i><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p>¶
+An implementation-defined unsigned integer type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>)
+capable of representing all possible results of <code><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>.
+A specialization of <code><h- data-h=name>float_decomposition</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> is ill-formed
+if no such integer type exists.
+</p></div>
+
+<code-block class=borderless><h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name>significand_type</h-> <h- data-h=name>max_significand</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p>¶
+The greatest possible result of <code><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>.
+</p>
+<p>[<i>Note</i>: 
+This includes results of <code><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>
+where implicit bits have been concatenated to significand bits present
+in the value representation of an underlying value.
+If <code><h- data-h=name>T</h-></code> is an ISO/IEC 60559 binary interchange floating-point type,
+<code><h- data-h=name>significand_width</h-></code> equals <code><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>digits</h-> <h- data-h=sym_op>+</h-> <h- data-h=num>1</h-></code>.
+ — <i>end note</i>]
+</p></div>
+</ins-block>
+
+<ins-block>
+<h3>Properties <span class=stable-ref>[float.decompose.accessors]</span></h3>
+
+<code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>sign</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p>¶
+<i>Returns</i>:
+<code><h- data-h=name>sign_bit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>?</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1</h-> <h- data-h=sym_punc>:</h-> <h- data-h=num>1</h-></code>.
+</p></div>
+
+<code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=name>significand_type</h-> <h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p>¶
+Let <math display=inline><mi>x</mi></math> be the underlying value.
+Let <math display=inline><mi>b</mi></math> be <code><h- data-h=name>radix</h-></code>.
+</p>
+<p>¶
+<i>Effects</i>:
+</p><ul>
+  <li>
+    If <math display=inline><mi>x</mi></math> is finite,
+    these functions return an exponent <math display=inline><mi>e</mi></math> and
+    a significand <math display=inline><mi>m</mi></math> respectively, such that
+    <math display=inline>
+    <mrow><mi>x</mi><mo>=</mo><mi>m</mi><mo>×</mo><msup><mi>b</mi><mi>e</mi></msup></mrow>
+    </math>.
+  </li>
+  <li>
+    Otherwise, if <code><h- data-h=name>T</h-></code> is an ISO/IEC 60559 binary interchange floating-point type,
+    <code><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> returns <code><h- data-h=name>max_exponent_result</h-></code> and
+    <code><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> returns the significand bits of <math display=inline><mi>x</mi></math>,
+    reinterpreted as an integer.
+    <br/>[<i>Note</i>: 
+    If <math display=inline><mi>x</mi></math> is <math display=inline><mrow><mo>±</mo><mi>∞</mi></mrow></math>,
+    <code><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> returns zero.
+    If <math display=inline><mi>x</mi></math> is NaN,
+    <code><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> returns the NaN payload.
+     — <i>end note</i>]
+  </li>
+  <li>
+    Otherwise, the result of <code><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> and
+    <code><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> is derived from <math display=inline><mi>x</mi></math>
+    in an implementation-defined manner.
+  </li>
+</ul>
+</div>
+</ins-block>
+
+<ins-block>
+<h3>Properties <span class=stable-ref>[float.decompose.boolean]</span></h3>
+
+<p>Of the following member functions,
+<code><h- data-h=name>sign_bit</h-></code> and <code><h- data-h=name>is_zero</h-></code> are always present;
+the others are present if <code><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_iec559</h-></code> is <code><h- data-h=bool>true</h-></code>
+and optional otherwise.
+</p>
+<code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>sign_bit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_zero</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_finite</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_inf</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_nan</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_normal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_signaling</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_subnormal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>¶
+<i>Returns</i>:
+<code><i><h- data-h=name>test-fun</h-></i><h- data-h=sym_par>(</h-><math display=inline><mi>x</mi></math><h- data-h=sym_par>)</h-></code>, where
+<code><i><h- data-h=name>test-fun</h-></i></code> is the corresponding function in <code><h- data-h=str>&lt;cmath&gt;</h-></code>
+with the underscore in the name removed, and
+<math display=inline><mi>x</mi></math> is the underlying value.
+</p></ins-block>
+
+<ins-block>
+<h3>Properties <span class=stable-ref>[float.decompose.function]</span></h3>
+
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>float_decomposition</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>decompose_float</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p>¶
+<i>Returns</i>:
+A <code><h- data-h=name>float_decomposition</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> object whose underlying value is <code><h- data-h=name>x</h-></code>.
+</p>
+<p>¶
+<i>Remarks</i>:
+No floating-point exceptions are raised, and
+no inexact operation takes place.
+</p></div>
+</ins-block>
+
+<h2 id=appendix--sample-implementations><a class=para href=#appendix--sample-implementations></a>Appendix — Sample implementations</h2>
+
+<h3 id=impl-decompose-float><a class=para href=#impl-decompose-float></a><tt->decompose_float(float64_t)</tt-></h3>
+
+<code-block><h- data-h=kw>struct</h-> <h- data-h=name>f64_decomposition</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>radix</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>2</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>min_exponent_result</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1074</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>max_exponent_result</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>972</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>max_finite_exponent_result</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>971</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>max_significand</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=num_deco>ull</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>53</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>-</h-> <h- data-h=num>1</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>significand_width</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>53</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>using</h-> <h- data-h=name>significand_type</h-> <h- data-h=sym_op>=</h-> <h- data-h=name_type>uint64_t</h-><h- data-h=sym_punc>;</h->
+
+  <h- data-h=name_type>uint64_t</h-> <h- data-h=name>m</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_type>int</h-> <h- data-h=name>e</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_type>bool</h-> <h- data-h=name>s</h-><h- data-h=sym_punc>;</h->
+
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h->              <h- data-h=name>sign</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h-> <h- data-h=kw_ctrl>return</h-> <h- data-h=name>s</h-> <h- data-h=sym_op>?</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1</h-> <h- data-h=sym_punc>:</h-> <h- data-h=num>1</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h->             <h- data-h=name>sign_bit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h-> <h- data-h=kw_ctrl>return</h-> <h- data-h=name>s</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h->              <h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h-> <h- data-h=kw_ctrl>return</h-> <h- data-h=name>e</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>significand_type</h-> <h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h-> <h- data-h=kw_ctrl>return</h-> <h- data-h=name>m</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h->
+
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_finite</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=name>e</h-> <h- data-h=sym_op>!=</h-> <h- data-h=name>max_exponent_result</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_inf</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_op>!</h-><h- data-h=name>is_finite</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>m</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_nan</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_op>!</h-><h- data-h=name>is_finite</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>m</h-> <h- data-h=sym_op>!=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_normal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=name>e</h-> <h- data-h=sym_op>!=</h-> <h- data-h=name>max_exponent_result</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>e</h-> <h- data-h=sym_op>!=</h-> <h- data-h=name>min_exponent_result</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_signaling</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=name>is_nan</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>m</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=num_deco>ull</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>51</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_subnormal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=name>e</h-> <h- data-h=sym_op>==</h-> <h- data-h=name>min_exponent_result</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_zero</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=name>e</h-> <h- data-h=sym_op>==</h-> <h- data-h=name>min_exponent_result</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>m</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=kw>constexpr</h-> <h- data-h=name>f64_decomposition</h-> <h- data-h=name>decompose_float</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>float64_t</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> exponent bias + significand bits</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>exponent_bits</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>11</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>significand_bits</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>52</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>exponent_offset</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>1023</h-> <h- data-h=sym_op>+</h-> <h- data-h=name>significand_bits</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>min_exponent</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1022</h-> <h- data-h=sym_op>-</h-> <h- data-h=name>significand_bits</h-><h- data-h=sym_punc>;</h->
+
+  <h- data-h=kw>constexpr</h-> <h- data-h=name_type>uint64_t</h-> <h- data-h=name>significand_mask</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=num_deco>ull</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=name>significand_bits</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>-</h-> <h- data-h=num>1</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name_type>uint64_t</h-> <h- data-h=name>implicit_significand_bit</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>1</h-><h- data-h=num_deco>ull</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=name>significand_bits</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>exponent_shifted_mask</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_par>(</h-><h- data-h=num>1</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=name>exponent_bits</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>-</h-> <h- data-h=num>1</h-><h- data-h=sym_punc>;</h->
+
+  <h- data-h=kw>auto</h-> <h- data-h=name>xi</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>uint64_t</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_type>int</h-> <h- data-h=name>raw_exp</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_par>(</h-><h- data-h=name>xi</h-> <h- data-h=sym_op>&gt;&gt;</h-> <h- data-h=name>significand_bits</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=name>exponent_shifted_mask</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_type>bool</h-> <h- data-h=name>signbit</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_par>(</h-><h- data-h=name>xi</h-> <h- data-h=sym_op>&gt;&gt;</h-> <h- data-h=sym_par>(</h-><h- data-h=name>exponent_bits</h-> <h- data-h=sym_op>+</h-> <h- data-h=name>significand_bits</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>!=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=name_type>uint64_t</h-> <h- data-h=name>raw_m</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>xi</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=name>significand_mask</h-><h- data-h=sym_punc>;</h->
+
+  <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>raw_exp</h-> <h- data-h=sym_op>==</h-> <h- data-h=name>exponent_shifted_mask</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>unlikely</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> infinity and NaN</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_brac>{</h-> <h- data-h=name>raw_m</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>raw_exp</h-> <h- data-h=sym_op>-</h-> <h- data-h=name>exponent_offset</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>signbit</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+  <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>raw_exp</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>unlikely</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> When the biased exponent is zero,</h->
+    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> the number is either subnormal or zero.</h->
+    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Either way, there is no implicit leading 1 before the significand,</h->
+    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> so the raw significand can be reinterpreted as an integer.</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_brac>{</h-> <h- data-h=name>raw_m</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>min_exponent</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>signbit</h-> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=name>raw_m</h-> <h- data-h=sym_op>|</h-> <h- data-h=name>implicit_significand_bit</h-><h- data-h=sym_punc>,</h->
+    <h- data-h=name>raw_exp</h-> <h- data-h=sym_op>-</h-> <h- data-h=name>exponent_offset</h-><h- data-h=sym_punc>,</h->
+    <h- data-h=name>signbit</h-><h- data-h=sym_punc>,</h->
+  <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p><tt->clang++-24 -O3 -march=x86-64-v3</tt-> output
+(labels adjusted for readability):
+</p>
+<code-block><h- data-h=name_labl_decl>decompose_float:</h->
+        <h- data-h=name_inst>mov</h->     <h- data-h=name_var>edx</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>4294966222</h->
+        <h- data-h=name_inst>vmovq</h->   <h- data-h=name_var>rcx</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>xmm0</h->
+        <h- data-h=name_inst>mov</h->     <h- data-h=name_var>rsi</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>rcx</h->
+        <h- data-h=name_inst>shr</h->     <h- data-h=name_var>rsi</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>52</h->
+        <h- data-h=name_inst>and</h->     <h- data-h=name_var>esi</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>2047</h->
+        <h- data-h=name_inst>mov</h->     <h- data-h=name_var>al</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>52</h->
+        <h- data-h=name_inst>bzhi</h->    <h- data-h=name_var>rax</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>rcx</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>rax</h->
+        <h- data-h=name_inst>cmp</h->     <h- data-h=name_var>esi</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>2047</h->
+        <h- data-h=name_inst>je</h->      <h- data-h=name_labl_decl>.inf_or_nan</h->
+        <h- data-h=name_inst>test</h->    <h- data-h=name_var>esi</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>esi</h->
+        <h- data-h=name_inst>je</h->      <h- data-h=name_labl_decl>.subnormal_or_zero</h->
+        <h- data-h=name_inst>movabs</h->  <h- data-h=name_var>rdi</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>4503599627370496</h->
+        <h- data-h=name_inst>or</h->      <h- data-h=name_var>rax</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>rdi</h->
+        <h- data-h=name_inst>add</h->     <h- data-h=name_var>esi</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1075</h->
+<h- data-h=name_labl_decl>.common_exit:</h->
+        <h- data-h=name_inst>shr</h->     <h- data-h=name_var>rcx</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>31</h->
+        <h- data-h=name_inst>add</h->     <h- data-h=name_var>rdx</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>1074</h->
+        <h- data-h=name_inst>and</h->     <h- data-h=name_var>rdx</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>rcx</h->
+        <h- data-h=name_inst>or</h->      <h- data-h=name_var>rdx</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>rsi</h->
+        <h- data-h=name_inst>ret</h->
+<h- data-h=name_labl_decl>.inf_or_nan:</h->
+        <h- data-h=name_inst>mov</h->     <h- data-h=name_var>esi</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>972</h->
+        <h- data-h=name_inst>jmp</h->     <h- data-h=name_labl_decl>.common_exit</h->
+<h- data-h=name_labl_decl>.subnormal_or_zero:</h->
+        <h- data-h=name_inst>mov</h->     <h- data-h=name_var>esi</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>4294966222</h->
+        <h- data-h=name_inst>jmp</h->     <h- data-h=name_labl_decl>.common_exit</h-></code-block>
+
+<h3 id=impl-frexp><a class=para href=#impl-frexp></a><tt->frexp(float64_t, int*)</tt-></h3>
+
+<code-block><h- data-h=kw>constexpr</h-> <h- data-h=name_type>float64_t</h-> <h- data-h=name>frexp</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>float64_t</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=sym_op>*</h-><h- data-h=name>e</h-><h- data-h=sym_par>)</h->
+<h- data-h=sym_brac>{</h->
+  <h- data-h=kw>auto</h-> <h- data-h=name>xi</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>uint64_t</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_type>int</h-> <h- data-h=name>raw_exp</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_par>(</h-><h- data-h=name>xi</h-> <h- data-h=sym_op>&gt;&gt;</h-> <h- data-h=num>52</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>7ff</h-><h- data-h=sym_punc>;</h->
+
+  <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>raw_exp</h-> <h- data-h=sym_op>==</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>7ff</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>unlikely</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> infinity or NaN</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+  <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>raw_exp</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>unlikely</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> subnormals or zero</h->
+    <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>unlikely</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_brac>{</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> subnormal numbers</h->
+      <h- data-h=name>xi</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>uint64_t</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-> <h- data-h=sym_op>*</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>1</h-><h- data-h=num_dlim>p</h-><h- data-h=num>64</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+      <h- data-h=name>raw_exp</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_par>(</h-><h- data-h=sym_par>(</h-><h- data-h=name>xi</h-> <h- data-h=sym_op>&gt;&gt;</h-> <h- data-h=num>52</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>7ff</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>-</h-> <h- data-h=num>64</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=sym_brac>}</h-> <h- data-h=kw_ctrl>else</h-> <h- data-h=sym_brac>{</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> exactly zero</h->
+      <h- data-h=sym_op>*</h-><h- data-h=name>e</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
+      <h- data-h=kw_ctrl>return</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=sym_brac>}</h->
+  <h- data-h=sym_brac>}</h->
+
+  <h- data-h=sym_op>*</h-><h- data-h=name>e</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>raw_exp</h-> <h- data-h=sym_op>-</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>3fe</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=name>xi</h-> <h- data-h=sym_op>&amp;=</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>800fffffffffffff</h-><h- data-h=num_deco>ull</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> exponent bits = 0</h->
+  <h- data-h=name>xi</h-> <h- data-h=sym_op>|=</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>3fe0000000000000</h-><h- data-h=num_deco>ull</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> exponent bits |= 0x3fe</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>double</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>xi</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p><tt->clang++-24 -O3 -march=x86-64-v3</tt-> output
+(labels adjusted for readability):
+</p>
+<code-block><h- data-h=name_labl_decl>.x1p64:</h->
+        <h- data-h=name_labl_decl>.quad</h->   <h- data-h=num_deco>0x</h-><h- data-h=num>43f0000000000000</h->
+<h- data-h=name_labl_decl>frexp:</h->
+        <h- data-h=name_inst>vmovq</h->   <h- data-h=name_var>rax</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>xmm0</h->
+        <h- data-h=name_inst>mov</h->     <h- data-h=name_var>rcx</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>rax</h->
+        <h- data-h=name_inst>shr</h->     <h- data-h=name_var>rcx</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>52</h->
+        <h- data-h=name_inst>and</h->     <h- data-h=name_var>ecx</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>2047</h->
+        <h- data-h=name_inst>cmp</h->     <h- data-h=name_var>ecx</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>2047</h->
+        <h- data-h=name_inst>je</h->      <h- data-h=name_labl_decl>.inf_or_nan</h->
+        <h- data-h=name_inst>test</h->    <h- data-h=name_var>ecx</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>ecx</h->
+        <h- data-h=name_inst>je</h->      <h- data-h=name_labl_decl>.subnormal_or_zero</h->
+<h- data-h=name_labl_decl>.common_exit:</h->
+        <h- data-h=name_inst>add</h->     <h- data-h=name_var>ecx</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1022</h->
+        <h- data-h=name_inst>mov</h->     <h- data-h=kw_type>dword</h-> <h- data-h=kw_type>ptr</h-> <h- data-h=sym_sqr>[</h-><h- data-h=name_var>rdi</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>ecx</h->
+        <h- data-h=name_inst>movabs</h->  <h- data-h=name_var>rcx</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>-</h-><h- data-h=num>9218868437227405313</h->
+        <h- data-h=name_inst>and</h->     <h- data-h=name_var>rcx</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>rax</h->
+        <h- data-h=name_inst>movabs</h->  <h- data-h=name_var>rax</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>4602678819172646912</h->
+        <h- data-h=name_inst>or</h->      <h- data-h=name_var>rax</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>rcx</h->
+        <h- data-h=name_inst>vmovq</h->   <h- data-h=name_var>xmm0</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>rax</h->
+<h- data-h=name_labl_decl>.inf_or_nan:</h->
+        <h- data-h=name_inst>ret</h->
+<h- data-h=name_labl_decl>.subnormal_or_zero:</h->
+        <h- data-h=name_inst>vxorpd</h->  <h- data-h=name_var>xmm1</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>xmm1</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>xmm1</h->
+        <h- data-h=name_inst>vucomisd</h-> <h- data-h=name_var>xmm0</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>xmm1</h->
+        <h- data-h=name_inst>jne</h->     <h- data-h=name_labl_decl>.subnormal</h->
+        <h- data-h=name_inst>jp</h->      <h- data-h=name_labl_decl>.subnormal</h->
+        <h- data-h=name_inst>mov</h->     <h- data-h=kw_type>dword</h-> <h- data-h=kw_type>ptr</h-> <h- data-h=sym_sqr>[</h-><h- data-h=name_var>rdi</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>0</h->
+        <h- data-h=name_inst>ret</h->
+<h- data-h=name_labl_decl>.subnormal:</h->
+        <h- data-h=name_inst>vmulsd</h->  <h- data-h=name_var>xmm0</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>xmm0</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>qword</h-> <h- data-h=kw_type>ptr</h-> <h- data-h=sym_sqr>[</h-><h- data-h=name_var>rip</h-> <h- data-h=sym_op>+</h-> <h- data-h=name_labl_decl>.x1p64</h-><h- data-h=sym_sqr>]</h->
+        <h- data-h=name_inst>vmovq</h->   <h- data-h=name_var>rax</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>xmm0</h->
+        <h- data-h=name_inst>mov</h->     <h- data-h=name_var>rcx</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>rax</h->
+        <h- data-h=name_inst>shr</h->     <h- data-h=name_var>rcx</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>52</h->
+        <h- data-h=name_inst>and</h->     <h- data-h=name_var>ecx</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>2047</h->
+        <h- data-h=name_inst>add</h->     <h- data-h=name_var>ecx</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>-</h-><h- data-h=num>64</h->
+        <h- data-h=name_inst>jmp</h->     <h- data-h=name_labl_decl>.common_exit</h-></code-block>
+
+<h3 id=impl-frexpq><a class=para href=#impl-frexpq></a><tt->frexpq(float64_t, int*)</tt-></h3>
+
+<code-block><h- data-h=kw>constexpr</h-> <h- data-h=name_type>float64_t</h-> <h- data-h=name>frexpq</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>float64_t</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=sym_op>*</h-><h- data-h=name>e</h-><h- data-h=sym_par>)</h->
+<h- data-h=sym_brac>{</h->
+  <h- data-h=kw>auto</h-> <h- data-h=name>xi</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>uint64_t</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_type>int</h-> <h- data-h=name>raw_exp</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_par>(</h-><h- data-h=name>xi</h-> <h- data-h=sym_op>&gt;&gt;</h-> <h- data-h=num>52</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>7ff</h-><h- data-h=sym_punc>;</h->
+
+  <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>raw_exp</h-> <h- data-h=sym_op>==</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>7ff</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>unlikely</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> infinity or NaN</h->
+    <h- data-h=kw_ctrl>return</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=sym_brac>}</h->
+  <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>raw_exp</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>unlikely</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> subnormals or zero</h->
+    <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>unlikely</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_brac>{</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> subnormal numbers</h->
+      <h- data-h=name>xi</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>uint64_t</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-> <h- data-h=sym_op>*</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>1</h-><h- data-h=num_dlim>p</h-><h- data-h=num>64</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+      <h- data-h=name>raw_exp</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_par>(</h-><h- data-h=sym_par>(</h-><h- data-h=name>xi</h-> <h- data-h=sym_op>&gt;&gt;</h-> <h- data-h=num>52</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>7ff</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>-</h-> <h- data-h=num>64</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=sym_brac>}</h-> <h- data-h=kw_ctrl>else</h-> <h- data-h=sym_brac>{</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> exactly zero</h->
+      <h- data-h=sym_op>*</h-><h- data-h=name>e</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>;</h->
+      <h- data-h=kw_ctrl>return</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=sym_brac>}</h->
+  <h- data-h=sym_brac>}</h->
+
+  <h- data-h=sym_op>*</h-><h- data-h=name>e</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>raw_exp</h-> <h- data-h=sym_op>-</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>433</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=name>xi</h-> <h- data-h=sym_op>&amp;=</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>800fffffffffffff</h-><h- data-h=num_deco>ull</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> exponent bits = 0</h->
+  <h- data-h=name>xi</h-> <h- data-h=sym_op>|=</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>4330000000000000</h-><h- data-h=num_deco>ull</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> exponent bits |= 0x433</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>double</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>xi</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<p><tt->clang++-24 -O3 -march=x86-64-v3</tt-> output
+(labels adjusted for readability):
+</p>
+<code-block><h- data-h=name_labl_decl>.x1p64:</h->
+        <h- data-h=name_labl_decl>.quad</h->   <h- data-h=num_deco>0x</h-><h- data-h=num>43f0000000000000</h->
+<h- data-h=name_labl_decl>frexpq:</h->
+        <h- data-h=name_inst>vmovq</h->   <h- data-h=name_var>rax</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>xmm0</h->
+        <h- data-h=name_inst>mov</h->     <h- data-h=name_var>rcx</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>rax</h->
+        <h- data-h=name_inst>shr</h->     <h- data-h=name_var>rcx</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>52</h->
+        <h- data-h=name_inst>and</h->     <h- data-h=name_var>ecx</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>2047</h->
+        <h- data-h=name_inst>cmp</h->     <h- data-h=name_var>ecx</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>2047</h->
+        <h- data-h=name_inst>je</h->      <h- data-h=name_labl_decl>.LBB1_5</h->
+        <h- data-h=name_inst>test</h->    <h- data-h=name_var>ecx</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>ecx</h->
+        <h- data-h=name_inst>je</h->      <h- data-h=name_labl_decl>.LBB1_2</h->
+<h- data-h=name_labl_decl>.common_exit:</h->
+        <h- data-h=name_inst>add</h->     <h- data-h=name_var>ecx</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1075</h->
+        <h- data-h=name_inst>mov</h->     <h- data-h=kw_type>dword</h-> <h- data-h=kw_type>ptr</h-> <h- data-h=sym_sqr>[</h-><h- data-h=name_var>rdi</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>ecx</h->
+        <h- data-h=name_inst>movabs</h->  <h- data-h=name_var>rcx</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>-</h-><h- data-h=num>9218868437227405313</h->
+        <h- data-h=name_inst>and</h->     <h- data-h=name_var>rcx</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>rax</h->
+        <h- data-h=name_inst>movabs</h->  <h- data-h=name_var>rax</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>4841369599423283200</h->
+        <h- data-h=name_inst>or</h->      <h- data-h=name_var>rax</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>rcx</h->
+        <h- data-h=name_inst>vmovq</h->   <h- data-h=name_var>xmm0</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>rax</h->
+<h- data-h=name_labl_decl>.inf_or_nan:</h->
+        <h- data-h=name_inst>ret</h->
+<h- data-h=name_labl_decl>.subnormal_or_zero:</h->
+        <h- data-h=name_inst>vxorpd</h->  <h- data-h=name_var>xmm1</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>xmm1</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>xmm1</h->
+        <h- data-h=name_inst>vucomisd</h-> <h- data-h=name_var>xmm0</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>xmm1</h->
+        <h- data-h=name_inst>jne</h->     <h- data-h=name_labl_decl>.subnormal</h->
+        <h- data-h=name_inst>jp</h->      <h- data-h=name_labl_decl>.subnormal</h->
+        <h- data-h=name_inst>mov</h->     <h- data-h=kw_type>dword</h-> <h- data-h=kw_type>ptr</h-> <h- data-h=sym_sqr>[</h-><h- data-h=name_var>rdi</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>0</h->
+        <h- data-h=name_inst>ret</h->
+<h- data-h=name_labl_decl>.subnormal:</h->
+        <h- data-h=name_inst>vmulsd</h->  <h- data-h=name_var>xmm0</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>xmm0</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>qword</h-> <h- data-h=kw_type>ptr</h-> <h- data-h=sym_sqr>[</h-><h- data-h=name_var>rip</h-> <h- data-h=sym_op>+</h-> <h- data-h=name_labl_decl>.x1p64</h-><h- data-h=sym_sqr>]</h->
+        <h- data-h=name_inst>vmovq</h->   <h- data-h=name_var>rax</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>xmm0</h->
+        <h- data-h=name_inst>mov</h->     <h- data-h=name_var>rcx</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_var>rax</h->
+        <h- data-h=name_inst>shr</h->     <h- data-h=name_var>rcx</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>52</h->
+        <h- data-h=name_inst>and</h->     <h- data-h=name_var>ecx</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>2047</h->
+        <h- data-h=name_inst>add</h->     <h- data-h=name_var>ecx</h-><h- data-h=sym_punc>,</h-> <h- data-h=sym_op>-</h-><h- data-h=num>64</h->
+        <h- data-h=name_inst>jmp</h->     <h- data-h=name_labl_decl>.common_exit</h-></code-block>
+
+<h2 id=references><a class=para href=#references></a>6. References</h2>
 
 
 <div class=bib><div id=bib-item-N3220 class=bib-item>

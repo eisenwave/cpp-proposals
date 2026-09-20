@@ -188,13 +188,39 @@ The signature of the function is as follows:
 \cppblock{
 template<class F>
 struct float_decomposition {
+private:
+  static constexpr bool \exposid{is-iec559} = numeric_limits<F>::is_iec559;
+public:
+  // radix for the result of exponent()
   static constexpr int radix = numeric_limits<F>::radix;
+
+  // lowest possible result of exponent()
+  static constexpr int min_exponent_result = \exposid{implementation-defined};
+  // greatest possible result of exponent()
+  static constexpr int max_exponent_result = \exposid{implementation-defined};
+  // greatest possible result of exponent() for finite values
+  static constexpr int max_finite_exponent_result = \exposid{implementation-defined};
+
+  // greatest possible result of significand()
+  static constexpr int max_significand = \exposid{implementation-defined};
+  // bit width of greatest possible significand() result,
+  // which may be lower than the width of significand_type
+  static constexpr int significand_width = \exposid{implementation-defined};
+
   using significand_type = \exposid{unsigned integer type};
 
   constexpr int              sign() const noexcept;        // returns -1 or 1
   constexpr bool             sign_bit() const noexcept;    // returns std::signbit(x)
   constexpr int              exponent() const noexcept;    // returns base-radix exponent
   constexpr significand_type significand() const noexcept;
+
+  constexpr bool is_finite() const noexcept requires \exposid{is-iec559};
+  constexpr bool is_inf() const noexcept requires \exposid{is-iec559};
+  constexpr bool is_nan() const noexcept requires \exposid{is-iec559};
+  constexpr bool is_normal() const noexcept requires \exposid{is-iec559};
+  constexpr bool is_signaling() const noexcept requires \exposid{is-iec559};
+  constexpr bool is_subnormal() const noexcept requires \exposid{is-iec559};
+  constexpr bool is_zero() const noexcept;
 };
 
 template<class T>
@@ -314,7 +340,8 @@ The most useful behavior were if
 
 \h3{Why not a \tt{<cmath>} function?}
 
-Another design option would be to go through WG14 and standardize a function
+Another design option would be to go through WG14 and
+standardize a quantized function
 similar to \tcode{frexp}, like:
 
 \cppblock{
@@ -333,6 +360,116 @@ The significand integer can then be obtained via \tcode{static_cast},
 and that conversion would always be exact given an integer
 with enough bits to represent the significand (except for non-finite inputs).
 
+The key reason against this direction
+is that \tcode{frexpq} does only a portion of the work.
+
+\Bex{
+Consider how to actually implement a \tcode{BigInt} constructor
+as in the motivating example with \tcode{BigInt} in \ref("#motivation")
+using the hypothetical \mark{\tcode{std::frexpq}}
+vs. the hypothetical \mark{\tcode{std::decompose_float}}:
+
+\cppblock{
+struct BigInt {
+  // typical BigInt implementations use a sign-and-magnitude representation
+  bool sign;
+  unsigned long* limbs;
+
+  BigInt(std::unsigned_integral auto value, bool sign)
+    : sign(sign), limbs(do_alloc_limb_array(value)) {}
+
+#ifdef USE_FREXPQ
+  BigInt(std::float64_t x) : BigInt(0, false) {
+    if (!std::isfinite(x)) {
+      throw std::invalid_argument("non-finite input");
+    }
+    int e;
+    double xi = \mark{std::frexpq}(x, &e);
+    *this = BigInt(static_cast<std::uint64_t>(std::fabs(xi)), std::signbit(xi));
+    *this <<= e;
+  }
+#else
+  BigInt(std::float64_t x) : BigInt(0, false) {
+    auto d = \mark{std::decompose_float}(x);
+    if (!d.is_finite()) {
+      throw std::invalid_argument("non-finite input");
+    }
+    *this = BigInt(d.significand(), d.sign_bit());
+    *this <<= d.exponent();
+  }
+#endif
+
+  BigInt& operator<<=(int s) {
+    if (s > 0) do_shift_left(s);
+    if (s < 0) do_shift_right(-s);
+    return *this;
+  }
+  // ...
+};
+}
+
+The key observation is that \tcode{std::decompose_float} does the work
+of four functions simultaneously:
+\ul{
+  \li{
+    \tcode{std::frexpq}, by yielding the significand as an integer
+    as well as the corresponding base-2 exponent;
+  }
+  \li{
+    \tcode{std::isfinite}, by identifying infinities and NaNs by their exponent;
+  }
+  \li{
+    \tcode{std::fabs}, by splitting the sign bit from the significand; and
+  }
+  \li{
+    \tcode{std::signbit}, by extracting the sign bit separately.
+  }
+}
+}
+
+Miraculously, \tcode{std::decompose_float}
+is also a potentially cheaper operation than \tcode{std::frexpq}
+despite being vastly more useful.
+Specifically, \tcode{std::frexpq}
+would be required to normalize subnormal normals
+rather than merely adjusting the exponent like for normal numbers.
+By comparison,
+\tcode{std::decompose_float}
+can reinterpret the significand of both zeros and subnormal numbers directly.
+
+In summary, \tcode{std::decompose_float} is the better solution
+for decomposing floating-point numbers because
+\ul{
+  \li{
+    it provides a cleaner interface;
+  }
+  \li{
+    it is a swiss-army knife that tends to solve several problems simultaneously,
+    like computing \tcode{std::frexpq}, \tcode{std::fabs}, and
+    various boolean tests simultaneously;
+  }
+  \li{
+    it does not waste any work,
+    whereas \tcode{std::frexpq} needs to test whether a number is subnormal or infinity
+    but stores an unspecified value in \tcode{*e} for such inputs
+    (perhaps it could be defined not to waste this work,
+    but \tcode{std::frexp} stores an unspecified value,
+    so \tcode{std::frexpq} should presumably behave the same);
+  }
+  \li{
+    it is easy to implement a variety of operations on top of \tcode{std::decompose_float},
+    but not on top of \tcode{std::frexpq};
+    for example, \tcode{std::frexpq}
+    does not seem like it should be involved in \tcode{std::signbit},
+    but \tcode{std::signbit(x)} is \tcode{std::decompose_float(x).sign_bit()}; and
+  }
+  \li{
+    it has cheaper handling of subnormals
+    because it can reinterpret the significand directly,
+    suggesting that it is a lower-level or more elementary operation.
+  }
+}
+
 \h2{Wording}
 
 The changes are relative to \ref("N5054").
@@ -343,11 +480,484 @@ Add a feature-test macro to \eelis{version.syn} as follows:
 
 \Bins{
 \itemdecl{
-#define __cpp_my_new_feature 20XXXXL // \serif{freestanding, also in \tt{<header>}}
+#define __cpp_lib_decompose_float 20XXXXL // \serif{freestanding, also in \tt{<header>}}
 }
 }
 
-A \tcode{std::vector} is a \exposid{std-vector}.
+\Bins{
+\cowel_html_element("h3"){Floating-point decomposition \stable_ref{float.decompose}}
+
+¶
+Class template \tcode{float_decomposition}
+stores information about individual components of
+an \dfn{underlying value} of a floating-point type \tcode{T}.
+
+\itemdecl{
+template<class T> struct float_decomposition {
+  // [float.decompose.properties]
+  static constexpr int radix = numeric_limits<T>::radix;
+  static constexpr int min_exponent_result;
+  static constexpr int max_exponent_result;
+  static constexpr int max_finite_exponent_result;
+
+  using significand_type = \exposid{implementation-defined};
+  static constexpr significand_type max_significand;
+  static constexpr int significand_width = bit_width(max_significand);
+
+  // [float.decompose.accessors]
+  constexpr int              sign() const noexcept;
+  constexpr int              exponent() const noexcept;
+  constexpr significand_type significand() const noexcept;
+
+  // [float.decompose.boolean]
+  constexpr bool sign_bit() const noexcept;
+  constexpr bool is_zero() const noexcept;
+  constexpr bool is_finite() const noexcept;    // optional
+  constexpr bool is_inf() const noexcept;       // optional
+  constexpr bool is_nan() const noexcept;       // optional
+  constexpr bool is_normal() const noexcept;    // optional
+  constexpr bool is_signaling() const noexcept; // optional
+  constexpr bool is_subnormal() const noexcept; // optional
+};
+}
+}
+
+\Bins{
+\cowel_html_element("h3"){Properties \stable_ref{float.decompose.properties}}
+
+\itemdecl{
+static constexpr int min_exponent_result;
+}
+
+\itemdescr{
+¶
+\returns
+The lowest possible result of \tcode{exponent()}.
+}
+
+\itemdecl{
+static constexpr int max_exponent_result;
+}
+
+\itemdescr{
+¶
+\returns
+The greatest possible result of \tcode{exponent()}.
+}
+
+\itemdecl{
+static constexpr int max_finite_exponent_result;
+}
+
+\itemdescr{
+¶
+\returns
+The greatest possible result of \tcode{exponent()}
+if the underlying value is finite.
+}
+
+\itemdecl{
+using significand_type = \exposid{implementation-defined};
+}
+
+\itemdescr{
+¶
+An implementation-defined unsigned integer type\iref{basic.fundamental}
+capable of representing all possible results of \tcode{significand()}.
+A specialization of \tcode{float_decomposition<T>} is ill-formed
+if no such integer type exists.
+}
+
+\itemdecl{
+static constexpr significand_type max_significand;
+}
+
+\itemdescr{
+¶
+The greatest possible result of \tcode{significand()}.
+
+\note{
+This includes results of \tcode{significand()}
+where implicit bits have been concatenated to significand bits present
+in the value representation of an underlying value.
+If \tcode{T} is an ISO/IEC 60559 binary interchange floating-point type,
+\tcode{significand_width} equals \tcode{numeric_limits<T>::digits + 1}.
+}
+}
+}
+
+\Bins{
+\cowel_html_element("h3"){Properties \stable_ref{float.decompose.accessors}}
+
+\itemdecl{
+constexpr int sign() const noexcept;
+}
+
+\itemdescr{
+¶
+\returns
+\tcode{sign_bit() ? -1 : 1}.
+}
+
+\itemdecl{
+constexpr int exponent() const noexcept;
+constexpr significand_type significand() const noexcept;
+}
+
+\itemdescr{
+¶
+Let \math{\mi{x}} be the underlying value.
+Let \math{\mi{b}} be \tcode{radix}.
+
+¶
+\effects
+\ul{
+  \li{
+    If \math{\mi{x}} is finite,
+    these functions return an exponent \math{\mi{e}} and
+    a significand \math{\mi{m}} respectively, such that
+    \math{
+    \mrow{\mi{x}\mo{=}\mi{m}\mo{×}\msup{\mi{b}\mi{e}}}
+    }.
+  }
+  \li{
+    Otherwise, if \tcode{T} is an ISO/IEC 60559 binary interchange floating-point type,
+    \tcode{exponent()} returns \tcode{max_exponent_result} and
+    \tcode{significand()} returns the significand bits of \math{\mi{x}},
+    reinterpreted as an integer.
+    \br\note{
+    If \math{\mi{x}} is \math{\mrow{\mo{±}\mi{∞}}},
+    \tcode{significand()} returns zero.
+    If \math{\mi{x}} is NaN,
+    \tcode{significand()} returns the NaN payload.
+    }
+  }
+  \li{
+    Otherwise, the result of \tcode{exponent()} and
+    \tcode{significand()} is derived from \math{\mi{x}}
+    in an implementation-defined manner.
+  }
+}
+}
+}
+
+\Bins{
+\cowel_html_element("h3"){Properties \stable_ref{float.decompose.boolean}}
+
+Of the following member functions,
+\tcode{sign_bit} and \tcode{is_zero} are always present;
+the others are present if \tcode{numeric_limits<T>::is_iec559} is \tcode{true}
+and optional otherwise.
+
+\itemdecl{
+constexpr bool sign_bit() const noexcept;
+constexpr bool is_zero() const noexcept;
+constexpr bool is_finite() const noexcept;
+constexpr bool is_inf() const noexcept;
+constexpr bool is_nan() const noexcept;
+constexpr bool is_normal() const noexcept;
+constexpr bool is_signaling() const noexcept;
+constexpr bool is_subnormal() const noexcept;
+}
+
+¶
+\returns
+\tcode{\exposid{test-fun}(\math{\mi{x}})}, where
+\tcode{\exposid{test-fun}} is the corresponding function in \header{cmath}
+with the underscore in the name removed, and
+\math{\mi{x}} is the underlying value.
+}
+
+\Bins{
+\cowel_html_element("h3"){Properties \stable_ref{float.decompose.function}}
+
+\itemdecl{
+template<class T>
+  constexpr float_decomposition<T> decompose_float(const T& x) noexcept;
+}
+
+\itemdescr{
+¶
+\returns
+A \tcode{float_decomposition<T>} object whose underlying value is \tcode{x}.
+
+¶
+\remarks
+No floating-point exceptions are raised, and
+no inexact operation takes place.
+}
+}
+
+\h2(show_number=false){Appendix \'EM DASH' Sample implementations}
+
+\h3(
+  id="impl-decompose-float",
+  show_number=false,
+){\tt{decompose_float(float64_t)}}
+
+\cppblock{
+struct f64_decomposition {
+  static constexpr int radix = 2;
+  static constexpr int min_exponent_result = -1074;
+  static constexpr int max_exponent_result = 972;
+  static constexpr int max_finite_exponent_result = 971;
+  static constexpr int max_significand = (1ull << 53) - 1;
+  static constexpr int significand_width = 53;
+  using significand_type = uint64_t;
+
+  uint64_t m;
+  int e;
+  bool s;
+
+  constexpr int              sign() const noexcept { return s ? -1 : 1; }
+  constexpr bool             sign_bit() const noexcept { return s; }
+  constexpr int              exponent() const noexcept { return e; }
+  constexpr significand_type significand() const noexcept { return m; }
+
+  constexpr bool is_finite() const noexcept {
+    return e != max_exponent_result;
+  }
+  constexpr bool is_inf() const noexcept {
+    return !is_finite() && m == 0;
+  }
+  constexpr bool is_nan() const noexcept {
+    return !is_finite() && m != 0;
+  }
+  constexpr bool is_normal() const noexcept {
+    return e != max_exponent_result && e != min_exponent_result;
+  }
+  constexpr bool is_signaling() const noexcept {
+    return is_nan() && m & (1ull << 51) == 0;
+  }
+  constexpr bool is_subnormal() const noexcept {
+    return e == min_exponent_result;
+  }
+  constexpr bool is_zero() const noexcept {
+    return e == min_exponent_result && m == 0;
+  }
+};
+
+constexpr f64_decomposition decompose_float(float64_t x) {
+  // exponent bias + significand bits
+  constexpr int exponent_bits = 11;
+  constexpr int significand_bits = 52;
+  constexpr int exponent_offset = 1023 + significand_bits;
+  constexpr int min_exponent = -1022 - significand_bits;
+
+  constexpr uint64_t significand_mask = (1ull << significand_bits) - 1;
+  constexpr uint64_t implicit_significand_bit = 1ull << significand_bits;
+  constexpr int exponent_shifted_mask = (1 << exponent_bits) - 1;
+
+  auto xi = std::bit_cast<uint64_t>(x);
+  int raw_exp = (xi >> significand_bits) & exponent_shifted_mask;
+  bool signbit = (xi >> (exponent_bits + significand_bits)) != 0;
+  uint64_t raw_m = xi & significand_mask;
+
+  if (raw_exp == exponent_shifted_mask) [[unlikely]] {
+    // infinity and NaN
+    return { raw_m, raw_exp - exponent_offset, signbit };
+  }
+  if (raw_exp == 0) [[unlikely]] {
+    // When the biased exponent is zero,
+    // the number is either subnormal or zero.
+    // Either way, there is no implicit leading 1 before the significand,
+    // so the raw significand can be reinterpreted as an integer.
+    return { raw_m, min_exponent, signbit };
+  }
+  return {
+    raw_m | implicit_significand_bit,
+    raw_exp - exponent_offset,
+    signbit,
+  };
+}
+}
+
+\tt{clang++-24 -O3 -march=x86-64-v3} output
+(labels adjusted for readability):
+
+\codeblock("nasm"){
+decompose_float:
+        mov     edx, 4294966222
+        vmovq   rcx, xmm0
+        mov     rsi, rcx
+        shr     rsi, 52
+        and     esi, 2047
+        mov     al, 52
+        bzhi    rax, rcx, rax
+        cmp     esi, 2047
+        je      .inf_or_nan
+        test    esi, esi
+        je      .subnormal_or_zero
+        movabs  rdi, 4503599627370496
+        or      rax, rdi
+        add     esi, -1075
+.common_exit:
+        shr     rcx, 31
+        add     rdx, 1074
+        and     rdx, rcx
+        or      rdx, rsi
+        ret
+.inf_or_nan:
+        mov     esi, 972
+        jmp     .common_exit
+.subnormal_or_zero:
+        mov     esi, 4294966222
+        jmp     .common_exit
+}
+
+\h3(
+  id="impl-frexp",
+  show_number=false,
+){\tt{frexp(float64_t, int*)}}
+
+\cppblock{
+constexpr float64_t frexp(float64_t x, int *e)
+{
+  auto xi = std::bit_cast<uint64_t>(x);
+  int raw_exp = (xi >> 52) & 0x7ff;
+
+  if (raw_exp == 0x7ff) [[unlikely]] {
+    // infinity or NaN
+    return x;
+  }
+  if (raw_exp == 0) [[unlikely]] {
+    // subnormals or zero
+    if (x) [[unlikely]] {
+      // subnormal numbers
+      xi = std::bit_cast<uint64_t>(x * 0x1p64);
+      raw_exp = ((xi >> 52) & 0x7ff) - 64;
+    } else {
+      // exactly zero
+      *e = 0;
+      return x;
+    }
+  }
+
+  *e = raw_exp - 0x3fe;
+  xi &= 0x800fffffffffffffull; // exponent bits = 0
+  xi |= 0x3fe0000000000000ull; // exponent bits |= 0x3fe
+  return std::bit_cast<double>(xi);
+}
+}
+
+\tt{clang++-24 -O3 -march=x86-64-v3} output
+(labels adjusted for readability):
+
+\codeblock("nasm"){
+.x1p64:
+        .quad   0x43f0000000000000
+frexp:
+        vmovq   rax, xmm0
+        mov     rcx, rax
+        shr     rcx, 52
+        and     ecx, 2047
+        cmp     ecx, 2047
+        je      .inf_or_nan
+        test    ecx, ecx
+        je      .subnormal_or_zero
+.common_exit:
+        add     ecx, -1022
+        mov     dword ptr [rdi], ecx
+        movabs  rcx, -9218868437227405313
+        and     rcx, rax
+        movabs  rax, 4602678819172646912
+        or      rax, rcx
+        vmovq   xmm0, rax
+.inf_or_nan:
+        ret
+.subnormal_or_zero:
+        vxorpd  xmm1, xmm1, xmm1
+        vucomisd xmm0, xmm1
+        jne     .subnormal
+        jp      .subnormal
+        mov     dword ptr [rdi], 0
+        ret
+.subnormal:
+        vmulsd  xmm0, xmm0, qword ptr [rip + .x1p64]
+        vmovq   rax, xmm0
+        mov     rcx, rax
+        shr     rcx, 52
+        and     ecx, 2047
+        add     ecx, -64
+        jmp     .common_exit
+}
+
+\h3(
+  id="impl-frexpq",
+  show_number=false,
+){\tt{frexpq(float64_t, int*)}}
+
+\cppblock{
+constexpr float64_t frexpq(float64_t x, int *e)
+{
+  auto xi = std::bit_cast<uint64_t>(x);
+  int raw_exp = (xi >> 52) & 0x7ff;
+
+  if (raw_exp == 0x7ff) [[unlikely]] {
+    // infinity or NaN
+    return x;
+  }
+  if (raw_exp == 0) [[unlikely]] {
+    // subnormals or zero
+    if (x) [[unlikely]] {
+      // subnormal numbers
+      xi = std::bit_cast<uint64_t>(x * 0x1p64);
+      raw_exp = ((xi >> 52) & 0x7ff) - 64;
+    } else {
+      // exactly zero
+      *e = 0;
+      return x;
+    }
+  }
+
+  *e = raw_exp - 0x433;
+  xi &= 0x800fffffffffffffull; // exponent bits = 0
+  xi |= 0x4330000000000000ull; // exponent bits |= 0x433
+  return std::bit_cast<double>(xi);
+}
+}
+
+\tt{clang++-24 -O3 -march=x86-64-v3} output
+(labels adjusted for readability):
+
+\codeblock("nasm"){
+.x1p64:
+        .quad   0x43f0000000000000
+frexpq:
+        vmovq   rax, xmm0
+        mov     rcx, rax
+        shr     rcx, 52
+        and     ecx, 2047
+        cmp     ecx, 2047
+        je      .LBB1_5
+        test    ecx, ecx
+        je      .LBB1_2
+.common_exit:
+        add     ecx, -1075
+        mov     dword ptr [rdi], ecx
+        movabs  rcx, -9218868437227405313
+        and     rcx, rax
+        movabs  rax, 4841369599423283200
+        or      rax, rcx
+        vmovq   xmm0, rax
+.inf_or_nan:
+        ret
+.subnormal_or_zero:
+        vxorpd  xmm1, xmm1, xmm1
+        vucomisd xmm0, xmm1
+        jne     .subnormal
+        jp      .subnormal
+        mov     dword ptr [rdi], 0
+        ret
+.subnormal:
+        vmulsd  xmm0, xmm0, qword ptr [rip + .x1p64]
+        vmovq   rax, xmm0
+        mov     rcx, rax
+        shr     rcx, 52
+        and     ecx, 2047
+        add     ecx, -64
+        jmp     .common_exit
+}
 
 \h2{References}
 
