@@ -1580,7 +1580,7 @@ if (theme !== null) {
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/DXXXXR0>DXXXXR0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-09-18</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2026-09-20</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1610,6 +1610,16 @@ if (theme !== null) {
 <a href=#wording><h2>Wording</h2></a>
 <div class=toc-num data-level=3>4.1</div>
 <a href=#version%2esyn><h3>[version.syn]</h3></a>
+<div class=toc-num data-level=3>4.2</div>
+<a href=#float%2edecompose><h3>[float.decompose]</h3></a>
+<div class=toc-num data-level=3>4.3</div>
+<a href=#float%2edecompose%2eproperties><h3>[float.decompose.properties]</h3></a>
+<div class=toc-num data-level=3>4.4</div>
+<a href=#float%2edecompose%2eaccessors><h3>[float.decompose.accessors]</h3></a>
+<div class=toc-num data-level=3>4.5</div>
+<a href=#float%2edecompose%2eboolean><h3>[float.decompose.boolean]</h3></a>
+<div class=toc-num data-level=3>4.6</div>
+<a href=#float%2edecompose%2efunction><h3>[float.decompose.function]</h3></a>
 <div class=toc-num data-level=2>5</div>
 <a href=#appendix--sample-implementations><h2>Appendix — Sample implementations</h2></a>
 <div class=toc-num data-level=3>5.1</div>
@@ -2029,12 +2039,12 @@ can reinterpret the significand of both zeros and subnormal numbers directly.
 for decomposing floating-point numbers because
 </p><ul>
   <li>
-    it provides a cleaner interface;
+    it provides a cleaner interface; and
   </li>
   <li>
     it is a swiss-army knife that tends to solve several problems simultaneously,
     like computing <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexpq</h-></code>, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>fabs</h-></code>, and
-    various boolean tests simultaneously;
+    various boolean tests simultaneously; and
   </li>
   <li>
     it does not waste any work,
@@ -2042,7 +2052,7 @@ for decomposing floating-point numbers because
     but stores an unspecified value in <code><h- data-h=sym_op>*</h-><h- data-h=name>e</h-></code> for such inputs
     (perhaps it could be defined not to waste this work,
     but <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexp</h-></code> stores an unspecified value,
-    so <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexpq</h-></code> should presumably behave the same);
+    so <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexpq</h-></code> should presumably behave the same); and
   </li>
   <li>
     it is easy to implement a variety of operations on top of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>decompose_float</h-></code>,
@@ -2054,7 +2064,12 @@ for decomposing floating-point numbers because
   <li>
     it has cheaper handling of subnormals
     because it can reinterpret the significand directly,
-    suggesting that it is a lower-level or more elementary operation.
+    suggesting that it is a lower-level or more elementary operation; and
+  </li>
+  <li>
+    it is safer: since <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexpq</h-></code> requires the user to perform conversion
+    to an integer type themselves, it presents a safety hazard
+    if a user chooses an insufficient type and the conversion results in UB.
   </li>
 </ul>
 
@@ -2070,41 +2085,78 @@ for decomposing floating-point numbers because
 <code-block class=borderless><h- data-h=name_mac>#define __cpp_lib_decompose_float 20XXXXL </h-><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding, also in </h-><tt-><h- data-h=cmt>&lt;header&gt;</h-></tt-></f-serif></code-block>
 </ins-block>
 
+
+
+<h3 id=float.decompose><a class=para href=#float%2edecompose></a>[float.decompose]</h3>
+
 <ins-block>
-<h3>Floating-point decomposition <span class=stable-ref>[float.decompose]</span></h3>
+<h2>Floating-point decomposition <span class=stable-ref>[float.decompose]</span></h2>
 
 <p>¶
-Class template <code><h- data-h=name>float_decomposition</h-></code>
-stores information about individual components of
-an <dfn>underlying value</dfn> of a floating-point type <code><h- data-h=name>T</h-></code>.
+<code><h- data-h=name>float_decomposition</h-></code> objects
+store information about individual components of
+the value representation of an object of floating-point type <code><h- data-h=name>T</h-></code>.
+This value representation is called the <dfn>underlying value</dfn>
+of the <code><h- data-h=name>float_decomposition</h-></code> object.
+Copying and assigning such objects copies and assigns their underlying value,
+respectively.
+</p>
+<p>¶
+A specialization of <code><h- data-h=name>float_decomposition</h-></code>
+exists for every cv-unqualified floating-point type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>).
+Each such specialization is a standard-layout, trivially copyable class type.
+</p>
+<p>¶
+A program is ill-formed
+if it defines a specialization of <code><h- data-h=name>float_decomposition</h-></code>
+or instantiates a specialization <code><h- data-h=name>float_decomposition</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code>
+where <code><h- data-h=name>T</h-></code> is not a cv-unqualified floating-point type.
+</p>
+<p>¶
+Throughout this subclause,
+requirements specific to
+ISO/IEC 60559 binary interchange floating-point types,
+also apply to <code><h- data-h=name_type>bfloat16_t</h-></code>, if provided.
 </p>
 <code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>float_decomposition</h-> <h- data-h=sym_brac>{</h->
-  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> [float.decompose.properties]</h->
+  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> </h-><a href=#float.decompose.properties>[float.decompose.properties]</a><h- data-h=cmt>, properties</h-></f-serif>
+  <h- data-h=kw>using</h-> <h- data-h=name>value_type</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>T</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>using</h-> <h- data-h=name>significand_type</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>see below</h-></i><h- data-h=sym_punc>;</h->
+
   <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>radix</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>radix</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>min_exponent_result</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>max_exponent_result</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>max_finite_exponent_result</h-><h- data-h=sym_punc>;</h->
 
-  <h- data-h=kw>using</h-> <h- data-h=name>significand_type</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>implementation-defined</h-></i><h- data-h=sym_punc>;</h->
   <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name>significand_type</h-> <h- data-h=name>max_significand</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>significand_width</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>bit_width</h-><h- data-h=sym_par>(</h-><h- data-h=name>max_significand</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
-  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> [float.decompose.accessors]</h->
+  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> constructors</h-></f-serif>
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>float_decomposition</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_punc>:</h-> <h- data-h=name>float_decomposition</h-><h- data-h=sym_par>(</h-><h- data-h=name>compose_float</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h->
+
+  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> </h-><a href=#float.decompose.accessors>[float.decompose.accessors]</a><h- data-h=cmt>, accessors</h-></f-serif>
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h->              <h- data-h=name>sign</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h->              <h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=name>significand_type</h-> <h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw>explicit</h-> <h- data-h=kw>operator</h-> <h- data-h=name>value_type</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> optional</h-></f-serif>
 
-  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> [float.decompose.boolean]</h->
+  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> </h-><a href=#float.decompose.boolean>[float.decompose.boolean]</a><h- data-h=cmt>, boolean properties</h-></f-serif>
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>sign_bit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_zero</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_finite</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_inf</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->       <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_nan</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->       <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_normal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_signaling</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_subnormal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
-<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h-></code-block>
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_finite</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->               <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> optional</h-></f-serif>
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_inf</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->                  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> optional</h-></f-serif>
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_nan</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->                  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> optional</h-></f-serif>
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_normal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->               <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> optional</h-></f-serif>
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_signaling</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->            <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> optional</h-></f-serif>
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_subnormal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->            <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> optional</h-></f-serif>
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> </h-><a href=#float.decompose.function>[float.decompose.function]</a><h- data-h=cmt>, function </h-><code><h- data-h=name><h- data-h=cmt>decompose_float</h-></h-></code></f-serif>
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>float_decomposition</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>decompose_float</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
 </ins-block>
+
+<h3 id=float.decompose.properties><a class=para href=#float%2edecompose%2eproperties></a>[float.decompose.properties]</h3>
 
 <ins-block>
 <h3>Properties <span class=stable-ref>[float.decompose.properties]</span></h3>
@@ -2160,9 +2212,16 @@ If <code><h- data-h=name>T</h-></code> is an ISO/IEC 60559 binary interchange fl
 </p></div>
 </ins-block>
 
-<ins-block>
-<h3>Properties <span class=stable-ref>[float.decompose.accessors]</span></h3>
+<h3 id=float.decompose.accessors><a class=para href=#float%2edecompose%2eaccessors></a>[float.decompose.accessors]</h3>
 
+<ins-block>
+<h3>Accessors <span class=stable-ref>[float.decompose.accessors]</span></h3>
+
+<p>¶
+Function <code><h- data-h=kw>operator</h-> <h- data-h=name>value_type</h-></code>
+is provided if <code><h- data-h=name>T</h-></code> is an ISO/IEC 60559 binary interchange floating-point type.
+Otherwise, it is conditionally supported.
+</p>
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>sign</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
@@ -2184,23 +2243,38 @@ Let <math display=inline><mi>b</mi></math> be <code><h- data-h=name>radix</h-></
 </p><ul>
   <li>
     If <math display=inline><mi>x</mi></math> is finite,
-    these functions return an exponent <math display=inline><mi>e</mi></math> and
-    a significand <math display=inline><mi>m</mi></math> respectively, such that
+    <code><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> returns <math display=inline><mi>e</mi></math> and
+    <code><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> returns <math display=inline><mi>m</mi></math> respectively, such that
     <math display=inline>
-    <mrow><mi>x</mi><mo>=</mo><mi>m</mi><mo>×</mo><msup><mi>b</mi><mi>e</mi></msup></mrow>
+    <mrow>
+      <mo form=prefix fence=true stretchy=false rspace=0>|</mo>
+      <mi>x</mi>
+      <mo form=suffix fence=true stretchy=false lspace=0>|</mo>
+      <mo>=</mo>
+      <mi>m</mi>
+      <mo>×</mo>
+      <msup><mi>b</mi><mi>e</mi></msup></mrow>
     </math>.
+    Which combination of <math display=inline><mi>e</mi></math> and <math display=inline><mi>m</mi></math> is chosen
+    is a property of the implementation,
+    except that <math display=inline><mi>m</mi></math> is chosen to be representable in type <code><h- data-h=name>T</h-></code>.
+    <br/>[<i>Note</i>: 
+    Ignoring <q>subnormal flushing</q>,
+    <math display=inline><mi>x</mi></math> equals <code><h- data-h=name>copysign</h-><h- data-h=sym_par>(</h-><h- data-h=name>scalbn</h-><h- data-h=sym_par>(</h-><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-><h- data-h=sym_par>(</h-><h- data-h=name>sign</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code>.
+     — <i>end note</i>]
   </li>
   <li>
-    Otherwise, if <code><h- data-h=name>T</h-></code> is an ISO/IEC 60559 binary interchange floating-point type,
+    Otherwise, if <code><h- data-h=name>T</h-></code> is an ISO/IEC 60559 binary interchange floating-point type
+    and <math display=inline><mi>x</mi></math> is negative or positive infinity,
     <code><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> returns <code><h- data-h=name>max_exponent_result</h-></code> and
-    <code><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> returns the significand bits of <math display=inline><mi>x</mi></math>,
-    reinterpreted as an integer.
-    <br/>[<i>Note</i>: 
-    If <math display=inline><mi>x</mi></math> is <math display=inline><mrow><mo>±</mo><mi>∞</mi></mrow></math>,
     <code><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> returns zero.
-    If <math display=inline><mi>x</mi></math> is NaN,
-    <code><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> returns the NaN payload.
-     — <i>end note</i>]
+  </li>
+  <li>
+    Otherwise, if <code><h- data-h=name>T</h-></code> is an ISO/IEC 60559 binary interchange floating-point type
+    and <math display=inline><mi>x</mi></math> is NaN,
+    <code><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> returns <code><h- data-h=name>max_exponent_result</h-></code> and
+    <code><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> returns the NaN payload of <math display=inline><mi>x</mi></math>,
+    reinterpreted as an integer.
   </li>
   <li>
     Otherwise, the result of <code><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> and
@@ -2208,16 +2282,55 @@ Let <math display=inline><mi>b</mi></math> be <code><h- data-h=name>radix</h-></
     in an implementation-defined manner.
   </li>
 </ul>
-</div>
+
+<p>¶
+<i>Remarks</i>:
+If two <code><h- data-h=name>float_decomposition</h-></code> objects have the same underlying value,
+their respective <code><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> and <code><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> results are equal.
+</p>
+<p>¶
+<i>Recommended practice</i>:
+If <code><h- data-h=name>T</h-></code> is not an ISO/IEC 60559 binary interchange floating-point type
+but has similar representation,
+implementations should return the same results
+as if <code><h- data-h=name>T</h-></code> were an ISO/IEC 60559 binary interchange floating-point type.
+</p></div>
+
+<code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw>explicit</h-> <h- data-h=kw>operator</h-> <h- data-h=name>value_type</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p>¶
+<i>Returns</i>:
+The underlying value.
+</p>
+<p>¶
+<i>Remarks</i>:
+Floating-point exceptions may be raised,
+the conversion may be inexact,
+and the NaN payload may not be preserved.
+<code><h- data-h=name>signbit</h-><h- data-h=sym_par>(</h-><h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>value_type</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code> equals <code><h- data-h=name>sign_bit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>.
+</p></div>
 </ins-block>
 
-<ins-block>
-<h3>Properties <span class=stable-ref>[float.decompose.boolean]</span></h3>
+<note-block class=edit><p><intro-></intro-> 
+The <i>Recommended practice</i>: paragraph addresses the case of x87 80-bit <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>,
+which is not an ISO/IEC 60559 binary interchange floating-point type,
+but is very similar to such a format;
+it provides infinities and NaNs,
+but has an explicit integer significand bit.
+</p></note-block>
 
-<p>Of the following member functions,
+<h3 id=float.decompose.boolean><a class=para href=#float%2edecompose%2eboolean></a>[float.decompose.boolean]</h3>
+
+
+<ins-block>
+<h3>Boolean accessors <span class=stable-ref>[float.decompose.boolean]</span></h3>
+
+<p>¶
+Of the following member functions,
 <code><h- data-h=name>sign_bit</h-></code> and <code><h- data-h=name>is_zero</h-></code> are always present;
 the others are present if <code><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_iec559</h-></code> is <code><h- data-h=bool>true</h-></code>
-and optional otherwise.
+and conditionally supported otherwise.
 </p>
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>sign_bit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
 <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_zero</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
@@ -2236,13 +2349,19 @@ with the underscore in the name removed, and
 <math display=inline><mi>x</mi></math> is the underlying value.
 </p></ins-block>
 
+<h3 id=float.decompose.function><a class=para href=#float%2edecompose%2efunction></a>[float.decompose.function]</h3>
+
 <ins-block>
-<h3>Properties <span class=stable-ref>[float.decompose.function]</span></h3>
+<h3>Function <code><h- data-h=name>decompose_float</h-></code> <span class=stable-ref>[float.decompose.function]</span></h3>
 
 <code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=name>float_decomposition</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>decompose_float</h-><h- data-h=sym_par>(</h-><h- data-h=kw>const</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
+<p>¶
+<i>Constraints</i>:
+<code><h- data-h=name>T</h-></code> is a cv-unqualified floating-point type.
+</p>
 <p>¶
 <i>Returns</i>:
 A <code><h- data-h=name>float_decomposition</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> object whose underlying value is <code><h- data-h=name>x</h-></code>.

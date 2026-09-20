@@ -6,7 +6,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{DXXXXR0}}
-  \dt{Date:}            \dd{\tt{2026-09-18}}
+  \dt{Date:}            \dd{\tt{2026-09-20}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -441,12 +441,12 @@ In summary, \tcode{std::decompose_float} is the better solution
 for decomposing floating-point numbers because
 \ul{
   \li{
-    it provides a cleaner interface;
+    it provides a cleaner interface; and
   }
   \li{
     it is a swiss-army knife that tends to solve several problems simultaneously,
     like computing \tcode{std::frexpq}, \tcode{std::fabs}, and
-    various boolean tests simultaneously;
+    various boolean tests simultaneously; and
   }
   \li{
     it does not waste any work,
@@ -454,7 +454,7 @@ for decomposing floating-point numbers because
     but stores an unspecified value in \tcode{*e} for such inputs
     (perhaps it could be defined not to waste this work,
     but \tcode{std::frexp} stores an unspecified value,
-    so \tcode{std::frexpq} should presumably behave the same);
+    so \tcode{std::frexpq} should presumably behave the same); and
   }
   \li{
     it is easy to implement a variety of operations on top of \tcode{std::decompose_float},
@@ -466,7 +466,12 @@ for decomposing floating-point numbers because
   \li{
     it has cheaper handling of subnormals
     because it can reinterpret the significand directly,
-    suggesting that it is a lower-level or more elementary operation.
+    suggesting that it is a lower-level or more elementary operation; and
+  }
+  \li{
+    it is safer: since \tcode{std::frexpq} requires the user to perform conversion
+    to an integer type themselves, it presents a safety hazard
+    if a user chooses an insufficient type and the conversion results in UB.
   }
 }
 
@@ -484,43 +489,80 @@ Add a feature-test macro to \eelis{version.syn} as follows:
 }
 }
 
+\cowel_macro("internal_ref"){\cowel_to_html{\ref("#\cowel_put"){[\cowel_put]}}}
+
+\h3(show_number=false){[float.decompose]}
+
 \Bins{
-\cowel_html_element("h3"){Floating-point decomposition \stable_ref{float.decompose}}
+\cowel_html_element("h2"){Floating-point decomposition \stable_ref{float.decompose}}
 
 ¶
-Class template \tcode{float_decomposition}
-stores information about individual components of
-an \dfn{underlying value} of a floating-point type \tcode{T}.
+\tcode{float_decomposition} objects
+store information about individual components of
+the value representation of an object of floating-point type \tcode{T}.
+This value representation is called the \dfn{underlying value}
+of the \tcode{float_decomposition} object.
+Copying and assigning such objects copies and assigns their underlying value,
+respectively.
+
+¶
+A specialization of \tcode{float_decomposition}
+exists for every cv-unqualified floating-point type\iref{basic.fundamental}.
+Each such specialization is a standard-layout, trivially copyable class type.
+
+¶
+A program is ill-formed
+if it defines a specialization of \tcode{float_decomposition}
+or instantiates a specialization \tcode{float_decomposition<T>}
+where \tcode{T} is not a cv-unqualified floating-point type.
+
+¶
+Throughout this subclause,
+requirements specific to
+ISO/IEC 60559 binary interchange floating-point types,
+also apply to \tcode{bfloat16_t}, if provided.
 
 \itemdecl{
 template<class T> struct float_decomposition {
-  // [float.decompose.properties]
+  //\serif{ \internal_ref{float.decompose.properties}, properties}
+  using value_type = T;
+  using significand_type = \seebelow;
+
   static constexpr int radix = numeric_limits<T>::radix;
   static constexpr int min_exponent_result;
   static constexpr int max_exponent_result;
   static constexpr int max_finite_exponent_result;
 
-  using significand_type = \exposid{implementation-defined};
   static constexpr significand_type max_significand;
   static constexpr int significand_width = bit_width(max_significand);
 
-  // [float.decompose.accessors]
+  //\serif{ constructors}
+  constexpr float_decomposition() : float_decomposition(compose_float(T{})) {}
+
+  //\serif{ \internal_ref{float.decompose.accessors}, accessors}
   constexpr int              sign() const noexcept;
   constexpr int              exponent() const noexcept;
   constexpr significand_type significand() const noexcept;
+  constexpr explicit operator value_type() const noexcept; //\serif{ optional}
 
-  // [float.decompose.boolean]
+  //\serif{ \internal_ref{float.decompose.boolean}, boolean properties}
   constexpr bool sign_bit() const noexcept;
   constexpr bool is_zero() const noexcept;
-  constexpr bool is_finite() const noexcept;    // optional
-  constexpr bool is_inf() const noexcept;       // optional
-  constexpr bool is_nan() const noexcept;       // optional
-  constexpr bool is_normal() const noexcept;    // optional
-  constexpr bool is_signaling() const noexcept; // optional
-  constexpr bool is_subnormal() const noexcept; // optional
+  constexpr bool is_finite() const noexcept;               //\serif{ optional}
+  constexpr bool is_inf() const noexcept;                  //\serif{ optional}
+  constexpr bool is_nan() const noexcept;                  //\serif{ optional}
+  constexpr bool is_normal() const noexcept;               //\serif{ optional}
+  constexpr bool is_signaling() const noexcept;            //\serif{ optional}
+  constexpr bool is_subnormal() const noexcept;            //\serif{ optional}
 };
+
+//\serif{ \internal_ref{float.decompose.function}, function \tcode{decompose_float}}
+template<class T>
+  constexpr float_decomposition<T> decompose_float(const T& x) noexcept;
 }
 }
+
+\h3(show_number=false){[float.decompose.properties]}
 
 \Bins{
 \cowel_html_element("h3"){Properties \stable_ref{float.decompose.properties}}
@@ -586,8 +628,15 @@ If \tcode{T} is an ISO/IEC 60559 binary interchange floating-point type,
 }
 }
 
+\h3(show_number=false){[float.decompose.accessors]}
+
 \Bins{
-\cowel_html_element("h3"){Properties \stable_ref{float.decompose.accessors}}
+\cowel_html_element("h3"){Accessors \stable_ref{float.decompose.accessors}}
+
+¶
+Function \tcode{operator value_type}
+is provided if \tcode{T} is an ISO/IEC 60559 binary interchange floating-point type.
+Otherwise, it is conditionally supported.
 
 \itemdecl{
 constexpr int sign() const noexcept;
@@ -614,23 +663,38 @@ Let \math{\mi{b}} be \tcode{radix}.
 \ul{
   \li{
     If \math{\mi{x}} is finite,
-    these functions return an exponent \math{\mi{e}} and
-    a significand \math{\mi{m}} respectively, such that
+    \tcode{exponent()} returns \math{\mi{e}} and
+    \tcode{significand()} returns \math{\mi{m}} respectively, such that
     \math{
-    \mrow{\mi{x}\mo{=}\mi{m}\mo{×}\msup{\mi{b}\mi{e}}}
+    \mrow{
+      \mo(form="prefix", fence=true, stretchy=false, rspace="0"){|}
+      \mi{x}
+      \mo(form="suffix", fence=true, stretchy=false, lspace="0"){|}
+      \mo{=}
+      \mi{m}
+      \mo{×}
+      \msup{\mi{b}\mi{e}}}
     }.
+    Which combination of \math{\mi{e}} and \math{\mi{m}} is chosen
+    is a property of the implementation,
+    except that \math{\mi{m}} is chosen to be representable in type \tcode{T}.
+    \br\note{
+    Ignoring \q{subnormal flushing},
+    \math{\mi{x}} equals \tcode{copysign(scalbn(significand(), exponent()), T(sign()))}.
+    }
   }
   \li{
-    Otherwise, if \tcode{T} is an ISO/IEC 60559 binary interchange floating-point type,
+    Otherwise, if \tcode{T} is an ISO/IEC 60559 binary interchange floating-point type
+    and \math{\mi{x}} is negative or positive infinity,
     \tcode{exponent()} returns \tcode{max_exponent_result} and
-    \tcode{significand()} returns the significand bits of \math{\mi{x}},
-    reinterpreted as an integer.
-    \br\note{
-    If \math{\mi{x}} is \math{\mrow{\mo{±}\mi{∞}}},
     \tcode{significand()} returns zero.
-    If \math{\mi{x}} is NaN,
-    \tcode{significand()} returns the NaN payload.
-    }
+  }
+  \li{
+    Otherwise, if \tcode{T} is an ISO/IEC 60559 binary interchange floating-point type
+    and \math{\mi{x}} is NaN,
+    \tcode{exponent()} returns \tcode{max_exponent_result} and
+    \tcode{significand()} returns the NaN payload of \math{\mi{x}},
+    reinterpreted as an integer.
   }
   \li{
     Otherwise, the result of \tcode{exponent()} and
@@ -638,16 +702,57 @@ Let \math{\mi{b}} be \tcode{radix}.
     in an implementation-defined manner.
   }
 }
+
+¶
+\remarks
+If two \tcode{float_decomposition} objects have the same underlying value,
+their respective \tcode{exponent()} and \tcode{significand()} results are equal.
+
+¶
+\recommended
+If \tcode{T} is not an ISO/IEC 60559 binary interchange floating-point type
+but has similar representation,
+implementations should return the same results
+as if \tcode{T} were an ISO/IEC 60559 binary interchange floating-point type.
+}
+
+\itemdecl{
+constexpr explicit operator value_type() const noexcept;
+}
+
+\itemdescr{
+¶
+\returns
+The underlying value.
+
+¶
+\remarks
+Floating-point exceptions may be raised,
+the conversion may be inexact,
+and the NaN payload may not be preserved.
+\tcode{signbit(static_cast<value_type>(*this))} equals \tcode{sign_bit()}.
 }
 }
+
+\editnote{
+The \recommended paragraph addresses the case of x87 80-bit \tcode{long double},
+which is not an ISO/IEC 60559 binary interchange floating-point type,
+but is very similar to such a format;
+it provides infinities and NaNs,
+but has an explicit integer significand bit.
+}
+
+\h3(show_number=false){[float.decompose.boolean]}
+
 
 \Bins{
-\cowel_html_element("h3"){Properties \stable_ref{float.decompose.boolean}}
+\cowel_html_element("h3"){Boolean accessors \stable_ref{float.decompose.boolean}}
 
+¶
 Of the following member functions,
 \tcode{sign_bit} and \tcode{is_zero} are always present;
 the others are present if \tcode{numeric_limits<T>::is_iec559} is \tcode{true}
-and optional otherwise.
+and conditionally supported otherwise.
 
 \itemdecl{
 constexpr bool sign_bit() const noexcept;
@@ -668,8 +773,10 @@ with the underscore in the name removed, and
 \math{\mi{x}} is the underlying value.
 }
 
+\h3(show_number=false){[float.decompose.function]}
+
 \Bins{
-\cowel_html_element("h3"){Properties \stable_ref{float.decompose.function}}
+\cowel_html_element("h3"){Function \tcode{decompose_float} \stable_ref{float.decompose.function}}
 
 \itemdecl{
 template<class T>
@@ -677,6 +784,10 @@ template<class T>
 }
 
 \itemdescr{
+¶
+\constraints
+\tcode{T} is a cv-unqualified floating-point type.
+
 ¶
 \returns
 A \tcode{float_decomposition<T>} object whose underlying value is \tcode{x}.
