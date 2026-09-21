@@ -3,9 +3,9 @@
 
 \wg21_head(title={Case ranges}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P4040R1}}
-  \dt{Date:}            \dd{\tt{2026-15-07}}
-  \dt{Audience:}        \dd{SG22}
+  \dt{Document number:} \dd{\docnum{P4040R2}}
+  \dt{Date:}            \dd{\tt{2026-09-21}}
+  \dt{Audience:}        \dd{EWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
   \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P4040/github")}
@@ -26,6 +26,12 @@ This feature should be standardized for C++.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R1}
+
+\ul{
+  \li{Added more discussion on \ref("#scoped-enumerations")}
+}
 
 \h3{Changes since R0}
 
@@ -186,8 +192,13 @@ This quirk is also documented at \url{https://gcc.gnu.org/onlinedocs/gcc/Case-Ra
 
 \h3{Scoped enumerations}
 
-One feature exclusive to the C++ compiler extension is the support for scoped enumerations,
-such as in:
+One feature exclusive to the C++ compiler extension
+is the support for scoped enumerations.
+
+\Bex{
+Scoped enumerations may be organized into \q{blocks},
+such as success statuses and error statuses,
+and case ranges allow for selecting such blocks.
 
 \cppblock{
 enum class Status {
@@ -207,15 +218,87 @@ void handle(Status s) {
   }
 }
 }
+}
+
+\Bex{
+Case ranges could be used when writing a \tcode{switch} over \tcode{std::byte}:
+
+\cppblock{
+void examine(std::byte b) {
+  switch (b) {
+    case std::byte{0x00} ... std::byte{0x7f}: // ...
+    case std::byte{0x80} ... std::byte{0xff}: // ...
+  }
+}
+}
+}
+
+\Bex{
+While the amount of
+\ref("https://github.com/search?q=%2Fcase+%2B%28%5Ba-zA-Z0-9%5D%2B%3A%3A%29%2B%5Ba-zA-Z0-9%5D%2B+*%5C.%5C.%5C.%2F+language%3AC%2B%2B+-is%3Afork&type=code"){existing uses on GitHub}
+is fairly small
+(fewer than 50 at the time of writing),
+that is to be expected for a mostly C-oriented compiler extension.
+The examples that do exist look quite reasonable, such as:
+\cppblock{
+// vabold/Konoko — include/Common.hh
+case Character::Yoshi:
+case Character::Daisy... Character::Diddy_Kong:
+
+// cucurryx/tiger.cc — src/tiger/token.h
+case Tag::PLUS ... Tag::OR:
+
+// DenSinH/gba-audio-extractor — src/extractor/track.cpp
+case GbaCmd::W01 ... GbaCmd::W96:
+
+// Press-Play-On-Tape/JunoFirst — JunoFirst/JunoFirst.ino
+case EnemyType::EnemyType1 ... EnemyType::AstronautCaptured:
+}
+}
 
 This part should also be standardized because it is useful.
-Many scoped enumerations organize enumerations into \q{blocks},
-such as success statuses and error statuses,
-and case ranges allow for selecting such blocks.
+Whether a case range makes sense for a scoped enumeration depends
+on whether the scoped enumeration is \q{contiguous}, which it might not be.
+However, the same applies to unscoped enumerations:
+an unscoped enumeration can just as easily be \tcode{enum status_code}
+with various constants like \tcode{0x01}, \tcode{0xCC0} with no meaningful values between.
+Whether an enumeration is scoped or unscoped doesn't make case ranges any more or less correct.
+The argument would be a different one if scoped enumerations
+didn't have builtin relational comparison operators,
+but they do, so it is meaningful to form ranges of them.
 
 \Bnote{
 The range check does not undergo overload resolution for \tcode{operator<},
 but takes place in terms of the underlying type of the enumeration.
+}
+
+\Bnote{
+The support for scoped enumerations was discussed in SG22 (C/C++ liaison),
+but was not explicitly polled because it is a pure C++ issue.
+It was met with scepticism by some members though.
+
+According to an implementer,
+the support for scoped enumerations in case ranges in Clang is more
+of an accident than an intentional design choice.
+}
+
+\h4{Mixing scoped enumeration types}
+
+While using scoped enumeration types in case ranges is reasonable,
+mixing different types in a case range is not allowed
+(neither by the compiler extension nor by this proposal)
+when scoped enumerations are involved.
+That is, case ranges such as:
+
+\cppblock{
+case 0 ... E0::Value:
+case E1::ZZZ ... E0::Value:
+}
+
+\Bnote{
+This is is disallowed by the fact that both expressions are converted
+to the type of the \tcode{switch} condition,
+not by any additional rules specifically addressing scoped enumerations.
 }
 
 \h3{Mixing unscoped enumeration types}
