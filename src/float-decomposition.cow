@@ -5,13 +5,13 @@
   title = {Decomposing floating-point numbers}
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{DXXXXR0}}
-  \dt{Date:}            \dd{\tt{2026-09-20}}
+  \dt{Document number:} \dd{\docnum{D4382R0}}
+  \dt{Date:}            \dd{\tt{2026-09-21}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3688/github")}
-  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/main/src/template-9.cow")}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P4382/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/main/src/float-decomposition.cow")}
 }
 \hr
 }
@@ -475,6 +475,41 @@ for decomposing floating-point numbers because
   }
 }
 
+\h3{Decimal floating-point}
+
+While there is no known C++ implementation that provides
+decimal floating-point types yet,
+C23 has already standardized
+\tcode{_Decimal32}, \tcode{_Decimal64}, and \tcode{_Decimal128},
+which are ISO/IEC 60559 decimal interchange floating-point types.
+It is plausible
+that a C++ implementation would be interested
+in providing these as an extension for C compatibility, or
+that we would want to standardize extended floating-point types like \tcode{std::decimal64_t}.
+
+A key difference to binary floating-point types is that decimal floats have several different
+representations of the same mathematical value.
+For example, \math{\mn{1.5}} can be represented as
+\math{\mrow{\mn{15}\mo{×}\msup{\mn{10}\mn{-1}}}} but also as
+\math{\mrow{\mn{150}\mo{×}\msup{\mn{10}\mn{-2}}}}.
+That \math{\msup{\mn{10}\mn{-1}}} or \math{\msup{\mn{10}\mn{-2}}}
+is called the \q{quantum}, and the exponent is called the \q{quantum exponent}.
+
+\Bnote{
+The choice of quantum exponent is not just arbitrary but can control whether
+\math{\mn{1.5}} gets printed as \tcode{"1.5"} or \tcode{"1.50"},
+like for \tcode{java.math.BigDecimal.toString()},
+where the \tcode{"1.50"} format makes more sense if the number represents e.g. cents of a currency.
+The C standard generally specifies not just the result
+but also the quantum exponent of results of mathematical functions
+because it is important information.
+}
+
+The design and wording of \tcode{std::decompose_float} acknowledges this problem by
+requiring that when reconstructing the original floating-point value,
+it has the same quantum exponent, and that \tcode{exponent()} returns the quantum exponent
+instead of some arbitrary exponent.
+
 \h2{Wording}
 
 The changes are relative to \ref("N5054").
@@ -599,7 +634,7 @@ if the underlying value is finite.
 }
 
 \itemdecl{
-using significand_type = \exposid{implementation-defined};
+using significand_type = \seebelow;
 }
 
 \itemdescr{
@@ -635,7 +670,8 @@ If \tcode{T} is an ISO/IEC 60559 binary interchange floating-point type,
 
 ¶
 Function \tcode{operator value_type}
-is provided if \tcode{T} is an ISO/IEC 60559 binary interchange floating-point type.
+is provided if \tcode{T} is an
+ISO/IEC 60559 binary or decimal interchange floating-point type.
 Otherwise, it is conditionally supported.
 
 \itemdecl{
@@ -677,8 +713,17 @@ Let \math{\mi{b}} be \tcode{radix}.
     }.
     Which combination of \math{\mi{e}} and \math{\mi{m}} is chosen
     is a property of the implementation,
-    except that \math{\mi{m}} is chosen to be representable in type \tcode{T}.
-    \br\note{
+    except that
+    \ul{
+      \li{
+        \math{\mi{m}} is chosen to be representable in type \tcode{T}, and
+      }
+      \li{
+        if \tcode{T} is an ISO/IEC 60559 decimal floating-point type,
+        \math{\mi{e}} is the quantum exponent of the underlying value.
+      }
+    }
+    \note{
     Ignoring \q{subnormal flushing},
     \math{\mi{x}} equals \tcode{copysign(scalbn(significand(), exponent()), T(sign()))}.
     }
@@ -730,6 +775,8 @@ The underlying value.
 Floating-point exceptions may be raised,
 the conversion may be inexact,
 and the NaN payload may not be preserved.
+If \tcode{T} is an ISO/IEC 60559 decimal interchange floating-point type,
+the result has the same quantum exponent as the underlying value.
 \tcode{signbit(static_cast<value_type>(*this))} equals \tcode{sign_bit()}.
 }
 }

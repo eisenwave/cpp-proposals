@@ -1579,13 +1579,13 @@ if (theme !== null) {
 <div class=wg21-head><h1>Decomposing floating-point numbers</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/DXXXXR0>DXXXXR0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-09-20</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/D4382R0>D4382R0</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-09-21</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
-  <dt>GitHub Issue:</dt>    <dd><a href=https://wg21.link/P3688/github class=sans>wg21.link/P3688/github</a></dd>
-  <dt>Source:</dt>          <dd><a href=https://github.com/eisenwave/cpp-proposals/blob/main/src/template-9.cow class=sans>github.com/eisenwave/cpp-proposals/blob/main/src/template-9.cow</a></dd>
+  <dt>GitHub Issue:</dt>    <dd><a href=https://wg21.link/P4382/github class=sans>wg21.link/P4382/github</a></dd>
+  <dt>Source:</dt>          <dd><a href=https://github.com/eisenwave/cpp-proposals/blob/main/src/float-decomposition.cow class=sans>github.com/eisenwave/cpp-proposals/blob/main/src/float-decomposition.cow</a></dd>
 </dl>
 <hr/>
 </div>
@@ -1606,6 +1606,8 @@ if (theme !== null) {
 <a href=#handling-of-non-finite-inputs><h3>Handling of non-finite inputs</h3></a>
 <div class=toc-num data-level=3>3.2</div>
 <a href=#why-not-a-cmath-function><h3>Why not a <tt->&lt;cmath&gt;</tt-> function?</h3></a>
+<div class=toc-num data-level=3>3.3</div>
+<a href=#decimal-floating-point><h3>Decimal floating-point</h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#wording><h2>Wording</h2></a>
 <div class=toc-num data-level=3>4.1</div>
@@ -2073,6 +2075,41 @@ for decomposing floating-point numbers because
   </li>
 </ul>
 
+<h3 id=decimal-floating-point><a class=para href=#decimal-floating-point></a>3.3. Decimal floating-point</h3>
+
+<p>While there is no known C++ implementation that provides
+decimal floating-point types yet,
+C23 has already standardized
+<code><h- data-h=kw_type>_Decimal32</h-></code>, <code><h- data-h=kw_type>_Decimal64</h-></code>, and <code><h- data-h=kw_type>_Decimal128</h-></code>,
+which are ISO/IEC 60559 decimal interchange floating-point types.
+It is plausible
+that a C++ implementation would be interested
+in providing these as an extension for C compatibility, or
+that we would want to standardize extended floating-point types like <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>decimal64_t</h-></code>.
+</p>
+<p>A key difference to binary floating-point types is that decimal floats have several different
+representations of the same mathematical value.
+For example, <math display=inline><mn>1.5</mn></math> can be represented as
+<math display=inline><mrow><mn>15</mn><mo>×</mo><msup><mn>10</mn><mn>-1</mn></msup></mrow></math> but also as
+<math display=inline><mrow><mn>150</mn><mo>×</mo><msup><mn>10</mn><mn>-2</mn></msup></mrow></math>.
+That <math display=inline><msup><mn>10</mn><mn>-1</mn></msup></math> or <math display=inline><msup><mn>10</mn><mn>-2</mn></msup></math>
+is called the <q>quantum</q>, and the exponent is called the <q>quantum exponent</q>.
+</p>
+<note-block><p><intro-></intro-> 
+The choice of quantum exponent is not just arbitrary but can control whether
+<math display=inline><mn>1.5</mn></math> gets printed as <code><h- data-h=str_dlim>"</h-><h- data-h=str>1.5</h-><h- data-h=str_dlim>"</h-></code> or <code><h- data-h=str_dlim>"</h-><h- data-h=str>1.50</h-><h- data-h=str_dlim>"</h-></code>,
+like for <code><h- data-h=name>java</h-><h- data-h=sym_op>.</h-><h- data-h=name>math</h-><h- data-h=sym_op>.</h-><h- data-h=name>BigDecimal</h-><h- data-h=sym_op>.</h-><h- data-h=name>toString</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>,
+where the <code><h- data-h=str_dlim>"</h-><h- data-h=str>1.50</h-><h- data-h=str_dlim>"</h-></code> format makes more sense if the number represents e.g. cents of a currency.
+The C standard generally specifies not just the result
+but also the quantum exponent of results of mathematical functions
+because it is important information.
+</p></note-block>
+
+<p>The design and wording of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>decompose_float</h-></code> acknowledges this problem by
+requiring that when reconstructing the original floating-point value,
+it has the same quantum exponent, and that <code><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> returns the quantum exponent
+instead of some arbitrary exponent.
+</p>
 <h2 id=wording><a class=para href=#wording></a>4. Wording</h2>
 
 <p>The changes are relative to <a href="https://wg21%2elink/n5054">[N5054]</a>.
@@ -2186,7 +2223,7 @@ The greatest possible result of <code><h- data-h=name>exponent</h-><h- data-h=sy
 if the underlying value is finite.
 </p></div>
 
-<code-block class=borderless><h- data-h=kw>using</h-> <h- data-h=name>significand_type</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>implementation-defined</h-></i><h- data-h=sym_punc>;</h-></code-block>
+<code-block class=borderless><h- data-h=kw>using</h-> <h- data-h=name>significand_type</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>see below</h-></i><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>¶
@@ -2219,7 +2256,8 @@ If <code><h- data-h=name>T</h-></code> is an ISO/IEC 60559 binary interchange fl
 
 <p>¶
 Function <code><h- data-h=kw>operator</h-> <h- data-h=name>value_type</h-></code>
-is provided if <code><h- data-h=name>T</h-></code> is an ISO/IEC 60559 binary interchange floating-point type.
+is provided if <code><h- data-h=name>T</h-></code> is an
+ISO/IEC 60559 binary or decimal interchange floating-point type.
 Otherwise, it is conditionally supported.
 </p>
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>sign</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
@@ -2257,8 +2295,17 @@ Let <math display=inline><mi>b</mi></math> be <code><h- data-h=name>radix</h-></
     </math>.
     Which combination of <math display=inline><mi>e</mi></math> and <math display=inline><mi>m</mi></math> is chosen
     is a property of the implementation,
-    except that <math display=inline><mi>m</mi></math> is chosen to be representable in type <code><h- data-h=name>T</h-></code>.
-    <br/>[<i>Note</i>: 
+    except that
+    <ul>
+      <li>
+        <math display=inline><mi>m</mi></math> is chosen to be representable in type <code><h- data-h=name>T</h-></code>, and
+      </li>
+      <li>
+        if <code><h- data-h=name>T</h-></code> is an ISO/IEC 60559 decimal floating-point type,
+        <math display=inline><mi>e</mi></math> is the quantum exponent of the underlying value.
+      </li>
+    </ul>
+    [<i>Note</i>: 
     Ignoring <q>subnormal flushing</q>,
     <math display=inline><mi>x</mi></math> equals <code><h- data-h=name>copysign</h-><h- data-h=sym_par>(</h-><h- data-h=name>scalbn</h-><h- data-h=sym_par>(</h-><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-><h- data-h=sym_par>(</h-><h- data-h=name>sign</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code>.
      — <i>end note</i>]
@@ -2308,6 +2355,8 @@ The underlying value.
 Floating-point exceptions may be raised,
 the conversion may be inexact,
 and the NaN payload may not be preserved.
+If <code><h- data-h=name>T</h-></code> is an ISO/IEC 60559 decimal interchange floating-point type,
+the result has the same quantum exponent as the underlying value.
 <code><h- data-h=name>signbit</h-><h- data-h=sym_par>(</h-><h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>value_type</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code> equals <code><h- data-h=name>sign_bit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>.
 </p></div>
 </ins-block>
