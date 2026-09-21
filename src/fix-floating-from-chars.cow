@@ -5,7 +5,7 @@
   (LWG3081, LWG3082, LWG3456)}){
 \dl{
   \dt{Document number:} \dd{\docnum{P4168R1}}
-  \dt{Date:}            \dd{\tt{2026-05-11}}
+  \dt{Date:}            \dd{\tt{2026-09-21}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -36,6 +36,10 @@ and every implementation diverges from the wording in the standard.
 \ul{
   \li{
     Added \ref("#tininess-detection") to the design section
+  }
+  \li{
+    Added \ref("#possible-additional-changes") to the design section
+    based on SG6 feedback
   }
   \li{
     Removed permission to return \tcode{errc::result_out_of_range} on subnormal results
@@ -420,6 +424,53 @@ as specified in \ref("https://cigix.me/c23#7.24.1.5"){C23 §7.24.1.5}.
 For example, this means that when \tcode{"inf"} is parsed but not representable in the type,
 the greatest finite value is returned instead, and
 the error code is \tcode{errc::result_out_of_range}.
+
+
+\h3{Possible additional changes}
+
+During SG6 review during the 2026 Brno meeting,
+the possibility of further design changes was raised.
+The minutes record:
+
+\Bquote{
+\etc you could open the question in the paper
+of whether we want to look at the design from scratch again
+in terms of what \tcode{strtod} does,
+or whether we are looking for the minimal fix.
+This is more LEWG territory than us.
+}
+
+In particular,
+this was raised when discussing that \tcode{std::from_chars}
+does not accept a leading \tcode{'+'} sign\iref{charconv.from.chars},
+unlike \tcode{std::strtod}.
+This issue is arguably within the scope of the paper because \ref("LWG3081")
+laments an asymmetry between \tcode{std::strtod} and \tcode{std::from_chars}.
+
+However, unless LEWG feels strongly about making further changes,
+I do not want to pursue further changes in this paper because:
+\ul{
+  \li{
+    This paper is specifically focused on fixing behavior that is \em{defective},
+    and intended to be applied as a defect report.
+    Making \q{design adjustments} is not in scope,
+    and disallowing leading plus signs was not an accident.
+  }
+  \li{
+    Any such changes are relatively opinionated.
+    Not having to handle leading plus signs very slightly simplifies parsing,
+    and \tcode{std::from_chars} is intended to be a low-level, high-performance routine.
+    Accepting the full set of \tcode{std::strtod} patterns has cost
+    and is not \q{on brand}.
+  }
+  \li{
+    The changes in \eelis{charconv.from.chars} remove the reference to \tcode{strtod}
+    and the C standard entirely.
+    Simultaneously disconnecting from the C specification while arguing we need parity
+    is contradictory.
+  }
+}
+
 
 \h2{Implementation experience}
 
