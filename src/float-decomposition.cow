@@ -181,6 +181,55 @@ return \tcode{BigInt(\math{\mi{q}}) * pow(\math{\mi{b}}, BigInt(\math{\mi{q}})})
 This approach can be found in various arbitrary-precision arithmetic libraries in practice.
 }
 
+An additional benefit is that it acts as a \q{swiss-army knife}
+for asking many questions about a floating-point number at the same time efficiently.
+
+\Bex{
+\ul{
+  \li{Checking if a number is zero requires checking if the significand is zero.}
+  \li{Checking if it's finite requires checking if the exponent has a certain value
+  (for binary interchange formats).}
+  \li{The NaN payload becomes extractable as the significand itself.}
+  \li{Subnormals can be converted to integers without first needing to be normalized.}
+  \li{\etc}
+}
+
+See \ref("#why-not-a-cmath-function") for a more detailed example.
+}
+
+Another way to look at \tcode{std::decompose_float} is that it performs a transition
+from the floating-point domain into the integer domain,
+which would be very difficult to implement correctly for the user by themselves.
+This domain transition happens in the aforementioned \tcode{BigInt} construction,
+and when printing floating-point numbers.
+
+\Bex{
+When printing floating-point numbers,
+regardless of the type,
+a transition into the integer domain makes it possible
+to use the same underlying routine for all types with the same radix:
+\cppblock{
+void print_float( // universal runtime library function
+  std::uint64_t significand,
+  int exponent,
+  bool sign,
+  int precision
+);
+
+void print_float(float x, int precision) {
+  auto dx = std::decompose_float(x);
+  print_float(dx.significand(), dx.exponent(), dx.sign_bit(), precision);
+}
+void print_float(double x, int precision) {
+  auto dx = std::decompose_float(x);
+  print_float(dx.significand(), dx.exponent(), dx.sign_bit(), precision);
+}
+// support for various other types ...
+}
+Note that \tcode{std::uint64_t} is sufficient
+for all formats in common use except \tcode{std::float128_t}.
+}
+
 \h2{Design}
 
 The signature of the function is as follows:
@@ -195,11 +244,11 @@ public:
   static constexpr int radix = numeric_limits<F>::radix;
 
   // lowest possible result of exponent()
-  static constexpr int min_exponent_result = \exposid{implementation-defined};
+  static constexpr int min_exponent = \exposid{implementation-defined};
   // greatest possible result of exponent()
-  static constexpr int max_exponent_result = \exposid{implementation-defined};
-  // greatest possible result of exponent() for finite values
-  static constexpr int max_finite_exponent_result = \exposid{implementation-defined};
+  static constexpr int max_exponent = \exposid{implementation-defined};
+  // signed integer width required to represent any exponent
+  static constexpr int exponent_width = \exposid{implementation-defined};
 
   // greatest possible result of significand()
   static constexpr int max_significand = \exposid{implementation-defined};
@@ -277,6 +326,21 @@ A lot of design questions can be quickly answered in a few sentences:
     That justifies providing easy access to it.
   }
 
+  \dt{What about all the other static constants?}
+  \dd{
+    These are helpful for metaprogramming since \tcode{int} and \tcode{significand_type}
+    may be much larger than the actual required width.
+    If the user has a guarantee that the significand is only, say,
+    3 bits large (for FP8-E4M3),
+    they might choose a different algorithm when subsequently processing
+    \tcode{std::float_decomposition},
+    even if \tcode{significand_type} is \tcode{unsigned int}.
+    It is worth noting that these static constants provide information
+    only about the integer results returned by
+    \tcode{exponent()} and \tcode{significand()}
+    rather than being an extension of \tcode{numeric_limits}.
+  }
+
   \dt{Should \tcode{float_decomposition} not have a constructor?}
   \dd{
     No, the implementation might internally have a constructor,
@@ -309,18 +373,15 @@ if ((std::bit_cast<std::uint32_t>(x) << 1) >= 0xff000000) [[unlikely]] {
   // ...
 }
 }
-The \tcode{bit_cast} is essentially a no-op and performed anyway,
-the left-shift and integer comparison are extremely cheap operations,
-and the branch should be easily predictable,
-with the finite path being favored.
+The check is even simpler in practice;
+see \ref("#impl-decompose-float").
 }
 
-In the even that even this tiny check is too costly,
+In the event that even this tiny check is too costly,
 it can be eliminated via \tcode{[[assume(std::isfinite(x))]]} up front.
-
 The question is then what \tcode{std::decompose_float}
 should do for non-finite inputs.
-The most useful behavior were if
+The most useful behavior would be if:
 \ul{
   \li{
     \tcode{significand()}
@@ -338,6 +399,16 @@ The most useful behavior were if
   }
 }
 
+Simply handling non-finite inputs as UB would be a safety hazard;
+unlike in Rust, there is no way to disable certain checks in \q{unsafe mode},
+so it's either always or never unsafe.
+Infinities and NaNs can often arise unexpectedly at runtime,
+so the potential for running into UB is great.
+Treating NaNs as UB would also be unprecedented;
+all of \header{cmath} provides functions with wide contracts
+that handle non-finite inputs gracefully,
+and this is the ISO/IEC 60559 approach in general.
+
 \h3{Why not a \tt{<cmath>} function?}
 
 Another design option would be to go through WG14 and
@@ -349,8 +420,13 @@ double frexpq(double x, int* exp) {
   // sample implementation assuming that numeric_limits<double>::radix == 2
   double d = std::frexp(x, &exp);
   exp -= std::numeric_limits<double>::digits;
-  return std::ldexp(d, std::numeric_limits<double>::digits);
+  return std::scalbn(d, std::numeric_limits<double>::digits);
 }
+}
+
+\Bnote{
+This is a naive implementation.
+See \ref("#impl-frexpq") for a more plausible one.
 }
 
 Unlike \tcode{frexp},
@@ -508,9 +584,47 @@ requiring that when reconstructing the original floating-point value,
 it has the same quantum exponent, and that \tcode{exponent()} returns the quantum exponent
 instead of some arbitrary exponent.
 
+\h3{Choice of header}
+
+There should be a new header \header{decompose}
+providing just \tcode{std::decompose_float} and \tcode{std::float_decomposition}
+because no other header is a good fit:
+
+\ul{
+  \li{
+    \header{cmath} contains a whole bunch of C mathematical functions,
+    rather than low-level floating bit extraction.
+    It is also not freestanding and has a connotation of C compatibility.
+  }
+  \li{
+    \header{numeric} is way too heavy for this ultra-low-level freestanding utility.
+    Fundamental floating-point utilities
+    like \header{limits}, \header{stdfloat}, or \header{numbers}
+    traditionally have their own headers.
+  }
+  \li{
+    \header{limits} is focused on compile-time characteristics,
+    not on runtime decomposition, and
+    the name doesn't make sense for \tcode{std::decompose_float}.
+  }
+  \li{
+    \header{stdfloat} provides only type aliases and is extremely lightweight,
+    and it seems worth keeping it this way.
+  }
+}
+
 \h2{Wording}
 
 The changes are relative to \ref("N5054").
+
+\h3(show_number=false){[headers.cpp]}
+
+In \eelis{tab:headers.cpp},
+add a new element to C++ library headers table:
+
+\Bins{
+\tt{<decompose>}
+}
 
 \h3(show_number=false){[version.syn]}
 
@@ -526,8 +640,76 @@ Add a feature-test macro to \eelis{version.syn} as follows:
 
 \h3(show_number=false){[float.decompose]}
 
+Immediately following \eelis{numbers},
+insert a neighboring subclause:
+
 \Bins{
 \cowel_html_element("h2"){Floating-point decomposition \stable_ref{float.decompose}}
+}
+
+\h3(show_number=false){[decompose.syn]}
+
+Nested under \internal_ref{float.decompose},
+insert a new subclause:
+
+\Bins{
+\cowel_html_element("h3"){Header \header{decompose} synopsis \stable_ref{float.decompose}}
+
+\itemdecl{
+//\serif{ all freestanding}
+namespace std {
+  //\serif{ \internal_ref{float.decompose.class}, class template \tcode{float_decomposition}}
+  template<class T> struct float_decomposition;
+
+  //\serif{ \internal_ref{float.decompose.function}, function template \tcode{decompose_float}}
+  template<class T>
+    constexpr float_decomposition<T> decompose_float(const T& x) noexcept;
+}
+}
+}
+
+\h3(show_number=false){[float.decompose.class]}
+
+Nested under \internal_ref{float.decompose},
+insert a new subclause:
+
+\Bins{
+\cowel_html_element("h3"){Class template \tcode{float_decomposition} \stable_ref{float.decompose.class}}
+
+\itemdecl{
+template<class T> struct float_decomposition {
+  //\serif{ \internal_ref{float.decompose.properties}, properties}
+  using value_type = T;
+  using significand_type = \seebelow;
+
+  static constexpr int radix = numeric_limits<T>::radix;
+  static constexpr int min_exponent;
+  static constexpr int max_exponent;
+  static constexpr int exponent_width;
+
+  static constexpr significand_type max_significand;
+  static constexpr int significand_width = bit_width(max_significand);
+
+  //\serif{ constructors}
+  constexpr float_decomposition() : float_decomposition(compose_float(T{})) {}
+
+  //\serif{ \internal_ref{float.decompose.accessors}, accessors}
+  constexpr int              sign() const noexcept;
+  constexpr int              exponent() const noexcept;
+  constexpr significand_type significand() const noexcept;
+  constexpr explicit operator value_type() const noexcept; //\serif{ optional}
+
+  //\serif{ \internal_ref{float.decompose.boolean}, boolean properties}
+  constexpr bool sign_bit() const noexcept;
+  constexpr bool is_zero() const noexcept;
+  constexpr bool is_finite() const noexcept;               //\serif{ optional}
+  constexpr bool is_inf() const noexcept;                  //\serif{ optional}
+  constexpr bool is_nan() const noexcept;                  //\serif{ optional}
+  constexpr bool is_normal() const noexcept;               //\serif{ optional}
+  constexpr bool is_signaling() const noexcept;            //\serif{ optional}
+  constexpr bool is_subnormal() const noexcept;            //\serif{ optional}
+};
+}
 
 ¶
 \tcode{float_decomposition} objects
@@ -554,81 +736,42 @@ Throughout this subclause,
 requirements specific to
 ISO/IEC 60559 binary interchange floating-point types,
 also apply to \tcode{bfloat16_t}, if provided.
-
-\itemdecl{
-template<class T> struct float_decomposition {
-  //\serif{ \internal_ref{float.decompose.properties}, properties}
-  using value_type = T;
-  using significand_type = \seebelow;
-
-  static constexpr int radix = numeric_limits<T>::radix;
-  static constexpr int min_exponent_result;
-  static constexpr int max_exponent_result;
-  static constexpr int max_finite_exponent_result;
-
-  static constexpr significand_type max_significand;
-  static constexpr int significand_width = bit_width(max_significand);
-
-  //\serif{ constructors}
-  constexpr float_decomposition() : float_decomposition(compose_float(T{})) {}
-
-  //\serif{ \internal_ref{float.decompose.accessors}, accessors}
-  constexpr int              sign() const noexcept;
-  constexpr int              exponent() const noexcept;
-  constexpr significand_type significand() const noexcept;
-  constexpr explicit operator value_type() const noexcept; //\serif{ optional}
-
-  //\serif{ \internal_ref{float.decompose.boolean}, boolean properties}
-  constexpr bool sign_bit() const noexcept;
-  constexpr bool is_zero() const noexcept;
-  constexpr bool is_finite() const noexcept;               //\serif{ optional}
-  constexpr bool is_inf() const noexcept;                  //\serif{ optional}
-  constexpr bool is_nan() const noexcept;                  //\serif{ optional}
-  constexpr bool is_normal() const noexcept;               //\serif{ optional}
-  constexpr bool is_signaling() const noexcept;            //\serif{ optional}
-  constexpr bool is_subnormal() const noexcept;            //\serif{ optional}
-};
-
-//\serif{ \internal_ref{float.decompose.function}, function \tcode{decompose_float}}
-template<class T>
-  constexpr float_decomposition<T> decompose_float(const T& x) noexcept;
-}
 }
 
 \h3(show_number=false){[float.decompose.properties]}
 
+Nested under \internal_ref{float.decompose.class},
+insert a new subclause:
+
 \Bins{
-\cowel_html_element("h3"){Properties \stable_ref{float.decompose.properties}}
+\cowel_html_element("h4"){Properties \stable_ref{float.decompose.properties}}
 
 \itemdecl{
-static constexpr int min_exponent_result;
+static constexpr int min_exponent;
 }
 
 \itemdescr{
 ¶
-\returns
 The lowest possible result of \tcode{exponent()}.
 }
 
 \itemdecl{
-static constexpr int max_exponent_result;
+static constexpr int max_exponent;
 }
 
 \itemdescr{
 ¶
-\returns
 The greatest possible result of \tcode{exponent()}.
 }
 
 \itemdecl{
-static constexpr int max_finite_exponent_result;
+static constexpr int exponent_width;
 }
 
 \itemdescr{
 ¶
-\returns
-The greatest possible result of \tcode{exponent()}
-if the underlying value is finite.
+The minimum required width for a signed integer type to represent
+both \tcode{min_exponent} and \tcode{max_exponent}.
 }
 
 \itemdecl{
@@ -663,8 +806,11 @@ If \tcode{T} is an ISO/IEC 60559 binary interchange floating-point type,
 
 \h3(show_number=false){[float.decompose.accessors]}
 
+Nested under \internal_ref{float.decompose.class},
+insert a new subclause:
+
 \Bins{
-\cowel_html_element("h3"){Accessors \stable_ref{float.decompose.accessors}}
+\cowel_html_element("h4"){Accessors \stable_ref{float.decompose.accessors}}
 
 ¶
 Function \tcode{operator value_type}
@@ -729,13 +875,13 @@ Let \math{\mi{b}} be \tcode{radix}.
   \li{
     Otherwise, if \tcode{T} is an ISO/IEC 60559 binary interchange floating-point type
     and \math{\mi{x}} is negative or positive infinity,
-    \tcode{exponent()} returns \tcode{max_exponent_result} and
+    \tcode{exponent()} returns \tcode{max_exponent} and
     \tcode{significand()} returns zero.
   }
   \li{
     Otherwise, if \tcode{T} is an ISO/IEC 60559 binary interchange floating-point type
     and \math{\mi{x}} is NaN,
-    \tcode{exponent()} returns \tcode{max_exponent_result} and
+    \tcode{exponent()} returns \tcode{max_exponent} and
     \tcode{significand()} returns the NaN payload of \math{\mi{x}},
     reinterpreted as an integer.
   }
@@ -789,9 +935,11 @@ but has an explicit integer significand bit.
 
 \h3(show_number=false){[float.decompose.boolean]}
 
+Nested under \internal_ref{float.decompose.class},
+insert a new subclause:
 
 \Bins{
-\cowel_html_element("h3"){Boolean accessors \stable_ref{float.decompose.boolean}}
+\cowel_html_element("h4"){Boolean accessors \stable_ref{float.decompose.boolean}}
 
 ¶
 Of the following member functions,
@@ -810,6 +958,7 @@ constexpr bool is_signaling() const noexcept;
 constexpr bool is_subnormal() const noexcept;
 }
 
+\itemdescr{
 ¶
 \returns
 \tcode{\exposid{test-fun}(\math{\mi{x}})}, where
@@ -817,8 +966,12 @@ constexpr bool is_subnormal() const noexcept;
 with the underscore in the name removed, and
 \math{\mi{x}} is the underlying value.
 }
+}
 
 \h3(show_number=false){[float.decompose.function]}
+
+Nested under \internal_ref{float.decompose.class},
+insert a new subclause:
 
 \Bins{
 \cowel_html_element("h3"){Function \tcode{decompose_float} \stable_ref{float.decompose.function}}
@@ -854,9 +1007,9 @@ no inexact operation takes place.
 \cppblock{
 struct f64_decomposition {
   static constexpr int radix = 2;
-  static constexpr int min_exponent_result = -1074;
-  static constexpr int max_exponent_result = 972;
-  static constexpr int max_finite_exponent_result = 971;
+  static constexpr int min_exponent = -1074;
+  static constexpr int max_exponent = 972;
+  static constexpr int exponent_width = 12;
   static constexpr int max_significand = (1ull << 53) - 1;
   static constexpr int significand_width = 53;
   using significand_type = uint64_t;
@@ -871,7 +1024,7 @@ struct f64_decomposition {
   constexpr significand_type significand() const noexcept { return m; }
 
   constexpr bool is_finite() const noexcept {
-    return e != max_exponent_result;
+    return e != max_exponent;
   }
   constexpr bool is_inf() const noexcept {
     return !is_finite() && m == 0;
@@ -880,16 +1033,16 @@ struct f64_decomposition {
     return !is_finite() && m != 0;
   }
   constexpr bool is_normal() const noexcept {
-    return e != max_exponent_result && e != min_exponent_result;
+    return e != max_exponent && e != min_exponent;
   }
   constexpr bool is_signaling() const noexcept {
     return is_nan() && m & (1ull << 51) == 0;
   }
   constexpr bool is_subnormal() const noexcept {
-    return e == min_exponent_result;
+    return e == min_exponent;
   }
   constexpr bool is_zero() const noexcept {
-    return e == min_exponent_result && m == 0;
+    return e == min_exponent && m == 0;
   }
 };
 
