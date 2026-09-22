@@ -1599,7 +1599,7 @@ h1 {
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/D4444R0>D4444R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-09-12</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2026-09-22</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;<br/>
@@ -5155,7 +5155,11 @@ including formerly lightweight headers like <code><h- data-h=str>&lt;charconv&gt
 </p>
 <h3 id=deployment-experience><a class=para href=#deployment-experience></a>6.1. Deployment experience</h3>
 
-<p>This implementation is still very recent and has no real-world deployment experience.
+<p>This reference implementation is still very recent
+and has no real-world deployment experience.
+That being said, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is heavily modeled after Boost.Multiprecision
+and <code><h- data-h=name>boost</h-><h- data-h=sym_op>::</h-><h- data-h=name>multiprecision</h-><h- data-h=sym_op>::</h-><h- data-h=name>cpp_int</h-></code> has decades of deployment experience
+across hundreds and thousands of projects.
 </p>
 <h3 id=benchmarks><a class=para href=#benchmarks></a>6.2. Benchmarks</h3>
 
@@ -6165,33 +6169,51 @@ Let:
     with sufficient range to represent the integer values of
     <code><h- data-h=name>x</h-></code>, <code><h- data-h=name>y</h-></code>, and of <code><h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code>.
   </li>
+  <li>
+    <code><h- data-h=name>p</h-></code> be <code><h- data-h=name>x</h-></code> or <code><h- data-h=name>y</h-></code>, chosen as follows:
+    <ul>
+      <li>
+        If exactly one of <code><h- data-h=name>LT</h-></code> or <code><h- data-h=name>RT</h-></code> is a specialization of <code><h- data-h=name>basic_big_int</h-></code>,
+        <code><h- data-h=name>p</h-></code> is <code><h- data-h=name>x</h-></code> or <code><h- data-h=name>y</h-></code>, respectively.
+      </li>
+      <li>
+        Otherwise, if exactly one of <code><h- data-h=name>L</h-></code> or <code><h- data-h=name>R</h-></code> is not an lvalue reference,
+        <code><h- data-h=name>p</h-></code> is <code><h- data-h=name>x</h-></code> or <code><h- data-h=name>y</h-></code>, respectively.
+        <note-block class=edit><p><intro-></intro-> 
+        This covers the case where there is exactly one given <code><h- data-h=name>basic_big_int</h-></code> rvalue,
+        so its allocation should be reused rather than unnecessarily copying.
+        </p></note-block>
+      </li>
+      <li>
+        Otherwise, it is a property of the implementation whether
+        <code><h- data-h=name>p</h-></code> is <code><h- data-h=name>x</h-></code> or <code><h- data-h=name>y</h-></code>.
+        <note-block class=edit><p><intro-></intro-> 
+        This covers the case where both operands are rvalues,
+        so perhaps the larger pre-existing allocation should be used,
+        or for simplicity, always the left one.
+        This is not implementation-defined so that there is no documentation requirement
+        for such a detail.
+        </p></note-block>
+      </li>
+    </ul>
+  </li>
 </ul>
 
 <p>8
 <i>Returns</i>:
 A <code><h- data-h=name>basic_big_int</h-></code> object
 whose integer value is that of <code><h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code> and
-whose allocator is either that of <code><h- data-h=name>x</h-></code> or <code><h- data-h=name>y</h-></code>,
-chosen as follows:</p><ul>
-  <li>
-    If exactly one of <code><h- data-h=name>LT</h-></code> or <code><h- data-h=name>RT</h-></code> is a specialization of <code><h- data-h=name>basic_big_int</h-></code>,
-    the allocator of <code><h- data-h=name>x</h-></code> and <code><h- data-h=name>y</h-></code> is used, respectively.
-  </li>
-  <li>
-    Otherwise, if exactly one of <code><h- data-h=name>L</h-></code> or <code><h- data-h=name>R</h-></code> is not an lvalue reference,
-    the allocator of <code><h- data-h=name>x</h-></code> and <code><h- data-h=name>y</h-></code> is used, respectively.
-  </li>
-  <li>
-    Otherwise, it is a property of the implementation which allocator is used.
-  </li>
-</ul>
-
+whose allocator is obtained from <code><h- data-h=name>p</h-></code>.
+</p>
 <p>9
 <i>Remarks</i>:
 If <code><h- data-h=name>L</h-></code> is a specialization of <code><h- data-h=name>basic_big_int</h-></code>,
 <code><h- data-h=name>x</h-></code> is left in an unspecified but valid state.
 If <code><h- data-h=name>R</h-></code> is a specialization of <code><h- data-h=name>basic_big_int</h-></code>,
 <code><h- data-h=name>y</h-></code> is left in an unspecified but valid state.
+If <code><h- data-h=name>p</h-></code> is not left in an unspecified state,
+the allocator of the result object is initialized from
+<code><h- data-h=name>allocator_traits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>Allocator</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><wbr/><h- data-h=name>select_on_container_copy_construction</h-><h- data-h=sym_par>(</h-><h- data-h=name>p</h-><h- data-h=sym_op>.</h-><h- data-h=name>get_allocator</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code>.
 <br/>[<i>Note</i>: 
 Both operands can be left in an unspecified state.
  — <i>end note</i>]
@@ -6207,6 +6229,12 @@ such as binary operators and <code><h- data-h=name>std</h-><h- data-h=sym_op>::<
 In the case of two rvalue operands,
 both sides are left in a valid but unspecified state,
 which gives the implementation the freedom to choose either allocator.
+</p>
+<p>Other than needing to use <code><h- data-h=name>select_on_container_copy_construction</h-></code> for copying,
+the initialization of the allocator is left up to the implementation.
+This means that in the rvalue case,
+the allocator may be initialized via <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>move</h-></code> like in the move constructor,
+but may also be copied.
 </p></note-block>
 
 <h4 id=big.int.cons><a class=para href=#big%2eint%2econs></a>[big.int.cons]</h4>
@@ -7043,49 +7071,31 @@ For <code><h- data-h=kw>operator</h-><h- data-h=sym_op>*</h-></code>, <code><h- 
 </mrow></math>.
 </p></div>
 
-<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>signed-or-unsigned</h-></i> <h- data-h=name>S</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;&lt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>signed-or-unsigned</h-></i> <h- data-h=name>S</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;&lt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>signed-or-unsigned</h-></i> <h- data-h=name>S</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>5
-<i>Constraints</i>:
-<code><h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> is a specialization of <code><h- data-h=name>basic_big_int</h-></code>.
+Let <code>@</code> be
+<code><h- data-h=sym_op>&lt;&lt;</h-></code> for the first overload and
+<code><h- data-h=sym_op>&gt;&gt;</h-></code> for the second overload.
 </p>
 <p>6
-<i>Preconditions</i>:
-<code><h- data-h=name>s</h-></code> is greater or equal to zero.
-</p>
-<p>7
-<i>Returns</i>:
-A <code><h- data-h=name>basic_big_int</h-></code> whose integer value is
-<math display=inline><mrow><mi>v</mi><mo>×</mo><msup><mn>2</mn><mi>s</mi></msup></mrow></math>,
-where <math display=inline><mi>v</mi></math> is the integer value of <code><h- data-h=name>x</h-></code>,
-and whose allocator is that of <code><h- data-h=name>x</h-></code>.
-</p>
-<p>8
-<i>Complexity</i>:
-Linear in the size of the representation of <code><h- data-h=name>x</h-></code>.
-</p></div>
-
-<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>signed-or-unsigned</h-></i> <h- data-h=name>S</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
-
-<div class=indent>
-<p>9
 <i>Constraints</i>:
 <code><h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> is a specialization of <code><h- data-h=name>basic_big_int</h-></code>.
 </p>
-<p>10
+<p>7
 <i>Preconditions</i>:
 <code><h- data-h=name>s</h-></code> is greater or equal to zero.
 </p>
-<p>11
-<i>Returns</i>:
-A <code><h- data-h=name>basic_big_int</h-></code> whose integer value is
-<math display=inline><mrow><mi>v</mi><mo>×</mo><msup><mn>2</mn><mrow><mo>−</mo><mi>s</mi></mrow></msup></mrow></math>
-rounded towards negative infinity,
-where <math display=inline><mi>v</mi></math> is the integer value of <code><h- data-h=name>x</h-></code>,
-and whose allocator is that of <code><h- data-h=name>x</h-></code>.
-</p>
-<p>12
+<p>8
+<i>Effects</i>:
+Equivalent to:
+</p><code-block class=borderless><h- data-h=kw_ctrl>return</h-> <i><h- data-h=name>big-int-combine</h-></i><h- data-h=sym_par>(</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_par>(</h-><h- data-h=kw>auto</h-> <h- data-h=name>x_int</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>auto</h-> <h- data-h=name>shift</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=name>x_int</h-> @ <h- data-h=name>shift</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>forward</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>9
 <i>Complexity</i>:
 Linear in the size of the representation of <code><h- data-h=name>x</h-></code>.
 </p></div>

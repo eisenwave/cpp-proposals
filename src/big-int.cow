@@ -23,7 +23,7 @@ h1 {
 \wg21_head(title={\tcode{std::big_int}}){
 \dl{
   \dt{Document number:} \dd{\docnum{D4444R0}}
-  \dt{Date:}            \dd{\tt{2026-09-12}}
+  \dt{Date:}            \dd{\tt{2026-09-22}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -3419,7 +3419,11 @@ Our reference implementation can be found at \ref("Reference-Impl").
 
 \h3{Deployment experience}
 
-This implementation is still very recent and has no real-world deployment experience.
+This reference implementation is still very recent
+and has no real-world deployment experience.
+That being said, \tcode{std::big_int} is heavily modeled after Boost.Multiprecision
+and \tcode{boost::multiprecision::cpp_int} has decades of deployment experience
+across hundreds and thousands of projects.
 
 \h3{Benchmarks}
 
@@ -4499,26 +4503,41 @@ Let:
     with sufficient range to represent the integer values of
     \tcode{x}, \tcode{y}, and of \tcode{f(static_cast<T>(x), static_cast<T>(y))}.
   }
+  \li{
+    \tcode{p} be \tcode{x} or \tcode{y}, chosen as follows:
+    \ul{
+      \li{
+        If exactly one of \tcode{LT} or \tcode{RT} is a specialization of \tcode{basic_big_int},
+        \tcode{p} is \tcode{x} or \tcode{y}, respectively.
+      }
+      \li{
+        Otherwise, if exactly one of \tcode{L} or \tcode{R} is not an lvalue reference,
+        \tcode{p} is \tcode{x} or \tcode{y}, respectively.
+        \editnote{
+        This covers the case where there is exactly one given \tcode{basic_big_int} rvalue,
+        so its allocation should be reused rather than unnecessarily copying.
+        }
+      }
+      \li{
+        Otherwise, it is a property of the implementation whether
+        \tcode{p} is \tcode{x} or \tcode{y}.
+        \editnote{
+        This covers the case where both operands are rvalues,
+        so perhaps the larger pre-existing allocation should be used,
+        or for simplicity, always the left one.
+        This is not implementation-defined so that there is no documentation requirement
+        for such a detail.
+        }
+      }
+    }
+  }
 }
 
 \pnum
 \returns
 A \tcode{basic_big_int} object
 whose integer value is that of \tcode{f(static_cast<T>(x), static_cast<T>(y))} and
-whose allocator is either that of \tcode{x} or \tcode{y},
-chosen as follows:\ul{
-  \li{
-    If exactly one of \tcode{LT} or \tcode{RT} is a specialization of \tcode{basic_big_int},
-    the allocator of \tcode{x} and \tcode{y} is used, respectively.
-  }
-  \li{
-    Otherwise, if exactly one of \tcode{L} or \tcode{R} is not an lvalue reference,
-    the allocator of \tcode{x} and \tcode{y} is used, respectively.
-  }
-  \li{
-    Otherwise, it is a property of the implementation which allocator is used.
-  }
-}
+whose allocator is obtained from \tcode{p}.
 
 \pnum
 \remarks
@@ -4526,6 +4545,9 @@ If \tcode{L} is a specialization of \tcode{basic_big_int},
 \tcode{x} is left in an unspecified but valid state.
 If \tcode{R} is a specialization of \tcode{basic_big_int},
 \tcode{y} is left in an unspecified but valid state.
+If \tcode{p} is not left in an unspecified state,
+the allocator of the result object is initialized from
+\tcode{allocator_traits<Allocator>::\brk{}select_on_container_copy_construction(p.get_allocator())}.
 \br\note{
 Both operands can be left in an unspecified state.
 }
@@ -4541,6 +4563,12 @@ The handling of allocators is similar to
 In the case of two rvalue operands,
 both sides are left in a valid but unspecified state,
 which gives the implementation the freedom to choose either allocator.
+
+Other than needing to use \tcode{select_on_container_copy_construction} for copying,
+the initialization of the allocator is left up to the implementation.
+This means that in the rvalue case,
+the allocator may be initialized via \tcode{std::move} like in the move constructor,
+but may also be copied.
 }
 
 \h4(show_number=false){[big.int.cons]}
@@ -5463,35 +5491,15 @@ For \tcode{operator*}, \tcode{operator/}, and \tcode{operator%},
 
 \itemdecl{
 template<class T, \exposid{signed-or-unsigned} S> constexpr remove_cvref_t<T> operator<<(T&& x, S s);
-}
-
-\itemdescr{
-\pnum
-\constraints
-\tcode{remove_cvref_t<T>} is a specialization of \tcode{basic_big_int}.
-
-\pnum
-\expects
-\tcode{s} is greater or equal to zero.
-
-\pnum
-\returns
-A \tcode{basic_big_int} whose integer value is
-\math{\mrow{\mi{v}\mo{×}\msup{\mn{2}\mi{s}}}},
-where \math{\mi{v}} is the integer value of \tcode{x},
-and whose allocator is that of \tcode{x}.
-
-\pnum
-\complexity
-Linear in the size of the representation of \tcode{x}.
-}
-
-\itemdecl{
 template<class T, \exposid{signed-or-unsigned} S> constexpr remove_cvref_t<T> operator>>(T&& x, S s);
-
 }
 
 \itemdescr{
+\pnum
+Let \tcode{@} be
+\tcode{<<} for the first overload and
+\tcode{>>} for the second overload.
+
 \pnum
 \constraints
 \tcode{remove_cvref_t<T>} is a specialization of \tcode{basic_big_int}.
@@ -5501,12 +5509,13 @@ template<class T, \exposid{signed-or-unsigned} S> constexpr remove_cvref_t<T> op
 \tcode{s} is greater or equal to zero.
 
 \pnum
-\returns
-A \tcode{basic_big_int} whose integer value is
-\math{\mrow{\mi{v}\mo{×}\msup{\mn{2}\mrow{\mo{−}\mi{s}}}}}
-rounded towards negative infinity,
-where \math{\mi{v}} is the integer value of \tcode{x},
-and whose allocator is that of \tcode{x}.
+\effects
+Equivalent to:
+\itemdecl{
+return \exposid{big-int-combine}([](auto x_int, auto shift) {
+  return x_int @ shift;
+}, std::forward<T>(x), s);
+}
 
 \pnum
 \complexity
