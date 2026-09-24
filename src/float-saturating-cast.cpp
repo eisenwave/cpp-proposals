@@ -8,11 +8,6 @@ constexpr R saturating_cast(F x) noexcept {
     if consteval {
       return R(x); // Make the call not a constant expression.
     } else {
-      // TODO: Emit domain error.
-      //       On platforms like ARM where NaN gets converted to zero by static_cast,
-      //       we could simply return R(x) here,
-      //       but that also depends on whether R(NaN) is treated
-      //       as an optimization opportunity (poison value) instead of being zero.
       return R(0);
     }
   }
