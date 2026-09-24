@@ -5,8 +5,8 @@
   title = {Floating-point \tt{std::saturating_cast}}
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P4355R0}}
-  \dt{Date:}            \dd{\tt{2026-08-30}}
+  \dt{Document number:} \dd{\docnum{D4355R1}}
+  \dt{Date:}            \dd{\tt{2026-09-24}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -24,6 +24,14 @@
 \h2(listed=false){Contents}
 
 \make_contents
+
+\h2{Changes since R0}
+
+\ul{
+  \li{Fixed bugs in \ref("#possible-implementation") and stress-tested it}
+  \li{Referenced \ref("LWG4601") in \ref("#wording")}
+  \li{Improved paper editorially}
+}
 
 \h2{Introduction}
 
@@ -200,28 +208,29 @@ Clang's behavior matches that of Rust and Java.
 
 \h3{The problem}
 
-The problem is that making almost every part of the tables above undefined behavior
-is not very useful for some domains.
+The problem is that making almost every part of the table above undefined behavior
+is not very useful for some domains,
+and it is unsafe.
 It is fairly common that when quantizing floating-point values to integers,
 some values are outside the representable range,
 especially in the domain of signal processing.
-
 In that domain, saturating behavior would be much more useful.
 Frustratingly, we have a \tcode{std::saturating_cast} function,
 but that function is only defined for integer types.
 
 \h3{Proposal}
 
-The way to solve the problem would be to extend
-\tcode{std::saturating_cast} to also support floating-point types.
+The way to solve the problem is to extend
+\tcode{std::saturating_cast} to also support floating-point types,
+with the Rust and Java behavior shown above.
 
 It would also be possible to make changes to the core language,
 aligning C++ with Rust and Java,
 but this would have considerable performance cost
 which massive amounts of existing code would silently incur.
-Clang users would all have to start using \tt{-fstrict-float-cast-overflow}
+Users would all have to start using some new flag \tt{-fstrict-float-cast-overflow}
 to restore the old behavior,
-but this flag would no longer be a compliant extension because it would introduced UB
+but this flag would no longer be a compliant extension because it would introduce UB
 where the standard defines behavior.
 
 \h2{Motivation}
@@ -229,8 +238,8 @@ where the standard defines behavior.
 We already see some evidence that a saturating cast from floating-point to integer is useful.
 This is the behavior of the core-language conversion in Rust and Java,
 and AAarch64 has an instruction which implements this behavior exactly.
-
-In C++, one can similarly imagine many applications for this behavior:
+In C++, one can similarly imagine many applications for this behavior,
+listed below.
 
 \h3{Quantization}
 
@@ -333,12 +342,12 @@ producing the same output as Rust's \code("rust"){f32 as u8} conversion.
 
 \h3{Safety}
 
-Another obvious problem with a language facility that has so much UB is safety.
-If someone wanted to avoid core language UB,
-\tcode{float → int} conversions would present a minefield,
+Another obvious problem with a UB-ridden language facility is safety.
+For someone trying to avoid core language UB,
+\tcode{float → int} conversions is a minefield,
 and there is no clear alternative.
 
-\tcode{std::saturating_cast} is that safer alternative:
+The proposed \tcode{std::saturating_cast} is that safer alternative:
 whenever a C++ developer is unsure whether a \tcode{float → int} conversion is safe,
 they can use \tcode{std::saturating_cast} to avoid UB.
 For the conversions that are already well-defined,
@@ -363,8 +372,10 @@ etc. easier and more efficient.
 \h3{Strategy}
 
 The overall strategy for \tcode{std::saturating_cast}
-is to match the Rust and Java behavior,
-as well as the \tt{FCVTZS} and \tt{i32.trunc_sat_s_f32} instructions.
+is to match the Rust and Java behavior
+shown in \ref("#comparison-with-other-languages"),
+as well as the \tt{FCVTZS} and \tt{i32.trunc_sat_s_f32} instructions
+shown in \ref("#hardware-support").
 
 \h3{Handling of NaN}
 
@@ -372,7 +383,7 @@ The proposed behavior is to return zero for NaN inputs,
 which matches the aforementioned precedent.
 
 One could also match the RISC-V \tt{FCVT.W.S} behavior
-of returning \tt{INT32_MAX} for NaN inputs,
+of returning \tt{INT32_MAX} for NaN inputs instead of zero,
 but there is a real benefit to keeping the result for NaN inputs distinct:
 If \tcode{std::isfinite(x)} is \tcode{false} for the original input,
 the result of the saturating cast also provides information about which
@@ -384,29 +395,28 @@ non-finite value was passed in
 The handling of floating-point exceptions should be
 consistent with the rest of the standard library,
 such as any functions in \header{cmath},
-and should try to be consistent with the \tt{FCVTZS} instruction.
-The Arm Architecture Reference Manual Armv8 specifies:
+and should try to be consistent with the
+\ref("https://support.arm.com/documentation/ddi0487/mc/-Part-C-The-AArch64-Instruction-Set/-Chapter-C7-A64-Advanced-SIMD-and-Floating-point-Instruction-Descriptions/-C7-2-Alphabetical-list-of-A64-Advanced-SIMD-and-floating-point-instructions/-C7-2-106-FCVTZS--scalar--integer-?lang=en"){\tt{FCVTZS} instruction}.
+That is, if \tcode{math_errhandling} is \tcode{MATH_ERREXCEPT},
+the underlying instruction should raise all the appropriate exceptions so
+error handling has minimal overhead.
 
-\Bquote{
-\b{Invalid Operation}
-
-Occurs if the floating-point input is a NaN,
-infinity, or a numerical value that cannot be represented
-in the destination register.
-An out of range integer or fixed-point result is saturated to the size of the
-destination register.
-
-\b{Inexact}
-
-Occurs if the numeric result that differs from the input value.
+The Arm Architecture Reference Manual Armv8 \ref("ARM DDI 0487") specifies in
+§J1.4.3.206 \tt{FPToFixed} that
+\ul{
+  \li{NaN, infinities, and overly large inputs result in an invalid operation exception, and}
+  \li{any fractional part getting truncated results in an inexact exception.}
 }
+The handling of invalid operations is the same across all major architectures,
+which means that if \tcode{MATH_ERREXCEPT} is active,
+range checks to prevent raising exceptions may actually be necessary.
 
 Curiously, C's Annex F leaves it unspecified whether a \tcode{float → int}
 conversion raises the \q{inexact} exception,
 so out of caution and to grant some implementation freedom,
 we should not mandate it either.
 
-A domain error should only take if the input is NaN.
+A domain error should only take place if the input is NaN.
 Otherwise, \tcode{std::saturating_cast} is quasi-useless during constant evaluation.
 \tcode{static_cast} and \tcode{std::saturating_cast} would be equivalent in that case
 because everything that is UB in \tcode{static_cast}
@@ -414,6 +424,21 @@ turns into a domain error in \tcode{std::saturating_cast},
 and domain errors disqualify expressions from being constant expressions in the standard library.
 It also doesn't make any design sense for an operation that is explicitly saturating
 to report a domain error when it saturates.
+
+\Bnote{
+Regardless of the design here,
+unless the user can actually observe the floating-point environment
+(as communicated by \tcode{#pragma STDC FENV_ACCESS}),
+the implementation can simply emit \tt{FCVTZS} without worrying about raising exceptions.
+
+On WASM,
+\tcode{i32.trunc_sat_s_f32} (and nothing else) is always emitted
+because there is no way to observe the floating-point environment.
+
+On x86 and RISC-V,
+there is no saturating instruction,
+so runtime cost is inevitable.
+}
 
 \h3{Other saturating operations}
 
@@ -424,7 +449,7 @@ and the motivation does not apply to them because floating-point operations
 are already saturating
 (in the sense that they clamp to \math{\mo{−}\mi{∞}} and \math{\mi{+}\mi{∞}}).
 
-I also don't propose floating-point types as a result of \tcode{std::saturating_cast}
+We also don't propose floating-point types as a result of \tcode{std::saturating_cast}
 because converting to floating-point types is already quasi-saturating.
 
 \h3{\tt{std::simd} overloads}
@@ -434,6 +459,34 @@ including \tcode{std::saturating_cast}.
 At the time of writing,
 the paper is in LWG, so we expect it to be included in C++29.
 Naturally, \tcode{std::simd::saturating_cast} should also support floating-point types.
+
+\h3{Freestanding availability}
+
+Unlike standard library floating-point operations,
+this one should be available in freestanding implementations as well,
+for a number of reasons:
+\ul{
+  \li{
+    The reason most floating-point operations aren't freestanding is that
+    they necessitate a \tcode{libm} runtime library,
+    but that doesn't apply here.
+    \tcode{std::saturating_cast} is either equivalent to \tcode{static_cast}
+    (which is freestanding)
+    in the sense that both lower to the same CPU instruction,
+    or it is equivalent to a \tcode{static_cast} with some \tcode{if} statements up front.
+  }
+  \li{
+    On some architectures,
+    floating-point \tcode{std::saturating_cast} lowers to a single CPU instruction,
+    so it makes no sense that it wouldn't be available \q{in kernel mode}
+    when other floating-point instructions are.
+  }
+  \li{
+    Developers should always have the ability to perform a \q{safety upgrade}
+    from \tcode{static_cast} to \tcode{std::saturating_cast}
+    without sacrificing portability.
+  }
+}
 
 \h2{Impact on existing code}
 
@@ -457,94 +510,35 @@ so infinities and NaNs need explicit handling at compile time.
 
 A pure library implementation with some \tcode{if} statements for range checks
 is theoretically possible, but a waste of time from an implementer viewpoint.
-The goal is to emit exactly one e.g. \tt{FCVTZS}
+The goal is to emit exactly one e.g.\tt{FCVTZS}
 instruction for the conversion
 (or whatever the minimal equivalent is on other architectures),
 and this requires compiler intrinsics.
-Nonetheless, a library implementation looks as follows:
+Nonetheless, a library implementation
+(not including floating-point environment and \tcode{errno} manipulation,
+as is custom for floating-point math functions)
+looks as follows:
 
 \cppblock{
-#include <limits>
-#include <cmath>
-#include <bit>
-
-template<class R, class F>
-constexpr R saturating_cast(F x) noexcept {
-  if (std::isnan(x)) {
-    if consteval {
-      return R(x); // Make the call not a constant expression.
-    } else {
-      // TODO: Emit domain error.
-      //       On platforms like ARM where NaN gets converted to zero by static_cast,
-      //       we could simply return R(x) here,
-      //       but that also depends on whether R(NaN) is treated
-      //       as an optimization opportunity (poison value) instead of being zero.
-      return R(0);
-    }
-  }
-
-  if constexpr (std::numeric_limits<R>::digits >= std::numeric_limits<F>::max_exponent) {
-    // Every truncated finite number is representable as an integer of type R,
-    // so we don't have to worry about numbers with large magnitude when casting.
-    // Infinities and NaNs are the only non-representable values.
-    //
-    // In practice, this happens in e.g. float32_t → unsigned __int128
-    if (std::isinf(x)) {
-      return x < F(0) ? std::numeric_limits<R>::lowest()
-                      : std::numeric_limits<R>::max();
-    }
-  } else if constexpr (std::is_signed_v<R>) {
-    // Otherwise, we need to compute the bounds of the range (min, max)
-    // (i.e. exclusive on both ends).
-    // that does not cause casting to have undefined behavior.
-    // Infinities also fall outside that range and need no explicit handling.
-
-    // Since integers use two's complement,
-    // this is one past the greatest integer,
-    // so already the bound we are looking for.
-    constexpr F max = -F(std::numeric_limits<R>::lowest());
-    if (x >= max) {
-      return std::numeric_limits<R>::max();
-    }
-
-    // We use lowest() because it is a power of two,
-    // so there is no risk of rounding.
-    // It can only overflow to infinity.
-    constexpr F min = F(std::numeric_limits<R>::lowest());
-
-    if constexpr (min - 1 < min) {
-      // Numbers within 1 distance of lowest() get truncated to lowest(),
-      // so lowest() is not the bound; the next lower integer is the bound.
-      if (x <= min - 1) {
-        return std::numeric_limits<R>::lowest();
-      }
-    } else if (x < min) {
-      // In this case, there exists no integer directly below lowest()
-      // due to limited floating-point precision.
-      // This makes lowest() a genuine exclusive bound.
-      return std::numeric_limits<R>::lowest();
-    }
-  } else {
-    // We use bit_floor to get a power of two, avoiding rounding issues.
-    // Multiplication by two then gets us one past the greatest integer.
-    constexpr F max = F(std::bit_floor(std::numeric_limits<R>::max())) * 2;
-    if (x >= max) {
-      return std::numeric_limits<R>::max();
-    }
-    // Since the conversion truncates, negative values greater than -1 result in 0.
-    // Cast UB only happens if the truncated value is not representable in the result.
-    if (x <= F(-1)) {
-      return std::numeric_limits<R>::lowest();
-    }
-  }
-
-  return R(x);
+\cowel_include_text("float-saturating-cast.cpp")
 }
+
+\Bnote{
+This implementation has been tested for correctness
+for all possible \math{\msup{\mn{2}\mn{32}}} \tcode{float} bit patterns,
+converted to \tcode{int32_t} and \tcode{uint32_t}.
 }
 
 \h2{Wording}
 
-The changes are relative to \ref("N5054").
+The changes are relative to \ref("N5054")
+with the resolution of \ref("LWG4601") applied.
+
+\editnote{
+\ref("LWG4601") recently clarified that C++ math functions like \tcode{std::lerp}
+are subject to the error handling for \header{math.h} C functions.
+In general, floating-point math functions in C++ should follow those error handling conventions.
+}
 
 \h3(show_number=false){[version.syn]}
 
@@ -575,18 +569,21 @@ a cv-unqualified floating-point type.}
 
 \returns
 \ins{If \tcode{x} is NaN, zero.
-Otherwise, let \math{\mi{v}} be the value of \tcode{x}
+Otherwise, let \math{\mi{t}} be the value of \tcode{x}
 with the fractional part (if any) discarded.}
-If \del{\tcode{x}} \ins{\math{\mi{v}}}
+If \del{\tcode{x}} \ins{\math{\mi{t}}}
 is representable as a value of type \tcode{R},
-\ins{return} \del{\tcode{x}} \ins{\math{\mi{v}}};
+\del{\tcode{x}} \ins{returns \math{\mi{t}}};
 otherwise, \ins{returns} either the largest or smallest representable value of type \tcode{R},
 whichever is closer to
-\del{the value of \tcode{x}} \ins{\math{\mi{v}}}.
+\del{the value of \tcode{x}} \ins{\math{\mi{t}}}.
 
 \ins{\remarks
-If and only if \tcode{T} is is a floating-point type,
-floating-point exceptions may be raised,
+If \tcode{T} is is a floating-point type
+and the implementation is hosted,
+the function is subject to the treatment of error conditions
+for functions in header \header{cmath}\iref{library.c}.
+Floating-point exceptions may be raised
 unless the value of \tcode{x} is exactly representable in type \tcode{R}.
 Whether the \q{inexact} exception is raised is a property of the implementation.
 A domain error occurs if \tcode{x} is NaN,
@@ -594,7 +591,7 @@ in which case a function call expression is not a constant expression.
 }
 }
 
-\ins{SEE ALSO: ISO/IEC 9899:2024 7.12.1}
+\ins{SEE ALSO: \ref("https://cstd.eisie.net/c23#7.12.1"){ISO/IEC 9899:2024 7.12.1}}
 }
 
 \h3(show_number=false){[simd]}
@@ -654,6 +651,19 @@ for all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}).
   author = "Daniel Towner, Ruslan Arutyunyan",
   link = "https://wg21.link/p2956r3",
   long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2956r3.html",
+)\
+\bib(
+  id = "LWG4601",
+  title = "Unclear error handling for C++ math functions",
+  date = "2026-07-17",
+  author = "Jan Schultke",
+  link = "https://cplusplus.github.io/LWG/issue4601",
+)\
+\bib(
+  id = "ARM DDI 0487",
+  title = "Arm® Architecture Reference Manual for A-profile architecture",
+  date = "2026",
+  link = "https://support.arm.com/documentation/ddi0487/mc/?lang=en",
 )\
 
 \make_bib
