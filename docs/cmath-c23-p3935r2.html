@@ -1579,8 +1579,8 @@ if (theme !== null) {
 <div class=wg21-head><h1>Rebasing <tt->&lt;cmath&gt;</tt-> on C23</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/D3935R3>D3935R3</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-10-02</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3935R2>P3935R2</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-06-29</tt-></dd>
   <dt>Audience:</dt>        <dd>LEWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1601,10 +1601,8 @@ There are many useful C23 <code><h- data-h=str>&lt;math.h&gt;</h-></code> featur
 <div class=toc><div class=toc-num data-level=2>1</div>
 <a href=#revision-history><h2>Revision history</h2></a>
 <div class=toc-num data-level=3>1.1</div>
-<a href=#changes-since-r2><h3>Changes since R2</h3></a>
-<div class=toc-num data-level=3>1.2</div>
 <a href=#changes-since-r1><h3>Changes since R1</h3></a>
-<div class=toc-num data-level=3>1.3</div>
+<div class=toc-num data-level=3>1.2</div>
 <a href=#changes-since-r0><h3>Changes since R0</h3></a>
 <div class=toc-num data-level=2>2</div>
 <a href=#introduction><h2>Introduction</h2></a>
@@ -1626,8 +1624,6 @@ There are many useful C23 <code><h- data-h=str>&lt;math.h&gt;</h-></code> featur
 <a href=#new-macros><h3>New macros</h3></a>
 <div class=toc-num data-level=3>3.4</div>
 <a href=#new-declarations-for-floatn_t><h3>New declarations for <code><h- data-h=name_type>float</h-><i><h- data-h=name_type>N</h-></i><h- data-h=name_type>_t</h-></code></h3></a>
-<div class=toc-num data-level=3>3.5</div>
-<a href=#feature-testing><h3>Feature testing</h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#implementation-experience><h2>Implementation experience</h2></a>
 <div class=toc-num data-level=2>5</div>
@@ -1648,21 +1644,7 @@ There are many useful C23 <code><h- data-h=str>&lt;math.h&gt;</h-></code> featur
 
 <h2 id=revision-history><a class=para href=#revision-history></a>1. Revision history</h2>
 
-<h3 id=changes-since-r2><a class=para href=#changes-since-r2></a>1.1. Changes since R2</h3>
-
-<ul>
-  <li>
-    Added <a href=#feature-testing>§3.5. Feature testing</a>
-  </li>
-  <li>
-    Dropped the addition of <code><h- data-h=name>__STDC_VERSION_MATH_H__</h-></code> to <code><h- data-h=str>&lt;cmath&gt;</h-></code>
-  </li>
-  <li>
-    Added a bump to <code><h- data-h=name>__cpp_lib_constexpr_cmath</h-></code>
-  </li>
-</ul>
-
-<h3 id=changes-since-r1><a class=para href=#changes-since-r1></a>1.2. Changes since R1</h3>
+<h3 id=changes-since-r1><a class=para href=#changes-since-r1></a>1.1. Changes since R1</h3>
 
 <ul>
   <li>
@@ -1688,7 +1670,7 @@ There are many useful C23 <code><h- data-h=str>&lt;math.h&gt;</h-></code> featur
   </li>
 </ul>
 
-<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.3. Changes since R0</h3>
+<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.2. Changes since R0</h3>
 
 <ul>
   <li>Removed <code><h- data-h=kw>noexcept</h-></code> from <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>fadd</h-></code> and other proposed templates</li>
@@ -2415,50 +2397,6 @@ in terms of the C23 functions.
 There is no technical reason why the suffixed versions shouldn't also be provided,
 and the paper does not discuss this option.
 </p>
-<h3 id=feature-testing><a class=para href=#feature-testing></a>3.5. Feature testing</h3>
-
-<p>Feature testing is surprisingly complicated
-because there are several different macros involved here.
-The design for these is as follows:
-</p>
-<ul>
-  <li>
-    A new macro <code><h- data-h=name>__cpp_lib_cmath</h-></code> is added.
-    This should be bumped whenever some C function is adopted into <code><h- data-h=str>&lt;cmath&gt;</h-></code>,
-    which is sometimes done in small pieces, like <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>fmaximum</h-></code>.
-  </li>
-  <li>
-    The existing <code><h- data-h=name>__cpp_lib_constexpr_cmath</h-></code> is bumped.
-    While a single macro is theoretically sufficient,
-    providing <code><h- data-h=kw>constexpr</h-></code> support for the new functions could happen months or years
-    after the <q>base change</q>.
-    This makes it valuable to be able to test separately whether e.g.
-    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>roundeven</h-></code> exists and whether <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>roundeven</h-></code> is <code><h- data-h=kw>constexpr</h-></code>.
-  </li>
-  <li>
-    The existing <code><h- data-h=name>__cpp_lib_math_special_functions</h-></code> is bumped.
-    This allows querying the existence of new mathematical special functions like <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>ellint_3f32</h-></code>.
-    Without this macro,
-    a vendor that doesn't yet implement <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>ellint_3f32</h-></code>
-    arguably shouldn't provide <code><h- data-h=name>__cpp_lib_cmath</h-></code> either,
-    but mathematical special functions should not be a blocking issue.
-  </li>
-  <li>
-    The C23 macro <code><h- data-h=name>__STDC_VERSION_MATH_H__</h-></code> is deliberately not defined in the C++ standard
-    because this is normally only done when the C++ header has the complete set of features
-    provided by the C header.
-    However, functions dealing with decimal floating-point types are deliberately omitted,
-    so providing this macro would be lying to users.
-  </li>
-</ul>
-
-<note-block><p><intro-></intro-> 
-Even if <code><h- data-h=name>__STDC_VERSION_MATH_H__</h-></code> was adopted from C23,
-this cannot be reliably used to detect the new functions by itself;
-it could have also been leaked through a <code><h- data-h=str>&lt;math.h&gt;</h-></code> header from somewhere,
-without e.g. <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>roundeven</h-></code> actually existing.
-</p></note-block>
-
 <h2 id=implementation-experience><a class=para href=#implementation-experience></a>4. Implementation experience</h2>
 
 <p>All non-template additions are taken from C23,
@@ -2485,17 +2423,22 @@ Some of these Clang builtins are also <code><h- data-h=kw>constexpr</h-></code>.
 <code-block class=borderless><h- data-h=name_mac>#define __cpp_lib_cmath 20XXXXL </h-><h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> also in </h-><tt-><h- data-h=cmt>&lt;cmath&gt;</h-></tt-><h- data-h=cmt>, </h-><tt-><h- data-h=cmt>&lt;cstdlib&gt;</h-></tt-></f-serif></code-block>
 </ins-block>
 
-<p>Bump the feature-test macro for <code><h- data-h=kw>constexpr</h-></code> math functions:
-</p>
-<diff-block>
-<code-block class=borderless><h- data-h=name_mac>#define __cpp_lib_constexpr_cmath </h-><del><h- data-h=name_mac>202306L</h-></del><h- data-h=name_mac> </h-><ins><h- data-h=name_mac>20XXXXL</h-></ins><h- data-h=name_mac> </h-><h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> also in </h-><tt-><h- data-h=cmt>&lt;cmath&gt;</h-></tt-><h- data-h=cmt>, </h-><tt-><h- data-h=cmt>&lt;cstdlib&gt;</h-></tt-></f-serif></code-block>
-</diff-block>
+<note-block class=edit><p><intro-></intro-> 
+Although the proposal also adds a <code><h- data-h=name>__STDC_VERSION_MATH_H__</h-></code> macro from C23,
+this cannot be reliably used to detect the new functions;
+it could have also been leaked through a <code><h- data-h=str>&lt;math.h&gt;</h-></code> header from somewhere,
+without e.g. <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>roundeven</h-></code> actually existing.
+</p></note-block>
 
 <p>Bump the feature-test macro for mathematical special functions:
 </p>
 <diff-block>
 <code-block class=borderless><h- data-h=name_mac>#define __cpp_lib_math_special_functions </h-><del><h- data-h=name_mac>201603L</h-></del><h- data-h=name_mac> </h-><ins><h- data-h=name_mac>20XXXXL</h-></ins><h- data-h=name_mac> </h-><h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> also in </h-><tt-><h- data-h=cmt>&lt;cmath&gt;</h-></tt-></f-serif></code-block>
 </diff-block>
+
+<note-block class=edit><p><intro-></intro-> 
+This queries existence of new overloads such as <code><h- data-h=name>ellint_3f32</h-></code>.
+</p></note-block>
 
 <h3 id=cmath.syn><a class=para href=#cmath%2esyn></a>[cmath.syn]</h3>
 
@@ -2510,7 +2453,9 @@ h- {
 </style>
 
 <diff-block>
-<code-block class=borderless><h- data-h=name_mac>#define HUGE_VAL </h-><i><h- data-h=name>see below</h-></i>
+<code-block class=borderless><ins><h- data-h=name_mac>#define __STDC_VERSION_MATH_H__ 202311L</h->
+        </ins>
+<h- data-h=name_mac>#define HUGE_VAL </h-><i><h- data-h=name>see below</h-></i>
 <h- data-h=name_mac>#define HUGE_VALF </h-><i><h- data-h=name>see below</h-></i>
 <h- data-h=name_mac>#define HUGE_VALL </h-><i><h- data-h=name>see below</h-></i>
 <ins><h- data-h=name_mac>#define HUGE_VAL_F</h-><i><h- data-h=name_mac>N</h-></i><h- data-h=name_mac> </h-><i><h- data-h=name>see below</h-></i><h- data-h=name_mac> </h-><h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> optional</h-></f-serif></ins>

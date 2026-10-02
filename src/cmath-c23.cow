@@ -3,8 +3,8 @@
 
 \wg21_head(title={Rebasing \tt{<cmath>} on C23}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3935R2}}
-  \dt{Date:}            \dd{\tt{2026-06-29}}
+  \dt{Document number:} \dd{\docnum{D3935R3}}
+  \dt{Date:}            \dd{\tt{2026-10-02}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -25,6 +25,20 @@ There are many useful C23 \header{math.h} features that should be provided in C+
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R2}
+
+\ul{
+  \li{
+    Added \ref("#feature-testing")
+  }
+  \li{
+    Dropped the addition of \tcode{__STDC_VERSION_MATH_H__} to \header{cmath}
+  }
+  \li{
+    Added a bump to \tcode{__cpp_lib_constexpr_cmath}
+  }
+}
 
 \h3{Changes since R1}
 
@@ -783,6 +797,50 @@ in terms of the C23 functions.
 There is no technical reason why the suffixed versions shouldn't also be provided,
 and the paper does not discuss this option.
 
+\h3{Feature testing}
+
+Feature testing is surprisingly complicated
+because there are several different macros involved here.
+The design for these is as follows:
+
+\ul{
+  \li{
+    A new macro \tcode{__cpp_lib_cmath} is added.
+    This should be bumped whenever some C function is adopted into \header{cmath},
+    which is sometimes done in small pieces, like \tcode{std::fmaximum}.
+  }
+  \li{
+    The existing \tcode{__cpp_lib_constexpr_cmath} is bumped.
+    While a single macro is theoretically sufficient,
+    providing \tcode{constexpr} support for the new functions could happen months or years
+    after the \q{base change}.
+    This makes it valuable to be able to test separately whether e.g.
+    \tcode{std::roundeven} exists and whether \tcode{std::roundeven} is \tcode{constexpr}.
+  }
+  \li{
+    The existing \tcode{__cpp_lib_math_special_functions} is bumped.
+    This allows querying the existence of new mathematical special functions like \tcode{std::ellint_3f32}.
+    Without this macro,
+    a vendor that doesn't yet implement \tcode{std::ellint_3f32}
+    arguably shouldn't provide \tcode{__cpp_lib_cmath} either,
+    but mathematical special functions should not be a blocking issue.
+  }
+  \li{
+    The C23 macro \tcode{__STDC_VERSION_MATH_H__} is deliberately not defined in the C++ standard
+    because this is normally only done when the C++ header has the complete set of features
+    provided by the C header.
+    However, functions dealing with decimal floating-point types are deliberately omitted,
+    so providing this macro would be lying to users.
+  }
+}
+
+\Bnote{
+Even if \tcode{__STDC_VERSION_MATH_H__} was adopted from C23,
+this cannot be reliably used to detect the new functions by itself;
+it could have also been leaked through a \header{math.h} header from somewhere,
+without e.g. \tcode{std::roundeven} actually existing.
+}
+
 \h2{Implementation experience}
 
 All non-template additions are taken from C23,
@@ -811,11 +869,12 @@ Add a feature-test macro to \eelis{version.syn} as follows:
 }
 }
 
-\editnote{
-Although the proposal also adds a \tcode{__STDC_VERSION_MATH_H__} macro from C23,
-this cannot be reliably used to detect the new functions;
-it could have also been leaked through a \header{math.h} header from somewhere,
-without e.g. \tcode{std::roundeven} actually existing.
+Bump the feature-test macro for \tcode{constexpr} math functions:
+
+\Bdiff{
+\itemdecl{
+#define __cpp_lib_constexpr_cmath \del{202306L} \ins{20XXXXL} //\serif{ also in \tt{<cmath>}, \tt{<cstdlib>}}
+}
 }
 
 Bump the feature-test macro for mathematical special functions:
@@ -824,10 +883,6 @@ Bump the feature-test macro for mathematical special functions:
 \itemdecl{
 #define __cpp_lib_math_special_functions \del{201603L} \ins{20XXXXL} //\serif{ also in \tt{<cmath>}}
 }
-}
-
-\editnote{
-This queries existence of new overloads such as \tcode{ellint_3f32}.
 }
 
 \h3(show_number=false){[cmath.syn]}
@@ -844,8 +899,6 @@ h- {
 
 \Bdiff{
 \itemdecl{
-\ins{#define __STDC_VERSION_MATH_H__ 202311L
-        }
 #define HUGE_VAL \seebelow
 #define HUGE_VALF \seebelow
 #define HUGE_VALL \seebelow
