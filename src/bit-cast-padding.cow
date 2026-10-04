@@ -36,6 +36,9 @@ this proposal makes that degenerate form of \tcode{std::bit_cast} ill-formed.
     rather than \q{giving up} for unions in the source;
     See \ref("#union-edge-case")
   }
+  \li{
+    Added \ref("#what-about-useful-ub")
+  }
 }
 
 \h3{Changes since R1}
@@ -295,6 +298,40 @@ The solution is to simply allow such cases (which is the status quo).
 Disallowing them would mean that \tcode{std::bit_cast} of a \tcode{union}
 would have to be ill-formed,
 breaking existing code.
+
+\h3{What about \q{useful UB}?}
+
+A possible argument against the current restriction
+is that it disallows implementations from providing \q{useful UB}.
+That is, an implementation could treat padding bits in the source as zero
+or behave de-facto like a \tcode{memcpy},
+but with the new diagnostics,
+this is no longer possible.
+
+However, this loss of freedom is acceptable because
+\ul{
+  \li{
+    any of this \q{useful UB} wouldn't work during constant evaluation
+    (where it should result in an error),
+    and \tcode{std::bit_cast} was deliberately designed as a form of type punning
+    that can work both at runtime and at compile time;
+  }
+  \li{
+    \tcode{std::bit_cast} was designed as an \q{abstract-machine-friendly} form of type punning;
+    inline assembly, \tcode{std::memcpy}, etc.
+    can still be used to handle padding bits differently (such as copying them over);
+  }
+  \li{
+    the added checks can be bypassed by doing a two-stage \tcode{std::bit_cast}
+    to a byte array and then to the destination type
+    (allowing users to utilize whatever \q{useful UB} might exist); and
+  }
+  \li{
+    this \q{useful UB} is purely hypothetical;
+    in practice, the implementations diverge on handling of padding bits,
+    so we are not losing something that \q{works in practice}.
+  }
+}
 
 \h3{Future direction}
 

@@ -1623,6 +1623,8 @@ this proposal makes that degenerate form of <code><h- data-h=name>std</h-><h- da
 <div class=toc-num data-level=3>3.5</div>
 <a href=#union-edge-case><h3><code><h- data-h=kw>union</h-></code> edge case</h3></a>
 <div class=toc-num data-level=3>3.6</div>
+<a href=#what-about-useful-ub><h3>What about <q>useful UB</q>?</h3></a>
+<div class=toc-num data-level=3>3.7</div>
 <a href=#future-direction><h3>Future direction</h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#impact-on-existing-code><h2>Impact on existing code</h2></a>
@@ -1663,6 +1665,9 @@ this proposal makes that degenerate form of <code><h- data-h=name>std</h-><h- da
     Added diagnostic for the case where all union alternatives share a padding bit in the source,
     rather than <q>giving up</q> for unions in the source;
     See <a href=#union-edge-case>§3.5. <code><h- data-h=kw>union</h-></code> edge case</a>
+  </li>
+  <li>
+    Added <a href=#what-about-useful-ub>§3.6. What about <q>useful UB</q>?</a>
   </li>
 </ul>
 
@@ -1925,7 +1930,41 @@ Disallowing them would mean that <code><h- data-h=name>std</h-><h- data-h=sym_op
 would have to be ill-formed,
 breaking existing code.
 </p>
-<h3 id=future-direction><a class=para href=#future-direction></a>3.6. Future direction</h3>
+<h3 id=what-about-useful-ub><a class=para href=#what-about-useful-ub></a>3.6. What about <q>useful UB</q>?</h3>
+
+<p>A possible argument against the current restriction
+is that it disallows implementations from providing <q>useful UB</q>.
+That is, an implementation could treat padding bits in the source as zero
+or behave de-facto like a <code><h- data-h=name>memcpy</h-></code>,
+but with the new diagnostics,
+this is no longer possible.
+</p>
+<p>However, this loss of freedom is acceptable because
+</p><ul>
+  <li>
+    any of this <q>useful UB</q> wouldn't work during constant evaluation
+    (where it should result in an error),
+    and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code> was deliberately designed as a form of type punning
+    that can work both at runtime and at compile time;
+  </li>
+  <li>
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code> was designed as an <q>abstract-machine-friendly</q> form of type punning;
+    inline assembly, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>memcpy</h-></code>, etc.
+    can still be used to handle padding bits differently (such as copying them over);
+  </li>
+  <li>
+    the added checks can be bypassed by doing a two-stage <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code>
+    to a byte array and then to the destination type
+    (allowing users to utilize whatever <q>useful UB</q> might exist); and
+  </li>
+  <li>
+    this <q>useful UB</q> is purely hypothetical;
+    in practice, the implementations diverge on handling of padding bits,
+    so we are not losing something that <q>works in practice</q>.
+  </li>
+</ul>
+
+<h3 id=future-direction><a class=para href=#future-direction></a>3.7. Future direction</h3>
 
 <p>The proposed solution does not preclude the possibility
 of making <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code> clear the padding bits in the future,
