@@ -3,8 +3,8 @@
 
 \wg21_head(title={\tcode{std::to_signed} and \tcode{std::to_unsigned}}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3643R3}}
-  \dt{Date:}            \dd{\tt{2026-08-23}}
+  \dt{Document number:} \dd{\docnum{D3643R4}}
+  \dt{Date:}            \dd{\tt{2026-10-04}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -24,6 +24,12 @@ in the style of \tcode{std::to_underlying}.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R3}
+
+\ul{
+  \li{added \ref("#naming")}
+}
 
 \h3{Changes since R2}
 
@@ -161,14 +167,6 @@ A GitHub code search for
 
 \'HORIZONTAL ELLIPSIS' shows roughly 5.1K Rust files.
 
-\Bnote{
-While C++ and Rust have some amount of naming alignment such as with
-\tcode{std::saturating_add},
-that would not make sense here
-because the \tcode{cast_signed} name is motivated by older names such as \tcode{cast_mut}
-(\tcode{const_cast} in C++).
-}
-
 \h3{Dual purpose}
 
 In addition to the purpose of changing signedness of integers,
@@ -271,6 +269,75 @@ there are multiple options:
     The result of the proposed functions is always a signed or unsigned integer type,
     and permitting \tcode{float} would muddy the waters here.
   }
+}
+
+\h3{Naming}
+
+As explained above,
+the proposed function is inspired by \tcode{std::to_underlying},
+so the names \tcode{std::to_signed} and \tcode{std::to_unsigned}
+continue that existing naming scheme.
+That is, the word \q{\tcode{to}} generally implies a conversion in the standard library,
+possibly including value-channging conversions
+(as compared to \q{\tcode{as}} like in \tcode{std::as_const},
+which indicates lossless conversions).
+
+The name \tcode{std::to_signed} is consistent with the rest of the library in another way:
+all \tcode{std::to_*} functions are wrappers for a \tcode{static_cast}
+(where \tcode{std::to_underlying} and \tcode{std::to_integer}
+convert to the underlying type).
+
+\h4{Possible criticism of naming}
+
+A possible counter-argument to the proposed names is
+that they don't make it readily apparent that wrapping takes place
+(e.g. \tcode{std::to_unsigned(-1)} yields \tcode{UINT_MAX}),
+as compared to a name like \tcode{std::wrap_to_unsigned}
+or \tcode{std::wrapping_to_unsigned}.
+However, the same could be said about all sorts of existing features
+that perform wrapping without expressing that in the name:
+\ul{
+  \li{implicit conversions between \tcode{int} and \tcode{unsigned} are wrapping}
+  \li{aliasing \tcode{int} objects via \tcode{reinterpret_cast<unsigned*>} is wrapping}
+  \li{\tcode{static_cast<unsigned>(-1)} is wrapping}
+  \li{\tcode{std::bit_cast<unsigned>(-1)} is wrapping}
+  \li{anything equivalent to a \tcode{static_cast} (C-style cast, functional cast) is wrapping}
+}
+
+\tcode{std::to_unsigned(-1)} does the same as \tcode{unsigned(-1)}.
+Neither notation advertises that wrapping takes place,
+but the behavior is consistent and intuitive.
+There is also only one plausible default interpretation of \q{convert to unsigned} in C++,
+which is what all of these operations are doing,
+although not every user is familiar enough with the language to arrive at that conclusion,
+so admittedly, some users won't intuit that \tcode{std::to_unsigned} wraps.
+Still, as long as the behavior doesn't deviate from the norm by being e.g. saturating or throwing,
+it shouldn't need explicit clarification.
+
+\Bnote{
+Similarly, Rust provides signedness conversions
+via \code("rust"){as u32} in the language and
+via \ref("https://doc.rust-lang.org/std/primitive.u32.html#method.cast_signed"){\tt{cast_signed}}
+and \ref("https://doc.rust-lang.org/std/primitive.i32.html#method.cast_unsigned"){\tt{cast_unsigned}}
+in the standard library
+(see \ref("#rust-cast_signed-and-cast_unsigned")).
+C++ \tcode{std::to_unsigned(-1)}
+is essentially
+Rust \tcode{(-1).cast_unsigned()}.
+
+There is no explicit \tcode{wrapping_cast_unsigned} function
+despite Rust having wrapping operations like \tcode{wrapping_add};
+\tcode{cast_unsigned} is considered sufficiently clear.
+}
+
+\Bnote{
+While C++ and Rust have some amount of naming alignment such as with
+\tcode{std::saturating_add},
+adopting the Rust name verbatim
+would not make sense here
+because the \tcode{cast_signed} name is motivated by older names such as \tcode{cast_mut}
+(\tcode{const_cast} in C++).
+We also need to be consistent with pre-existing C++ names.
 }
 
 \h2{Possible implementation}
