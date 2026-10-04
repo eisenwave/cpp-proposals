@@ -1625,6 +1625,8 @@ in the style of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-
 <a href=#naming><h3>Naming</h3></a>
 <div class=toc-num data-level=4>4.2.1</div>
 <a href=#possible-criticism-of-naming><h4>Possible criticism of naming</h4></a>
+<div class=toc-num data-level=3>4.3</div>
+<a href=#saturating-checked-etc%2e-variants-or-lack-thereof><h3>Saturating, checked, etc. variants (or lack thereof)</h3></a>
 <div class=toc-num data-level=2>5</div>
 <a href=#possible-implementation><h2>Possible implementation</h2></a>
 <div class=toc-num data-level=2>6</div>
@@ -1642,6 +1644,7 @@ in the style of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-
 <ul>
   <li>added <a href=#naming>§4.2. Naming</a></li>
   <li>added <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>popcount</h-><h- data-h=sym_par>(</h-><wbr/><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_unsigned</h-><h- data-h=sym_par>(</h-><h- data-h=num>123</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code> as motivation in <a href=#introduction>§2. Introduction</a></li>
+  <li>added <a href=#saturating-checked-etc.-variants-or-lack-thereof>§4.3. Saturating, checked, etc. variants (or lack thereof)</a></li>
 </ul>
 
 <h3 id=changes-since-r2><a class=para href=#changes-since-r2></a>1.2. Changes since R2</h3>
@@ -1954,6 +1957,68 @@ because the <code><h- data-h=name>cast_signed</h-></code> name is motivated by o
 We also need to be consistent with pre-existing C++ names.
 </p></note-block>
 
+<h3 id=saturating-checked-etc.-variants-or-lack-thereof><a class=para href=#saturating-checked-etc%2e-variants-or-lack-thereof></a>4.3. Saturating, checked, etc. variants (or lack thereof)</h3>
+
+<p>This proposal only adds the <q>base operation</q>,
+which is wrapping.
+It does not add any additional variants such as a checked, saturating, conversions.
+This has a number of reasons:
+</p><ul>
+  <li>
+    Other forms don't make much design sense.
+    Remember that the proposed functions deliberately don't require the user
+    to specify the target width;
+    it is deduced from the input.
+    It makes very little sense to
+    combine this with checked or saturating forms
+    where an exception is thrown or the value is clamped when it falls outside a specific range.
+    We would be combining a <q>don't care about range</q> operation with a
+    <q>care a lot about range</q> form.
+  </li>
+  <li>
+    Most of these forms don't exist in the C++ standard yet and should be explored holistically.
+    For example, if we wanted <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>checked_to_signed</h-></code>
+    (whatever the check does),
+    we should explore <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>checked_add</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>checked_mul</h-></code> to make a coherent library,
+    similar to saturation arithmetic.
+    This is out of scope for this paper though.
+  </li>
+  <li>
+    The one form that may be worth exploring is <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>saturating_to_signed</h-></code>,
+    but as explained above, it makes little sense.
+  </li>
+  <li>
+    Deployment experience from Rust shows that there is virtually no user interest in such variants.
+    A GitHub code search for the nightly-only <q><tt->integer_cast_extras</tt-></q> functions, i.e. for
+    <a href="https://github.com/search?q=language%3Arust+%2F%28checked%7Csaturating%7Cstrict%29_cast_%28un%29%3Fsigned%2F+-is%3Afork&type=code&p=1"><tt->language:rust /(checked|saturating|strict)_cast_(un)?signed/ -is:fork</tt-></a>
+    yields only 30 results at the time of writing,
+    of which almost all
+    <ul>
+      <li>are in comments,</li>
+      <li>are part of the crate/standard library implementation (which is not user demand),</li>
+      <li>act as pieces of a larger operation like a <q>normal</q> checked cast
+      (making them arguably obsolete when such a combined operation exists), or</li>
+      <li>do two saturating conversions in a row (which is an anti-pattern
+      and absolete when <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>saturating_cast</h-></code> exists).</li>
+    </ul>
+    In short, the microscopic (being generous) user base is not making good use of these functions.
+    <note-block><p><intro-></intro-> 
+    One could argue that these functions are recent and unstable,
+    so it is too early to judge,
+    but genuinely useful numeric functions like <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_compress</h-></code> already acquired
+    1000K GitHub uses
+    (from people independently implementing/copying pasting it),
+    while libc++ and libstdc++ haven't released this feature yet.
+    </p></note-block>
+  </li>
+</ul>
+
+<p>That being said,
+nothing precludes adding more variants in the future,
+just like we could always add a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>checked_gcd</h-></code>
+or <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>saturating_bit_ceil</h-></code>.
+It's just not needed in this paper.
+</p>
 <h2 id=possible-implementation><a class=para href=#possible-implementation></a>5. Possible implementation</h2>
 
 <code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->

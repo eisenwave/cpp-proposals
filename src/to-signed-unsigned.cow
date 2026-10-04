@@ -30,6 +30,7 @@ in the style of \tcode{std::to_underlying}.
 \ul{
   \li{added \ref("#naming")}
   \li{added \tcode{std::popcount(\brk{}std::to_unsigned(123))} as motivation in \ref("#introduction")}
+  \li{added \ref("#saturating-checked-etc.-variants-or-lack-thereof")}
 }
 
 \h3{Changes since R2}
@@ -348,6 +349,69 @@ because the \tcode{cast_signed} name is motivated by older names such as \tcode{
 (\tcode{const_cast} in C++).
 We also need to be consistent with pre-existing C++ names.
 }
+
+\h3{Saturating, checked, etc. variants (or lack thereof)}
+
+This proposal only adds the \q{base operation},
+which is wrapping.
+It does not add any additional variants such as a checked, saturating, conversions.
+This has a number of reasons:
+\ul{
+  \li{
+    Other forms don't make much design sense.
+    Remember that the proposed functions deliberately don't require the user
+    to specify the target width;
+    it is deduced from the input.
+    It makes very little sense to
+    combine this with checked or saturating forms
+    where an exception is thrown or the value is clamped when it falls outside a specific range.
+    We would be combining a \q{don't care about range} operation with a
+    \q{care a lot about range} form.
+  }
+  \li{
+    Most of these forms don't exist in the C++ standard yet and should be explored holistically.
+    For example, if we wanted \tcode{std::checked_to_signed}
+    (whatever the check does),
+    we should explore \tcode{std::checked_add} and \tcode{std::checked_mul} to make a coherent library,
+    similar to saturation arithmetic.
+    This is out of scope for this paper though.
+  }
+  \li{
+    The one form that may be worth exploring is \tcode{std::saturating_to_signed},
+    but as explained above, it makes little sense.
+  }
+  \li{
+    Deployment experience from Rust shows that there is virtually no user interest in such variants.
+    A GitHub code search for the nightly-only \q{\tt{integer_cast_extras}} functions, i.e. for
+    \ref("https://github.com/search?q=language%3Arust+%2F%28checked%7Csaturating%7Cstrict%29_cast_%28un%29%3Fsigned%2F+-is%3Afork&type=code&p=1"
+    ){\tt{language:rust /(checked|saturating|strict)_cast_(un)?signed/ -is:fork}}
+    yields only 30 results at the time of writing,
+    of which almost all
+    \ul{
+      \li{are in comments,}
+      \li{are part of the crate/standard library implementation (which is not user demand),}
+      \li{act as pieces of a larger operation like a \q{normal} checked cast
+      (making them arguably obsolete when such a combined operation exists), or}
+      \li{do two saturating conversions in a row (which is an anti-pattern
+      and absolete when \tcode{std::saturating_cast} exists).}
+    }
+    In short, the microscopic (being generous) user base is not making good use of these functions.
+    \Bnote{
+    One could argue that these functions are recent and unstable,
+    so it is too early to judge,
+    but genuinely useful numeric functions like \tcode{std::bit_compress} already acquired
+    1000K GitHub uses
+    (from people independently implementing/copying pasting it),
+    while libc++ and libstdc++ haven't released this feature yet.
+    }
+  }
+}
+
+That being said,
+nothing precludes adding more variants in the future,
+just like we could always add a \tcode{std::checked_gcd}
+or \tcode{std::saturating_bit_ceil}.
+It's just not needed in this paper.
 
 \h2{Possible implementation}
 
