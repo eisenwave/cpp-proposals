@@ -1579,8 +1579,8 @@ if (theme !== null) {
 <div class=wg21-head><h1>Fixing <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code> of types<br/>with padding bits</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3969R3>P3969R3</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-10-04</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3969R2>P3969R2</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-06-28</tt-></dd>
   <dt>Audience:</dt>        <dd>LEWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1603,10 +1603,8 @@ this proposal makes that degenerate form of <code><h- data-h=name>std</h-><h- da
 <div class=toc><div class=toc-num data-level=2>1</div>
 <a href=#revision-history><h2>Revision history</h2></a>
 <div class=toc-num data-level=3>1.1</div>
-<a href=#changes-since-r2><h3>Changes since R2</h3></a>
-<div class=toc-num data-level=3>1.2</div>
 <a href=#changes-since-r1><h3>Changes since R1</h3></a>
-<div class=toc-num data-level=3>1.3</div>
+<div class=toc-num data-level=3>1.2</div>
 <a href=#changes-since-r0><h3>Changes since R0</h3></a>
 <div class=toc-num data-level=2>2</div>
 <a href=#introduction><h2>Introduction</h2></a>
@@ -1656,17 +1654,7 @@ this proposal makes that degenerate form of <code><h- data-h=name>std</h-><h- da
 
 <h2 id=revision-history><a class=para href=#revision-history></a>1. Revision history</h2>
 
-<h3 id=changes-since-r2><a class=para href=#changes-since-r2></a>1.1. Changes since R2</h3>
-
-<ul>
-  <li>
-    Added diagnostic for the case where all union alternatives share a padding bit in the source,
-    rather than <q>giving up</q> for unions in the source;
-    See <a href=#union-edge-case>§3.5. <code><h- data-h=kw>union</h-></code> edge case</a>
-  </li>
-</ul>
-
-<h3 id=changes-since-r1><a class=para href=#changes-since-r1></a>1.2. Changes since R1</h3>
+<h3 id=changes-since-r1><a class=para href=#changes-since-r1></a>1.1. Changes since R1</h3>
 
 <ul>
   <li>Mentioned EWG support for the design in <a href=#historical-context-for-the-design>§3.1. Historical context for the design</a></li>
@@ -1675,7 +1663,7 @@ this proposal makes that degenerate form of <code><h- data-h=name>std</h-><h- da
   <li>Rebased <a href=#wording>§6. Wording</a> on the post-Brno motions</li>
 </ul>
 
-<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.3. Changes since R0</h3>
+<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.2. Changes since R0</h3>
 
 <ul>
   <li>Limited the scope of the paper to only expand the <i>Mandates</i> of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code></li>
@@ -1909,18 +1897,14 @@ and can be resolved independently of this paper.
 <h3 id=union-edge-case><a class=para href=#union-edge-case></a>3.5. <code><h- data-h=kw>union</h-></code> edge case</h3>
 
 <p>When bit-casting bits that are enclosed by a union,
-it is unknown during translation whether the bits are padding bits or not,
-unless <em>every</em> union alternative has padding bits in the same place.
-</p>
-<p>Similarly, when bit-casting padding bits and the corresponding
+it is unknown during translation whether the bits are padding bits or not.
+Similarly, when bit-casting padding bits and the corresponding
 bits in the destination are enclosed by a union,
 it is also unknown whether padding bits are mapped onto non-padding bits or not.
-It is also possible that no union alternative is active in the destination,
-so destination unions have to be ignored entirely for static checks.
+Undefined behavior in those cases can only be caught by sanitizers;
+it cannot be diagnosed during translation.
 </p>
-<p>Undefined behavior in the alternative-dependent cases can only be caught by sanitizers;
-it cannot be diagnosed during translation, with one exception.
-The solution is to simply allow such cases (which is the status quo).
+<p>The solution is to simply allow such cases (which is the status quo).
 Disallowing them would mean that <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_cast</h-></code> of a <code><h- data-h=kw>union</h-></code>
 would have to be ill-formed,
 breaking existing code.
@@ -1996,8 +1980,7 @@ of a complete object <math display=inline><mi>d</mi></math> of type <code><h- da
     <ins><math display=inline><msub><mi>s</mi><mi>i</mi></msub></math> is in the value representation of <math display=inline><mi>s</mi></math>,</ins>
   </li>
   <li>
-    <ins><math display=inline><msub><mi>s</mi><mi>i</mi></msub></math> is in the value representation
-    an alternative of an eclosing union,</ins>
+    <ins><math display=inline><msub><mi>s</mi><mi>i</mi></msub></math> is enclosed by a union,</ins>
   </li>
   <li>
     <ins><math display=inline><msub><mi>d</mi><mi>i</mi></msub></math> is not in the value representation of <math display=inline><mi>d</mi></math>,</ins>
@@ -2020,9 +2003,6 @@ looks for an enclosing object recursively,
 and we cannot know if on some level <math display=inline><mi>s</mi></math> itself is enclosed by a union or not.
 We are imposing a requirement here that has to apply universally to any possible objects
 <math display=inline><mi>s</mi></math> and <math display=inline><mi>d</mi></math>.
-</p>
-<p>It is possible that <em>no</em> alternative is active in a destination union,
-so casting to a union cannot be statically diagnosed.
 </p></note-block>
 
 <p><i>Constant When</i>:

@@ -3,8 +3,8 @@
 
 \wg21_head(title={Fixing \tcode{std::bit_cast} of types\br{}with padding bits}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3969R2}}
-  \dt{Date:}            \dd{\tt{2026-06-28}}
+  \dt{Document number:} \dd{\docnum{P3969R3}}
+  \dt{Date:}            \dd{\tt{2026-10-04}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -27,6 +27,16 @@ this proposal makes that degenerate form of \tcode{std::bit_cast} ill-formed.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R2}
+
+\ul{
+  \li{
+    Added diagnostic for the case where all union alternatives share a padding bit in the source,
+    rather than \q{giving up} for unions in the source;
+    See \ref("#union-edge-case")
+  }
+}
 
 \h3{Changes since R1}
 
@@ -270,13 +280,17 @@ and can be resolved independently of this paper.
 \h3{\tcode{union} edge case}
 
 When bit-casting bits that are enclosed by a union,
-it is unknown during translation whether the bits are padding bits or not.
+it is unknown during translation whether the bits are padding bits or not,
+unless \em{every} union alternative has padding bits in the same place.
+
 Similarly, when bit-casting padding bits and the corresponding
 bits in the destination are enclosed by a union,
 it is also unknown whether padding bits are mapped onto non-padding bits or not.
-Undefined behavior in those cases can only be caught by sanitizers;
-it cannot be diagnosed during translation.
+It is also possible that no union alternative is active in the destination,
+so destination unions have to be ignored entirely for static checks.
 
+Undefined behavior in the alternative-dependent cases can only be caught by sanitizers;
+it cannot be diagnosed during translation, with one exception.
 The solution is to simply allow such cases (which is the status quo).
 Disallowing them would mean that \tcode{std::bit_cast} of a \tcode{union}
 would have to be ill-formed,
@@ -357,7 +371,8 @@ of a complete object \math{\mi{d}} of type \tcode{To},}
     \ins{\math{\msub{\mi{s}\mi{i}}} is in the value representation of \math{\mi{s}},}
   }
   \li{
-    \ins{\math{\msub{\mi{s}\mi{i}}} is enclosed by a union,}
+    \ins{\math{\msub{\mi{s}\mi{i}}} is in the value representation
+    an alternative of an eclosing union,}
   }
   \li{
     \ins{\math{\msub{\mi{d}\mi{i}}} is not in the value representation of \math{\mi{d}},}
@@ -380,6 +395,9 @@ looks for an enclosing object recursively,
 and we cannot know if on some level \math{\mi{s}} itself is enclosed by a union or not.
 We are imposing a requirement here that has to apply universally to any possible objects
 \math{\mi{s}} and \math{\mi{d}}.
+
+It is possible that \em{no} alternative is active in a destination union,
+so casting to a union cannot be statically diagnosed.
 }
 
 \constantwhen
