@@ -56,11 +56,17 @@ private:
     uint64_t raw_m = xi & significand_mask;
 
     if (raw_exp == 0) [[unlikely]] {
-      // Subnormals are shifted to the left
-      // to account for the missing integer bit compared to normals.
-      // Without this shift, subnormals and zeroes
-      // could not be identified by their exponent alone,
-      // and recomposition would be more complicated.
+      // Subnormals in binary interchange formats
+      // have the same mathematical exponent as the smallest normal numbers.
+      // Since we seemingly violate that
+      // by subtracting exponent_offset unconditionally later,
+      // we must shift to the left by 1 here,
+      // which has the same effect as incrementing the exponent for subnormals.
+      //
+      // The benefit is that subnormals and zeros can be identified
+      // by their exponent alone,
+      // i.o.w. every distinct exponent in the representation
+      // also results in a distinct exponent() result.
       raw_m <<= 1;
     } else if (raw_exp != max_raw_exp) [[likely]] {
       // Normal numbers (but not infinity or NaN) have an implicit leading 1.

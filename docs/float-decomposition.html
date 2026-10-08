@@ -2751,11 +2751,17 @@ no inexact operation takes place.
     <h- data-h=name_type>uint64_t</h-> <h- data-h=name>raw_m</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>xi</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=name>significand_mask</h-><h- data-h=sym_punc>;</h->
 
     <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>raw_exp</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>unlikely</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_brac>{</h->
-      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Subnormals are shifted to the left</h->
-      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> to account for the missing integer bit compared to normals.</h->
-      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Without this shift, subnormals and zeroes</h->
-      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> could not be identified by their exponent alone,</h->
-      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> and recomposition would be more complicated.</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Subnormals in binary interchange formats</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> have the same mathematical exponent as the smallest normal numbers.</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Since we seemingly violate that</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> by subtracting exponent_offset unconditionally later,</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> we must shift to the left by 1 here,</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> which has the same effect as incrementing the exponent for subnormals.</h->
+      <h- data-h=cmt_dlim>//</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> The benefit is that subnormals and zeros can be identified</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> by their exponent alone,</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> i.o.w. every distinct exponent in the representation</h->
+      <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> also results in a distinct exponent() result.</h->
       <h- data-h=name>raw_m</h-> <h- data-h=sym_op>&lt;&lt;=</h-> <h- data-h=num>1</h-><h- data-h=sym_punc>;</h->
     <h- data-h=sym_brac>}</h-> <h- data-h=kw_ctrl>else</h-> <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>raw_exp</h-> <h- data-h=sym_op>!=</h-> <h- data-h=name>max_raw_exp</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>likely</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_brac>{</h->
       <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Normal numbers (but not infinity or NaN) have an implicit leading 1.</h->
