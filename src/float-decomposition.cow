@@ -5,8 +5,8 @@
   title = {Decomposing floating-point numbers}
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{D4382R0}}
-  \dt{Date:}            \dd{\tt{2026-09-21}}
+  \dt{Document number:} \dd{\docnum{P4382R0}}
+  \dt{Date:}            \dd{\tt{2026-10-08}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -18,7 +18,9 @@
 }
 
 \Babstract{
-
+There should be a standard-library function
+for decomposing floating-point numbers
+into a sign bit, exponent, and integer significand.
 }
 
 \h2(listed=false){Contents}
@@ -33,6 +35,10 @@ Such an operation is useful for a wide variety of applications,
 internally present in standard libraries already,
 and should be exposed to the user.
 
+\h3{Refresher on floating-point model and representations}
+
+To understand what it means to \q{decompose} a floating-point number,
+one must first consider the mathematical model of floating-point numbers.
 The C23 standard draft \ref("N3220")
 describes the model of floating-point numbers in
 §5.2.5.3.3 as follows:
@@ -81,14 +87,18 @@ math[display=block] {
   }
 }
 
-For each floating type, the parameters \math{\mi{b}}, \math{\mi{p}},
-\math{\msub{\mi{e}\mi{min}}}, and \math{\msub{\mi{e}\mi{max}}} are fixed constants.
+For each floating type, the parameters
+\math{\mi{b}},
+\math{\mi{p}},
+\math{\msub{\mi{e}\mi{min}}}, and
+\math{\msub{\mi{e}\mi{max}}}
+are fixed constants.
 
 For each floating type,
 a \dfn{floating-point number} (\math{\mi{x}}) is defined by
 the following model:
 
-\mathblock{
+\mathblock{\mrow{
   \mi{x}
   \mspace(width="0.25em"){}\mi{=}\mspace(width="0.25em"){}
   \mi{s}
@@ -106,12 +116,12 @@ the following model:
   \mi{e}
   \mspace(width="0.15em"){}\mi{≤}\mspace(width="0.15em"){}
   \msub{\mi{e}\mi{max}}
-}
+}}
 }
 
-Or more simply and ignoring the exponent constraints,
+Or grossly simplified,
 one could say:
-\mathblock{
+\mathblock{\mrow{
   \mi{x}
   \mspace(width="0.25em"){}\mi{=}\mspace(width="0.25em"){}
   \mi{s}
@@ -121,10 +131,20 @@ one could say:
   \mi{q}
   \mo{∈}
   \mi{ℕ}
+}}
+
+This model is not just a theoretical basis,
+but closely matches how floating-point numbers are represented in memory;
+the ISO/IEC 60559 standard defines several binary interchange formats
+where a floating-point number is represented using
+\ul{
+  \li{a single sign bit (representing \math{\mi{s}})}
+  \li{exponent bits (representing \math{\mi{e}}), and}
+  \li{significand bits (representing \math{\mrow{\mi{q}\mo{=}\msub{\mi{f}\mi{k}}}}).}
 }
 
-This decomposition is not just a theoretical basis,
-but relevant in practice for implementing floating-point operations.
+Thus, many operations are implemented by decomposing floating-point numbers
+into these components.
 
 \Bex{
 To implement \tcode{std::scalbn(double \math{\mi{x}}, int \math{\mi{n}})}
@@ -152,17 +172,22 @@ and decomposing the floating-point number happens in decimal notation too,
 but there is a less direct relationship between the significand and the printed digits.
 }
 
-Frustratingly, this decomposition is already implemented in standard libraries,
+\h3{The problem}
+
+Frustratingly, the decomposition described above is already implemented in standard libraries,
 just not exposed to the user.
-It is also difficult for the user to implement this operation manually,
-especially with good performance.
+It is also difficult for the user to implement decompositions manually,
+especially with good performance,
+and especially in a way that portably supports exotic floating-point formats.
+
 The standard library only offers much higher level operations such as
 \tcode{std::frexp}
-(which decomposes into a normalized fraction in ranges ±[0.5, 1) and an exponent);
+(which decomposes into a normalized fraction in ranges
+\math{\mrow{\mo{±}\mo{[}\mn{0.5}\mo{,}\mn{1}\mo{)}}} and an exponent);
 it does not provide the low-level building block that could be used to implement
 \tcode{std::frexp}, \tcode{std::scalbn}, \tcode{std::to_chars}, etc.
 
-I therefore propose adding \tcode{std::decompose_float} function.
+We therefore propose adding a \tcode{std::decompose_float} function.
 
 \h2{Motivation}
 
@@ -233,14 +258,11 @@ for all formats in common use except \tcode{std::float128_t}.
 
 \h2{Design}
 
-The signature of the function is as follows:
+The proposed API is as follows:
 
 \cppblock{
 template<class F>
 struct float_decomposition {
-private:
-  static constexpr bool \exposid{is-iec559} = numeric_limits<F>::is_iec559;
-public:
   // radix for the result of exponent()
   static constexpr int radix = numeric_limits<F>::radix;
 
@@ -264,13 +286,13 @@ public:
   constexpr int              exponent() const noexcept;    // returns base-radix exponent
   constexpr significand_type significand() const noexcept;
 
-  constexpr bool is_finite() const noexcept requires \exposid{is-iec559};
-  constexpr bool is_inf() const noexcept requires \exposid{is-iec559};
-  constexpr bool is_nan() const noexcept requires \exposid{is-iec559};
-  constexpr bool is_normal() const noexcept requires \exposid{is-iec559};
-  constexpr bool is_signaling() const noexcept requires \exposid{is-iec559};
-  constexpr bool is_subnormal() const noexcept requires \exposid{is-iec559};
   constexpr bool is_zero() const noexcept;
+  constexpr bool is_finite() const noexcept;     // optional
+  constexpr bool is_inf() const noexcept;        // optional
+  constexpr bool is_nan() const noexcept;        // optional
+  constexpr bool is_normal() const noexcept;     // optional
+  constexpr bool is_signaling() const noexcept;  // optional
+  constexpr bool is_subnormal() const noexcept;  // optional
 };
 
 template<class T>
@@ -316,6 +338,12 @@ A lot of design questions can be quickly answered in a few sentences:
     \tcode{std::float128_t} has only 15 exponent bits.
     The return type can be changed in the future should a floating-point format ever emerge
     that requires more than \tcode{int} can provide.
+    \tcode{int} exponents are also widespread in the standard library already,
+    such as in \tcode{\q{int numeric_limits<float>::max_exponent}}.
+    Even if a format with more than 16 exponent bits emerged
+    (such as an implementation of ISO/IEC 60559 256-bit binary interchange floating-point types),
+    the platforms supporting such \q{ultra-precise floating-point types}
+    are unlikely to have 16-bit \tcode{int}.
   }
 
   \dt{Why is \tcode{radix} provided as a static member?}
@@ -360,45 +388,34 @@ More involved design questions are addressed below.
 
 \h3{Handling of non-finite inputs}
 
+\h4{Why non-finite inputs should be checked for}
+
 Firstly, it should be noted that determining whether a number is finite
 is typically extremely fast and would be a side product of the decomposition process.
-ISO/IEC 60555 binary interchange floating-point types are
-non-finite if and only if the exponent consist of all one-bits.
+ISO/IEC 60559 binary interchange floating-point types are
+non-finite if and only if the exponent consists of all one-bits.
 
-\Bex{
-The finiteness check for \tcode{std::float32_t x}
-within \tcode{std::decompose_float} boils down to:
+\Bnote{
+The finiteness check for any binary interchange floating-point number boils down to
 \cppblock{
-// if (!std::isfinite(x))
-if ((std::bit_cast<std::uint32_t>(x) << 1) >= 0xff000000) [[unlikely]] {
-  // ...
+if (raw_exponent == max_raw_exponent) [[unlikely]]
 }
+where \tcode{raw_exponent} needs to be extracted anyway as part of the decomposition,
+and \tcode{max_raw_exponent} is a constant.
+For \tcode{std::float64_t}, the added cost to the critical path is merely:
+\codeblock("nasm"){
+cmp     edx, 2047                  ; if (edx == 20247)
+je      .skip_adding_integer_bit   ;   goto skip_adding_integer_bit;
 }
-The check is even simpler in practice;
-see \ref("#impl-decompose-float").
+See also \ref("#impl-decompose-float").
 }
 
 In the event that even this tiny check is too costly,
-it can be eliminated via \tcode{[[assume(std::isfinite(x))]]} up front.
-The question is then what \tcode{std::decompose_float}
-should do for non-finite inputs.
-The most useful behavior would be if:
-\ul{
-  \li{
-    \tcode{significand()}
-    simply returned the contents of the significand representation
-    reinterpreted as an integer.
-    This is useful for examining NaN payloads.
-  }
-  \li{
-    \tcode{exponent()}
-    returned the exponent adjusted using the same bias as for finite numbers.
-    For ISO/IEC 60559 binary interchange floating-point types,
-    this means that the exponent of ±infinity would be greater than that of any finite numbers,
-    which makes comparisons of \tcode{exponent()} between results meaningful,
-    unless NaN is involved.
-  }
-}
+it can be eliminated via \tcode{[[assume(std::isfinite(x))]]} up front in theory,
+although in practice, the assumption has no effect.
+Another possible way to eliminate the check would be via a separate
+\tcode{std::decompose_finite_float} function that has UB for non-finite inputs,
+but this is currently not proposed.
 
 Simply handling non-finite inputs as UB would be a safety hazard;
 unlike in Rust, there is no way to disable certain checks in \q{unsafe mode},
@@ -409,6 +426,52 @@ Treating NaNs as UB would also be unprecedented;
 all of \header{cmath} provides functions with wide contracts
 that handle non-finite inputs gracefully,
 and this is the ISO/IEC 60559 approach in general.
+
+\h4{Result of \tt{significand} and \tt{exponent} for non-finite inputs}
+
+For ISO/IEC 60559 binary interchange types
+the \q{obvious} non-finite behavior would be if
+\ul{
+  \li{
+    \tcode{significand()}
+    returned the contents of the significand representation
+    reinterpreted as an integer.
+    This is useful for examining NaN payloads.
+  }
+  \li{
+    \tcode{exponent()}
+    returned the exponent adjusted using the same bias as for finite numbers.
+    This means that the exponent of \math{\mrow{\mo{±}\mi{∞}}}
+    would be greater than that of any finite number,
+    which makes comparisons of \tcode{exponent()} between results meaningful,
+    unless NaN is involved.
+  }
+}
+This behavior is \q{obvious} because it makes the original value
+bitwise reconstructible from the decomposition, and
+both infinities and NaN are handled identically using the same minimal logic
+(see \ref("#impl-decompose-float")).
+
+For ISO/IEC 60559 decimal interchange floating-point types,
+infinity, qNaN, and sNaN are represented using the bit patterns
+\tcode{11110}, \tcode{11111'0}, and \tcode{11111'1} respectively,
+in the so-called \dfn{combination field},
+but this combination field is \u{not} simply the exponent.
+This makes it unclear
+what the results of \tcode{exponent()} and \tcode{significand()} should be specifically,
+and perhaps this issue would be better addressed when properly providing
+support for decimal floating-point types in \header{cmath} and the rest of the standard library.
+The paper leaves this part implementation-defined.
+
+For any other floating-point types,
+the results are implementation-defined
+because we don't know their representation down to the last bit anyway,
+so we cannot say what a reasonable mapping of values to \tcode{significand()}
+and \tcode{exponent()} would be.
+However, the implementation might still provide reasonable behavior
+for types very similar to binary interchange types,
+like x87 80-bit \tcode{long double}, \tcode{std::bfloat16_t}, etc.
+and should be recommended to do so.
 
 \h3{Why not a \tt{<cmath>} function?}
 
@@ -508,7 +571,7 @@ Miraculously, \tcode{std::decompose_float}
 is also a potentially cheaper operation than \tcode{std::frexpq}
 despite being vastly more useful.
 Specifically, \tcode{std::frexpq}
-would be required to normalize subnormal normals
+would be required to normalize subnormal numbers
 rather than merely adjusting the exponent like for normal numbers.
 By comparison,
 \tcode{std::decompose_float}
@@ -844,8 +907,8 @@ Let \math{\mi{b}} be \tcode{radix}.
 \ul{
   \li{
     If \math{\mi{x}} is finite,
-    \tcode{exponent()} returns \math{\mi{e}} and
-    \tcode{significand()} returns \math{\mi{m}} respectively, such that
+    \tcode{exponent()} returns an integer \math{\mi{e}} and
+    \tcode{significand()} returns an integer \math{\mi{m}}, such that
     \math{
     \mrow{
       \mo(form="prefix", fence=true, stretchy=false, rspace="0"){|}
@@ -856,16 +919,35 @@ Let \math{\mi{b}} be \tcode{radix}.
       \mo{×}
       \msup{\mi{b}\mi{e}}}
     }.
-    Which combination of \math{\mi{e}} and \math{\mi{m}} is chosen
+    Which pair of \math{\mi{e}} and \math{\mi{m}} is chosen
     is a property of the implementation,
     except that
     \ul{
       \li{
-        \math{\mi{m}} is chosen to be representable in type \tcode{T}, and
+        \math{\mi{m}} is chosen to be exactly representable in type \tcode{T}, and
+        \br\example{
+        If \tcode{T} is \tcode{std::float16_t} and \math{\mi{x}} is \math{\mn{1}},
+        the greatest possible result of \tcode{significand()} is \tcode{65'536},
+        where \tcode{exponent()} returns \tcode{-16}.
+        }
       }
       \li{
         if \tcode{T} is an ISO/IEC 60559 decimal floating-point type,
-        \math{\mi{e}} is the quantum exponent of the underlying value.
+        \math{\mi{e}} is the quantum exponent of \math{\mi{x}}.
+        \br\example{
+        A floating-point value \math{\mn{1.5}}
+        of an ISO/IEC 60559 decimal64 floating-point type
+        can be decomposed
+        so that \tcode{significand()} returns \tcode{15} and
+        \tcode{exponent()} returns \tcode{-1}
+        (corresponding to \math{\mrow{\mn{15}\mo{×}\msup{\mn{10}\mn{-1}}}}), or
+        so that \tcode{significand()} returns \tcode{150}
+        and \tcode{exponent()} returns \tcode{-2}
+        (corresponding to \math{\mrow{\mn{150}\mo{×}\msup{\mn{10}\mn{-2}}}}),
+        where \tcode{radix} equals \tcode{10}.
+        The result of \tcode{exponent()} is equal to that
+        of the C standard library function \tcode{llquantexpd64}.
+        }
       }
     }
     \note{
@@ -874,17 +956,18 @@ Let \math{\mi{b}} be \tcode{radix}.
     }
   }
   \li{
-    Otherwise, if \tcode{T} is an ISO/IEC 60559 binary interchange floating-point type
-    and \math{\mi{x}} is negative or positive infinity,
-    \tcode{exponent()} returns \tcode{max_exponent} and
-    \tcode{significand()} returns zero.
-  }
-  \li{
-    Otherwise, if \tcode{T} is an ISO/IEC 60559 binary interchange floating-point type
-    and \math{\mi{x}} is NaN,
-    \tcode{exponent()} returns \tcode{max_exponent} and
-    \tcode{significand()} returns the NaN payload of \math{\mi{x}},
+    Otherwise, if \tcode{T} is an ISO/IEC 60559 binary interchange floating-point type,
+    \tcode{exponent()} returns a result one greater than \tcode{exponent()}
+    returns for any finite \math{\mi{x}}, and
+    \tcode{significand()} returns the significand bits
+    in the value representation of \math{\mi{x}},
     reinterpreted as an integer.
+    \br\note{
+    If \math{\mi{x}} is negative or positive infinity,
+    \tcode{significand()} returns zero.
+    If \math{\mi{x}} is NaN,
+    \tcode{significand()} returns the NaN payload.
+    }
   }
   \li{
     Otherwise, the result of \tcode{exponent()} and
@@ -904,6 +987,8 @@ If \tcode{T} is not an ISO/IEC 60559 binary interchange floating-point type
 but has similar representation,
 implementations should return the same results
 as if \tcode{T} were an ISO/IEC 60559 binary interchange floating-point type.
+
+SEE ALSO: \ref("https://cstd.eisie.net/c23#7.12.15.4"){ISO/IEC 9899:2024 7.12.15.4}
 }
 
 \itemdecl{
@@ -998,6 +1083,34 @@ no inexact operation takes place.
 }
 }
 
+\h2{References}
+
+\bib(
+  id = "N3220",
+  title = "ISO/IEC 9899:2024 Working Draft",
+  date = "2024-02-22",
+  author = "JeanHeyd Meneide",
+  link = "https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3220.pdf",
+)\
+\bib(
+  id = "N5054",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2026-07-16",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5054",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
+)\
+\bib(
+  id = "P3666R4",
+  title = "Bit-precise integers",
+  date = "2026-05-12",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3666r4",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r4.html",
+)\
+
+\make_bib
+
 \h2(show_number=false){Appendix \'EM DASH' Sample implementations}
 
 \h3(
@@ -1005,114 +1118,34 @@ no inexact operation takes place.
   show_number=false,
 ){\tt{decompose_float(float64_t)}}
 
-\cppblock{
-struct f64_decomposition {
-  static constexpr int radix = 2;
-  static constexpr int min_exponent = -1074;
-  static constexpr int max_exponent = 972;
-  static constexpr int exponent_width = 12;
-  static constexpr int max_significand = (1ull << 53) - 1;
-  static constexpr int significand_width = 53;
-  using significand_type = uint64_t;
-
-  uint64_t m;
-  int e;
-  bool s;
-
-  constexpr int              sign() const noexcept { return s ? -1 : 1; }
-  constexpr bool             sign_bit() const noexcept { return s; }
-  constexpr int              exponent() const noexcept { return e; }
-  constexpr significand_type significand() const noexcept { return m; }
-
-  constexpr bool is_finite() const noexcept {
-    return e != max_exponent;
-  }
-  constexpr bool is_inf() const noexcept {
-    return !is_finite() && m == 0;
-  }
-  constexpr bool is_nan() const noexcept {
-    return !is_finite() && m != 0;
-  }
-  constexpr bool is_normal() const noexcept {
-    return e != max_exponent && e != min_exponent;
-  }
-  constexpr bool is_signaling() const noexcept {
-    return is_nan() && m & (1ull << 51) == 0;
-  }
-  constexpr bool is_subnormal() const noexcept {
-    return e == min_exponent;
-  }
-  constexpr bool is_zero() const noexcept {
-    return e == min_exponent && m == 0;
-  }
-};
-
-constexpr f64_decomposition decompose_float(float64_t x) {
-  // exponent bias + significand bits
-  constexpr int exponent_bits = 11;
-  constexpr int significand_bits = 52;
-  constexpr int exponent_offset = 1023 + significand_bits;
-  constexpr int min_exponent = -1022 - significand_bits;
-
-  constexpr uint64_t significand_mask = (1ull << significand_bits) - 1;
-  constexpr uint64_t implicit_significand_bit = 1ull << significand_bits;
-  constexpr int exponent_shifted_mask = (1 << exponent_bits) - 1;
-
-  auto xi = std::bit_cast<uint64_t>(x);
-  int raw_exp = (xi >> significand_bits) & exponent_shifted_mask;
-  bool signbit = (xi >> (exponent_bits + significand_bits)) != 0;
-  uint64_t raw_m = xi & significand_mask;
-
-  if (raw_exp == exponent_shifted_mask) [[unlikely]] {
-    // infinity and NaN
-    return { raw_m, raw_exp - exponent_offset, signbit };
-  }
-  if (raw_exp == 0) [[unlikely]] {
-    // When the biased exponent is zero,
-    // the number is either subnormal or zero.
-    // Either way, there is no implicit leading 1 before the significand,
-    // so the raw significand can be reinterpreted as an integer.
-    return { raw_m, min_exponent, signbit };
-  }
-  return {
-    raw_m | implicit_significand_bit,
-    raw_exp - exponent_offset,
-    signbit,
-  };
-}
-}
+\cppblock{\cowel_include_text("float-decomposition.cpp")}
 
 \tt{clang++-24 -O3 -march=x86-64-v3} output
 (labels adjusted for readability):
 
 \codeblock("nasm"){
 decompose_float:
-        mov     edx, 4294966222
         vmovq   rcx, xmm0
-        mov     rsi, rcx
-        shr     rsi, 52
-        and     esi, 2047
+        mov     rdx, rcx
+        shr     rdx, 52
         mov     al, 52
         bzhi    rax, rcx, rax
-        cmp     esi, 2047
-        je      .inf_or_nan
-        test    esi, esi
+        and     edx, 2047
         je      .subnormal_or_zero
-        movabs  rdi, 4503599627370496
-        or      rax, rdi
-        add     esi, -1075
-.common_exit:
+        cmp     edx, 2047
+        je      .skip_adding_integer_bit
+        movabs  rsi, 4503599627370496
+        or      rax, rsi
+.skip_adding_integer_bit:
+        add     edx, -1075
         shr     rcx, 31
-        add     rdx, 1074
-        and     rdx, rcx
+        movabs  rsi, 4294967296
+        and     rsi, rcx
         or      rdx, rsi
         ret
-.inf_or_nan:
-        mov     esi, 972
-        jmp     .common_exit
 .subnormal_or_zero:
-        mov     esi, 4294966222
-        jmp     .common_exit
+        add     rax, rax
+        jmp     .skip_adding_integer_bit
 }
 
 \h3(
@@ -1268,31 +1301,3 @@ frexpq:
         add     ecx, -64
         jmp     .common_exit
 }
-
-\h2{References}
-
-\bib(
-  id = "N3220",
-  title = "SO/IEC 9899:2024 Working Draft",
-  date = "2024-02-22",
-  author = "JeanHey Meneide",
-  link = "https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3220.pdf",
-)\
-\bib(
-  id = "N5054",
-  title = "Working Draft, Programming Languages — C++",
-  date = "2026-07-16",
-  author = "Thomas Köppe",
-  link = "https://wg21.link/n5054",
-  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
-)\
-\bib(
-  id = "P3666R4",
-  title = "Bit-precise integers",
-  date = "2026-05-12",
-  author = "Jan Schultke",
-  link = "https://wg21.link/p3666r4",
-  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r4.html",
-)\
-
-\make_bib
