@@ -630,6 +630,43 @@ for decomposing floating-point numbers because
   }
 }
 
+\h3{Exponent guarantee for binary interchange floating-point}
+
+For binary interchange floating-point types
+(\tcode{std::float32_t}, \tcode{std::float64_t}, possibly \tcode{float}, etc.),
+the proposed utility becomes significantly more useful if there is a strict guarantee
+that the result of \tcode{exponent()} is the biased exponent \math{\mi{E}}
+with a constant offset,
+so we should provide that guarantee.
+Several interesting properties emerge:
+\ul{
+  \li{
+    Subnormal numbers and zeros can be distinguished from normal numbers
+    based on the exponent alone.
+  }
+  \li{
+    Numbers with greater \tcode{exponent()} result are always greater in magnitude,
+    which is helpful for establishing orderings such as \tcode{std::strong_order}.
+  }
+  \li{
+    The underlying raw biased exponent \math{\mi{E}} can be recovered exactly.
+  }
+  \li{
+    The exponent bias and exponent width of the format
+    (which are not obtainable through \tcode{numeric_limits})
+    become obtainable programmatically.
+  }
+  \li{
+    There is only one possible choice for \tcode{significand()},
+    so all results become fully independent of implementation choices.
+  }
+}
+
+These properties are too interesting and useful to forfeit
+by leaving the choice of \tcode{exponent()} up to the implementation.
+The guarantee also doesn't impose any additional runtime cost;
+see \ref("#impl-decompose-float").
+
 \h3{Decimal floating-point}
 
 C23 optionally standardized
@@ -939,15 +976,41 @@ Let \math{\mi{b}} be \tcode{radix}.
     except that
     \ul{
       \li{
-        \math{\mi{m}} is chosen to be exactly representable in type \tcode{T}, and
+        \math{\mi{m}} is chosen to be exactly representable in type \tcode{T},
         \br\example{
         If \tcode{T} is \tcode{std::float16_t} and \math{\mi{x}} is \math{\mn{1}},
-        the greatest possible result of \tcode{significand()} is \tcode{65'536},
+        the greatest possible result of \tcode{significand()}
+        satisfying this requirement is \tcode{65'536},
         where \tcode{exponent()} returns \tcode{-16}.
         }
       }
       \li{
-        if \tcode{T} is an ISO/IEC 60559 decimal floating-point type,
+        if \tcode{T} is an ISO/IEC 60559 binary interchange floating-point type,
+        \math{\mrow{\mi{e}\mo{=}\mi{E}\mo{−}\mi(mathvariant="italic"){bias}}}, where
+        \math{\mi{E}} is the biased exponent encoded in \math{\mi{x}}, and
+        \math{\mi(mathvariant="italic"){bias}} is the exponent bias constant for the format,
+        as specified in ISO/IEC 60559.
+        \br\note{
+        Consequently, the following statements are true:
+        \ul{
+          \li{
+            If and only if \math{\mi{x}} is zero or subnormal,
+            \tcode{exponent()} returns \tcode{min_exponent}.
+          }
+          \li{
+            There is only one possible choice of \tcode{significand()}.
+          }
+          \li{
+            If for two \tcode{float_decomposition} objects \tcode{a} and \tcode{b},
+            \tcode{a.exponent() > b.exponent()} is \tcode{true} and
+            neither of their underlying values is NaN,
+            \tcode{value_type(a) > value_type(b)} is \tcode{true}.
+          }
+        }
+        }
+      }
+      \li{
+        if \tcode{T} is an ISO/IEC 60559 decimal interchange floating-point type,
         \math{\mi{e}} is the quantum exponent of \math{\mi{x}}.
         \br\example{
         A floating-point value \math{\mn{1.5}}

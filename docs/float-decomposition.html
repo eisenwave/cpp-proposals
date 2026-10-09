@@ -1618,8 +1618,10 @@ into a sign bit, exponent, and integer significand.
 <div class=toc-num data-level=3>3.2</div>
 <a href=#why-not-a-cmath-function><h3>Why not a <tt->&lt;cmath&gt;</tt-> function?</h3></a>
 <div class=toc-num data-level=3>3.3</div>
-<a href=#decimal-floating-point><h3>Decimal floating-point</h3></a>
+<a href=#exponent-guarantee-for-binary-interchange-floating-point><h3>Exponent guarantee for binary interchange floating-point</h3></a>
 <div class=toc-num data-level=3>3.4</div>
+<a href=#decimal-floating-point><h3>Decimal floating-point</h3></a>
+<div class=toc-num data-level=3>3.5</div>
 <a href=#choice-of-header><h3>Choice of header</h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#wording><h2>Wording</h2></a>
@@ -2242,7 +2244,44 @@ for decomposing floating-point numbers because
   </li>
 </ul>
 
-<h3 id=decimal-floating-point><a class=para href=#decimal-floating-point></a>3.3. Decimal floating-point</h3>
+<h3 id=exponent-guarantee-for-binary-interchange-floating-point><a class=para href=#exponent-guarantee-for-binary-interchange-floating-point></a>3.3. Exponent guarantee for binary interchange floating-point</h3>
+
+<p>For binary interchange floating-point types
+(<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>float32_t</h-></code>, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>float64_t</h-></code>, possibly <code><h- data-h=kw_type>float</h-></code>, etc.),
+the proposed utility becomes significantly more useful if there is a strict guarantee
+that the result of <code><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> is the biased exponent <math display=inline><mi>E</mi></math>
+with a constant offset,
+so we should provide that guarantee.
+Several interesting properties emerge:
+</p><ul>
+  <li>
+    Subnormal numbers and zeros can be distinguished from normal numbers
+    based on the exponent alone.
+  </li>
+  <li>
+    Numbers with greater <code><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> result are always greater in magnitude,
+    which is helpful for establishing orderings such as <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>strong_order</h-></code>.
+  </li>
+  <li>
+    The underlying raw biased exponent <math display=inline><mi>E</mi></math> can be recovered exactly.
+  </li>
+  <li>
+    The exponent bias and exponent width of the format
+    (which are not obtainable through <code><h- data-h=name>numeric_limits</h-></code>)
+    become obtainable programmatically.
+  </li>
+  <li>
+    There is only one possible choice for <code><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>,
+    so all results become fully independent of implementation choices.
+  </li>
+</ul>
+
+<p>These properties are too interesting and useful to forfeit
+by leaving the choice of <code><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> up to the implementation.
+The guarantee also doesn't impose any additional runtime cost;
+see <a href=#impl-decompose-float>§ <tt->decompose_float(float64_t)</tt-></a>.
+</p>
+<h3 id=decimal-floating-point><a class=para href=#decimal-floating-point></a>3.4. Decimal floating-point</h3>
 
 <p>C23 optionally standardized
 <code><h- data-h=kw_type>_Decimal32</h-></code>, <code><h- data-h=kw_type>_Decimal64</h-></code>, and <code><h- data-h=kw_type>_Decimal128</h-></code>,
@@ -2275,7 +2314,7 @@ requiring that when reconstructing the original floating-point value,
 it has the same quantum exponent, and that <code><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> returns the quantum exponent
 instead of some arbitrary exponent.
 </p>
-<h3 id=choice-of-header><a class=para href=#choice-of-header></a>3.4. Choice of header</h3>
+<h3 id=choice-of-header><a class=para href=#choice-of-header></a>3.5. Choice of header</h3>
 
 <p>There should be a new header <code><h- data-h=str>&lt;decompose&gt;</h-></code>
 providing just <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>decompose_float</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>float_decomposition</h-></code>
@@ -2531,15 +2570,41 @@ Let <math display=inline><mi>b</mi></math> be <code><h- data-h=name>radix</h-></
     except that
     <ul>
       <li>
-        <math display=inline><mi>m</mi></math> is chosen to be exactly representable in type <code><h- data-h=name>T</h-></code>, and
+        <math display=inline><mi>m</mi></math> is chosen to be exactly representable in type <code><h- data-h=name>T</h-></code>,
         <br/>[<i>Example</i>: 
         If <code><h- data-h=name>T</h-></code> is <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>float16_t</h-></code> and <math display=inline><mi>x</mi></math> is <math display=inline><mn>1</mn></math>,
-        the greatest possible result of <code><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> is <code><h- data-h=num>65</h-><h- data-h=num_dlim>'</h-><h- data-h=num>536</h-></code>,
+        the greatest possible result of <code><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>
+        satisfying this requirement is <code><h- data-h=num>65</h-><h- data-h=num_dlim>'</h-><h- data-h=num>536</h-></code>,
         where <code><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> returns <code><h- data-h=sym_op>-</h-><h- data-h=num>16</h-></code>.
          — <i>end example</i>]
       </li>
       <li>
-        if <code><h- data-h=name>T</h-></code> is an ISO/IEC 60559 decimal floating-point type,
+        if <code><h- data-h=name>T</h-></code> is an ISO/IEC 60559 binary interchange floating-point type,
+        <math display=inline><mrow><mi>e</mi><mo>=</mo><mi>E</mi><mo>−</mo><mi mathvariant=italic>bias</mi></mrow></math>, where
+        <math display=inline><mi>E</mi></math> is the biased exponent encoded in <math display=inline><mi>x</mi></math>, and
+        <math display=inline><mi mathvariant=italic>bias</mi></math> is the exponent bias constant for the format,
+        as specified in ISO/IEC 60559.
+        <br/>[<i>Note</i>: 
+        Consequently, the following statements are true:
+        <ul>
+          <li>
+            If and only if <math display=inline><mi>x</mi></math> is zero or subnormal,
+            <code><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> returns <code><h- data-h=name>min_exponent</h-></code>.
+          </li>
+          <li>
+            There is only one possible choice of <code><h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>.
+          </li>
+          <li>
+            If for two <code><h- data-h=name>float_decomposition</h-></code> objects <code><h- data-h=name>a</h-></code> and <code><h- data-h=name>b</h-></code>,
+            <code><h- data-h=name>a</h-><h- data-h=sym_op>.</h-><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&gt;</h-> <h- data-h=name>b</h-><h- data-h=sym_op>.</h-><h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> is <code><h- data-h=bool>true</h-></code> and
+            neither of their underlying values is NaN,
+            <code><h- data-h=name>value_type</h-><h- data-h=sym_par>(</h-><h- data-h=name>a</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&gt;</h-> <h- data-h=name>value_type</h-><h- data-h=sym_par>(</h-><h- data-h=name>b</h-><h- data-h=sym_par>)</h-></code> is <code><h- data-h=bool>true</h-></code>.
+          </li>
+        </ul>
+         — <i>end note</i>]
+      </li>
+      <li>
+        if <code><h- data-h=name>T</h-></code> is an ISO/IEC 60559 decimal interchange floating-point type,
         <math display=inline><mi>e</mi></math> is the quantum exponent of <math display=inline><mi>x</mi></math>.
         <br/>[<i>Example</i>: 
         A floating-point value <math display=inline><mn>1.5</mn></math>
