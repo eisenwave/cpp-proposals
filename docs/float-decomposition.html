@@ -1899,11 +1899,13 @@ for all formats in common use except <code><h- data-h=name>std</h-><h- data-h=sy
 
 <p>The proposed API is as follows:
 </p>
-<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>F</h-><h- data-h=sym_op>&gt;</h->
-<h- data-h=kw>struct</h-> <h- data-h=name>float_decomposition</h-> <h- data-h=sym_brac>{</h->
-  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> radix for the result of exponent()</h->
-  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>radix</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>F</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>radix</h-><h- data-h=sym_punc>;</h->
+<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>float_decomposition</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> properties</h->
+  <h- data-h=kw>using</h-> <h- data-h=name>value_type</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>T</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>using</h-> <h- data-h=name>significand_type</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>see below</h-></i><h- data-h=sym_punc>;</h->
 
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> radix for the result of exponent()</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>radix</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>radix</h-><h- data-h=sym_punc>;</h->
   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> lowest possible result of exponent()</h->
   <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>min_exponent</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>implementation-defined</h-></i><h- data-h=sym_punc>;</h->
   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> greatest possible result of exponent()</h->
@@ -1912,25 +1914,29 @@ for all formats in common use except <code><h- data-h=name>std</h-><h- data-h=sy
   <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>exponent_width</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>implementation-defined</h-></i><h- data-h=sym_punc>;</h->
 
   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> greatest possible result of significand()</h->
-  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>max_significand</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>implementation-defined</h-></i><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name>significand_type</h-> <h- data-h=name>max_significand</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>implementation-defined</h-></i><h- data-h=sym_punc>;</h->
   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> bit width of greatest possible significand() result,</h->
   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> which may be lower than the width of significand_type</h->
-  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>significand_width</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>implementation-defined</h-></i><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>significand_width</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>bit_width</h-><h- data-h=sym_par>(</h-><h- data-h=name>max_significand</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
-  <h- data-h=kw>using</h-> <h- data-h=name>significand_type</h-> <h- data-h=sym_op>=</h-> <i><h- data-h=name>unsigned integer type</h-></i><h- data-h=sym_punc>;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> constructors</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>float_decomposition</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_punc>:</h-> <h- data-h=name>float_decomposition</h-><h- data-h=sym_par>(</h-><h- data-h=name>decompose_float</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h->
 
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> accessors</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h->              <h- data-h=name>sign</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->        <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> returns -1 or 1</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h->             <h- data-h=name>sign_bit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> returns std::signbit(x)</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h->              <h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> returns base-radix exponent</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=name>significand_type</h-> <h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw>explicit</h-> <h- data-h=kw>operator</h-> <h- data-h=name>value_type</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
 
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> boolean properties</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>sign_bit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->                <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> returns std::signbit(x)</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_zero</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_finite</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_inf</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->        <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_nan</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->        <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_normal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_signaling</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_subnormal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> optional</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_finite</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_inf</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_nan</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_normal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_signaling</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_subnormal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
 
 <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
@@ -2416,23 +2422,23 @@ insert a new subclause:
   <h- data-h=kw>static</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>significand_width</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>bit_width</h-><h- data-h=sym_par>(</h-><h- data-h=name>max_significand</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> constructors</h-></f-serif>
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>float_decomposition</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_punc>:</h-> <h- data-h=name>float_decomposition</h-><h- data-h=sym_par>(</h-><h- data-h=name>compose_float</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>float_decomposition</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_punc>:</h-> <h- data-h=name>float_decomposition</h-><h- data-h=sym_par>(</h-><h- data-h=name>decompose_float</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h->
 
   <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> </h-><a href=#float.decompose.accessors>[float.decompose.accessors]</a><h- data-h=cmt>, accessors</h-></f-serif>
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h->              <h- data-h=name>sign</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h->              <h- data-h=name>exponent</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=name>significand_type</h-> <h- data-h=name>significand</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw>explicit</h-> <h- data-h=kw>operator</h-> <h- data-h=name>value_type</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> optional</h-></f-serif>
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw>explicit</h-> <h- data-h=kw>operator</h-> <h- data-h=name>value_type</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> </h-><a href=#float.decompose.boolean>[float.decompose.boolean]</a><h- data-h=cmt>, boolean properties</h-></f-serif>
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>sign_bit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
   <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_zero</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_finite</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->               <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> optional</h-></f-serif>
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_inf</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->                  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> optional</h-></f-serif>
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_nan</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->                  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> optional</h-></f-serif>
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_normal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->               <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> optional</h-></f-serif>
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_signaling</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->            <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> optional</h-></f-serif>
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_subnormal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->            <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> optional</h-></f-serif>
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_finite</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_inf</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_nan</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_normal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_signaling</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_subnormal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <p>¶
@@ -2526,12 +2532,6 @@ insert a new subclause:
 <ins-block>
 <h4>Accessors <span class=stable-ref>[float.decompose.accessors]</span></h4>
 
-<p>¶
-Function <code><h- data-h=kw>operator</h-> <h- data-h=name>value_type</h-></code>
-is provided if <code><h- data-h=name>T</h-></code> is an
-ISO/IEC 60559 binary or decimal interchange floating-point type.
-Otherwise, it is conditionally supported.
-</p>
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>sign</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
@@ -2697,12 +2697,6 @@ insert a new subclause:
 <ins-block>
 <h4>Boolean accessors <span class=stable-ref>[float.decompose.boolean]</span></h4>
 
-<p>¶
-Of the following member functions,
-<code><h- data-h=name>sign_bit</h-></code> and <code><h- data-h=name>is_zero</h-></code> are always present;
-the others are present if <code><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_iec559</h-></code> is <code><h- data-h=bool>true</h-></code>
-and conditionally supported otherwise.
-</p>
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>sign_bit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
 <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_zero</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
 <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>is_finite</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>const</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
