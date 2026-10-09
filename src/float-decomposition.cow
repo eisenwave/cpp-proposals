@@ -6,7 +6,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{P4382R0}}
-  \dt{Date:}            \dd{\tt{2026-10-08}}
+  \dt{Date:}            \dd{\tt{2026-10-09}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -170,6 +170,21 @@ where \math{\mrow{\mi{b}\mo{=}\mn{2}}}, one needs to:
 Of course, this is a gross simplification,
 and decomposing the floating-point number happens in decimal notation too,
 but there is a less direct relationship between the significand and the printed digits.
+}
+
+\Bex{
+To implement \tcode{std::strong_order::operator()} for floating-point numbers,
+one cannot simply use the builtin \tcode{<=>} operator
+but needs to decompose floating-point numbers to ensure additional requirements such as
+NaNs with negative sign bit comparing less than NaNs with positive sign bit.
+
+While it is possible to implement such requirements
+in terms of \tcode{std::signbit}, \tcode{std::isnan}, etc.,
+some standard libraries decompose fully \q{by hand}
+using \tcode{std::bit_cast} and various bitwise operations.
+See
+\ref("https://github.com/microsoft/STL/blob/da52dc0fcadbd83690cfd1ed32408d2847439493/stl/inc/compare#L423-L470"){\tt{microsoft/STL/.../stl/inc/compare}} and
+\ref("https://github.com/gcc-mirror/gcc/blob/54e232d0d4752b419ed775bdad50d83798fa899d/libstdc%2B%2B-v3/libsupc%2B%2B/compare#L907-L961"){\tt{gcc-mirror/gcc/.../libsupc++/compare}}.
 }
 
 \h3{The problem}
