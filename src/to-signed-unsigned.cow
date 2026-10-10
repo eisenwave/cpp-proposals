@@ -3,7 +3,7 @@
 
 \wg21_head(title={\tcode{std::to_signed} and \tcode{std::to_unsigned}}){
 \dl{
-  \dt{Document number:} \dd{\docnum{D3643R4}}
+  \dt{Document number:} \dd{\docnum{P3643R4}}
   \dt{Date:}            \dd{\tt{2026-10-10}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
@@ -103,14 +103,14 @@ This technique \em{technically} works, but suffers from some problems:
   }
 }
 
-The greater the distance between \tcode{T} and the use of \tt{std::make_{un}signed} are,
+The greater the distance between \tcode{T} and the use of \tt{std::make_{un}signed},
 the easier it is to make a mistake.
 
 Another problem is that sometimes APIs are made usable only with unsigned integers,
 such as functions in the \header{bit} header
 (but this hurdle extends far beyond the standard library).
-Such APIs could often be used meaningfully with signed integers
-making the restriction somewhat arbitrary.
+Such APIs could often be used meaningfully with signed integers,
+which makes the restriction somewhat arbitrary.
 \tcode{std::to_unsigned} can make them usable,
 like in \tcode{std::popcount(\brk{}std::to_unsigned(123))}.
 
@@ -140,8 +140,8 @@ By comparison,
 }
 
 \'HORIZONTAL ELLIPSIS' yields 165K C++ files
-which use \tcode{to_underlying},
-or which \tcode{static_cast} to \tcode{std::underlying_type}.
+that use \tcode{to_underlying},
+or use \tcode{static_cast} with \tcode{std::underlying_type}.
 
 The proposal \ref("P1682R3") for \tcode{std::to_underlying} had similar rationale, and at the time,
 the author was only able to discover 1000 search results for \tcode{to_underlying}.
@@ -152,8 +152,8 @@ As a point of reference,
 Rust also has \tcode{cast_signed} and \tcode{cast_unsigned} functions for integers.
 See also \ref("https://github.com/rust-lang/rust/issues/125882"){tracking issue for \tt{integer_sign_cast}}.
 
-The \ref("https://github.com/rust-lang/libs-team/issues/359"){problem statement on the libs-team issue}
-equally applies to C++:
+The \ref("https://github.com/rust-lang/libs-team/issues/359"){problem statement in the libs-team issue}
+applies equally to C++:
 \Bquote{
 Casting using the as operator has some issues,
 in that it does not necessarily reflect the intent of the cast.
@@ -185,7 +185,7 @@ mapping other integral and enumeration types onto signed or unsigned integer typ
 
 \Bex{
 Assuming 32-bit \tcode{unsigned},
-the use of \tcode{to_unsigned} reduces the amount of
+the use of \tcode{to_unsigned} reduces the number of
 template instantiations below:
 
 \cppblock{
@@ -243,10 +243,10 @@ there are multiple options:
 \ul{
   \li{
     ❌ \b{Only permit signed or unsigned integer types.}
-    This would be needlessly restrictive because e.g.
+    This would be needlessly restrictive because, for example,
     \tcode{make_signed<char16_t>} is also valid (and yields e.g. \tcode{signed short}),
     which makes it possible to implement the \tcode{arithmetic_shift_right} function
-    in \ref("#introduction") for that \tcode{char16_t} as well.
+    in \ref("#introduction") for \tcode{char16_t} as well.
     In general, it would make generic programming harder if only some of the integral
     types were supported.
   }
@@ -254,9 +254,9 @@ there are multiple options:
     ✔️ \b{Permit what \tcode{make_signed} supports.}
     That is, integral or enumeration types other than \tcode{bool}.
     This is proposed.
-    There is no compelling reason from deviating from the restrictions imposed by
+    There is no compelling reason to deviate from the restrictions imposed by
     \tcode{make_signed} and \tcode{make_unsigned},
-    as their restrictions de-facto define for which types a sign conversion makes sense.
+    as their restrictions de facto define for which types a sign conversion makes sense.
   }
   \li{
     ❌ \b{Permit \tcode{\exposid{integer-like}} types.}

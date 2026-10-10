@@ -1579,7 +1579,7 @@ if (theme !== null) {
 <div class=wg21-head><h1><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_signed</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_unsigned</h-></code></h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/D3643R4>D3643R4</a></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3643R4>P3643R4</a></dd>
   <dt>Date:</dt>            <dd><tt->2026-10-10</tt-></dd>
   <dt>Audience:</dt>        <dd>LEWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
@@ -1715,14 +1715,14 @@ it is common to implement functionality in terms of the corresponding signed/uns
   </li>
 </ul>
 
-<p>The greater the distance between <code><h- data-h=name>T</h-></code> and the use of <tt->std::make_{un}signed</tt-> are,
+<p>The greater the distance between <code><h- data-h=name>T</h-></code> and the use of <tt->std::make_{un}signed</tt->,
 the easier it is to make a mistake.
 </p>
 <p>Another problem is that sometimes APIs are made usable only with unsigned integers,
 such as functions in the <code><h- data-h=str>&lt;bit&gt;</h-></code> header
 (but this hurdle extends far beyond the standard library).
-Such APIs could often be used meaningfully with signed integers
-making the restriction somewhat arbitrary.
+Such APIs could often be used meaningfully with signed integers,
+which makes the restriction somewhat arbitrary.
 <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_unsigned</h-></code> can make them usable,
 like in <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>popcount</h-><h- data-h=sym_par>(</h-><wbr/><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_unsigned</h-><h- data-h=sym_par>(</h-><h- data-h=num>123</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code>.
 </p>
@@ -1752,8 +1752,8 @@ or which <code><h- data-h=kw>static_cast</h-></code> to <code><h- data-h=name>ma
 </p></blockquote>
 
 <p>… yields 165K C++ files
-which use <code><h- data-h=name>to_underlying</h-></code>,
-or which <code><h- data-h=kw>static_cast</h-></code> to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>underlying_type</h-></code>.
+that use <code><h- data-h=name>to_underlying</h-></code>,
+or use <code><h- data-h=kw>static_cast</h-></code> with <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>underlying_type</h-></code>.
 </p>
 <p>The proposal <a href="https://wg21%2elink/p1682r3">[P1682R3]</a> for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_underlying</h-></code> had similar rationale, and at the time,
 the author was only able to discover 1000 search results for <code><h- data-h=name>to_underlying</h-></code>.
@@ -1764,8 +1764,8 @@ the author was only able to discover 1000 search results for <code><h- data-h=na
 Rust also has <code><h- data-h=name>cast_signed</h-></code> and <code><h- data-h=name>cast_unsigned</h-></code> functions for integers.
 See also <a href=https://github.com/rust-lang/rust/issues/125882>tracking issue for <tt->integer_sign_cast</tt-></a>.
 </p>
-<p>The <a href=https://github.com/rust-lang/libs-team/issues/359>problem statement on the libs-team issue</a>
-equally applies to C++:
+<p>The <a href=https://github.com/rust-lang/libs-team/issues/359>problem statement in the libs-team issue</a>
+applies equally to C++:
 </p><blockquote>
 <p>Casting using the as operator has some issues,
 in that it does not necessarily reflect the intent of the cast.
@@ -1796,7 +1796,7 @@ mapping other integral and enumeration types onto signed or unsigned integer typ
 </p>
 <example-block><p><intro-></intro-> 
 Assuming 32-bit <code><h- data-h=kw_type>unsigned</h-></code>,
-the use of <code><h- data-h=name>to_unsigned</h-></code> reduces the amount of
+the use of <code><h- data-h=name>to_unsigned</h-></code> reduces the number of
 template instantiations below:
 </p>
 <code-block><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> BAD, two instantiations of popcnt that are functionally equivalent:</h->
@@ -1850,10 +1850,10 @@ there are multiple options:
 <ul>
   <li>
     ❌ <b>Only permit signed or unsigned integer types.</b>
-    This would be needlessly restrictive because e.g.
+    This would be needlessly restrictive because, for example,
     <code><h- data-h=name>make_signed</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>char16_t</h-><h- data-h=sym_op>&gt;</h-></code> is also valid (and yields e.g. <code><h- data-h=kw_type>signed</h-> <h- data-h=kw_type>short</h-></code>),
     which makes it possible to implement the <code><h- data-h=name>arithmetic_shift_right</h-></code> function
-    in <a href=#introduction>§2. Introduction</a> for that <code><h- data-h=kw_type>char16_t</h-></code> as well.
+    in <a href=#introduction>§2. Introduction</a> for <code><h- data-h=kw_type>char16_t</h-></code> as well.
     In general, it would make generic programming harder if only some of the integral
     types were supported.
   </li>
@@ -1861,9 +1861,9 @@ there are multiple options:
     ✔️ <b>Permit what <code><h- data-h=name>make_signed</h-></code> supports.</b>
     That is, integral or enumeration types other than <code><h- data-h=kw_type>bool</h-></code>.
     This is proposed.
-    There is no compelling reason from deviating from the restrictions imposed by
+    There is no compelling reason to deviate from the restrictions imposed by
     <code><h- data-h=name>make_signed</h-></code> and <code><h- data-h=name>make_unsigned</h-></code>,
-    as their restrictions de-facto define for which types a sign conversion makes sense.
+    as their restrictions de facto define for which types a sign conversion makes sense.
   </li>
   <li>
     ❌ <b>Permit <code><i><h- data-h=name>integer-like</h-></i></code> types.</b>
