@@ -276,11 +276,13 @@ for all formats in common use except \tcode{std::float128_t}.
 The proposed API is as follows:
 
 \cppblock{
-template<class F>
-struct float_decomposition {
-  // radix for the result of exponent()
-  static constexpr int radix = numeric_limits<F>::radix;
+template<class T> struct float_decomposition {
+  // properties
+  using value_type = T;
+  using significand_type = \seebelow;
 
+  // radix for the result of exponent()
+  static constexpr int radix = numeric_limits<T>::radix;
   // lowest possible result of exponent()
   static constexpr int min_exponent = \exposid{implementation-defined};
   // greatest possible result of exponent()
@@ -289,25 +291,29 @@ struct float_decomposition {
   static constexpr int exponent_width = \exposid{implementation-defined};
 
   // greatest possible result of significand()
-  static constexpr int max_significand = \exposid{implementation-defined};
+  static constexpr significand_type max_significand = \exposid{implementation-defined};
   // bit width of greatest possible significand() result,
   // which may be lower than the width of significand_type
-  static constexpr int significand_width = \exposid{implementation-defined};
+  static constexpr int significand_width = bit_width(max_significand);
 
-  using significand_type = \exposid{unsigned integer type};
+  // constructors
+  constexpr float_decomposition() : float_decomposition(decompose_float(T{})) {}
 
+  // accessors
   constexpr int              sign() const noexcept;        // returns -1 or 1
-  constexpr bool             sign_bit() const noexcept;    // returns std::signbit(x)
   constexpr int              exponent() const noexcept;    // returns base-radix exponent
   constexpr significand_type significand() const noexcept;
+  constexpr explicit operator value_type() const noexcept;
 
+  // boolean properties
+  constexpr bool sign_bit() const noexcept;                // returns std::signbit(x)
   constexpr bool is_zero() const noexcept;
-  constexpr bool is_finite() const noexcept;     // optional
-  constexpr bool is_inf() const noexcept;        // optional
-  constexpr bool is_nan() const noexcept;        // optional
-  constexpr bool is_normal() const noexcept;     // optional
-  constexpr bool is_signaling() const noexcept;  // optional
-  constexpr bool is_subnormal() const noexcept;  // optional
+  constexpr bool is_finite() const noexcept;
+  constexpr bool is_inf() const noexcept;
+  constexpr bool is_nan() const noexcept;
+  constexpr bool is_normal() const noexcept;
+  constexpr bool is_signaling() const noexcept;
+  constexpr bool is_subnormal() const noexcept;
 };
 
 template<class T>
@@ -383,19 +389,6 @@ A lot of design questions can be quickly answered in a few sentences:
     only about the integer results returned by
     \tcode{exponent()} and \tcode{significand()}
     rather than being an extension of \tcode{numeric_limits}.
-  }
-
-  \dt{Should \tcode{float_decomposition} not have a constructor?}
-  \dd{
-    No, the implementation might internally have a constructor,
-    but there is no need to provide a user-exposed one.
-    If there was a constructor taking, say, \tcode{F},
-    this would just create competing styles where some people \q{skip}
-    \tcode{std::decompose_float}.
-    Any other constructor provides pointless implementation work.
-    As mentioned, there is a lot of representation freedom,
-    so there might not even be a constructor,
-    with all initialization taking place via \tcode{std::bit_cast<std::float_decomposition>}.
   }
 }
 
@@ -807,23 +800,23 @@ template<class T> struct float_decomposition {
   static constexpr int significand_width = bit_width(max_significand);
 
   //\serif{ constructors}
-  constexpr float_decomposition() : float_decomposition(compose_float(T{})) {}
+  constexpr float_decomposition() : float_decomposition(decompose_float(T{})) {}
 
   //\serif{ \internal_ref{float.decompose.accessors}, accessors}
   constexpr int              sign() const noexcept;
   constexpr int              exponent() const noexcept;
   constexpr significand_type significand() const noexcept;
-  constexpr explicit operator value_type() const noexcept; //\serif{ optional}
+  constexpr explicit operator value_type() const noexcept;
 
   //\serif{ \internal_ref{float.decompose.boolean}, boolean properties}
   constexpr bool sign_bit() const noexcept;
   constexpr bool is_zero() const noexcept;
-  constexpr bool is_finite() const noexcept;               //\serif{ optional}
-  constexpr bool is_inf() const noexcept;                  //\serif{ optional}
-  constexpr bool is_nan() const noexcept;                  //\serif{ optional}
-  constexpr bool is_normal() const noexcept;               //\serif{ optional}
-  constexpr bool is_signaling() const noexcept;            //\serif{ optional}
-  constexpr bool is_subnormal() const noexcept;            //\serif{ optional}
+  constexpr bool is_finite() const noexcept;
+  constexpr bool is_inf() const noexcept;
+  constexpr bool is_nan() const noexcept;
+  constexpr bool is_normal() const noexcept;
+  constexpr bool is_signaling() const noexcept;
+  constexpr bool is_subnormal() const noexcept;
 };
 }
 
@@ -927,12 +920,6 @@ insert a new subclause:
 
 \Bins{
 \cowel_html_element("h4"){Accessors \stable_ref{float.decompose.accessors}}
-
-¶
-Function \tcode{operator value_type}
-is provided if \tcode{T} is an
-ISO/IEC 60559 binary or decimal interchange floating-point type.
-Otherwise, it is conditionally supported.
 
 \itemdecl{
 constexpr int sign() const noexcept;
@@ -1104,12 +1091,6 @@ insert a new subclause:
 
 \Bins{
 \cowel_html_element("h4"){Boolean accessors \stable_ref{float.decompose.boolean}}
-
-¶
-Of the following member functions,
-\tcode{sign_bit} and \tcode{is_zero} are always present;
-the others are present if \tcode{numeric_limits<T>::is_iec559} is \tcode{true}
-and conditionally supported otherwise.
 
 \itemdecl{
 constexpr bool sign_bit() const noexcept;
