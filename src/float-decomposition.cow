@@ -6,7 +6,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{P4382R0}}
-  \dt{Date:}            \dd{\tt{2026-10-09}}
+  \dt{Date:}            \dd{\tt{2026-10-10}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -306,14 +306,14 @@ template<class T> struct float_decomposition {
   constexpr explicit operator value_type() const noexcept;
 
   // boolean properties
-  constexpr bool sign_bit() const noexcept;                // returns std::signbit(x)
-  constexpr bool is_zero() const noexcept;
-  constexpr bool is_finite() const noexcept;
-  constexpr bool is_inf() const noexcept;
-  constexpr bool is_nan() const noexcept;
-  constexpr bool is_normal() const noexcept;
-  constexpr bool is_signaling() const noexcept;
-  constexpr bool is_subnormal() const noexcept;
+  constexpr bool is_finite() const noexcept;               // std::isfinite(x)
+  constexpr bool is_inf() const noexcept;                  // std::isinf(x)
+  constexpr bool is_nan() const noexcept;                  // std::isnan(x)
+  constexpr bool is_normal() const noexcept;               // std::isnormal(x)
+  constexpr bool sign_bit() const noexcept;                // std::signbit(x)
+  constexpr bool is_signaling() const noexcept;            // std::issignaling(x)
+  constexpr bool is_subnormal() const noexcept;            // std::issubnormal(x)
+  constexpr bool is_zero() const noexcept;                 // std::iszero(x)
 };
 
 template<class T>
@@ -389,6 +389,14 @@ A lot of design questions can be quickly answered in a few sentences:
     only about the integer results returned by
     \tcode{exponent()} and \tcode{significand()}
     rather than being an extension of \tcode{numeric_limits}.
+  }
+
+  \dt{What are \tcode{std::is_signaling}, \tcode{std::is_subnormal}, and \tcode{std::iszero}?}
+  \dd{
+    These are functions adopted from C23 via \ref("P3935R2").
+    They are not available in C++26,
+    but will almost certainly be available in C++29,
+    likely before this paper is merged.
   }
 }
 
@@ -780,7 +788,9 @@ namespace std {
 \h3(show_number=false){[float.decompose.class]}
 
 Nested under \internal_ref{float.decompose},
-insert a new subclause:
+insert a new subclause.
+The \mark{marked lines} are to be added only if
+the corresponding \header{cmath} functions have been adopted from C23 via \ref("P3935R2").
 
 \Bins{
 \cowel_html_element("h3"){Class template \tcode{float_decomposition} \stable_ref{float.decompose.class}}
@@ -809,14 +819,14 @@ template<class T> struct float_decomposition {
   constexpr explicit operator value_type() const noexcept;
 
   //\serif{ \internal_ref{float.decompose.boolean}, boolean properties}
-  constexpr bool sign_bit() const noexcept;
-  constexpr bool is_zero() const noexcept;
   constexpr bool is_finite() const noexcept;
   constexpr bool is_inf() const noexcept;
   constexpr bool is_nan() const noexcept;
   constexpr bool is_normal() const noexcept;
-  constexpr bool is_signaling() const noexcept;
-  constexpr bool is_subnormal() const noexcept;
+  constexpr bool sign_bit() const noexcept;
+  \mark{constexpr bool is_signaling() const noexcept;}
+  \mark{constexpr bool is_subnormal() const noexcept;}
+  \mark{constexpr bool is_zero() const noexcept;}
 };
 }
 
@@ -1087,20 +1097,22 @@ but has an explicit integer significand bit.
 \h3(show_number=false){[float.decompose.boolean]}
 
 Nested under \internal_ref{float.decompose.class},
-insert a new subclause:
+insert a new subclause.
+The \mark{marked lines} are to be added only if
+the corresponding \header{cmath} functions have been adopted from C23 via \ref("P3935R2").
 
 \Bins{
 \cowel_html_element("h4"){Boolean accessors \stable_ref{float.decompose.boolean}}
 
 \itemdecl{
-constexpr bool sign_bit() const noexcept;
-constexpr bool is_zero() const noexcept;
 constexpr bool is_finite() const noexcept;
 constexpr bool is_inf() const noexcept;
 constexpr bool is_nan() const noexcept;
 constexpr bool is_normal() const noexcept;
-constexpr bool is_signaling() const noexcept;
-constexpr bool is_subnormal() const noexcept;
+constexpr bool sign_bit() const noexcept;
+\mark{constexpr bool is_signaling() const noexcept;}
+\mark{constexpr bool is_subnormal() const noexcept;}
+\mark{constexpr bool is_zero() const noexcept;}
 }
 
 \itemdescr{
@@ -1166,6 +1178,14 @@ no inexact operation takes place.
   author = "Jan Schultke",
   link = "https://wg21.link/p3666r4",
   long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r4.html",
+)\
+\bib(
+  id = "P3935R2",
+  title = "Rebasing <cmath> on C23",
+  date = "2026-09-29",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3935r2",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3935r2.html",
 )\
 
 \make_bib
