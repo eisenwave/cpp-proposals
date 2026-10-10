@@ -54,7 +54,8 @@ with elastic operations.
 
 \ul{
   \li{
-    Aligned wording for \tcode{basic_big_int::swap} in \ref("#big.int.modifiers")
+    Aligned wording for move assignment and for \tcode{basic_big_int::swap}
+    in \ref("#big.int.modifiers")
     with that of other containers
   }
 }
@@ -4218,7 +4219,9 @@ class basic_big_int {
 
   //\serif{ [big.int.modifiers], modifiers}
   constexpr basic_big_int& operator=(const basic_big_int& x);
-  constexpr basic_big_int& operator=(basic_big_int&& x) noexcept;
+  constexpr basic_big_int& operator=(basic_big_int&& x)
+    noexcept(allocator_traits<Allocator>::propagate_on_container_move_assignment::value ||
+             allocator_traits<Allocator>::is_always_equal::value);
   template<\exposid{arbitrary-integer} T>
     constexpr basic_big_int& operator=(T&& x) noexcept(\exposid{no-alloc-constructible-from}<T>);
 
@@ -5083,10 +5086,17 @@ Linear in the size of the representation of \tcode{x}.
 }
 
 \itemdecl{
-constexpr basic_big_int& operator=(basic_big_int&& x) noexcept;
+constexpr basic_big_int& operator=(basic_big_int&& x)
+  noexcept(allocator_traits<Allocator>::propagate_on_container_move_assignment::value ||
+           allocator_traits<Allocator>::is_always_equal::value);
 }
 
 \itemdescr{
+\pnum
+\expects
+\tcode{allocator_traits<Allocator>::propagate_on_container_move_assignment::value} is \tcode{true} or
+\tcode{get_allocator() == x.get_allocator()} is \tcode{true}.
+
 \pnum
 \effects
 Sets the integer value to that of \tcode{x}.
@@ -5097,6 +5107,10 @@ assigns \tcode{x.get_allocator()} to the allocator of this object.
 \pnum
 \returns
 \tcode{*this}.
+
+\pnum
+\throws
+Nothing.
 
 \pnum
 \complexity
