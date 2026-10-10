@@ -3,8 +3,8 @@
 
 \wg21_head(title={Rebasing \tt{<cmath>} on C23}){
 \dl{
-  \dt{Document number:} \dd{\docnum{D3935R3}}
-  \dt{Date:}            \dd{\tt{2026-10-02}}
+  \dt{Document number:} \dd{\docnum{P3935R3}}
+  \dt{Date:}            \dd{\tt{2026-10-10}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -39,7 +39,7 @@ There are many useful C23 \header{math.h} features that should be provided in C+
     Added a bump to \tcode{__cpp_lib_constexpr_cmath}
   }
   \li{
-    Fixed some editorial problems in \ref("#wording")
+    Fixed some editorial mistakes throughout the paper
   }
 }
 
@@ -87,12 +87,12 @@ or they require core language changes, etc.
 The goal of this proposal is to pull in all the new C23 \header{math.h} features
 which are useful not only to decimal floating-point numbers.
 
-Introducing decimal floating-point numbers into C++ is out-of scope.
+Introducing decimal floating-point numbers into C++ is out of scope.
 That is, adding C's \tcode{_Decimal128} type as a \tcode{std::decimal128_t} alias
 is not proposed,
 and neither is any function intended to provide support for decimal floating-point types.
 
-\header{simd} is also out-of-scope,
+\header{simd} is also out of scope,
 but expanding \header{simd} support for these new functions should be done in a future paper.
 
 \h2{Design}
@@ -619,7 +619,7 @@ template<class T, class F1, class F2>
 
 However, this would create a strange overload set with the existing \tcode{fadd} functions
 (where the \tcode{f} prefix indicates \tcode{float}).
-Notable, the integer overloads of \header{cmath} functions
+Notably, the integer overloads of \header{cmath} functions
 are typically implemented function templates,
 and we don't really want to create an overload set with those.
 
@@ -683,18 +683,18 @@ would stray too far from \q{idiomatic} C++ code,
 and it's unclear how this is supposed to work with modules and/or with \tcode{import std;}.
 
 The functions have to exist in the runtime math library anyway,
-so the benefit of them being opt-int in a header is unclear.
+so the benefit of making them opt-in in a header is unclear.
 
 \h3(id="classification-functions"){Making classification functions take by \tt{const&}}
 
 A pre-existing defect is that classification functions such as \tcode{signbit}
 take their parameter by value.
 The problem is that when lvalue-to-rvalue conversion takes place,
-only the \em{value}, not the exact bit pattern (value representation)
-of an object is being carried by prvalues.
+only the \em{value}, not the exact bit pattern (value representation),
+of an object is carried by prvalues.
 In terms of hardware, it's possible that loading from memory into a register
 may perform canonicalization, flush to zero, or alter NaN payloads.
-This is a problem because those changes could alter the result of functions such
+This is a problem because those changes could alter the result of functions such as
 \tcode{signbit}, \ins{\tcode{issignaling}}, \tcode{isnormal}, \ins{\tcode{issubnormal}}, etc.
 (essentially of any function).
 
@@ -771,8 +771,8 @@ FP_FAST_DFMAL
 
 \h3{New declarations for \tcode{float\placeholder{N}_t}}
 
-C23 also provides a suffixed version of all the common common mathematical
-functions with \tcode{f\placeholder{N}} suffix and with
+C23 also provides suffixed versions of all the common mathematical
+functions with the \tcode{f\placeholder{N}} suffix and
 \tcode{float\placeholder{N}_t} parameters.
 While these are not particularly useful considering that the user can (and probably should)
 call the overloaded functions,
@@ -855,7 +855,7 @@ non-template overload based on the template argument \tcode{T}.
 Some of the proposed functions are also implemented in Clang as builtins,
 such as \tcode{__builtin_roundeven}.
 Some of them are implementable using existing builtins,
-such as \tcode{__builtlin_isfpclass}.
+such as \tcode{__builtin_isfpclass}.
 Some of these Clang builtins are also \tcode{constexpr}.
 
 \h2{Wording}
@@ -1665,7 +1665,7 @@ Change \eelis{cmath.syn#2} as follows:
 the implementation provides an overload
 for each cv-unqualified floating-point type\iref{basic.fundamental}}
 \ins{Multiple functions above are specified using a type placeholder,
-for which the implementation providese an overload for each type in a set,}
+for which the implementation provides an overload for each type in a set,}
 where all uses of \del{\tcode{\floating_point_typ}} \ins{the type placeholder}
 in the function signature
 are replaced with that floating-point type.
@@ -1783,7 +1783,7 @@ then overload resolution does not result in a usable candidate\iref{over.match.g
 from the overloads provided by the implementation.
 }
 
-Add a new paragraphs immediately following \eelis{cmath.syn#3}:
+Add new paragraphs immediately following \eelis{cmath.syn#3}:
 
 \Bins{
 The implementation may provide additional overloads of

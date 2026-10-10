@@ -1579,8 +1579,8 @@ if (theme !== null) {
 <div class=wg21-head><h1>Rebasing <tt->&lt;cmath&gt;</tt-> on C23</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/D3935R3>D3935R3</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-10-02</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P3935R3>P3935R3</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-10-10</tt-></dd>
   <dt>Audience:</dt>        <dd>LEWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1661,7 +1661,7 @@ There are many useful C23 <code><h- data-h=str>&lt;math.h&gt;</h-></code> featur
     Added a bump to <code><h- data-h=name>__cpp_lib_constexpr_cmath</h-></code>
   </li>
   <li>
-    Fixed some editorial problems in <a href=#wording>§5. Wording</a>
+    Fixed some editorial mistakes throughout the paper
   </li>
 </ul>
 
@@ -1709,12 +1709,12 @@ or they require core language changes, etc.
 <p>The goal of this proposal is to pull in all the new C23 <code><h- data-h=str>&lt;math.h&gt;</h-></code> features
 which are useful not only to decimal floating-point numbers.
 </p>
-<p>Introducing decimal floating-point numbers into C++ is out-of scope.
+<p>Introducing decimal floating-point numbers into C++ is out of scope.
 That is, adding C's <code><h- data-h=kw_type>_Decimal128</h-></code> type as a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>decimal128_t</h-></code> alias
 is not proposed,
 and neither is any function intended to provide support for decimal floating-point types.
 </p>
-<p><code><h- data-h=str>&lt;simd&gt;</h-></code> is also out-of-scope,
+<p><code><h- data-h=str>&lt;simd&gt;</h-></code> is also out of scope,
 but expanding <code><h- data-h=str>&lt;simd&gt;</h-></code> support for these new functions should be done in a future paper.
 </p>
 <h2 id=design><a class=para href=#design></a>3. Design</h2>
@@ -2239,7 +2239,7 @@ R1 of the paper proposed additional function templates such as:
 
 <p>However, this would create a strange overload set with the existing <code><h- data-h=name>fadd</h-></code> functions
 (where the <code><h- data-h=name>f</h-></code> prefix indicates <code><h- data-h=kw_type>float</h-></code>).
-Notable, the integer overloads of <code><h- data-h=str>&lt;cmath&gt;</h-></code> functions
+Notably, the integer overloads of <code><h- data-h=str>&lt;cmath&gt;</h-></code> functions
 are typically implemented function templates,
 and we don't really want to create an overload set with those.
 </p>
@@ -2303,18 +2303,18 @@ would stray too far from <q>idiomatic</q> C++ code,
 and it's unclear how this is supposed to work with modules and/or with <code><h- data-h=kw>import</h-> <h- data-h=name>std</h-><h- data-h=sym_punc>;</h-></code>.
 </p>
 <p>The functions have to exist in the runtime math library anyway,
-so the benefit of them being opt-int in a header is unclear.
+so the benefit of making them opt-in in a header is unclear.
 </p>
 <h3 id=classification-functions><a class=para href=#classification-functions></a>3.2. Making classification functions take by <tt->const&amp;</tt-></h3>
 
 <p>A pre-existing defect is that classification functions such as <code><h- data-h=name>signbit</h-></code>
 take their parameter by value.
 The problem is that when lvalue-to-rvalue conversion takes place,
-only the <em>value</em>, not the exact bit pattern (value representation)
-of an object is being carried by prvalues.
+only the <em>value</em>, not the exact bit pattern (value representation),
+of an object is carried by prvalues.
 In terms of hardware, it's possible that loading from memory into a register
 may perform canonicalization, flush to zero, or alter NaN payloads.
-This is a problem because those changes could alter the result of functions such
+This is a problem because those changes could alter the result of functions such as
 <code><h- data-h=name>signbit</h-></code>, <ins><code><h- data-h=name>issignaling</h-></code></ins>, <code><h- data-h=name>isnormal</h-></code>, <ins><code><h- data-h=name>issubnormal</h-></code></ins>, etc.
 (essentially of any function).
 </p>
@@ -2389,8 +2389,8 @@ corresponds to one of <tt->FP_INT_*</tt-> rounding direction macros.
 
 <h3 id=new-declarations-for-floatn_t><a class=para href=#new-declarations-for-floatn_t></a>3.4. New declarations for <code><h- data-h=name_type>float</h-><i><h- data-h=name_type>N</h-></i><h- data-h=name_type>_t</h-></code></h3>
 
-<p>C23 also provides a suffixed version of all the common common mathematical
-functions with <code><h- data-h=name>f</h-><i><h- data-h=name>N</h-></i></code> suffix and with
+<p>C23 also provides suffixed versions of all the common mathematical
+functions with the <code><h- data-h=name>f</h-><i><h- data-h=name>N</h-></i></code> suffix and
 <code><h- data-h=name_type>float</h-><i><h- data-h=name_type>N</h-></i><h- data-h=name_type>_t</h-></code> parameters.
 While these are not particularly useful considering that the user can (and probably should)
 call the overloaded functions,
@@ -2473,7 +2473,7 @@ non-template overload based on the template argument <code><h- data-h=name>T</h-
 <p>Some of the proposed functions are also implemented in Clang as builtins,
 such as <code><h- data-h=name>__builtin_roundeven</h-></code>.
 Some of them are implementable using existing builtins,
-such as <code><h- data-h=name>__builtlin_isfpclass</h-></code>.
+such as <code><h- data-h=name>__builtin_isfpclass</h-></code>.
 Some of these Clang builtins are also <code><h- data-h=kw>constexpr</h-></code>.
 </p>
 <h2 id=wording><a class=para href=#wording></a>5. Wording</h2>
@@ -3275,7 +3275,7 @@ the mathematical special functions described in <a href=https://eel.is/c++draft/
 the implementation provides an overload
 for each cv-unqualified floating-point type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>)</del>
 <ins>Multiple functions above are specified using a type placeholder,
-for which the implementation providese an overload for each type in a set,</ins>
+for which the implementation provides an overload for each type in a set,</ins>
 where all uses of <del><code><i><h- data-h=name>floating-point-type</h-></i></code></del> <ins>the type placeholder</ins>
 in the function signature
 are replaced with that floating-point type.
@@ -3391,7 +3391,7 @@ then overload resolution does not result in a usable candidate (<a href=https://
 from the overloads provided by the implementation.
 </p></diff-block>
 
-<p>Add a new paragraphs immediately following <a href=https://eel.is/c++draft/cmath.syn#3>[cmath.syn] paragraph 3</a>:
+<p>Add new paragraphs immediately following <a href=https://eel.is/c++draft/cmath.syn#3>[cmath.syn] paragraph 3</a>:
 </p>
 <ins-block>
 <p>The implementation may provide additional overloads of
