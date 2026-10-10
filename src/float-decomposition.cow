@@ -730,6 +730,97 @@ because no other header is a good fit:
   }
 }
 
+\h3{Composing floating-point numbers}
+
+The paper provides no corresponding operation for composing floating-point numbers,
+although a \tcode{std::float_decomposition} object can be explicitly converted
+back to the original floating-point value.
+A possible signature for this could be:
+\cppblock{
+template<class F, std::unsigned_integral Uint>
+  constexpr F compose_float(bool sign, int exponent, Uint significand);
+}
+
+There are a number of reasons for why this is not provided:
+\ul{
+  \li{
+    There is less need for a composition operation
+    because functions such as \tcode{std::scalbn}, \tcode{std::setpayload}, \tcode{std::nan}, etc.
+    already provide the necessary functionality.
+    By contrast, \tcode{std::frexp} is insufficient for fully decomposing floating-point numbers.
+  }
+  \li{
+    Composition often takes separate paths for different categories anyway.
+    For example, \tcode{std::from_chars} handles \tcode{"nan"}, \tcode{"inf"}, and \tcode{"0.0"}
+    inputs separately,
+    so a \q{monolithic} composition function is not needed for those use cases.
+    By comparison, \tcode{std::decompose_float} is useful precise because it is monolithic;
+    it decomposes the floating-point number,
+    and boolean tests like \tcode{is_finite()} can be used to dispatch to various paths afterwards.
+  }
+  \li{
+    ISO/IEC 60559 binary interchange formats encode NaNs
+    as simply having the greatest possible exponent.
+    This inevitably leads to two bad options:
+    \ul{
+      \li{
+        Saying that certain \tcode{exponent} arguments make \tcode{std::compose_float} produce NaNs
+        (i.e. making it a \q{monolithic} function)
+        would make \tcode{std::compose_float} awfully \q{non-mathematical}.
+        It would break the relation that the resulting magnitude is
+        \tcode{std::scalbn(F(significand), exponent)}.
+        Furthermore, if some large exponent value \math{\mi{N}} produces NaNs,
+        what should \math{\mrow{\mi{N}\mo{+}\mn{1}}} produce?
+        Supporting this form of NaN creation
+        would result in a narrow contract that could otherwise be wide
+        and could make the function a safety hazard.
+        Furthermore, not every floating-point format represents NaNs in the same way,
+        so saying that certain \tcode{exponent} arguments produce NaNs makes no sense for e.g.
+        decimal floating-point types.
+      }
+      \li{
+        If this form of NaN creation is not supported,
+        \tcode{std::compose_float} is exactly equivalent to
+        \tcode{std::copysign(std::scalbn(F(significand), exponent), sign ? -1 : 1)}.
+        That makes the function syntax sugar at best and unmotivated at worst.
+      }
+    }
+  }
+}
+
+Additionally, the \tcode{std::compose_float} function
+suffers from a hard design problem regarding the parameter type of \tcode{significand}:
+\ul{
+  \li{
+    If the significand type is templated as shown above,
+    different argument types such as \tcode{unsigned int} and \tcode{unsigned long}
+    result in different template instantiations,
+    but this seems unnecessary given that we arguably need just one type, namely
+    \tcode{float_decomposition<F>::significand_type}.
+  }
+  \li{
+    Having a parameter of type
+    \tcode{float_decomposition<F>::significand_type}
+    makes the function hard to use with wider integers.
+    For example, \tcode{std::bfloat_t} may have a significand type of \tcode{std::uint16_t}
+    (it is a 16-bit type after all).
+    Thus, while \tcode{std::bfloat_t} is able to represent 32-bit integer values like
+    \math{\msup{\mn{2}\mn{20}}},
+    \tcode{std::compose_float(false, 0, uint32_t{1} << 20)}
+    would result in zero due to a lossy conversion \tcode{std::uint32_t → std::uint16_t}.
+    The function would be virtually unusable in generic code where we may not know
+    the integer types and floating-point types.
+  }
+  \li{
+    Having a parameter of type \tcode{F} would solve the problem
+    by moving the conversion to the call site and
+    would be convenient due to deducing \tcode{F},
+    but would make the function even less useful;
+    it would simply be sugar for
+    \tcode{std::copysign(std::scalbn(significand, exponent), sign ? -1 : 1)}.
+  }
+}
+
 \h2{Wording}
 
 The changes are relative to \ref("N5054").

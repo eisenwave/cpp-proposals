@@ -1623,6 +1623,8 @@ into a sign bit, exponent, and integer significand.
 <a href=#decimal-floating-point><h3>Decimal floating-point</h3></a>
 <div class=toc-num data-level=3>3.5</div>
 <a href=#choice-of-header><h3>Choice of header</h3></a>
+<div class=toc-num data-level=3>3.6</div>
+<a href=#composing-floating-point-numbers><h3>Composing floating-point numbers</h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#wording><h2>Wording</h2></a>
 <div class=toc-num data-level=3>4.1</div>
@@ -2341,6 +2343,95 @@ because no other header is a good fit:
   <li>
     <code><h- data-h=str>&lt;stdfloat&gt;</h-></code> provides only type aliases and is extremely lightweight,
     and it seems worth keeping it this way.
+  </li>
+</ul>
+
+<h3 id=composing-floating-point-numbers><a class=para href=#composing-floating-point-numbers></a>3.6. Composing floating-point numbers</h3>
+
+<p>The paper provides no corresponding operation for composing floating-point numbers,
+although a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>float_decomposition</h-></code> object can be explicitly converted
+back to the original floating-point value.
+A possible signature for this could be:
+</p><code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>F</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>unsigned_integral</h-> <h- data-h=name>Uint</h-><h- data-h=sym_op>&gt;</h->
+  <h- data-h=kw>constexpr</h-> <h- data-h=name>F</h-> <h- data-h=name>compose_float</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>bool</h-> <h- data-h=name>sign</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>exponent</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>Uint</h-> <h- data-h=name>significand</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>There are a number of reasons for why this is not provided:
+</p><ul>
+  <li>
+    There is less need for a composition operation
+    because functions such as <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>scalbn</h-></code>, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>setpayload</h-></code>, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>nan</h-></code>, etc.
+    already provide the necessary functionality.
+    By contrast, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexp</h-></code> is insufficient for fully decomposing floating-point numbers.
+  </li>
+  <li>
+    Composition often takes separate paths for different categories anyway.
+    For example, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>from_chars</h-></code> handles <code><h- data-h=str_dlim>"</h-><h- data-h=str>nan</h-><h- data-h=str_dlim>"</h-></code>, <code><h- data-h=str_dlim>"</h-><h- data-h=str>inf</h-><h- data-h=str_dlim>"</h-></code>, and <code><h- data-h=str_dlim>"</h-><h- data-h=str>0.0</h-><h- data-h=str_dlim>"</h-></code>
+    inputs separately,
+    so a <q>monolithic</q> composition function is not needed for those use cases.
+    By comparison, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>decompose_float</h-></code> is useful precise because it is monolithic;
+    it decomposes the floating-point number,
+    and boolean tests like <code><h- data-h=name>is_finite</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> can be used to dispatch to various paths afterwards.
+  </li>
+  <li>
+    ISO/IEC 60559 binary interchange formats encode NaNs
+    as simply having the greatest possible exponent.
+    This inevitably leads to two bad options:
+    <ul>
+      <li>
+        Saying that certain <code><h- data-h=name>exponent</h-></code> arguments make <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>compose_float</h-></code> produce NaNs
+        (i.e. making it a <q>monolithic</q> function)
+        would make <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>compose_float</h-></code> awfully <q>non-mathematical</q>.
+        It would break the relation that the resulting magnitude is
+        <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>scalbn</h-><h- data-h=sym_par>(</h-><h- data-h=name>F</h-><h- data-h=sym_par>(</h-><h- data-h=name>significand</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>exponent</h-><h- data-h=sym_par>)</h-></code>.
+        Furthermore, if some large exponent value <math display=inline><mi>N</mi></math> produces NaNs,
+        what should <math display=inline><mrow><mi>N</mi><mo>+</mo><mn>1</mn></mrow></math> produce?
+        Supporting this form of NaN creation
+        would result in a narrow contract that could otherwise be wide
+        and could make the function a safety hazard.
+        Furthermore, not every floating-point format represents NaNs in the same way,
+        so saying that certain <code><h- data-h=name>exponent</h-></code> arguments produce NaNs makes no sense for e.g.
+        decimal floating-point types.
+      </li>
+      <li>
+        If this form of NaN creation is not supported,
+        <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>compose_float</h-></code> is exactly equivalent to
+        <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>copysign</h-><h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>scalbn</h-><h- data-h=sym_par>(</h-><h- data-h=name>F</h-><h- data-h=sym_par>(</h-><h- data-h=name>significand</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>exponent</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>sign</h-> <h- data-h=sym_op>?</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1</h-> <h- data-h=sym_punc>:</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code>.
+        That makes the function syntax sugar at best and unmotivated at worst.
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<p>Additionally, the <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>compose_float</h-></code> function
+suffers from a hard design problem regarding the parameter type of <code><h- data-h=name>significand</h-></code>:
+</p><ul>
+  <li>
+    If the significand type is templated as shown above,
+    different argument types such as <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-></code> and <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-></code>
+    result in different template instantiations,
+    but this seems unnecessary given that we arguably need just one type, namely
+    <code><h- data-h=name>float_decomposition</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>F</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>significand_type</h-></code>.
+  </li>
+  <li>
+    Having a parameter of type
+    <code><h- data-h=name>float_decomposition</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>F</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>significand_type</h-></code>
+    makes the function hard to use with wider integers.
+    For example, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>bfloat_t</h-></code> may have a significand type of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint16_t</h-></code>
+    (it is a 16-bit type after all).
+    Thus, while <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>bfloat_t</h-></code> is able to represent 32-bit integer values like
+    <math display=inline><msup><mn>2</mn><mn>20</mn></msup></math>,
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>compose_float</h-><h- data-h=sym_par>(</h-><h- data-h=bool>false</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>0</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_type>uint32_t</h-><h- data-h=sym_brac>{</h-><h- data-h=num>1</h-><h- data-h=sym_brac>}</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>20</h-><h- data-h=sym_par>)</h-></code>
+    would result in zero due to a lossy conversion <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint32_t</h-> → <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>uint16_t</h-></code>.
+    The function would be virtually unusable in generic code where we may not know
+    the integer types and floating-point types.
+  </li>
+  <li>
+    Having a parameter of type <code><h- data-h=name>F</h-></code> would solve the problem
+    by moving the conversion to the call site and
+    would be convenient due to deducing <code><h- data-h=name>F</h-></code>,
+    but would make the function even less useful;
+    it would simply be sugar for
+    <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>copysign</h-><h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>scalbn</h-><h- data-h=sym_par>(</h-><h- data-h=name>significand</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>exponent</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>sign</h-> <h- data-h=sym_op>?</h-> <h- data-h=sym_op>-</h-><h- data-h=num>1</h-> <h- data-h=sym_punc>:</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code>.
   </li>
 </ul>
 
