@@ -1,21 +1,72 @@
 <pre class='metadata'>
 Title: <code>break label;</code> and <code>continue label;</code>
 Shortname: P3568
-Revision: 2
+Revision: 3
 Status: P
-Date: 2026-05-10
+Date: 2026-10-11
 Group: WG21
-Audience: SG22, EWG
+Audience: CWG
 Editor: Jan Schultke, janschultke@gmail.com
 ED: https://eisenwave.github.io/cpp-proposals/break-continue-label.html
 !Source: [eisenwave/cpp-proposals](https://github.com/Eisenwave/cpp-proposals/blob/master/src/break-continue-label.bs)
-Markup Shorthands: markdown on
+Markup Shorthands: markdown on, markdown-blockquotes on
 Abstract: Introduce `break label` and `continue label` to `break` and `continue`
           out of nested loops and `switch`es as accepted into C2y,
           and relax label restrictions.
 </pre>
 
 # Revision history # {#history}
+
+## Since R2 ## {#history-since-r2}
+
+The paper was seen by EWG at Brno 2026,
+with the following poll taken:
+
+<blockquote>
+<p><b>P3568R2</b>: Forward P3568R2 to CWG for inclusion in C++29</p>
+<table>
+<tr>
+    <td>SF</td><td>F</td><td>N</td><td>A</td><td>SA</td>
+</tr>
+<tr>
+    <td>10</td><td>21</td><td>6</td><td>6</td><td>1</td>
+</tr>
+</table>
+<p><b>Result</b>: consensus</p>
+</blockquote>
+
+The paper was also seen by SG22 during the 2026-09-09 telecon:
+
+<blockquote>
+<p><b>P3568R2</b>:
+SG22 supports the addition of P3568R2 "break label; and continue label;"
+to the C++29 working draft</p>
+WG14:
+<table>
+<tr>
+    <td>SF</td><td>F</td><td>N</td><td>A</td><td>SA</td>
+</tr>
+<tr>
+    <td>1</td><td>3</td><td>2</td><td>1</td><td>0</td>
+</tr>
+</table>
+WG21:
+<table>
+<tr>
+    <td>SF</td><td>F</td><td>N</td><td>A</td><td>SA</td>
+</tr>
+<tr>
+    <td>1</td><td>3</td><td>2</td><td>1</td><td>0</td>
+</tr>
+</table>
+</blockquote>
+
+Consequently, only some minor changes to the discussion and wording were made:
+
+- Mentioned Clang implementation in [[#implementation-experience]]
+- Mentioned WG14 paper [[N3658]]
+- Fixed citations of WG14 polls having mislabeled "neutral" and "against" columns
+
 
 ## Since R1 ## {#history-since-r1}
 
@@ -65,7 +116,7 @@ WG14 saw [[N3377]] at Graz 2025 and voted as follows:
 <p><b>N3377</b>: Would WG14 like to see a paper changing loop name syntax at a future meeting?</p>
 <table>
 <tr>
-    <td>F</td><td>N</td><td>A</td>
+    <td>Favor</td><td>Against</td><td>Abstain</td>
 </tr>
 <tr>
     <td>6</td><td>11</td><td>9</td>
@@ -638,7 +689,7 @@ as voted at Graz 2025:
 <p><b>N3377</b>: Would WG14 like to see a paper changing loop name syntax at a future meeting?</p>
 <table>
 <tr>
-    <td>F</td><td>N</td><td>A</td>
+    <td>Favor</td><td>Against</td><td>Abstain</td>
 </tr>
 <tr>
     <td>6</td><td>11</td><td>9</td>
@@ -668,10 +719,21 @@ void f() {
 }
 ```
 
-The author of [[N3355]] has expressed to me that he intends
-to address these label issues for C2y.
-In parallel, this proposal addresses such issues by relaxing label restrictions.
-Presumably, C and C++ will converge on identical restrictions.
+These issues are addressed in WG14 by [[N3658]],
+which provides the same relaxation to label semantics as this C++ proposal.
+While [[N3658]] is not in the C2y working draft yet,
+a directional poll was given during the
+[August 2025 meeting](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3684.pdf):
+
+> Opinion Poll: Would WG14 like to adopt something along the lines of N3658 into C2y?
+>
+> 1-1-0 + 17-6-1 = 18-7-1: strong direction
+
+With 7 votes against,
+the decision was somewhat contentious,
+but there is clear support for the direction of the paper.
+During the SG22 2026-09-09 telecon,
+the author expressed they would continue work on [[N3658]].
 
 ### Design philosophy ### {#design-philosophy}
 
@@ -805,7 +867,14 @@ and relaxes restrictions on the placement of labels.
 
 # Implementation experience # {#implementation-experience}
 
-An LLVM implementation is W.I.P.
+A Clang implementation of [[N3355]] is available in C++ mode
+when specifying `-Xclang -fnamed-loops`.
+This implementation fully provides `break label;` and `continue label;`,
+including during constant evaluation.
+However, it does not include the [[N3658]] relaxations
+which allow for duplicate labels in the same function,
+so Clang does not fully implement this C++ paper.
+However, Clang implementers have expressed that this C++ feature is implementable.
 
 A GCC implementation of [[N3355]] has also been committed at [[GCC]].
 
@@ -1154,6 +1223,11 @@ see [[#expansion-statements]].
         "authors": ["JeanHeyd Meneide", "Freek Wiedijk"],
         "title": "ISO/IEC 9899:202y (en) — n3435 working draft",
         "href": "https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3435.pdf"
+    },
+    "N3658": {
+        "authors": ["Alex Celeste"],
+        "title": "Simplified lexical scope for labels",
+        "href": "https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3658.htm"
     }
 }
 </pre>
