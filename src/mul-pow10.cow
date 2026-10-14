@@ -1,0 +1,449 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+
+\wg21_head(
+  title = {Accurate floating-point multiplication with a power of 10}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D4391R0}}
+  \dt{Date:}            \dd{\tt{2026-10-14}}
+  \dt{Audience:}        \dd{SG6}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
+                            Matt Borland <\mail{matt@mattborland.com}>\br
+                            Lénárd Szolnoki <\mail{cpp@lenardszolnoki.com}>}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P4391/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/main/src/mul-pow10.cow")}
+}
+\hr
+}
+
+\Babstract{
+For the purpose of implementing \tcode{std::from_chars},
+all standard libraries have a function
+for accurately multiplying floating-point numbers by a power of 10.
+We propose exposing that capability to the user.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+For the purpose of implementing \tcode{std::from_chars},
+all standard libraries have a function
+for accurately multiplying floating-point numbers by a power of 10.
+This is innately necessary.
+
+\style{
+.borders td {
+  border-top: 1px solid var(--border-color);
+}
+.center {
+  margin-left: auto;
+  margin-right: auto;
+}
+}
+
+\table(class="borders center"){
+  \tr{
+    \th{Standard library}
+    \th{Functions}
+  }
+  \tr{
+    \td{libstdc++}
+    \td{
+      \ref("https://github.com/gcc-mirror/gcc/blob/b24bee5c07afb8c90c02597527871a44b00c4fd5/libstdc%2B%2B-v3/src/c%2B%2B17/fast_float/fast_float.h#L2962"){\tt{from_chars_advanced}} →\br
+      \ref("https://github.com/gcc-mirror/gcc/blob/b24bee5c07afb8c90c02597527871a44b00c4fd5/libstdc%2B%2B-v3/src/c%2B%2B17/fast_float/fast_float.h#L1548"){\tt{fast_float::compute_float}}
+    }
+  }
+  \tr{
+    \td{libc++}
+    \td{
+      \ref("https://github.com/llvm/llvm-project/blob/main/libcxx/src/include/from_chars_floating_point.h#L320"){\tt{__from_chars_floating_point_decimal}} →\br
+      \ref("https://github.com/llvm/llvm-project/blob/6fafdb34cd9038e52a270575e01f9bf16be89eac/libc/src/__support/str_to_float.h#L680"){\tt{decimal_exp_to_float}}
+    }
+  }
+  \tr{
+    \td{MSVC STL}
+    \td{
+      \ref("https://github.com/microsoft/STL/blob/da52dc0fcadbd83690cfd1ed32408d2847439493/stl/inc/charconv#L1376"){\tt{_Convert_decimal_string_to_floating_type}} →\br
+      \ref("https://github.com/microsoft/STL/blob/da52dc0fcadbd83690cfd1ed32408d2847439493/stl/inc/charconv#L1180"){\tt{_Assemble_floating_point_value}}
+    }
+  }
+}
+
+To understand how it is used, consider how \tcode{"123.5"}
+gets converted to a floating-point number:
+\ul{
+  \li{
+    \tcode{"123.5"} is parsed as an integer to \tcode{1235},
+    with a base-10 exponent of \tcode{-1}.
+    The mathematical value is
+    \math{\mrow{\mn{1235}\mo{×}\msup{\mn{10}\mn{-1}}}}.
+    Decimal digits past a certain point are simply ignored;
+    the integer is formed from the most significant decimal digits in the string.
+  }
+  \li{
+    An internal function such as
+    \tcode{std::float64_t mul_pow10(std::uint64_t significand, int exponent)}
+    is called to calculate the result precisely,
+    like \tcode{mul_pow10(1235, -1)}.
+    The function doesn't need to be correctly rounded,
+    but it needs to be precise enough to ensure round-tripping
+    between \tcode{std::to_chars} and \tcode{std::from_chars},
+    which requires proper results for at least 57 integer bits
+    (but not correct rounding to 57 bits).
+  }
+}
+
+\Bnote{
+While multiplying with \tcode{std::pow(10, exponent)} ostensibly does the same,
+it is significantly less precise and overflows or underflows in cases
+where a \tcode{std::mul_pow10} function wouldn't
+(like when combining a large significand with a hugely negative exponent).
+
+In general,
+lots of floating-point operations exist solely to fuse other operations,
+like \tcode{std::hypot}, \tcode{std::fma}, etc.
+}
+
+\h2{Motivation}
+
+\tcode{std::mul_pow10} is a necessary component
+of parsing floating-point numbers with round-tripping,
+is generally useful, and
+is incredibly hard to implement.
+\tcode{std::from_chars} can be seen as a higher-level wrapper,
+and if the user wants to make their own variant of \tcode{std::from_chars}
+which also supports digit separators and optional integer parts
+(e.g. to parse floating-point numbers in their own language),
+they have no means of \q{skipping} \tcode{std::from_chars}
+and going straight to the low-level numeric utility it wraps.
+
+The implementation also involves large lookup tables,
+so even if the user implemented \tcode{std::mul_pow10} themselves,
+they would end up pointlessly duplicating the lookup tables in the runtime library.
+This is a problem that only the standard can solve, not the ecosystem.
+
+\h2{Design}
+
+\h3{API}
+
+We propose the following set of functions in \header{numeric}:
+
+\cppblock{
+template<\exposid{cv-unqualified-float} F, \exposid{signed-or-unsigned} T>
+  constexpr F mul_pow10(T n, int exp);
+template<\exposid{cv-unqualified-float} F, \exposid{signed-or-unsigned} T>
+  constexpr F cr_mul_pow10(T n, int exp);
+}
+
+\tcode{mul_pow10} computes
+\math{\mrow{\mi{n}\mo{×}\msup{\mn{10}\mi{exp}}}} without correct rounding
+but with sufficient rounding for \tcode{std::from_chars} to round-trip for type \tcode{F}.
+
+\tcode{mul_pow10} computes the same with correct rounding,
+but it is implementation-defined which specializations are allowed (possibly none).
+Requiring correct rounding for all type combinations requires unreasonable implementation effort,
+but if the implementation provides a correctly rounded function anyway,
+it would be frustrating not to have any access to it.
+While such a function is innately not portable,
+the user can detect support using \tcode{requires} expressions.
+
+\h3{Handling big integers}
+
+Since the API is constrained to accept
+any signed or unsigned integer type \tcode{T},
+this raises the question how huge integers
+such as \tcode{__int128} or \tcode{_BitInt(1024)} are handled.
+Correct rounding for \tcode{mul_pow10} would impose an
+unreasonable implementation burden since in the worst case,
+every integer bit can affect the result;
+we cannot simply truncate the less significant bits.
+
+However, \tcode{mul_pow10}
+only needs to be sufficiently precise to ensure round-tripping,
+meaning that only a subset of integer inputs have a decent approximation.
+
+\Bex{
+For 128-bit integers and \tcode{F = std::float64_t},
+57 integer bits are sufficient for round-tripping.
+We can implement this specialization as follows:
+\cppblock{
+using __u128 = unsigned __int128;
+using __i128 = signed __int128;
+
+float64_t mul_pow10(__u128 n, int exp) {
+  // 1. Select the uppermost 64 nonzero bits in the input.
+  int trunc_bits = max(64 - countl_zero(n), 0);
+  auto m = uint64_t(n >> trunc_bits);
+
+  // 2. Use the underlying mul_pow10 for uint64_t and float64_t,
+  //    with the same decimal exponent.
+  //    In practice, this function is correctly rounded,
+  //    i.e. cr_mul_pow10(m, exp) is available.
+  float64_t trunc_result = mul_pow10(m, exp);
+
+  // 3. Shift to the left
+  //    by the same amount that n has been shifted to the right.
+  //    Since float64_t is a binary float,
+  //    this operation merely adjusts the binary exponent
+  //    and introduces no further imprecision.
+  return ldexp(trunc_result, trunc_bits);
+}
+
+float64_t mul_pow10(__i128 n, int exp) {
+  // For any signed integer,
+  // we can delegate to the corresponding unsigned implementation.
+  if (n < 0) {
+    // Unsigned negation guards against signed integer overflow.
+    // copysign ensures that we produce negative zero on underflow.
+    return copysign(mul_pow10(-__u128(n), exp), -1f64);
+  }
+  return mul_pow10(__u128(n), exp);
+}
+}
+}
+
+This example is not specific to 128-bit integers
+and can be easily generalized to any width.
+The key insight is that while all integer bits would be necessary for correct rounding,
+only some of the leading bits are necessary for round-tripping,
+so any less significant bits can be truncated, for any integer width.
+
+\h3{Why not use a floating-point operand?}
+
+One could also imagine a \header{cmath} operation like
+\cppblock{
+std::float64_t scal10n(std::float64_t x, int exp);
+}
+
+However, this would not be sufficiently precise to implement \tcode{std::from_chars}.
+For binary64 format,
+at least 57 integer bits of precision are required for round-tripping,
+but \tcode{std::float64_t} can only represent 53 bits.
+
+This is also why we don't propose a \header{cmath} operation that is C-compatible.
+
+\h3{Decimal floating-point}
+
+Decimal floating-point numbers are a special case,
+and are somewhat supported by C++;
+\tcode{numeric_limits<F>::radix} may be \tcode{10},
+although there is no standard C++ spelling for decimal floating-point types,
+unlike C, which offers \tcode{_Decimal64} et al.
+
+The decimal case is usually trivial because it is always correctly rounded
+and can be implemented in terms of
+\tcode{std::scalbn(_Decimal64(n), exp)}.
+Also, under the hood,
+ISO/IEC 60559 decimal floating-point types are an integer and decimal exponent,
+and any standard library providing support for them needs functions
+for converting between integers-and-exponent pairs and floating-point numbers.
+\tcode{std::mul_pow10} is simply exposing those otherwise internal functions.
+
+\Bnote{
+There is one edge case for decimal floating-point:
+huge numbers like those representable by \tcode{_BitInt(1'000'000)}
+may result in infinity when converted to \tcode{_Decimal32},
+despite the mathematical result of, say,
+\tcode{std::scalbn(_Decimal32(n), -10'000)} being finite.
+
+A robust approach that handles this case instead
+correctly rounds the input \tcode{_BitInt(1'000'000)} to
+however many integer bits fit into \tcode{_Decimal32}
+and sets the exponent field.
+}
+
+\h2{Wording}
+
+The changes are relative to \ref("N5054").
+
+\h3(show_number=false){[version.syn]}
+
+Add a feature-test macro to \eelis{version.syn} as follows:
+
+\Bins{
+\itemdecl{
+#define __cpp_lib_mul_pow10 20XXXXL // \serif{freestanding, also in \tt{<header>}}
+}
+}
+
+\h3(show_number=false){[numeric.ops.overview]}
+
+Change the synopsis in \eelis{numeric.ops.overview} as follows:
+
+\Bdiff{
+\itemdecl{
+//\serif{ mostly freestanding}
+namespace std {
+  \etc
+  template<class T, class U>
+    constexpr T saturating_cast(U x) noexcept;
+
+\ins{  //\serif{ [numeric.mul.pow10], multiplication with a power of 10}
+  template<class F, class T>
+    constexpr F mul_pow10(T n, int exp) noexcept;       //\serif{ freestanding-deleted}
+  template<class F, class T>
+    constexpr F cr_mul_pow10(T n, int exp) noexcept;    //\serif{ freestanding-deleted}}
+}
+}
+}
+
+\h3(show_number=false){[numeric.mul.pow10]}
+
+At the end of \eelis{numeric.ops},
+append a new subclause:
+
+\Bins{
+\cowel_html_element("h3"){Multiplication with a power of 10 \stable_ref{numeric.mul.pow10}}
+\cowel_var_set("pnum", 0)
+
+\pnum
+In either of the following function descriptions,
+if the result is exactly representable in type \tcode{F},
+no floating-point exceptions are raised;
+otherwise, the raised floating-point exceptions are a property of the implementation.
+Furthermore, if \tcode{numeric_limits<F>::radix == 10} is \tcode{true},
+the provided exponent \tcode{exp} is the preferred quantum exponent of the result.
+
+\itemdecl{
+template<class F, class T>
+  constexpr F mul_pow10(T n, int exp) noexcept;
+}
+
+\itemdescr{
+\pnum
+\constraints
+\ul{
+  \li{
+    \tcode{F} is a cv-unqualified floating-point type\iref{basic.fundamental}.
+  }
+  \li{
+    \tcode{T} is a signed or unsigned integer type.
+  }
+}
+
+\pnum
+\constantwhen
+The rounded result is finite and
+is zero if and only if \tcode{n} is zero.
+
+\pnum
+\effects
+If \tcode{cr_mul_pow10<F>(n, exp)} is well-formed,
+equivalent to:
+\tcode{return cr_mul_pow10<F>(n, exp);}
+Otherwise, returns
+\math{\mrow{\mi{n}\mo{×}\msup{\mn{10}\mi{exp}}}}.
+
+\pnum
+\remarks
+If the result is not correctly rounded,
+let \tcode{U} be a hypothetical integer type
+so that any finite value \math{\mi{x}} of type \tcode{F}
+can be decomposed into
+\ul{
+  \li{
+    a value \tcode{m} of type \tcode{U} and
+  }
+  \li{
+    a corresponding base-10 exponent \tcode{e} of type \tcode{int}
+  }
+}
+so that \math{\mi{x}} equals \tcode{mul_pow10<F>(m, e)}.
+The result of this function is at least as accurate as \tcode{mul_pow10<F>(U(m), e)} and
+depends solely on the unrounded result.
+The result has negative sign bit if \tcode{n} is negative.
+
+\example{
+\tcode{mul_pow10<F>(42, 1)} equals \tcode{mul_pow10<F>(420, 0)}
+because the unrounded result is \math{\mn{420}}.
+If \tcode{F} cannot represent 420,
+both these expressions are rounded to the same result.
+\tcode{mul_pow10<F>(-1, -1'000'000)}
+is negative zero if \tcode{F} has insufficient precision
+to represent the unrounded result.
+}
+}
+}
+
+\editnote{
+The invention of a hypothetical integer type is necessary
+because we need to work with a type where the round-tripping requirement is actually feasible.
+Obviously, we cannot decompose a \tcode{std::float128_t}
+into a \tcode{std::uint8_t} and base-10 exponent;
+we need a fairly wide integer type for the significand.
+
+However, we can require that the specialization
+\tcode{mul_pow10<std::float128_t, std::uint8_t>}
+is as precise as
+\tcode{mul_pow10<std::float128_t, unsigned __int128>}
+(possibly implemented by just calling that more precise function).
+}
+
+\Bins{
+\itemdecl{
+template<class F, class T>
+  constexpr F cr_mul_pow10(T n, int exp) noexcept;
+}
+
+\itemdescr{
+\pnum
+\constraints
+\ul{
+  \li{
+    \tcode{F} is a cv-unqualified floating-point type\iref{basic.fundamental}.
+  }
+  \li{
+    \tcode{T} is a signed or unsigned integer type.
+  }
+  \li{
+    Either \tcode{numeric_limits<F>::radix == 10} is \tcode{true} or
+    the pair of types \tcode{F} and \tcode{T}
+    belongs to an implementation-defined set
+    for which this operation is supported.
+    If the pair \tcode{F} and \tcode{T} belongs to this set and
+    \tcode{T} is unsigned,
+    then all pairs \tcode{F} and \tcode{U} belong to this set,
+    where \tcode{U} is any integer type
+    whose width is less than or equal to that of \tcode{T}.
+  }
+}
+
+\pnum
+\constantwhen
+The rounded result is finite and
+is zero if and only if \tcode{n} is zero.
+
+
+\pnum
+\returns
+\math{\mrow{\mi{n}\mo{×}\msup{\mn{10}\mi{exp}}}}
+correctly rounded.
+}
+}
+
+\h2{References}
+
+
+\bib(
+  id = "N5054",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2026-07-16",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5054",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
+)\
+\bib(
+  id = "P3666R4",
+  title = "Bit-precise integers",
+  date = "2026-05-12",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3666r4",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r4.html",
+)\
+
+\make_bib
