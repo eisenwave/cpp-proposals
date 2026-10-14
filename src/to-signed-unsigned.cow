@@ -3,8 +3,8 @@
 
 \wg21_head(title={\tcode{std::to_signed} and \tcode{std::to_unsigned}}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3643R4}}
-  \dt{Date:}            \dd{\tt{2026-10-10}}
+  \dt{Document number:} \dd{\docnum{P3643R5}}
+  \dt{Date:}            \dd{\tt{2026-10-14}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -24,6 +24,13 @@ in the style of \tcode{std::to_underlying}.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R4}
+
+\ul{
+  \li{added \ref("#handling-of-enumeration-types")}
+  \li{changed return type to avoid direct use of \tcode{std::make_signed} and \tcode{std::make_unsigned}}
+}
 
 \h3{Changes since R3}
 
@@ -215,7 +222,8 @@ This proposal is a pure library extension.
 \h2{Design}
 
 This proposal follows precedent:
-Similar to \tcode{to_underlying}, the proposed functions are located in \header{utility}.
+similar to \tcode{to_underlying},
+the proposed functions are located in \header{utility}.
 The naming scheme is based on \tcode{to_underlying}
 and the search results in \ref("#existing-developer-practice").
 
@@ -280,6 +288,57 @@ there are multiple options:
     and permitting \tcode{float} would muddy the waters here.
   }
 }
+
+\h3{Handling of enumeration types}
+
+As mentioned above,
+anything accepted by \tcode{std::make_signed} is also accepted by \tcode{std::to_signed},
+including enumeration types.
+
+\Bex{
+This allows usage such as:
+\cppblock{
+enum E { A, B, C };
+
+auto x = std::to_signed(A);
+auto y = std::bit_ceil(std::to_unsigned(B));
+}
+If enumerations weren't supported,
+an additional step through \tcode{std::to_underlying} would be required.
+}
+
+However, \tcode{std::make_signed} and \tcode{std::make_unsigned}
+shouldn't be used directly as the return type
+because they have long-standing design issues.
+\tcode{std::make_unsigned} surprisingly does not yield
+the underlying type of an enumeration type
+(or the unsigned counterpart thereof),
+but yields\iref{meta.trans.sign}:
+
+\Bquote{
+the unsigned integer type with smallest rank\iref{conv.rank}
+for which \tcode{sizeof(T) == sizeof(type)},
+with the same cv-qualifiers as \tcode{T}.
+}
+
+\Bex{
+Consider an the following enumeration and assertion:
+\cppblock{
+enum E : unsigned long long {};
+static_assert(std::is_same_v<unsigned long, std::make_unsigned_t<E>>);
+}
+The assertion passes if
+\tcode{sizeof(unsigned long)} equals \tcode{sizeof(unsigned long long)}.
+
+It passes even if \tcode{unsigned long} cannot represent all values of \tcode{unsigned long long}.
+This can happen if \tcode{unsigned long} has the same size as \tcode{unsigned long long}
+but has more padding bits.
+However, this is mostly a theoretical case and may be resolvable via LWG issue.
+}
+
+A simple workaround is to use use
+\tcode{std::make_unsigned_t<\brk{}std::\brk{}underlying_type_t<\brk{}E>>}
+for enumeration types.
 
 \h3{Naming}
 
@@ -449,14 +508,17 @@ concept __sign_convertible
   && !is_const_v<T>
   && !is_volatile_v<T>;
 
+template<class T>
+using __underlying_int_t = conditional_t<is_enum_v<T>, underlying_type_t<T>, T>;
+
 template<__sign_convertible T>
-constexpr make_signed_t<T> to_signed(T x) noexcept {
-  return static_cast<make_signed_t<T>>(x);
+constexpr make_signed_t<__underlying_int_t<T>> to_signed(T x) noexcept {
+  return static_cast<make_signed_t<__underlying_int_t<T>>>(x);
 }
 
 template<__sign_convertible T>
-constexpr make_unsigned_t<T> to_unsigned(T x) noexcept {
-  return static_cast<make_unsigned_t<T>>(x);
+constexpr make_unsigned_t<__underlying_int_t<T>> to_unsigned(T x) noexcept {
+  return static_cast<make_unsigned_t<__underlying_int_t<T>>>(x);
 }
 }
 
@@ -483,9 +545,11 @@ namespace std {
 
 \ins{  // \serif{[utility.sign.conv], sign conversion}
   template<class T>
-    constexpr make_signed_t<T> to_signed(T value) noexcept;
+    using \exposid{underlying-int-t} = \seebelow;  //\serif{ exposition only}
   template<class T>
-    constexpr make_unsigned_t<T> to_unsigned(T value) noexcept;}
+    constexpr make_signed_t<\exposid{underlying-int-t}<T>> to_signed(T value) noexcept;
+  template<class T>
+    constexpr make_unsigned_t<\exposid{underlying-int-t}<T>> to_unsigned(T value) noexcept;}
 
   // \serif{[utility.underlying], to_underlying}
   template<class T>
@@ -502,28 +566,36 @@ add a subclause immediately prior to \eelis{utility.underlying}:
 \Bins{
 \cowel_html_element("h3"){Sign conversion \stable_ref{utility.sign.conv}}
 
+The exposition-only alias template \tcode{\exposid{underlying-int-t}}
+is defined as follows:
+
 \itemdecl{
 template<class T>
-  constexpr make_signed_t<T> to_signed(T value) noexcept;
+  using \exposid{underlying-int-t} = conditional_t<is_enum_v<T>, underlying_type_t<T>, T>;
+}
+
+\itemdecl{
+template<class T>
+  constexpr make_signed_t<\exposid{underlying-int-t}<T>> to_signed(T value) noexcept;
 }
 \itemdescr{
 \constraints
 \tcode{T} is a cv-unqualified integral or enumeration type other than \tcode{bool}.
 
 \returns
-\tcode{static_cast<make_signed_t<T>>(value)}\iref{meta.trans.sign}.
+\tcode{static_cast<make_signed_t<\exposid{underlying-int-t}<T>>>(value)}\iref{meta.trans.sign}.
 }
 
 \itemdecl{
 template<class T>
-  constexpr make_unsigned_t<T> to_unsigned(T value) noexcept;
+  constexpr make_unsigned_t<\exposid{underlying-int-t}<T>> to_unsigned(T value) noexcept;
 }
 \itemdescr{
 \constraints
 \tcode{T} is a cv-unqualified integral or enumeration type other than \tcode{bool}.
 
 \returns
-\tcode{static_cast<make_unsigned_t<T>>(value)}\iref{meta.trans.sign}.
+\tcode{static_cast<make_unsigned_t<\exposid{underlying-int-t}<T>>>(value)}\iref{meta.trans.sign}.
 }
 }
 
