@@ -103,7 +103,7 @@ The result is off by one or more, depending on the format:
         because \math{\mi{E}} is at least \math{\mn{1}}.
         The magnitude of a normal number is
         \math{\mrow{
-          \msup{\mn{2}\mrow{\mi{E}\mo{−}\math{\mi(mathvariant="italic"){bias}}}}
+          \msup{\mn{2}\mrow{\mi{E}\mo{−}\mi(mathvariant="italic"){bias}}}
           \mo{×}
           \mn{1.abc…}
         }}
@@ -122,7 +122,7 @@ Essentially, \tcode{min_exponent} is neither the
 \q{minimum exponent that would be multiplied with the significand part},
 nor is it the \math{\mi(mathvariant="italic"){emin}} constant described in ISO/IEC 60559.
 The result is inexplicably off by one because the definition is written in terms of
-\math{\msup{\mi{r}\mrow{\mi{i}\mo{−}\mn{1}}}} instead of \math{\mi{r}}.
+\math{\msup{\mi{r}\mrow{\mi{i}\mo{−}\mn{1}}}} instead of \math{\msup{\mi{r}\mi{i}}}.
 The proposed value does match \tcode{numeric_limits::min_exponent}
 and the C89 macro \tcode{FLT_MIN_EXP},
 but it's unclear why those have been designed as off by one in the first place.
@@ -135,6 +135,30 @@ What's even worse is that for decimal floating-point types,
 \b{Possible solution}:
 We should not perpetuate the off-by-one error,
 but standardize a trait that yields the expected \math{\mi(mathvariant="italic"){emin}} constant.
+
+\h3{\tt{max_exponent} is off by one}
+
+\b{Problem}:
+For the same reason as described above,
+\tcode{max_exponent} is off by one:
+it asks a question about
+\math{\msup{\mi{r}\mrow{\mi{i}\mo{−}\mn{1}}}} instead of \math{\msup{\mi{r}\mi{i}}}.
+The largest binary interchange floating-point number is of the form
+\math{\mrow{
+  \msup{\mn{2}\mi(mathvariant="italic"){emax}}
+  \mo{×}
+  \mn{1.999…}
+}},
+where irrespective of the fractional digits,
+the exponent is always \math{\mi(mathvariant="italic"){emax}}.
+\math{\mi(mathvariant="italic"){emax}} is \math{\mn{127}} for \tcode{std::float32_t},
+but \tcode{max_exponent} is \tcode{128}.
+
+Just like for \tcode{min_exponent} and \tcode{min_exponent10},
+\tcode{max_exponent} and \tcode{max_exponent10} are not equal for decimal floating-point types.
+
+\b{Possible solution}:
+Fix \tcode{max_exponent} in the same way as \tcode{min_exponent}.
 
 \h3{What is \tt{round_error}?!}
 
@@ -422,7 +446,7 @@ it is \tcode{10}.
   date = "2026-10-22",
   author = "Damien Lebrun-Grandie, Mark Hoemmen, Jonathan Wakely, Matthias Kretz, Tim Song",
   link = "https://wg21.link/p4421r0",
-  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4421r0.pdf",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4421r0.html",
 )\
 
 \make_bib

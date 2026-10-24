@@ -1605,10 +1605,12 @@ This paper covers defects in the design and wording of <a href="https://wg21%2el
 <div class=toc-num data-level=3>2.2</div>
 <a href=#min_exponent-is-off-by-one><h3><tt->min_exponent</tt-> is off by one</h3></a>
 <div class=toc-num data-level=3>2.3</div>
-<a href=#what-is-round_error><h3>What is <tt->round_error</tt->?!</h3></a>
+<a href=#max_exponent-is-off-by-one><h3><tt->max_exponent</tt-> is off by one</h3></a>
 <div class=toc-num data-level=3>2.4</div>
-<a href=#how-do-you-check-for-subnormal-numbers><h3>How do you check for subnormal numbers?</h3></a>
+<a href=#what-is-round_error><h3>What is <tt->round_error</tt->?!</h3></a>
 <div class=toc-num data-level=3>2.5</div>
+<a href=#how-do-you-check-for-subnormal-numbers><h3>How do you check for subnormal numbers?</h3></a>
+<div class=toc-num data-level=3>2.6</div>
 <a href=#denorm_min-and-finite_min-use-min-inconsistently><h3><tt->denorm_min</tt-> and <tt->finite_min</tt-> use <q>min</q> inconsistently</h3></a>
 <div class=toc-num data-level=2>3</div>
 <a href=#wording-defects><h2>Wording defects</h2></a>
@@ -1701,7 +1703,7 @@ is a representable, normalized (if applicable), finite value of type <code><h- d
         because <math display=inline><mi>E</mi></math> is at least <math display=inline><mn>1</mn></math>.
         The magnitude of a normal number is
         <math display=inline><mrow>
-          <msup><mn>2</mn><mrow><mi>E</mi><mo>−</mo><math display=inline><mi mathvariant=italic>bias</mi></math></mrow></msup>
+          <msup><mn>2</mn><mrow><mi>E</mi><mo>−</mo><mi mathvariant=italic>bias</mi></mrow></msup>
           <mo>×</mo>
           <mn>1.abc…</mn>
         </mrow></math>
@@ -1720,7 +1722,7 @@ is a representable, normalized (if applicable), finite value of type <code><h- d
 <q>minimum exponent that would be multiplied with the significand part</q>,
 nor is it the <math display=inline><mi mathvariant=italic>emin</mi></math> constant described in ISO/IEC 60559.
 The result is inexplicably off by one because the definition is written in terms of
-<math display=inline><msup><mi>r</mi><mrow><mi>i</mi><mo>−</mo><mn>1</mn></mrow></msup></math> instead of <math display=inline><mi>r</mi></math>.
+<math display=inline><msup><mi>r</mi><mrow><mi>i</mi><mo>−</mo><mn>1</mn></mrow></msup></math> instead of <math display=inline><msup><mi>r</mi><mi>i</mi></msup></math>.
 The proposed value does match <code><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>::</h-><h- data-h=name>min_exponent</h-></code>
 and the C89 macro <code><h- data-h=name>FLT_MIN_EXP</h-></code>,
 but it's unclear why those have been designed as off by one in the first place.
@@ -1734,7 +1736,31 @@ but it's unclear why those have been designed as off by one in the first place.
 We should not perpetuate the off-by-one error,
 but standardize a trait that yields the expected <math display=inline><mi mathvariant=italic>emin</mi></math> constant.
 </p>
-<h3 id=what-is-round_error><a class=para href=#what-is-round_error></a>2.3. What is <tt->round_error</tt->?!</h3>
+<h3 id=max_exponent-is-off-by-one><a class=para href=#max_exponent-is-off-by-one></a>2.3. <tt->max_exponent</tt-> is off by one</h3>
+
+<p><b>Problem</b>:
+For the same reason as described above,
+<code><h- data-h=name>max_exponent</h-></code> is off by one:
+it asks a question about
+<math display=inline><msup><mi>r</mi><mrow><mi>i</mi><mo>−</mo><mn>1</mn></mrow></msup></math> instead of <math display=inline><msup><mi>r</mi><mi>i</mi></msup></math>.
+The largest binary interchange floating-point number is of the form
+<math display=inline><mrow>
+  <msup><mn>2</mn><mi mathvariant=italic>emax</mi></msup>
+  <mo>×</mo>
+  <mn>1.999…</mn>
+</mrow></math>,
+where irrespective of the fractional digits,
+the exponent is always <math display=inline><mi mathvariant=italic>emax</mi></math>.
+<math display=inline><mi mathvariant=italic>emax</mi></math> is <math display=inline><mn>127</mn></math> for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>float32_t</h-></code>,
+but <code><h- data-h=name>max_exponent</h-></code> is <code><h- data-h=num>128</h-></code>.
+</p>
+<p>Just like for <code><h- data-h=name>min_exponent</h-></code> and <code><h- data-h=name>min_exponent10</h-></code>,
+<code><h- data-h=name>max_exponent</h-></code> and <code><h- data-h=name>max_exponent10</h-></code> are not equal for decimal floating-point types.
+</p>
+<p><b>Possible solution</b>:
+Fix <code><h- data-h=name>max_exponent</h-></code> in the same way as <code><h- data-h=name>min_exponent</h-></code>.
+</p>
+<h3 id=what-is-round_error><a class=para href=#what-is-round_error></a>2.4. What is <tt->round_error</tt->?!</h3>
 
 <p><b>Problem</b>:
 The <code><h- data-h=name>round_error</h-></code> trait is described as follows:
@@ -1790,7 +1816,7 @@ Remove <code><h- data-h=name>round_error</h-></code> from the paper.
 or remove it from the standard,
 but that would be outside the scope of <a href="https://wg21%2elink/p4421r0">[P4421R0]</a>.
 </p>
-<h3 id=how-do-you-check-for-subnormal-numbers><a class=para href=#how-do-you-check-for-subnormal-numbers></a>2.4. How do you check for subnormal numbers?</h3>
+<h3 id=how-do-you-check-for-subnormal-numbers><a class=para href=#how-do-you-check-for-subnormal-numbers></a>2.5. How do you check for subnormal numbers?</h3>
 
 <p><b>Problem</b>:
 <a href="https://wg21%2elink/p4421r0">[P4421R0]</a> makes the following argument
@@ -1833,7 +1859,7 @@ or in terms of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h
 or in terms of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>nextafter</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code>.
 </p></note-block>
 
-<h3 id=denorm_min-and-finite_min-use-min-inconsistently><a class=para href=#denorm_min-and-finite_min-use-min-inconsistently></a>2.5. <tt->denorm_min</tt-> and <tt->finite_min</tt-> use <q>min</q> inconsistently</h3>
+<h3 id=denorm_min-and-finite_min-use-min-inconsistently><a class=para href=#denorm_min-and-finite_min-use-min-inconsistently></a>2.6. <tt->denorm_min</tt-> and <tt->finite_min</tt-> use <q>min</q> inconsistently</h3>
 
 <p><b>Problem</b>:
 <code><h- data-h=name>finite_min</h-></code> is the lowest finite value,
@@ -2009,6 +2035,6 @@ it is <code><h- data-h=num>10</h-></code>.
 <span class=bib-author>Damien Lebrun-Grandie, Mark Hoemmen, Jonathan Wakely, Matthias Kretz, Tim Song.</span>
 <span class=bib-title>Numeric Traits for C++29</span>
 <span class=bib-date>2026-10-22</span>
-<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/p4421r0%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4421r0.pdf</a></div></div>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/p4421r0%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4421r0.html</a></div></div>
 </main></body>
 </html>
