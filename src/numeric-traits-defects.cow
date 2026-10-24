@@ -67,98 +67,117 @@ template<class T> constexpr auto \del{de}\ins{sub}norm_min_v;
 }
 }
 
-\h3{\tt{min_exponent} is off by one}
+\h3{\tt{min_exponent} and \tcode{min_exponent10} are not the same kind of exponent}
 
 \b{Problem}:
-\tcode{min_exponent} is defined as follows:
+These traits are defined as follows:
 \Bquote{
+\itemdecl{
+template<class T> struct min_exponent { \seebelow };
+}
+\itemdescr{
 When enabled, with \tcode{r = radix_v<T>},
 \tcode{min_exponent<T>::value} is
 the minimum negative integer \math{\mi{i}} such that
 \math{\msup{\mi{r}\mrow{\mi{i}\mo{−}\mn{1}}}}
 is a representable, normalized (if applicable), finite value of type \tcode{T}.
 }
-The result is off by one or more, depending on the format:
-\ul{
-  \li{
-    For ISO/IEC 60559 binary interchange floating-point types:
-    \ul{
-      \li{
-        All subnormal numbers have an exponent of \math{\mi(mathvariant="italic"){emin}},
-        which is \math{\mn{−126}} for \tcode{std::float32_t} (i.e. binary32 format).
-        The magnitude of a subnormal number is
-        \math{\mrow{
-          \msup{\mn{2}\mi(mathvariant="italic"){emin}}
-          \mo{×}
-          \mn{0.abc…}
-        }},
-        where \math{\mn{abc…}} are digits decoded from the significand part.
-      }
-      \li{
-        For normal numbers, the minimum exponent is the raw exponent \math{\mi{E}}
-        minus a \math{\mi(mathvariant="italic"){bias}} constant
-        (which is 127 for \tcode{std::float32_t}),
-        and the minimum \math{\mrow{\mi{E}\mo{−}\math{\mi(mathvariant="italic"){bias}}}}
-        is also \math{\mn{−126}} for \tcode{std::float32_t}
-        because \math{\mi{E}} is at least \math{\mn{1}}.
-        The magnitude of a normal number is
-        \math{\mrow{
-          \msup{\mn{2}\mrow{\mi{E}\mo{−}\mi(mathvariant="italic"){bias}}}
-          \mo{×}
-          \mn{1.abc…}
-        }}
-      }
-    }
-    However, \tcode{min_exponent} is \tcode{-125} for \tcode{std::float32_t}.
-  }
-  \li{
-    For ISO/IEC 60559 decimal interchange floating-point types,
-    subnormal values do not all have the same exponent,
-    so \tcode{min_exponent} is off by potentially more than one.
-  }
+
+\itemdecl{
+template<class T> struct min_exponent10 { \seebelow };
+}
+\itemdescr{
+When enabled,
+\tcode{min_exponent10<T>::value} is
+the minimum negative integer \math{\mi{i}} such that
+\math{\msup{\mn{10}\mi{i}}}
+is a representable, normalized (if applicable), finite value of type \tcode{T}.
+}
 }
 
-Essentially, \tcode{min_exponent} is neither the
-\q{minimum exponent that would be multiplied with the significand part},
-nor is it the \math{\mi(mathvariant="italic"){emin}} constant described in ISO/IEC 60559.
-The result is inexplicably off by one because the definition is written in terms of
-\math{\msup{\mi{r}\mrow{\mi{i}\mo{−}\mn{1}}}} instead of \math{\msup{\mi{r}\mi{i}}}.
-The proposed value does match \tcode{numeric_limits::min_exponent}
-and the C89 macro \tcode{FLT_MIN_EXP},
-but it's unclear why those have been designed as off by one in the first place.
+The discrepancy is between
+\math{\msup{\mi{r}\mrow{\mi{i}\mo{−}\mn{1}}}} and \math{\msup{\mi{10}\mi{i}}}.
+For decimal floating-point types,
+\math{\mrow{\mi{r}\mo{=}\mn{10}}},
+so \tcode{min_exponent10} is off by one from \tcode{min_exponent},
+but anyone would intuitively expect \tcode{min_exponent} and \tcode{min_exponent10}
+to be equivalent for decimal floating-point types.
+If we wanted to standardize another trait \tcode{min_exponent2} which tells us
+what the smallest normal base-2 exponent is,
+this would only add to the confusion because users
+may expect \tcode{min_exponent} and \tcode{min_exponent2} to be equivalent
+for binary floating-point types.
 
-What's even worse is that for decimal floating-point types,
-\tcode{min_exponent} and \tcode{min_exponent10} yield different results;
-\tcode{min_exponent} is asking about \math{\msup{\mn{10}\mrow{\mi{i}\mo{−}\mn{1}}}} while
-\tcode{min_exponent10} is asking about \math{\msup{\mn{10}\mi{i}}}.
-
-\b{Possible solution}:
-We should not perpetuate the off-by-one error,
-but standardize a trait that yields the expected \math{\mi(mathvariant="italic"){emin}} constant.
-
-\h3{\tt{max_exponent} is off by one}
-
-\b{Problem}:
-For the same reason as described above,
-\tcode{max_exponent} is off by one:
-it asks a question about
-\math{\msup{\mi{r}\mrow{\mi{i}\mo{−}\mn{1}}}} instead of \math{\msup{\mi{r}\mi{i}}}.
-The largest binary interchange floating-point number is of the form
+\Bnote{
+The difference stems from the fact that \tcode{min_exponent} is the
+lowest exponent in the C floating-point model,
+where magnitudes of binary floating-point numbers are
 \math{\mrow{
-  \msup{\mn{2}\mi(mathvariant="italic"){emax}}
+  \msup{\mi{2}\mi{e}}
   \mo{×}
-  \mn{1.999…}
+  \mi{q}
+  \mi{,}\mspace(width="0.5em"){}
+  \mi{q}
+  \mo{∈}
+  \mo{[}\mn{0.5}\mo{,}\mn{1}\mo{)}
 }},
-where irrespective of the fractional digits,
-the exponent is always \math{\mi(mathvariant="italic"){emax}}.
-\math{\mi(mathvariant="italic"){emax}} is \math{\mn{127}} for \tcode{std::float32_t},
-but \tcode{max_exponent} is \tcode{128}.
+as described in C23 §5.2.5.3.3 \q{Characteristics of floating types \header{float.h}}.
+\tcode{min_exponent} is consistent with \tcode{FLT_MIN_EXP}
+and is the lowest possible normal exponent produced by \tcode{std::frexp}.
+Note that \tcode{std::frexp} returns \math{\mi{q}} and writes \math{\mi{e}}
+to an \tcode{int*} output parameter.
 
-Just like for \tcode{min_exponent} and \tcode{min_exponent10},
-\tcode{max_exponent} and \tcode{max_exponent10} are not equal for decimal floating-point types.
+By contrast,
+\tcode{min_exponent10} is asking what the smallest normal base-10 exponent is.
+It has nothing to do with the C floating-point model;
+it is asking a simple mathematical question.
+}
+
+\tcode{max_exponent} and \tcode{max_exponent10} also use \q{exponent} to mean two different things.
+
+Another related issue is that the name \tcode{min_exponent} leaves no room
+for the addition of a \q{true exponent} or \q{subnormal exponent},
+which may be called \tcode{min_finite_exponent} or \tcode{min_subnorm_exponent},
+which would correspond to the \math{\mi(mathvariant="italic"){emin}} parameter
+specified in ISO/IEC 60559
+(this is one less than \tcode{min_exponent}).
 
 \b{Possible solution}:
-Fix \tcode{max_exponent} in the same way as \tcode{min_exponent}.
+Perform the following renaming:
+\Bdiff{
+\itemdecl{
+template<class T> struct min_\ins{norm_frac_}exponent;
+template<class T> struct min_\ins{norm_pow10_}exponent\del{10};
+template<class T> struct max_\ins{norm_frac_}exponent;
+template<class T> struct max_\ins{norm_pow10_}exponent\del{10};
+
+template<class T> constexpr auto min_\ins{norm_frac_}exponent_v;
+template<class T> constexpr auto min_\ins{norm_pow10_}exponent\del{10}_v;
+template<class T> constexpr auto max_\ins{norm_frac_}exponent_v;
+template<class T> constexpr auto max_\ins{norm_pow10_}exponent\del{10}_v;
+}
+}
+
+The addition of \tcode{norm} in the name emphasizes that
+the trait deals with normalized exponents.
+This rename is consistent with how \tcode{numeric_limits::min}
+corresponds to the trait \tcode{norm_min}.
+It also means that
+neither \tcode{numeric_limits::min_exponent} nor \tcode{numeric_limits::min_exponent10}
+have a direct counterpart, which encourages the user to read the docs
+instead of making blind assumptions.
+
+The words \tcode{frac} and \tcode{pow} emphasize the difference:
+\ul{
+  \li{
+    \tcode{min_norm_frac_exponent} informs about the exponent
+    corresponding to a normalized fraction in the C floating-point model.
+  }
+  \li{
+    \tcode{min_norm_pow10_exponent} informs about the exponent
+    that a normal power of 10 has.
+  }
+}
 
 \h3{What is \tt{round_error}?!}
 

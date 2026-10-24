@@ -1603,14 +1603,12 @@ This paper covers defects in the design and wording of <a href="https://wg21%2el
 <div class=toc-num data-level=3>2.1</div>
 <a href=#subnormal-not-denormalized><h3><q>Subnormal</q>, not <q>denormalized</q></h3></a>
 <div class=toc-num data-level=3>2.2</div>
-<a href=#min_exponent-is-off-by-one><h3><tt->min_exponent</tt-> is off by one</h3></a>
+<a href=#min_exponent-and-min_exponent10-are-not-the-same-kind-of-exponent><h3><tt->min_exponent</tt-> and <code><h- data-h=name>min_exponent10</h-></code> are not the same kind of exponent</h3></a>
 <div class=toc-num data-level=3>2.3</div>
-<a href=#max_exponent-is-off-by-one><h3><tt->max_exponent</tt-> is off by one</h3></a>
-<div class=toc-num data-level=3>2.4</div>
 <a href=#what-is-round_error><h3>What is <tt->round_error</tt->?!</h3></a>
-<div class=toc-num data-level=3>2.5</div>
+<div class=toc-num data-level=3>2.4</div>
 <a href=#how-do-you-check-for-subnormal-numbers><h3>How do you check for subnormal numbers?</h3></a>
-<div class=toc-num data-level=3>2.6</div>
+<div class=toc-num data-level=3>2.5</div>
 <a href=#denorm_min-and-finite_min-use-min-inconsistently><h3><tt->denorm_min</tt-> and <tt->finite_min</tt-> use <q>min</q> inconsistently</h3></a>
 <div class=toc-num data-level=2>3</div>
 <a href=#wording-defects><h2>Wording defects</h2></a>
@@ -1667,100 +1665,113 @@ Perform the following renaming:
 <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw>auto</h-> <del><h- data-h=name>de</h-></del><ins><h- data-h=name>sub</h-></ins><h- data-h=name>norm_min_v</h-><h- data-h=sym_punc>;</h-></code-block>
 </diff-block>
 
-<h3 id=min_exponent-is-off-by-one><a class=para href=#min_exponent-is-off-by-one></a>2.2. <tt->min_exponent</tt-> is off by one</h3>
+<h3 id=min_exponent-and-min_exponent10-are-not-the-same-kind-of-exponent><a class=para href=#min_exponent-and-min_exponent10-are-not-the-same-kind-of-exponent></a>2.2. <tt->min_exponent</tt-> and <code><h- data-h=name>min_exponent10</h-></code> are not the same kind of exponent</h3>
 
 <p><b>Problem</b>:
-<code><h- data-h=name>min_exponent</h-></code> is defined as follows:
+These traits are defined as follows:
 </p><blockquote>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>min_exponent</h-> <h- data-h=sym_brac>{</h-> <i><h- data-h=name>see below</h-></i> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h-></code-block>
+<div class=indent>
 <p>When enabled, with <code><h- data-h=name>r</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>radix_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code>,
 <code><h- data-h=name>min_exponent</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>value</h-></code> is
 the minimum negative integer <math display=inline><mi>i</mi></math> such that
 <math display=inline><msup><mi>r</mi><mrow><mi>i</mi><mo>−</mo><mn>1</mn></mrow></msup></math>
 is a representable, normalized (if applicable), finite value of type <code><h- data-h=name>T</h-></code>.
-</p></blockquote>
-<p>The result is off by one or more, depending on the format:
+</p></div>
+
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>min_exponent10</h-> <h- data-h=sym_brac>{</h-> <i><h- data-h=name>see below</h-></i> <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h-></code-block>
+<div class=indent>
+<p>When enabled,
+<code><h- data-h=name>min_exponent10</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>value</h-></code> is
+the minimum negative integer <math display=inline><mi>i</mi></math> such that
+<math display=inline><msup><mn>10</mn><mi>i</mi></msup></math>
+is a representable, normalized (if applicable), finite value of type <code><h- data-h=name>T</h-></code>.
+</p></div>
+</blockquote>
+
+<p>The discrepancy is between
+<math display=inline><msup><mi>r</mi><mrow><mi>i</mi><mo>−</mo><mn>1</mn></mrow></msup></math> and <math display=inline><msup><mi>10</mi><mi>i</mi></msup></math>.
+For decimal floating-point types,
+<math display=inline><mrow><mi>r</mi><mo>=</mo><mn>10</mn></mrow></math>,
+so <code><h- data-h=name>min_exponent10</h-></code> is off by one from <code><h- data-h=name>min_exponent</h-></code>,
+but anyone would intuitively expect <code><h- data-h=name>min_exponent</h-></code> and <code><h- data-h=name>min_exponent10</h-></code>
+to be equivalent for decimal floating-point types.
+If we wanted to standardize another trait <code><h- data-h=name>min_exponent2</h-></code> which tells us
+what the smallest normal base-2 exponent is,
+this would only add to the confusion because users
+may expect <code><h- data-h=name>min_exponent</h-></code> and <code><h- data-h=name>min_exponent2</h-></code> to be equivalent
+for binary floating-point types.
+</p>
+<note-block><p><intro-></intro-> 
+The difference stems from the fact that <code><h- data-h=name>min_exponent</h-></code> is the
+lowest exponent in the C floating-point model,
+where magnitudes of binary floating-point numbers are
+<math display=inline><mrow>
+  <msup><mi>2</mi><mi>e</mi></msup>
+  <mo>×</mo>
+  <mi>q</mi>
+  <mi>,</mi><mspace width=0.5em></mspace>
+  <mi>q</mi>
+  <mo>∈</mo>
+  <mo>[</mo><mn>0.5</mn><mo>,</mo><mn>1</mn><mo>)</mo>
+</mrow></math>,
+as described in C23 §5.2.5.3.3 <q>Characteristics of floating types <code><h- data-h=str>&lt;float.h&gt;</h-></code></q>.
+<code><h- data-h=name>min_exponent</h-></code> is consistent with <code><h- data-h=name>FLT_MIN_EXP</h-></code>
+and is the lowest possible normal exponent produced by <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexp</h-></code>.
+Note that <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>frexp</h-></code> returns <math display=inline><mi>q</mi></math> and writes <math display=inline><mi>e</mi></math>
+to an <code><h- data-h=kw_type>int</h-><h- data-h=sym_op>*</h-></code> output parameter.
+</p>
+<p>By contrast,
+<code><h- data-h=name>min_exponent10</h-></code> is asking what the smallest normal base-10 exponent is.
+It has nothing to do with the C floating-point model;
+it is asking a simple mathematical question.
+</p></note-block>
+
+<p><code><h- data-h=name>max_exponent</h-></code> and <code><h- data-h=name>max_exponent10</h-></code> also use <q>exponent</q> to mean two different things.
+</p>
+<p>Another related issue is that the name <code><h- data-h=name>min_exponent</h-></code> leaves no room
+for the addition of a <q>true exponent</q> or <q>subnormal exponent</q>,
+which may be called <code><h- data-h=name>min_finite_exponent</h-></code> or <code><h- data-h=name>min_subnorm_exponent</h-></code>,
+which would correspond to the <math display=inline><mi mathvariant=italic>emin</mi></math> parameter
+specified in ISO/IEC 60559
+(this is one less than <code><h- data-h=name>min_exponent</h-></code>).
+</p>
+<p><b>Possible solution</b>:
+Perform the following renaming:
+</p><diff-block>
+<code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>min_</h-><ins><h- data-h=name>norm_frac_</h-></ins><h- data-h=name>exponent</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>min_</h-><ins><h- data-h=name>norm_pow10_</h-></ins><h- data-h=name>exponent</h-><del><h- data-h=name>10</h-></del><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>max_</h-><ins><h- data-h=name>norm_frac_</h-></ins><h- data-h=name>exponent</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>struct</h-> <h- data-h=name>max_</h-><ins><h- data-h=name>norm_pow10_</h-></ins><h- data-h=name>exponent</h-><del><h- data-h=name>10</h-></del><h- data-h=sym_punc>;</h->
+
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw>auto</h-> <h- data-h=name>min_</h-><ins><h- data-h=name>norm_frac_</h-></ins><h- data-h=name>exponent_v</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw>auto</h-> <h- data-h=name>min_</h-><ins><h- data-h=name>norm_pow10_</h-></ins><h- data-h=name>exponent</h-><del><h- data-h=name>10</h-></del><h- data-h=name>_v</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw>auto</h-> <h- data-h=name>max_</h-><ins><h- data-h=name>norm_frac_</h-></ins><h- data-h=name>exponent_v</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=kw>auto</h-> <h- data-h=name>max_</h-><ins><h- data-h=name>norm_pow10_</h-></ins><h- data-h=name>exponent</h-><del><h- data-h=name>10</h-></del><h- data-h=name>_v</h-><h- data-h=sym_punc>;</h-></code-block>
+</diff-block>
+
+<p>The addition of <code><h- data-h=name>norm</h-></code> in the name emphasizes that
+the trait deals with normalized exponents.
+This rename is consistent with how <code><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>::</h-><h- data-h=name>min</h-></code>
+corresponds to the trait <code><h- data-h=name>norm_min</h-></code>.
+It also means that
+neither <code><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>::</h-><h- data-h=name>min_exponent</h-></code> nor <code><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>::</h-><h- data-h=name>min_exponent10</h-></code>
+have a direct counterpart, which encourages the user to read the docs
+instead of making blind assumptions.
+</p>
+<p>The words <code><h- data-h=name>frac</h-></code> and <code><h- data-h=name>pow</h-></code> emphasize the difference:
 </p><ul>
   <li>
-    For ISO/IEC 60559 binary interchange floating-point types:
-    <ul>
-      <li>
-        All subnormal numbers have an exponent of <math display=inline><mi mathvariant=italic>emin</mi></math>,
-        which is <math display=inline><mn>−126</mn></math> for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>float32_t</h-></code> (i.e. binary32 format).
-        The magnitude of a subnormal number is
-        <math display=inline><mrow>
-          <msup><mn>2</mn><mi mathvariant=italic>emin</mi></msup>
-          <mo>×</mo>
-          <mn>0.abc…</mn>
-        </mrow></math>,
-        where <math display=inline><mn>abc…</mn></math> are digits decoded from the significand part.
-      </li>
-      <li>
-        For normal numbers, the minimum exponent is the raw exponent <math display=inline><mi>E</mi></math>
-        minus a <math display=inline><mi mathvariant=italic>bias</mi></math> constant
-        (which is 127 for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>float32_t</h-></code>),
-        and the minimum <math display=inline><mrow><mi>E</mi><mo>−</mo><math display=inline><mi mathvariant=italic>bias</mi></math></mrow></math>
-        is also <math display=inline><mn>−126</mn></math> for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>float32_t</h-></code>
-        because <math display=inline><mi>E</mi></math> is at least <math display=inline><mn>1</mn></math>.
-        The magnitude of a normal number is
-        <math display=inline><mrow>
-          <msup><mn>2</mn><mrow><mi>E</mi><mo>−</mo><mi mathvariant=italic>bias</mi></mrow></msup>
-          <mo>×</mo>
-          <mn>1.abc…</mn>
-        </mrow></math>
-      </li>
-    </ul>
-    However, <code><h- data-h=name>min_exponent</h-></code> is <code><h- data-h=sym_op>-</h-><h- data-h=num>125</h-></code> for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>float32_t</h-></code>.
+    <code><h- data-h=name>min_norm_frac_exponent</h-></code> informs about the exponent
+    corresponding to a normalized fraction in the C floating-point model.
   </li>
   <li>
-    For ISO/IEC 60559 decimal interchange floating-point types,
-    subnormal values do not all have the same exponent,
-    so <code><h- data-h=name>min_exponent</h-></code> is off by potentially more than one.
+    <code><h- data-h=name>min_norm_pow10_exponent</h-></code> informs about the exponent
+    that a normal power of 10 has.
   </li>
 </ul>
 
-<p>Essentially, <code><h- data-h=name>min_exponent</h-></code> is neither the
-<q>minimum exponent that would be multiplied with the significand part</q>,
-nor is it the <math display=inline><mi mathvariant=italic>emin</mi></math> constant described in ISO/IEC 60559.
-The result is inexplicably off by one because the definition is written in terms of
-<math display=inline><msup><mi>r</mi><mrow><mi>i</mi><mo>−</mo><mn>1</mn></mrow></msup></math> instead of <math display=inline><msup><mi>r</mi><mi>i</mi></msup></math>.
-The proposed value does match <code><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>::</h-><h- data-h=name>min_exponent</h-></code>
-and the C89 macro <code><h- data-h=name>FLT_MIN_EXP</h-></code>,
-but it's unclear why those have been designed as off by one in the first place.
-</p>
-<p>What's even worse is that for decimal floating-point types,
-<code><h- data-h=name>min_exponent</h-></code> and <code><h- data-h=name>min_exponent10</h-></code> yield different results;
-<code><h- data-h=name>min_exponent</h-></code> is asking about <math display=inline><msup><mn>10</mn><mrow><mi>i</mi><mo>−</mo><mn>1</mn></mrow></msup></math> while
-<code><h- data-h=name>min_exponent10</h-></code> is asking about <math display=inline><msup><mn>10</mn><mi>i</mi></msup></math>.
-</p>
-<p><b>Possible solution</b>:
-We should not perpetuate the off-by-one error,
-but standardize a trait that yields the expected <math display=inline><mi mathvariant=italic>emin</mi></math> constant.
-</p>
-<h3 id=max_exponent-is-off-by-one><a class=para href=#max_exponent-is-off-by-one></a>2.3. <tt->max_exponent</tt-> is off by one</h3>
-
-<p><b>Problem</b>:
-For the same reason as described above,
-<code><h- data-h=name>max_exponent</h-></code> is off by one:
-it asks a question about
-<math display=inline><msup><mi>r</mi><mrow><mi>i</mi><mo>−</mo><mn>1</mn></mrow></msup></math> instead of <math display=inline><msup><mi>r</mi><mi>i</mi></msup></math>.
-The largest binary interchange floating-point number is of the form
-<math display=inline><mrow>
-  <msup><mn>2</mn><mi mathvariant=italic>emax</mi></msup>
-  <mo>×</mo>
-  <mn>1.999…</mn>
-</mrow></math>,
-where irrespective of the fractional digits,
-the exponent is always <math display=inline><mi mathvariant=italic>emax</mi></math>.
-<math display=inline><mi mathvariant=italic>emax</mi></math> is <math display=inline><mn>127</mn></math> for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>float32_t</h-></code>,
-but <code><h- data-h=name>max_exponent</h-></code> is <code><h- data-h=num>128</h-></code>.
-</p>
-<p>Just like for <code><h- data-h=name>min_exponent</h-></code> and <code><h- data-h=name>min_exponent10</h-></code>,
-<code><h- data-h=name>max_exponent</h-></code> and <code><h- data-h=name>max_exponent10</h-></code> are not equal for decimal floating-point types.
-</p>
-<p><b>Possible solution</b>:
-Fix <code><h- data-h=name>max_exponent</h-></code> in the same way as <code><h- data-h=name>min_exponent</h-></code>.
-</p>
-<h3 id=what-is-round_error><a class=para href=#what-is-round_error></a>2.4. What is <tt->round_error</tt->?!</h3>
+<h3 id=what-is-round_error><a class=para href=#what-is-round_error></a>2.3. What is <tt->round_error</tt->?!</h3>
 
 <p><b>Problem</b>:
 The <code><h- data-h=name>round_error</h-></code> trait is described as follows:
@@ -1816,7 +1827,7 @@ Remove <code><h- data-h=name>round_error</h-></code> from the paper.
 or remove it from the standard,
 but that would be outside the scope of <a href="https://wg21%2elink/p4421r0">[P4421R0]</a>.
 </p>
-<h3 id=how-do-you-check-for-subnormal-numbers><a class=para href=#how-do-you-check-for-subnormal-numbers></a>2.5. How do you check for subnormal numbers?</h3>
+<h3 id=how-do-you-check-for-subnormal-numbers><a class=para href=#how-do-you-check-for-subnormal-numbers></a>2.4. How do you check for subnormal numbers?</h3>
 
 <p><b>Problem</b>:
 <a href="https://wg21%2elink/p4421r0">[P4421R0]</a> makes the following argument
@@ -1859,7 +1870,7 @@ or in terms of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h
 or in terms of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>nextafter</h-><h- data-h=sym_par>(</h-><h- data-h=num>0</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code>.
 </p></note-block>
 
-<h3 id=denorm_min-and-finite_min-use-min-inconsistently><a class=para href=#denorm_min-and-finite_min-use-min-inconsistently></a>2.6. <tt->denorm_min</tt-> and <tt->finite_min</tt-> use <q>min</q> inconsistently</h3>
+<h3 id=denorm_min-and-finite_min-use-min-inconsistently><a class=para href=#denorm_min-and-finite_min-use-min-inconsistently></a>2.5. <tt->denorm_min</tt-> and <tt->finite_min</tt-> use <q>min</q> inconsistently</h3>
 
 <p><b>Problem</b>:
 <code><h- data-h=name>finite_min</h-></code> is the lowest finite value,
