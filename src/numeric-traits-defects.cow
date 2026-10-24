@@ -1,0 +1,428 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+
+\wg21_head(
+  title = {Defects in P4421R0 \'EM DASH'\br Numeric Traits for C++29}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D4429R0}}
+  \dt{Date:}            \dd{\tt{2026-10-24}}
+  \dt{Audience:}        \dd{LEWG, LWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P4429/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/main/src/numeric-traits-defects.cow")}
+}
+\hr
+}
+
+\Babstract{
+This paper covers defects in the design and wording of \ref("P4421R0").
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+\ref("P4421R0") \q{Numeric Traits for C++29}
+proposes a number of new individually specializable numeric traits for C++29.
+While the paper makes no novel design choices and
+essentially just implements the existing LEWG design consensus,
+it contains several design and wording problems that have never been addressed
+and should be considered before any such paper is adopted.
+
+Virtually all of these problems
+are actually inherited defects from \tcode{numeric_limits} and its wording,
+rather than new defects introduced by \ref("P4421R0").
+However, we should always strive to improve the quality of design and wording
+when introducing new facilities into the standard,
+rather than perpetuating historical defects.
+
+\h2{Design defects}
+
+This section contains defects that are not purely wording issues
+but require LEWG decisions.
+
+\h3{\q{Subnormal}, not \q{denormalized}}
+
+\b{Problem}:
+The term \q{denormalized} is ancient and obsolescent.
+It was replaced in IEEE-754:2008 (revising IEEE-754:1985);
+since then, \q{denormalized} only appears as a synonym for \q{subnormal}.
+The C++ standard has already adopted the new terminology
+via macros like \tcode{FLT_HAS_SUBNORM} inherited from C and
+possibly soon through \tcode{std::issubnormal} (see \ref("P3935R3")).
+
+C++29 should adopt the new terminology consistently,
+rather than copying the 1985 terminology that \tcode{numeric_limits} uses.
+
+\b{Possible solution}:
+Perform the following renaming:
+\Bdiff{
+\itemdecl{
+template<class T> struct \del{de}\ins{sub}norm_min;
+template<class T> constexpr auto \del{de}\ins{sub}norm_min_v;
+}
+}
+
+\h3{\tt{min_exponent} is off by one}
+
+\b{Problem}:
+\tcode{min_exponent} is defined as follows:
+\Bquote{
+When enabled, with \tcode{r = radix_v<T>},
+\tcode{min_exponent<T>::value} is
+the minimum negative integer \math{\mi{i}} such that
+\math{\msup{\mi{r}\mrow{\mi{i}\mo{−}\mn{1}}}}
+is a representable, normalized (if applicable), finite value of type \tcode{T}.
+}
+The result is off by one or more, depending on the format:
+\ul{
+  \li{
+    For ISO/IEC 60559 binary interchange floating-point types:
+    \ul{
+      \li{
+        All subnormal numbers have an exponent of \math{\mi(mathvariant="italic"){emin}},
+        which is \math{\mn{−126}} for \tcode{std::float32_t} (i.e. binary32 format).
+        The magnitude of a subnormal number is
+        \math{\mrow{
+          \msup{\mn{2}\mi(mathvariant="italic"){emin}}
+          \mo{×}
+          \mn{0.abc…}
+        }},
+        where \math{\mn{abc…}} are digits decoded from the significand part.
+      }
+      \li{
+        For normal numbers, the minimum exponent is the raw exponent \math{\mi{E}}
+        minus a \math{\mi(mathvariant="italic"){bias}} constant
+        (which is 127 for \tcode{std::float32_t}),
+        and the minimum \math{\mrow{\mi{E}\mo{−}\math{\mi(mathvariant="italic"){bias}}}}
+        is also \math{\mn{−126}} for \tcode{std::float32_t}
+        because \math{\mi{E}} is at least \math{\mn{1}}.
+        The magnitude of a normal number is
+        \math{\mrow{
+          \msup{\mn{2}\mrow{\mi{E}\mo{−}\math{\mi(mathvariant="italic"){bias}}}}
+          \mo{×}
+          \mn{1.abc…}
+        }}
+      }
+    }
+    However, \tcode{min_exponent} is \tcode{-125} for \tcode{std::float32_t}.
+  }
+  \li{
+    For ISO/IEC 60559 decimal interchange floating-point types,
+    subnormal values do not all have the same exponent,
+    so \tcode{min_exponent} is off by potentially more than one.
+  }
+}
+
+Essentially, \tcode{min_exponent} is neither the
+\q{minimum exponent that would be multiplied with the significand part},
+nor is it the \math{\mi(mathvariant="italic"){emin}} constant described in ISO/IEC 60559.
+The result is inexplicably off by one because the definition is written in terms of
+\math{\msup{\mi{r}\mrow{\mi{i}\mo{−}\mn{1}}}} instead of \math{\mi{r}}.
+The proposed value does match \tcode{numeric_limits::min_exponent}
+and the C89 macro \tcode{FLT_MIN_EXP},
+but it's unclear why those have been designed as off by one in the first place.
+
+What's even worse is that for decimal floating-point types,
+\tcode{min_exponent} and \tcode{min_exponent10} yield different results;
+\tcode{min_exponent} is asking about \math{\msup{\mn{10}\mrow{\mi{i}\mo{−}\mn{1}}}} while
+\tcode{min_exponent10} is asking about \math{\msup{\mn{10}\mi{i}}}.
+
+\b{Possible solution}:
+We should not perpetuate the off-by-one error,
+but standardize a trait that yields the expected \math{\mi(mathvariant="italic"){emin}} constant.
+
+\h3{What is \tt{round_error}?!}
+
+\b{Problem}:
+The \tcode{round_error} trait is described as follows:
+\Bquote{
+When enabled, \tcode{round_error<T>::value} is \tcode{T}'s maximum rounding error.
+}
+
+This non-definition raises more questions than it answers.
+What is a rounding error?
+Which operations contribute to the rounding error?
+Does that include \header{cmath} functions?
+Are we talking about rounding errors on any scale?
+Mysteriously, \tcode{numeric_limits::round_error} is \tcode{0.5}
+for \tcode{float}, \tcode{double}, and \tcode{long double},
+in practice.
+What does that even mean?!
+How can the \tcode{round_error} be independent of the floating-point type?!
+Why is it \tcode{0.5} and how could anyone conclude that from the definition?!
+Why is the \tcode{round_error} not infinite when rounding can result in infinitely large errors?
+
+As it turns out,
+the term comes from ISO/IEC 10967-1, \q{Language independent arithmetic},
+also known as \q{LIA-1},
+which C++ no longer normatively references.
+C23 also removed all references to LIA-1 in favor of the ISO/IEC 60559 standard.
+The concept of \q{rounding error} refers to the maximum difference from the mathematical result
+when rounding a floating-point value using its configured rounding mode,
+to an integer,
+within the interval [0, 1].
+When rounding to the nearest number (with correct rounding), that error is exactly 0.5;
+when rounding toward negative or positive infinity, it is 1.0.
+
+Overall, the trait name and wording are confusing,
+and the trait as a whole refers to a somewhat arbitrary concept from LIA-1
+that has no counterpart in C23.
+It is unclear what anyone would do with the value of this trait,
+except confuse themselves.
+Assuming correct rounding,
+the trait value can also be derived from \tcode{numeric_limits::round_style}
+because it should always be \tcode{0.5} or \tcode{1.0}.
+
+\tcode{round_error} may even be actively harmful to the language.
+A GitHub code search for its uses
+turned up only incorrect uses in which it is treated as some kind of
+\q{epsilon} or \q{imprecision} value,
+but that's not what it is;
+\tcode{round_error} is entirely independent of the precision of the floating-point type.
+
+\b{Possible solution}:
+Remove \tcode{round_error} from the paper.
+
+Ideally, deprecate \tcode{numeric_limits::round_error} as well,
+or remove it from the standard,
+but that would be outside the scope of \ref("P4421R0").
+
+\h3{How do you check for subnormal numbers?}
+
+\b{Problem}:
+\ref("P4421R0") makes the following argument
+\Bquote{
+Generic numerical code can then ask,
+at compile time and without a separate \tcode{has_*} query,
+whether a given value or characteristic exists for a type \tcode{T},
+and get an error rather than a meaningless default when it does not.
+}
+
+This design direction is contradicted by making the proposed \tcode{denorm_min} trait
+default to \tcode{norm_min} when there are no normal numbers.
+Other traits like \tcode{infinity} don't simply fall back onto e.g. the greatest finite value
+but are disabled,
+which explains why there is no dedicated \tcode{has_infinity} trait.
+
+Although one could argue that it is not possible to reliably detect
+whether the execution environment supports subnormal arithmetic,
+the wording in \ref("P4421R0") explicitly states that this has no effect on the trait's result.
+\Bquote{
+\note{Whether the execution environment's floating-point operations
+treat subnormal operands or results as zero at run time
+has no effect on whether this specialization is enabled,
+nor on the value of \tcode{denorm_min_v<T>}.}
+}
+Furthermore, it would be possible to check whether subnormals exist using
+\tcode{std::issubnormal(\brk{}std::\brk{}denorm_min_v<float>)}
+if \ref("P3935R3") were adopted,
+but users should not be forced into this very silly workaround.
+That code is essentially saying \tcode{std::is_apple(std::apple)}.
+
+\b{Possible solution}:
+Align \tcode{std::denorm_min} (hopefully renamed to \tcode{std::subnorm_min})
+with the other traits, disabling it when the floating-point type has no subnormal numbers.
+
+\Bnote{
+The higher-level \q{closest positive number to zero} trait
+can still be constructed in terms of these lower-level traits,
+or in terms of \tcode{std::nextup(0)} with \ref("P3935R3"),
+or in terms of \tcode{std::nextafter(0, 1)}.
+}
+
+\h3{\tt{denorm_min} and \tt{finite_min} use \q{min} inconsistently}
+
+\b{Problem}:
+\tcode{finite_min} is the lowest finite value,
+which is typically a huge negative value.
+\tcode{denorm_min} and \tcode{norm_min} instead use \tcode{min}
+to refer to positive values only.
+
+In other words, the term \tcode{min} is sometimes used to describe
+the lowest value, and sometimes the value with lowest magnitude.
+
+\b{Possible solution}:
+Use \tcode{min} consistently in the trait names
+or add \tcode{pos} to disambiguate (e.g. \tcode{pos_norm_min}).
+
+\h2{Wording defects}
+
+This section contains defects that are purely wording issues.
+
+\h3{Unsigned infinity}
+
+\b{Problem}:
+C and C++ support types with an \q{unsigned infinity}.
+For example,
+\ref("https://cstd.eisie.net/c23.html#5.2.5.3.3p29"){C23 §5.2.5.3} states:
+\Bquote{
+The macro \tcode{INFINITY}
+is defined if and only if the implementation supports an infinity for the type \tcode{float}.
+It expands to a constant expression of type \tcode{float} representing
+positive or unsigned infinity.
+}
+To be fair, formats with such infinities are largely historical.
+Nonetheless, new wording could do more to accommodate unsigned infinity.
+
+\b{Possible solution}:
+Change the proposed wording as follows:
+\Bdiff{
+\itemdecl{
+template<class T> struct infinity { \seebelow };
+}
+
+\itemdescr{
+When enabled, \tcode{infinity<T>::value} is \tcode{T}'s positive
+\ins{or unsigned}
+infinity.
+}
+}
+
+\h3{\q{Normal}, not \q{normalized}}
+
+\b{Problem}:
+The wording uses \q{denormalized} and \q{normalized} in a number of places.
+For issues with \q{denormalized},
+see \ref("#subnormal-not-denormalized").
+Similarly, \q{normalized} is outdated.
+
+\b{Possible solution}:
+Replace uses of \q{normalized} with \q{normal},
+which is the ISO/IEC 60559 standard terminology in its terms and definitions,
+and which is consistent with \tcode{std::isnormal}.
+
+\h3{\q{Significand}, not \q{mantissa}}
+
+\b{Problem}:
+The current standard term in ISO/IEC 60559 is \q{significand},
+defined as follows:
+\Bquote{
+\dfn{significand}:
+A component of a finite floating-point number containing its significant digits.
+The significand can be thought of as an integer, a fraction, or some other fixed-point form,
+by choosing an appropriate exponent offset.
+A decimal or subnormal binary significand can also contain leading zeros,
+which are not significant.
+}
+
+This term is used extensively in ISO/IEC 60559 and the C23 standard,
+while \q{mantissa} is an ambiguous and non-standard term.
+See also \ref("https://en.wikipedia.org/wiki/Significand"){the Wikipedia article on Significand}.
+
+Moreover, the context in which \q{mantissa} is used
+in the proposed wording is problematic as well:
+
+\Bquote{
+\itemdecl{
+template<class T> struct digits { \seebelow };
+}
+\itemdescr{
+When enabled, \tcode{digits<T>::value} is the number of \tcode{radix_v<T>} digits
+that can be represented without change.
+If \tcode{is_integral_v<T>} is \tcode{true},
+this is the number of non-sign bits in the representation;
+if \tcode{is_floating_point_v<T>} is \tcode{true},
+this is the number of \tcode{radix_v<T>} digits in the \mark{mantissa}.
+}
+}
+
+First, we never defined what constitutes a \q{sign bit} for integral types;
+for two's complement integers, there is no dedicated sign bit,
+although the most significant bit indicates the sign of the number.
+
+Second, for floating-point types,
+the wording assumes, falsely,
+that the number of bits dedicated to the significand is constant.
+However, in formats such as ISO/IEC 60559 decimal interchange floating-point types,
+that number varies:
+sometimes the exponent has more bits, and sometimes the significand does,
+because the \q{combination field} stores some bits of one or the other.
+
+\b{Possible solution}:
+Change the wording as follows:
+\Bdiff{
+When enabled, \tcode{digits<T>::value} is the number of \tcode{radix_v<T>} digits
+that can be represented without change.
+
+\ins{[\i{Note}:}
+If \tcode{is_integral_v<T>} is \tcode{true},
+this is the \del{number of non-sign bits in the representation;}
+\ins{the width of the type, minus one if the type is signed.}
+if \del{\tcode{is_floating_point_v<T>} is \tcode{true}}
+\tcode{T} is an ISO/IEC 60559 binary interchange floating-point type,
+this is the number of \tcode{radix_v<T>} digits in the \del{mantissa} significand
+\ins{(including the leading implicit 1-bit)}.
+\ins{\'EM DASH' \i{end note}]}
+}
+
+\h3{\tt{radix} for integers}
+
+\b{Problem}:
+The current wording for \tcode{radix} is somewhat vague
+and relies on terms like \q{base of the representation}
+that we never clearly define elsewhere.
+
+While we still need to provide a mathematical explanation
+to which user-defined specializations should adhere,
+we should at least be precise in a note about the standard types.
+We could also mention cases where the value is not \tcode{2},
+such as ISO/IEC 60559 decimal interchange floating-point types.
+
+\b{Possible solution}:
+Change the wording as follows:
+\Bdiff{
+When enabled, \tcode{radix<T>::value} is the base of the representation.
+
+\del{If is_floating_point_v<T> is true,
+it is the base or radix (often 2) of the exponent representation.}
+\ins{\note{
+If \tcode{is_integral_v<T>} is \tcode{true}, it is \tcode{2}.
+Otherwise, if \tcode{T} is a standard floating-point type\iref{basic.fundamental},
+it is \tcode{FLT_RADIX}\iref{cfloat.syn}.
+Otherwise, if \tcode{T} is one of the extended floating-point types
+defined in header \header{stdfloat},
+it is \tcode{2}.
+Otherwise, if \tcode{T} is an ISO/IEC 60559 decimal interchange floating-point type,
+it is \tcode{10}.
+}}
+}
+
+\h2{References}
+
+\bib(
+  id = "ISO/IEC 10967-1:2012",
+  title = "ISO/IEC 10967-1:2012 — Language independent arithmetic — Part 1: Integer and floating point arithmetic",
+  date = "2012-07",
+  author = "ISO",
+  link = "https://www.iso.org/standard/51317.html",
+)\
+\bib(
+  id = "ISO/IEC 60559:2020",
+  title = "ISO/IEC 60559:2020 — Information technology — Microprocessor Systems — Floating-Point arithmetic",
+  date = "2025-05",
+  author = "ISO",
+  link = "https://www.iso.org/standard/80985.html",
+)\
+\bib(
+  id = "P3935R3",
+  title = "Rebasing <cmath> on C23",
+  date = "2026-10-10",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3935r3",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3935r3.html",
+)\
+\bib(
+  id = "P4421R0",
+  title = "Numeric Traits for C++29",
+  date = "2026-10-22",
+  author = "Damien Lebrun-Grandie, Mark Hoemmen, Jonathan Wakely, Matthias Kretz, Tim Song",
+  link = "https://wg21.link/p4421r0",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4421r0.pdf",
+)\
+
+\make_bib
