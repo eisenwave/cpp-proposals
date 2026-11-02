@@ -1605,13 +1605,23 @@ We propose the ability to disable interactions with <tt->errno</tt-> in mathemat
 <a href=#constexpr-problem><h3><code><h- data-h=kw>constexpr</h-></code> problem</h3></a>
 <div class=toc-num data-level=2>2</div>
 <a href=#design><h2>Design</h2></a>
+<div class=toc-num data-level=3>2.1</div>
+<a href=#proposed-solution><h3>Proposed solution</h3></a>
+<div class=toc-num data-level=3>2.2</div>
+<a href=#floating-point-exceptions><h3>Floating-point exceptions</h3></a>
+<div class=toc-num data-level=3>2.3</div>
+<a href=#feature-testing><h3>Feature testing</h3></a>
+<div class=toc-num data-level=3>2.4</div>
+<a href=#is-this-not-merely-quality-of-implementation><h3>Is this not merely quality of implementation?</h3></a>
 <div class=toc-num data-level=2>3</div>
-<a href=#wording><h2>Wording</h2></a>
-<div class=toc-num data-level=3>3.1</div>
-<a href=#intro%2ecompliance%2egeneral><h3>[intro.compliance.general]</h3></a>
-<div class=toc-num data-level=3>3.2</div>
-<a href=#cmath%2esyn><h3>[cmath.syn]</h3></a>
+<a href=#implementation-experience><h2>Implementation experience</h2></a>
 <div class=toc-num data-level=2>4</div>
+<a href=#wording><h2>Wording</h2></a>
+<div class=toc-num data-level=3>4.1</div>
+<a href=#intro%2ecompliance%2egeneral><h3>[intro.compliance.general]</h3></a>
+<div class=toc-num data-level=3>4.2</div>
+<a href=#cmath%2esyn><h3>[cmath.syn]</h3></a>
+<div class=toc-num data-level=2>5</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
@@ -1772,6 +1782,18 @@ there is a <q>happy path</q> (i.e. non-NaN) which is checked for,
 and <code><h- data-h=name_inst>call</h-> <h- data-h=name_labl>sqrt</h-></code> is only a fallback solution.
 </p></example-block>
 
+<example-block><p><intro-></intro-> 
+While this optimization is not performed by compilers in practice,
+it is theoretically possible to transform <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>ldexp</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=num>3</h-><h- data-h=sym_par>)</h-></code> into <code><h- data-h=name>x</h-> <h- data-h=sym_op>*</h-> <h- data-h=num>8</h-></code>
+(and other calls to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>ldexp</h-></code> with constant exponents)
+because both expressions are an equivalent multiplication by <math display=inline><msup><mn>2</mn><mn>3</mn></msup></math>;
+the only difference is that <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>ldexp</h-></code>
+sets <code><h- data-h=name>errno</h-></code> to <code><h- data-h=name>ERANGE</h-></code> on overflow.
+</p>
+<p>Such an optimization could have dramatic benefits in the vectorized case
+because it turns several calls to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>ldexp</h-></code> into a single vector multiplication.
+</p></example-block>
+
 <p>However, crucially, <a href=https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html#index-fno-math-errno><tt->-fno-math-errno</tt-></a> is a non-conforming and non-portable optimization,
 as described in the GCC docs:
 </p>
@@ -1834,6 +1856,8 @@ but that is arguably an improvement over the current situation.
 </p>
 <h2 id=design><a class=para href=#design></a>2. Design</h2>
 
+<h3 id=proposed-solution><a class=para href=#proposed-solution></a>2.1. Proposed solution</h3>
+
 <p>To address the problems described above,
 we propose an <q>errno-less mode</q> for math functions.
 This essentially requires the compiler and standard library to provide a flag
@@ -1846,10 +1870,123 @@ Every single math function would need to have an <q>errno-less</q> variant avail
 On platforms where <q>errno-less mode</q> is already the default (e.g. Darwin),
 no action is required.
 </p>
-<p>The aforementioned <a href=#constexpr-problem>§1.2. <code><h- data-h=kw>constexpr</h-></code> problem</a> is not resolved in this paper,
+<note-block><p><intro-></intro-> 
+The aforementioned <a href=#constexpr-problem>§1.2. <code><h- data-h=kw>constexpr</h-></code> problem</a> is not resolved in this paper,
 but provides motivation for the direction.
+</p></note-block>
+
+<h3 id=floating-point-exceptions><a class=para href=#floating-point-exceptions></a>2.2. Floating-point exceptions</h3>
+
+<p>In addition to <code><h- data-h=name>errno</h-></code> as a mechanism for reporting errors,
+<code><h- data-h=str>&lt;cmath&gt;</h-></code> functions may also produce floating-point exceptions.
 </p>
-<h2 id=wording><a class=para href=#wording></a>3. Wording</h2>
+<p>In fact, a hosted implementation is required by the C standard to use
+<code><h- data-h=name>errno</h-></code> or floating-point exceptions (or both) to report errors.
+This requirement needs to be lifted because floating-point exceptions
+simply don't exist in some environments, such as on WASM.
+However, it should still be possible to provide a hosted C++ implementation on WASM,
+with <tt->libc</tt-> functions delegated to the
+<a href=https://wasi.dev/>WASI (WebAssembly System Interface)</a>.
+</p>
+<p>Furthermore, we don't propose an <q>exception-less mode</q>
+in addition to a a <code><h- data-h=name>errno</h-></code>-less mode because
+</p><ul>
+  <li>
+    this means that on implementations that already don't write to <code><h- data-h=name>errno</h-></code>,
+    they certainly need only one math library,
+  </li>
+  <li>
+    the entirety of the floating-point environment is already an optional feature, and
+  </li>
+  <li>
+    floating-point exceptions are less problematic from a performance standpoint
+    and are simply byproducts of hardware instructions.
+  </li>
+</ul>
+
+<h3 id=feature-testing><a class=para href=#feature-testing></a>2.3. Feature testing</h3>
+
+<p>Feature testing should work entirely through <code><h- data-h=name>math_errhandling</h-></code>,
+which is a standard library bitmask macro,
+where <code><h- data-h=sym_par>(</h-><h- data-h=name>math_errhandling</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=name>MATH_ERRNO</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>!=</h-> <h- data-h=num>0</h-></code> is <code><h- data-h=bool>true</h-></code>
+if <code><h- data-h=name>errno</h-></code> is used for error handling in <code><h- data-h=str>&lt;cmath&gt;</h-></code>.
+</p>
+<p>Our proposal simply mandates that an implementation must have a compiler flag
+to make that expression <code><h- data-h=bool>false</h-></code>,
+i.e. to disable <code><h- data-h=name>errno</h-></code>.
+</p>
+<h3 id=is-this-not-merely-quality-of-implementation><a class=para href=#is-this-not-merely-quality-of-implementation></a>2.4. Is this not merely quality of implementation?</h3>
+
+<p>One may argue that the change in this paper is somewhat pointless
+because providing an <code><h- data-h=name>errno</h-></code>-less math library is already permitted.
+At first glance, it seems like we are mandating quality of implementation.
+However, there are key factors that make standardization necessary:
+</p><ul>
+  <li>
+    An <code><h- data-h=name>errno</h-></code>-less math mode is likely necessary to resolve the <a href=#constexpr-problem>§1.2. <code><h- data-h=kw>constexpr</h-></code> problem</a>.
+  </li>
+  <li>
+    Hosted implementations <em>must</em> provide floating-point exceptions
+    or <code><h- data-h=name>errno</h-></code> for error handling currently,
+    which forces implementations into writing to <code><h- data-h=name>errno</h-></code> on platforms like WASM.
+    We see this as an unnecessary and arbitrary constraint.
+  </li>
+  <li>
+    A new C++ <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>math</h-></code> library
+    presumably should't be interacting with <code><h- data-h=name>errno</h-></code>, ever.
+    <code><h- data-h=name>errno</h-></code> is widely considered a historical mistake,
+    especially for math functions.
+    This makes our proposal a hard requirement for proposals such as
+    <a href="https://wg21%2elink/p4188r1">[P4188R1]</a> <q>Extensible Math Functions for C++</q>.
+    A customization point like <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>math</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code>
+    still needs some underlying function to do the computation for e.g. <code><h- data-h=kw_type>float</h-></code>,
+    and if <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code> doesn't write to <code><h- data-h=name>errno</h-></code>,
+    that makes it a suitable candidate.
+  </li>
+</ul>
+
+<h2 id=implementation-experience><a class=para href=#implementation-experience></a>3. Implementation experience</h2>
+
+<p>Providing an <tt->errno</tt->-less mode
+requires little to no changes to the source code of existing math libraries,
+since they are often configurable already.
+Math libraries fall into three categories:
+</p><ul>
+  <li>
+    Libraries that never write to <code><h- data-h=name>errno</h-></code> anyway.
+    These already comply with <code><h- data-h=name>errno</h-></code>-less mode.
+  </li>
+  <li>
+    Libraries that unconditionally write to <code><h- data-h=name>errno</h-></code>.
+    These can be retrofitted so that their <code><h- data-h=name>__set_errno</h-></code> (example taken from glibc)
+    function is turned into a <code><h- data-h=name>__math_set_errno</h-></code> or similar,
+    where <code><h- data-h=name>__math_set_errno</h-></code> would do nothing in <tt->errno</tt->-less mode.
+  </li>
+  <li>
+    Libraries that already support being compiled in either mode,
+    such as LLVM's <tt->libc</tt->.
+  </li>
+</ul>
+
+<example-block><p><intro-></intro-> 
+LLVM's <tt->libc</tt-> has the following helper function in
+<a href=https://github.com/llvm/llvm-project/blob/main/libc/src/__support/FPUtil/FEnvImpl.h><tt->libc/src/__support/FPUtil/FEnvImpl.h</tt-></a>:
+</p><code-block><h- data-h=name_mac>LIBC_INLINE LIBC_CONSTEXPR_DEFAULT</h-> <h- data-h=kw_type>void</h->
+<h- data-h=name>set_errno_if_required</h-><h- data-h=sym_par>(</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>maybe_unused</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>err</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=sym_op>!</h-><h- data-h=name>cpp</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_constant_evaluated</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+<h- data-h=name_mac>#ifndef LIBC_MATH_HAS_NO_ERRNO</h->
+    <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>math_errhandling</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=name>MATH_ERRNO</h-><h- data-h=sym_par>)</h->
+      <h- data-h=name>libc_errno</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>err</h-><h- data-h=sym_punc>;</h->
+<h- data-h=name_mac>#endif </h-><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> LIBC_MATH_HAS_NO_ERRNO</h->
+  <h- data-h=sym_brac>}</h->
+<h- data-h=sym_brac>}</h-></code-block>
+</example-block>
+
+<p>In essence, our paper requires no or only trivial code changes.
+The difficult part is deciding on what <q>secondary math library</q> to ship
+and whether to integrate it into the C++ runtime library.
+</p>
+<h2 id=wording><a class=para href=#wording></a>4. Wording</h2>
 
 <p>The changes are relative to <a href="https://wg21%2elink/n5054">[N5054]</a>.
 </p>
@@ -1874,7 +2011,7 @@ as of that in the C standard library header <code><h- data-h=str>&lt;math.h&gt;<
 except that <code><h- data-h=name>math_errhandling</h-></code> may equal <code><h- data-h=num>0</h-></code> even for a hosted implementation.
 </p></ins-block>
 
-<h2 id=references><a class=para href=#references></a>4. References</h2>
+<h2 id=references><a class=para href=#references></a>5. References</h2>
 
 
 
@@ -1883,6 +2020,11 @@ except that <code><h- data-h=name>math_errhandling</h-></code> may equal <code><
 <span class=bib-author>Thomas Köppe.</span>
 <span class=bib-title>Working Draft, Programming Languages — C++</span>
 <span class=bib-date>2026-07-16</span>
-<a href="https://open-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/n5054%2epdf" class=bib-link>https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf</a></div></div>
+<a href="https://open-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/n5054%2epdf" class=bib-link>https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf</a></div><div id=bib-item-P4188R1 class=bib-item>
+<a href="https://wg21%2elink/p4188r1">[P4188R1]</a>
+<span class=bib-author>Stéphane Gros-Lemesre.</span>
+<span class=bib-title>Extensible Math Functions for C++</span>
+<span class=bib-date>2026-07-04</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/p4188r1%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4188r1.pdf</a></div></div>
 </main></body>
 </html>

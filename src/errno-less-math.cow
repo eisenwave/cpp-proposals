@@ -192,6 +192,18 @@ there is a \q{happy path} (i.e. non-NaN) which is checked for,
 and \code("asm"){call sqrt} is only a fallback solution.
 }
 
+\Bex{
+While this optimization is not performed by compilers in practice,
+it is theoretically possible to transform \tcode{std::ldexp(x, 3)} into \tcode{x * 8}
+(and other calls to \tcode{std::ldexp} with constant exponents)
+because both expressions are an equivalent multiplication by \math{\msup{\mn{2}\mn{3}}};
+the only difference is that \tcode{std::ldexp}
+sets \tcode{errno} to \tcode{ERANGE} on overflow.
+
+Such an optimization could have dramatic benefits in the vectorized case
+because it turns several calls to \tcode{std::ldexp} into a single vector multiplication.
+}
+
 However, crucially, \fno_math_errno is a non-conforming and non-portable optimization,
 as described in the GCC docs:
 
@@ -254,6 +266,8 @@ but that is arguably an improvement over the current situation.
 
 \h2{Design}
 
+\h3{Proposed solution}
+
 To address the problems described above,
 we propose an \q{errno-less mode} for math functions.
 This essentially requires the compiler and standard library to provide a flag
@@ -266,8 +280,123 @@ Every single math function would need to have an \q{errno-less} variant availabl
 On platforms where \q{errno-less mode} is already the default (e.g. Darwin),
 no action is required.
 
+\Bnote{
 The aforementioned \ref("#constexpr-problem") is not resolved in this paper,
 but provides motivation for the direction.
+}
+
+\h3{Floating-point exceptions}
+
+In addition to \tcode{errno} as a mechanism for reporting errors,
+\header{cmath} functions may also produce floating-point exceptions.
+
+In fact, a hosted implementation is required by the C standard to use
+\tcode{errno} or floating-point exceptions (or both) to report errors.
+This requirement needs to be lifted because floating-point exceptions
+simply don't exist in some environments, such as on WASM.
+However, it should still be possible to provide a hosted C++ implementation on WASM,
+with \tt{libc} functions delegated to the
+\ref("https://wasi.dev/"){WASI (WebAssembly System Interface)}.
+
+Furthermore, we don't propose an \q{exception-less mode}
+in addition to a a \tcode{errno}-less mode because
+\ul{
+  \li{
+    this means that on implementations that already don't write to \tcode{errno},
+    they certainly need only one math library,
+  }
+  \li{
+    the entirety of the floating-point environment is already an optional feature, and
+  }
+  \li{
+    floating-point exceptions are less problematic from a performance standpoint
+    and are simply byproducts of hardware instructions.
+  }
+}
+
+\h3{Feature testing}
+
+Feature testing should work entirely through \tcode{math_errhandling},
+which is a standard library bitmask macro,
+where \tcode{(math_errhandling & MATH_ERRNO) != 0} is \tcode{true}
+if \tcode{errno} is used for error handling in \header{cmath}.
+
+Our proposal simply mandates that an implementation must have a compiler flag
+to make that expression \tcode{false},
+i.e. to disable \tcode{errno}.
+
+\h3{Is this not merely quality of implementation?}
+
+One may argue that the change in this paper is somewhat pointless
+because providing an \tcode{errno}-less math library is already permitted.
+At first glance, it seems like we are mandating quality of implementation.
+However, there are key factors that make standardization necessary:
+\ul{
+  \li{
+    An \tcode{errno}-less math mode is likely necessary to resolve the \ref("#constexpr-problem").
+  }
+  \li{
+    Hosted implementations \em{must} provide floating-point exceptions
+    or \tcode{errno} for error handling currently,
+    which forces implementations into writing to \tcode{errno} on platforms like WASM.
+    We see this as an unnecessary and arbitrary constraint.
+  }
+  \li{
+    A new C++ \tcode{std::math} library
+    presumably should't be interacting with \tcode{errno}, ever.
+    \tcode{errno} is widely considered a historical mistake,
+    especially for math functions.
+    This makes our proposal a hard requirement for proposals such as
+    \ref("P4188R1") \q{Extensible Math Functions for C++}.
+    A customization point like \tcode{std::math::sqrt}
+    still needs some underlying function to do the computation for e.g. \tcode{float},
+    and if \tcode{std::sqrt} doesn't write to \tcode{errno},
+    that makes it a suitable candidate.
+  }
+}
+
+\h2{Implementation experience}
+
+Providing an \tt{errno}-less mode
+requires little to no changes to the source code of existing math libraries,
+since they are often configurable already.
+Math libraries fall into three categories:
+\ul{
+  \li{
+    Libraries that never write to \tcode{errno} anyway.
+    These already comply with \tcode{errno}-less mode.
+  }
+  \li{
+    Libraries that unconditionally write to \tcode{errno}.
+    These can be retrofitted so that their \tcode{__set_errno} (example taken from glibc)
+    function is turned into a \tcode{__math_set_errno} or similar,
+    where \tcode{__math_set_errno} would do nothing in \tt{errno}-less mode.
+  }
+  \li{
+    Libraries that already support being compiled in either mode,
+    such as LLVM's \tt{libc}.
+  }
+}
+
+\Bex{
+LLVM's \tt{libc} has the following helper function in
+\ref("https://github.com/llvm/llvm-project/blob/main/libc/src/__support/FPUtil/FEnvImpl.h"){\tt{libc/src/__support/FPUtil/FEnvImpl.h}}:
+\cppblock{
+\cowel_highlight_as("name-macro"){LIBC_INLINE LIBC_CONSTEXPR_DEFAULT} void
+set_errno_if_required([[maybe_unused]] int err) {
+  if (!cpp::is_constant_evaluated()) {
+#ifndef LIBC_MATH_HAS_NO_ERRNO
+    if (math_errhandling & MATH_ERRNO)
+      libc_errno = err;
+#endif // LIBC_MATH_HAS_NO_ERRNO
+  }
+}
+}
+}
+
+In essence, our paper requires no or only trivial code changes.
+The difficult part is deciding on what \q{secondary math library} to ship
+and whether to integrate it into the C++ runtime library.
 
 \h2{Wording}
 
@@ -304,6 +433,14 @@ except that \tcode{math_errhandling} may equal \tcode{0} even for a hosted imple
   author = "Thomas Köppe",
   link = "https://wg21.link/n5054",
   long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
+)\
+\bib(
+  id = "P4188R1",
+  title = "Extensible Math Functions for C++",
+  date = "2026-07-04",
+  author = "Stéphane Gros-Lemesre",
+  link = "https://wg21.link/p4188r1",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4188r1.pdf",
 )\
 
 \make_bib
