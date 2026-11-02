@@ -1,0 +1,309 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+
+\wg21_head(
+  title = {\tt{errno}-less math}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{D4447R0}}
+  \dt{Date:}            \dd{\tt{2026-11-02}}
+  \dt{Audience:}        \dd{LEWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
+                            Matt Borland <\mail{matt@mattborland.com}>}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3688/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/main/src/template-9.cow")}
+}
+\hr
+}
+
+\Babstract{
+We propose the ability to disable interactions with \tt{errno} in mathematical functions.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+Functions in header \header{cmath} currently write to \tt{errno} to indicate errors such
+as domain errors, overflow, or underflow.
+For example, \tcode{std::sqrt(-1)} doesn't simply yield NaN;
+it also sets \tt{errno} to \tt{EDOM}.
+
+\h3{Performance problem}
+
+The runtime checks and write to \tcode{errno}
+can worsen the performance of mathematical operations
+and disable several optimizations because mathematical functions are not pure.
+\tcode{std::sqrt} is an extreme example
+because the entire operation can be performed within a few CPU cycles
+(approx. 20 cycles latency, 6 cycles throughput)
+and using a single CPU instruction:
+
+\style{
+  .center {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .tony-table td {
+    background-color: var(--deep-background-color);
+    width: 50%;
+  }
+}
+
+\table(class="center"){
+  \tr{
+    \th{Architecture}
+    \th{Instruction}
+  }
+  \tr{
+    \td{x86_64}
+    \td{SQRTSD}
+  }
+  \tr{
+    \td{ARM}
+    \td{FSQRT}
+  }
+  \tr{
+    \td{RISC-V}
+    \td{FSQRT.S}
+  }
+  \tr{
+    \td{WASM}
+    \td{f64.sqrt}
+  }
+}
+
+\cowel_macro("fno_math_errno"){\ref("https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html#index-fno-math-errno"){\tt{-fno-math-errno}}}
+
+Due to this problem,
+some compilers provide a flag to disable writing to \tcode{errno} in mathematical functions,
+which is \fno_math_errno for GCC and Clang.
+
+\Bex{
+Consider the difference in output for the following functions:
+\cppblock{
+double s(double x) {
+  return std::sqrt(x);
+}
+std::array<double, 4> vs(const std::array<double, 4>& x) {
+  return { std::sqrt(x[0]), std::sqrt(x[1]),
+           std::sqrt(x[2]), std::sqrt(x[3]) };
+}
+}
+
+\table(class="center tony-table"){
+  \tr{
+    \th{\tt{clang++-24 -O3\br-march=x86-64-v3}}
+    \th{\tt{clang++-24 -O3\br-march=x86-64-v3 -fno-math-errno}}
+  }
+  \tr{
+    \td{\codeblock("asm", borders=false){
+\cowel_highlight_as("name-label"){s(double):}
+        vxorpd  xmm1, xmm1, xmm1
+        vucomisd        xmm0, xmm1
+        jb      sqrt@PLT
+        vsqrtsd xmm0, xmm0, xmm0
+        ret
+}}
+    \td{\codeblock("asm", borders=false){
+\cowel_highlight_as("name-label"){s(double):}
+        vsqrtsd xmm0, xmm0, xmm0
+        ret
+}}
+  }
+  \tr{
+    \td{\codeblock("asm", borders=false){
+\cowel_highlight_as("name-label"){vs(std::array<double, 4ul> const&):}
+        push    r14
+        push    rbx
+        push    rax
+        mov     r14, rsi
+        mov     rbx, rdi
+        vmovsd  xmm0, qword ptr [rsi]
+        vxorpd  xmm1, xmm1, xmm1
+        vucomisd        xmm0, xmm1
+        jb      .LBB1_2
+        vsqrtsd xmm0, xmm0, xmm0
+        vmovsd  qword ptr [rbx], xmm0
+        vmovsd  xmm0, qword ptr [r14 + 8]
+        vucomisd        xmm0, xmm1
+        jae     .LBB1_4
+.LBB1_5:
+        call    sqrt@PLT
+        jmp     .LBB1_6
+.LBB1_2:
+        call    sqrt@PLT
+        vxorpd  xmm1, xmm1, xmm1
+        vmovsd  qword ptr [rbx], xmm0
+        vmovsd  xmm0, qword ptr [r14 + 8]
+        vucomisd        xmm0, xmm1
+        jb      .LBB1_5
+.LBB1_4:
+        vsqrtsd xmm0, xmm0, xmm0
+.LBB1_6:
+        vmovsd  qword ptr [rbx + 8], xmm0
+        vmovsd  xmm0, qword ptr [r14 + 16]
+        vxorpd  xmm1, xmm1, xmm1
+        vucomisd        xmm0, xmm1
+        jb      .LBB1_8
+        vsqrtsd xmm0, xmm0, xmm0
+        vmovsd  qword ptr [rbx + 16], xmm0
+        vmovsd  xmm0, qword ptr [r14 + 24]
+        vucomisd        xmm0, xmm1
+        jae     .LBB1_10
+.LBB1_11:
+        call    sqrt@PLT
+        jmp     .LBB1_12
+.LBB1_8:
+        call    sqrt@PLT
+        vxorpd  xmm1, xmm1, xmm1
+        vmovsd  qword ptr [rbx + 16], xmm0
+        vmovsd  xmm0, qword ptr [r14 + 24]
+        vucomisd        xmm0, xmm1
+        jb      .LBB1_11
+.LBB1_10:
+        vsqrtsd xmm0, xmm0, xmm0
+.LBB1_12:
+        vmovsd  qword ptr [rbx + 24], xmm0
+        mov     rax, rbx
+        add     rsp, 8
+        pop     rbx
+        pop     r14
+        ret
+}}
+    \td{\codeblock("asm", borders=false){
+\cowel_highlight_as("name-label"){vs(std::array<double, 4ul> const&):}
+        vsqrtpd ymm0, ymmword ptr [rsi]
+        mov     rax, rdi
+        vmovupd ymmword ptr [rdi], ymm0
+        vzeroupper
+        ret
+}}
+  }
+}
+Note that while the difference in code size is quite dramatic,
+the length of the critical path is not impacted as much.
+In both the scalar and vector case,
+there is a \q{happy path} (i.e. non-NaN) which is checked for,
+and \code("asm"){call sqrt} is only a fallback solution.
+}
+
+However, crucially, \fno_math_errno is a non-conforming and non-portable optimization,
+as described in the GCC docs:
+
+\Bquote{
+\b{\tt{-fno-math-errno}}
+\Bindent{\cowel_paragraphs{
+Do not set \tt{errno} after calling math functions that are executed with a single instruction,
+e.g., \tcode{sqrt}.
+A program that relies on IEEE exceptions for math error handling
+may want to use this flag for speed while maintaining IEEE arithmetic compatibility.
+
+This option is not turned on by any \tt{-O} option besides \tt{-Ofast}
+since it can result in incorrect output for programs
+that depend on an exact implementation of IEEE or ISO rules/specifications for math functions.
+It may, however, yield faster code for programs
+that do not require the guarantees of these specifications.
+
+The default is \tt{-fmath-errno}.
+
+On Darwin systems, the math library never sets \tcode{errno}.
+There is therefore no reason for the compiler to consider the possibility that it might,
+and \tt{-fno-math-errno} is the default.
+}}
+}
+
+\h3{\tcode{constexpr} problem}
+
+Since there can be no writes to \tcode{errno} during constant evaluation,
+the committee is stuck with two bad options
+regarding the use of math functions in constant expressions:
+\ul{
+  \li{
+    Allow \tcode{std::sqrt(-1)} to be a constant expression
+    and \q{silently} ignore \tcode{errno},
+    even if the same expression evaluated at runtime would have modified \tcode{errno}.
+  }
+  \li{
+    Disallow \tcode{std::sqrt(-1)} during constant evaluation.
+    This is the status quo,
+    and prohibits many uses of math functions.
+    For example, \tcode{std::ldexp(1, x)} cannot be used
+    to check whether \math{\msup{\mn{2}\mi{x}}} is representable as \tcode{double}
+    (e.g. inside \tcode{if constexpr})
+    because the answer is either \q{yes} or \q{ill-formed};
+    at runtime, one can check whether the result is infinity.
+  }
+}
+
+Optimization flags like \fno_math_errno cannot fix this design problem either.
+
+However, if the standard provided a \q{mode} where math functions do not write to \tcode{errno}
+(neither at runtime nor during constant evaluation),
+then math functions could always be used in constant expressions
+(at least for ISO/IEC 60559 floating-point types)
+and would do the same as at runtime
+(except for slight precision/rounding differences).
+This would still present a portability concern
+in the sense that some code would only compile in \q{errno-less mode},
+but that is arguably an improvement over the current situation.
+
+\h2{Design}
+
+To address the problems described above,
+we propose an \q{errno-less mode} for math functions.
+This essentially requires the compiler and standard library to provide a flag
+which deactivates writes to \tcode{errno} for math functions.
+
+One major problem with this idea is that on platforms where writing to \tcode{errno} is enabled,
+the implementation needs to provide a second copy of \tt{libc} or at least \tt{libm}
+that has been compiled in \q{errno-less mode}.
+Every single math function would need to have an \q{errno-less} variant available.
+On platforms where \q{errno-less mode} is already the default (e.g. Darwin),
+no action is required.
+
+The aforementioned \ref("#constexpr-problem") is not resolved in this paper,
+but provides motivation for the direction.
+
+\h2{Wording}
+
+The changes are relative to \ref("N5054").
+
+\h3(show_number=false){[intro.compliance.general]}
+
+Immediately following \eelis{intro.compliance.general#8}
+(i.e. following the definition of \q{hardened implementation}),
+insert a new paragraph:
+
+\Bins{
+An implementation shall provide a configuration option so that
+\tcode{math_errhandling & MATH_ERRNO} equals \tcode{0}\iref{cmath.syn}.
+}
+
+\h3(show_number=false){[cmath.syn]}
+
+Append a new paragraph to \eelis{cmath.syn}:
+
+\Bins{
+The meaning of the macro \tcode{math_errhandling} is the same
+as of that in the C standard library header \header{math.h},
+except that \tcode{math_errhandling} may equal \tcode{0} even for a hosted implementation.
+}
+
+\h2{References}
+
+
+\bib(
+  id = "N5054",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2026-07-16",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5054",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
+)\
+
+\make_bib
