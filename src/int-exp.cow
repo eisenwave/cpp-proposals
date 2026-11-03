@@ -1,0 +1,324 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+
+\wg21_head(
+  title = {Integer exponentiation and logarithm}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{PXXXXR0}}
+  \dt{Date:}            \dd{\tt{2026-11-03}}
+  \dt{Audience:}        \dd{SG6}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/PXXXX/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/main/src/int-exp.cow")}
+}
+\hr
+}
+
+\Babstract{
+
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+C++ currently provides no means of exponentiating integers or
+computing integer logarithms.
+These are basic and useful operations that would be a good fit for standardization.
+
+\h2{Motivation}
+
+Integer exponentiation and logarithms are fundamental operations
+that many programming languages provide,
+sometimes as a builtin operator such as \tcode{**}.
+A standard library operation for exponentiation would provide a wide range of capabilities:
+\ul{
+  \li{
+    Exponentiation is necessary for a wide range of statistical computations.
+    Most obviously, given and independent choice between \math{\mi{k}} options
+    repeated \math{\mi{n}} times,
+    the total number of combinations is \math{\msup{\mi{k}\mi{n}}},
+    i.e. \tcode{std::ipow(k, n)}.
+  }
+  \li{
+    Exponentiation is useful when performing calculations with units.
+    For example, if
+    kilo is \math{\mn{1000}},
+    mega is \math{\msup{\mn{1000}\mn{2}}}, and so forth,
+    applying that unit can be done by multiplying
+    with \tcode{std::ipow(1000, n)} or with \tcode{std::ipow10(10, n * 3)}.
+    Conversely, the base-10 logarithm can be used to determine which unit
+    should be displayed when printing a number.
+  }
+  \li{
+    Exponentiation allows for avoiding \q{magic numbers} and expressing intent more clearly,
+    such as by writing \tcode{std::ipow10<int>(6)} instead of \tcode{1'000'000}
+    or \tcode{std::ipow(5, 5)} instead of \tcode{3125}.
+  }
+  \li{
+    Exponentiation provides a convenient inline notation.
+    Instead of writing \tcode{(x + y) * (x + y)},
+    one can write \tcode{std::ipow(x + y, 2)}.
+  }
+}
+
+Beyond the mere utility,
+exponentiation and logarithms should be standardized
+because the ad-hoc solutions users provide may be inefficient.
+The key insights are that:
+\ul{
+  \li{
+    Integer exponentiation with a runtime base base can be performed using
+    \ref("https://en.wikipedia.org/wiki/Exponentiation_by_squaring"){exponentiation by squaring}
+    rather than with repeated multiplication,
+    which requires logarithmic time complexity rather than linear time complexity.
+  }
+  \li{
+    Integer exponentiation with a known base can be performed in constant time
+    using a lookup table.
+  }
+  \li{
+    Integer logarithms with a runtime base can be performed using
+    repeated multiplication to see which power of the base
+    is greater or equal to the given number.
+    An implementation using repeated division may be much slower.
+  }
+  \li{
+    Integer logarithms with a known base can be performed in constant time on modern hardware
+    by computing the base-2 logarithm via \tcode{std::countl_zero}
+    and converting that to a base-n logarithm.
+  }
+}
+
+\h2{Design}
+
+The following function templates are proposed:
+
+\cppblock{
+// in <numeric>
+template<class T> constexpr T ipow(T base, int exp);
+template<class T> constexpr T ipow10(int exp);
+
+template<class T> constexpr int ilog(T x);
+template<class T> constexpr int ilog2(T x);
+template<class T> constexpr int ilog10(T x);
+}
+
+… where \tcode{T} is constrained to be a signed or unsigned integer type.
+
+\dl{
+  \dt{Why not accept any integral type as \tcode{T}?}
+  \dd{
+    Modern standard library design such as in \eelis{numeric.sat} and \eelis{bit}
+    uses a constraint that allows only signed or unsigned integer types.
+  }
+
+  \dt{What happens when you compute the logarithm of zero or less?}
+  \dd{
+    The behavior is undefined.
+    This is consistent with error handling in other low-level numeric utilities.
+  }
+
+  \dt{What happens when the result doesn't fit in the return type?}
+  \dd{
+    The behavior is undefined.
+  }
+
+  \dt{Why is \tcode{int} used for exponents and logarithm return types?}
+  \dd{
+    \tcode{int} is typically used in numeric utilities when possible,
+    such as in \tcode{int std::popcount} or \tcode{std::numeric_limits<T>::digits}.
+    Having an additional template parameter would just result in extra instantiations.
+  }
+
+  \dt{Why happens when you pass in a negative exponent?}
+  \dd{
+    Zero is returned, which is a mathematical consequence of
+    \tcode{std::ipow(n, e)} being defined as
+    \math{\mrow{\mo{⌊}\msup{\mi{n}\mi{e}}\mo{⌋}}}.
+  }
+
+  \dt{Doesn't the use of \tcode{int} in \tcode{std::ipow} impose extra cost to check for negatives?}
+  \dd{
+    In theory yes.
+    In practice, \tcode{std::ipow10} would always be inlined,
+    and if the exponent is known to be positive at compile time, the check would be omitted.
+    \tcode{std::ipow} may not always be inlined,
+    but the branch on negative exponents is easily predictable, very cheap,
+    and relatively small compared to the overall cost of the function.
+  }
+
+  \dt{Why is there no \tcode{std::ipow2}?}
+  \dd{
+    \tcode{std::ipow2<T>(exp)} would be equivalent to \tcode{T{1} << exp},
+    and there is no reason to ever use it.
+  }
+
+  \dt{Why do we even need \tcode{std::ipow10}, \tcode{std::ilog2}, and \tcode{std::ilog10}?}
+  \dd{
+    As explained above,
+    known bases allow for faster constant-time algorithms.
+    The bases 2 and 10 are particularly useful.
+  }
+
+  \dt{Why \header{numeric}?}
+  \dd{
+    This is where other C++-specific numeric utilities go,
+    such as saturation arithmetic, \tcode{std::gcd}, etc.
+  }
+}
+
+\h2{Wording}
+
+The changes are relative to \ref("N5054").
+
+\h3(show_number=false){[version.syn]}
+
+Add a feature-test macro to \eelis{version.syn} as follows:
+
+\Bins{
+\itemdecl{
+#define __cpp_lib_ipow 20XXXXL // \serif{freestanding, also in \tt{<numeric>}}
+}
+}
+
+\h3(show_number=false){[numeric.ops.ipow]}
+
+Immediately following \eelis{numeric.ops.midpoint},
+insert a new subclause:
+
+\Bins{
+\cowel_html_element("h3"){Integer exponentiation and logarithm \stable_ref{numeric.ops.ipow}}
+
+\itemdecl{
+template<class T> constexpr T ipow(T b, int e);
+}
+
+\itemdescr{
+\pnum
+\constraints
+\tcode{T} is a signed or unsigned integer type\iref{basic.fundamental}.
+
+\pnum
+\expects
+\tcode{(b != 0 || e != 0)} is \tcode{true}
+and the result is representable in \tcode{T}.
+
+\pnum
+\returns
+\math{\msup{\mi{b}\mi{e}}} with the fractional part (if any) discarded.
+
+\pnum
+\remarks
+A function call expression
+that violates the precondition in the \Fundescx{Preconditions} element
+is not a core constant expression\iref{expr.const.core}.
+}
+
+\itemdecl{
+template<class T> constexpr T ipow10(int exp);
+}
+
+\itemdescr{
+\pnum
+\constraints
+\tcode{T} is a signed or unsigned integer type\iref{basic.fundamental}.
+
+\pnum
+\mandates
+The value 10 is representable in \tcode{T}.
+
+\pnum
+\effects
+Equivalent to:
+\tcode{return ipow(T(10), exp);}
+}
+
+\itemdecl{
+template<class T> constexpr int ilog(T x, T b);
+}
+
+\itemdescr{
+\pnum
+\constraints
+\tcode{T} is a signed or unsigned integer type\iref{basic.fundamental}.
+
+\pnum
+\expects
+\tcode{(x > 0 && b > 1)} is \tcode{true}.
+
+\pnum
+\returns
+\math{\mrow{\msub{\mo{log}\mi{b}}\mi{x}}} with the fractional part (if any) discarded.
+
+\pnum
+\remarks
+A function call expression
+that violates the precondition in the \Fundescx{Preconditions} element
+is not a core constant expression\iref{expr.const.core}.
+}
+
+\itemdecl{
+template<class T> constexpr int ilog2(T x);
+}
+
+\itemdescr{
+\pnum
+\constraints
+\tcode{T} is a signed or unsigned integer type\iref{basic.fundamental}.
+
+\pnum
+\mandates
+The value 2 is representable in \tcode{T}.
+
+\pnum
+\effects
+Equivalent to:
+\tcode{return ilog(x, T(2));}
+}
+
+\itemdecl{
+template<class T> constexpr int ilog10(T x);
+}
+
+\itemdescr{
+\pnum
+\constraints
+\tcode{T} is a signed or unsigned integer type\iref{basic.fundamental}.
+
+\pnum
+\mandates
+The value 10 is representable in \tcode{T}.
+
+\pnum
+\effects
+Equivalent to:
+\tcode{return ilog(x, T(10));}
+}
+}
+
+\h2{References}
+
+
+\bib(
+  id = "N5054",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2026-07-16",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5054",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
+)\
+\bib(
+  id = "P3666R4",
+  title = "Bit-precise integers",
+  date = "2026-05-12",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3666r4",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r4.html",
+)\
+
+\make_bib
