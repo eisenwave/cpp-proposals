@@ -219,7 +219,8 @@ An obviously correct alternative is:
 \h4{Breaking the GCC extension}
 
 As an extension, GCC \em{already} allows the placement of attributes
-after the \grammarterm{function-contract-specifier-seq},
+after the \grammarterm{function-contract-specifier-seq}
+on non-defining declarations,
 meaning that the following code is valid:
 \cppblock{
 void f() pre [[standard]] (true) [[wtf]]; // [[wtf]] appertains to f()
@@ -230,6 +231,33 @@ Making the suffix syntax valid now would
   \li{silently change what \tcode{[[wtf]]} appertains to, and}
   \li{break existing code which places attributes like \tcode{[[standard]]}.}
 }
+
+However, these breaking changes only affect C++26 code,
+which should be considered experimental.
+
+\h4{Macro hazards}
+
+It is plausible that a user would write code along the following lines
+if the suffix syntax for attributes was available:
+
+\cppblock{
+#ifdef FEATURE_ACTIVATED
+  #define PRE(...) pre(__VA_ARGS__)
+#else
+  #define PRE(...) // nothing
+#endif
+
+void f(int i) PRE(i >= 0) [[attrib]];
+}
+
+The obvious issue is that if \tcode{\cowel_highlight_as("name-macro"){PRE}} expands to nothing,
+the following \tcode{[[attrib]]} applies to \tcode{f()}.
+\em{Someone} will get this wrong eventually
+(\ref("https://en.wikipedia.org/wiki/Murphy%27s_law"){Murphy's law}).
+The existing syntax prevents that scenario because
+\tcode{\cowel_highlight_as("name-macro"){PRE}} would have to produce \tcode{[[attrib]]}, or
+the entire \grammarterm{function-contract-specifier-seq} would need to be wrapped
+in an \tcode{#ifdef} block.
 
 \h4{Fool-proof syntax}
 

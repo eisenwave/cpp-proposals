@@ -1620,8 +1620,10 @@ This paper explores potential resolutions to NB comment FR02-077 on the C++26 DI
 <div class=toc-num data-level=4>2.1.3</div>
 <a href=#breaking-the-gcc-extension><h4>Breaking the GCC extension</h4></a>
 <div class=toc-num data-level=4>2.1.4</div>
-<a href=#fool-proof-syntax><h4>Fool-proof syntax</h4></a>
+<a href=#macro-hazards><h4>Macro hazards</h4></a>
 <div class=toc-num data-level=4>2.1.5</div>
+<a href=#fool-proof-syntax><h4>Fool-proof syntax</h4></a>
+<div class=toc-num data-level=4>2.1.6</div>
 <a href=#perfect-forward-compatibility><h4>Perfect forward compatibility</h4></a>
 <div class=toc-num data-level=3>2.2</div>
 <a href=#suffix-syntax><h3>Suffix syntax</h3></a>
@@ -1818,7 +1820,8 @@ An obviously correct alternative is:
 <h4 id=breaking-the-gcc-extension><a class=para href=#breaking-the-gcc-extension></a>2.1.3. Breaking the GCC extension</h4>
 
 <p>As an extension, GCC <em>already</em> allows the placement of attributes
-after the <g-term>function-contract-specifier-seq</g-term>,
+after the <g-term>function-contract-specifier-seq</g-term>
+on non-defining declarations,
 meaning that the following code is valid:
 </p><code-block><h- data-h=kw_type>void</h-> <h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>pre</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>standard</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_par>(</h-><h- data-h=bool>true</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>wtf</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>;</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> [[wtf]] appertains to f()</h-></code-block>
 
@@ -1828,7 +1831,32 @@ meaning that the following code is valid:
   <li>break existing code which places attributes like <code><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>standard</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-></code>.</li>
 </ul>
 
-<h4 id=fool-proof-syntax><a class=para href=#fool-proof-syntax></a>2.1.4. Fool-proof syntax</h4>
+<p>However, these breaking changes only affect C++26 code,
+which should be considered experimental.
+</p>
+<h4 id=macro-hazards><a class=para href=#macro-hazards></a>2.1.4. Macro hazards</h4>
+
+<p>It is plausible that a user would write code along the following lines
+if the suffix syntax for attributes was available:
+</p>
+<code-block><h- data-h=name_mac>#ifdef FEATURE_ACTIVATED</h->
+  <h- data-h=name_mac>#define PRE(...) pre(__VA_ARGS__)</h->
+<h- data-h=name_mac>#else</h->
+  <h- data-h=name_mac>#define PRE(...) </h-><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> nothing</h->
+<h- data-h=name_mac>#endif</h->
+
+<h- data-h=kw_type>void</h-> <h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=name>i</h-><h- data-h=sym_par>)</h-> <h- data-h=name>PRE</h-><h- data-h=sym_par>(</h-><h- data-h=name>i</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>attrib</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>The obvious issue is that if <code><h- data-h=name_mac>PRE</h-></code> expands to nothing,
+the following <code><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>attrib</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-></code> applies to <code><h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>.
+<em>Someone</em> will get this wrong eventually
+(<a href=https://en.wikipedia.org/wiki/Murphy%27s_law>Murphy's law</a>).
+The existing syntax prevents that scenario because
+<code><h- data-h=name_mac>PRE</h-></code> would have to produce <code><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>attrib</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-></code>, or
+the entire <g-term>function-contract-specifier-seq</g-term> would need to be wrapped
+in an <code><h- data-h=name_mac>#ifdef</h-></code> block.
+</p>
+<h4 id=fool-proof-syntax><a class=para href=#fool-proof-syntax></a>2.1.5. Fool-proof syntax</h4>
 
 <p>The attribute placement in C++ is anything but obvious,
 sometimes resulting in people randomly guessing or misremembering where attributes go.
@@ -1846,7 +1874,7 @@ so it obviously applies to the precondition.
 It is also hard to imagine someone placing an attribute immediately following <code><h- data-h=kw>pre</h-></code>
 as the result of a random guess.
 </p>
-<h4 id=perfect-forward-compatibility><a class=para href=#perfect-forward-compatibility></a>2.1.5. Perfect forward compatibility</h4>
+<h4 id=perfect-forward-compatibility><a class=para href=#perfect-forward-compatibility></a>2.1.6. Perfect forward compatibility</h4>
 
 <p>Another argument in support of the current syntax
 is the perfect forward compatibility.
