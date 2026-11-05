@@ -1,23 +1,35 @@
 \: cowel 0.10.2
 \cowel_include("libwg21-9.cow")
 
+\style{
+.toc h4 {
+  margin-left: 1.5em;
+}
+.toc h5 {
+  margin-left: 3em;
+}
+.toc h6 {
+  margin-left: 4.5em;
+}
+}\
+
 \wg21_head(
   title = {Revisiting attribute placement on Contracts}
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3688R0}}
-  \dt{Date:}            \dd{\tt{2026-05-55}}
-  \dt{Audience:}        \dd{LEWG}
+  \dt{Document number:} \dd{\docnum{P4456R0}}
+  \dt{Date:}            \dd{\tt{2026-11-05}}
+  \dt{Audience:}        \dd{EWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3688/github")}
-  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/main/src/template-9.cow")}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P4456/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/main/src/contracts-attributes.cow")}
 }
 \hr
 }
 
 \Babstract{
-This paper explores potential resolutions for NB comments FR02-077 on the C++26 DIS.
+This paper explores potential resolutions to NB comment FR02-077 on the C++26 DIS.
 }
 
 \h2(listed=false){Contents}
@@ -31,6 +43,10 @@ FR02-077 states:
 The syntax is still not in phase with the compromise
 that was found in the liaison study group between WG21 and WG14:
 attributes are in the wrong place and hurt possible processing in a future C version of contracts.
+
+\b{Suggested change:}
+
+Adopt the syntax for attribute discussed in the liaison study group.
 }
 
 The change would look as follows:
@@ -42,7 +58,7 @@ void f() pre(true) \ins{[[attrib]]};   // FR02-077
 
 That is, the position of the \grammarterm{attribute-specifier-seq}
 would move from after \tcode{pre} or \tcode{post}
-to after the entire \grammarterm{precondition-specifier} or \grammarterm{postcondition-specifier}.
+to the end of the \grammarterm{precondition-specifier} or \grammarterm{postcondition-specifier}.
 
 While this change was not discussed or polled during an SG22 telecon,
 it can be considered a \q{compromise} because it increases compatibility
@@ -71,11 +87,11 @@ but this was removed in later revisions.
 At this point, there are three plausible solutions to this situation:
 \ol{
   \li{
-    Keep attributes where they are, as proposed in P2900.
+    Keep attributes where they are, as proposed in \ref("P2900R14").
   }
   \li{
     Move attributes to the location suggested in FR02-077,
-    i.e. after the \grammarterm{precondition-specifier}.
+    i.e. to the end of the \grammarterm{precondition-specifier}.
   }
   \li{
     Remove attributes from contracts entirely for the time being and revisit the issue in C++29.
@@ -88,7 +104,10 @@ Find below an argument for each of the possible solutions.
 
 The placement of attributes on Contracts
 was explored extensively in \ref("P3088R1").
-On the subject of the suffix location, it states the following:
+
+\h4{Readability of current syntax}
+
+On the subject of the suffix location, \ref("P3088R1") states the following:
 
 \Bquote{
 We could consider placing the \grammarterm{attribute-specifier-seq} after the contract assertion:
@@ -115,8 +134,9 @@ void g(int j) pre(j > 0) [[vendor::yyy]];
 We therefore do not propose the suffix location.
 }
 
-Besides this argument of readability,
-two extensions for Contracts are already in the pipeline for C++29
+\h4{C compatibility is limited anyway}
+
+Two extensions for Contracts are already in the pipeline for C++29
 which would also make the \tcode{#define} approach incompatible:
 \ul{
   \li{
@@ -134,11 +154,12 @@ which would also make the \tcode{#define} approach incompatible:
 
 WG21 has never agreed to have an approach that is entirely compatible
 with the macro-based solution in C.
-Doing so would essentially require all future extensions
-to go inside the parentheses of \tcode{pre},
-which seems undesirable.
+Doing so would require no future extension to go between
+\tcode{pre} and the following parentheses,
+but this location is an obvious choice
+considering the precedent set by e.g. \tcode{static_cast<...>()}.
 
-Furthermore, C compatibility with the current C++26 syntax is not entirely infeasible.
+Furthermore, C compatibility with the current C++26 syntax is not out of the question.
 There at least two possible approaches:
 \ul{
   \li{
@@ -146,20 +167,19 @@ There at least two possible approaches:
     rather than pursuing a \tcode{#define pre(...)} approach.
   }
   \li{
-    Instead define \tcode{#define pre _Pre}.
+    Instead provide \tcode{#define pre _Pre}.
     However, this would affect any use of the identifier,
     including the use of \tcode{pre} as a variable name.
   }
 }
 
-Last but not least,
-the \ref("WG14-N3929") approach is only
+One should also understand that the \ref("WG14-N3929") approach is only
 superficially and syntactically compatible with C++ Contracts:
 there is no support for ignore semantic,
 there is an additional \tcode{\cowel_highlight_as("keyword"){_Inv}} specifier
 that combines preconditions and postconditions, etc.
 The author of \ref("WG14-N3929") does not seek to maximize C++ compatibility
-but vehemently opposes design principles of \ref("P2900R14").
+but vehemently opposes design principles of \ref("P2900R14") such as ignorability.
 Even if attributes were moved to the proposed location,
 C++ Contracts with ignore semantic would remain incompatible.
 
@@ -167,11 +187,11 @@ C++ Contracts with ignore semantic would remain incompatible.
 Ignored preconditions can still be emulated in C just like for \tcode{assert}:
 \cppblock{
 #ifdef __cplusplus
-// do nothing in C++
+  // do nothing in C++
 #elifdef NDEBUG
-#define pre(...) _Pre(true)        // ignore on release
+  #define pre(...) _Pre(true)        // ignore on release
 #else
-#define pre(...) _Pre(__VA_ARGS__) // enforce on debug
+  #define pre(...) _Pre(__VA_ARGS__) // enforce on debug
 #endif
 
 void f() pre(cond) [[attrib]];
@@ -181,16 +201,314 @@ and that (quick-)enforce semantic is used in C++
 this approach is compatible.
 It is important that \tcode{pre} does not expand to an empty token sequence
 because the following \tcode{[[attrib]]} would otherwise apply to the function.
+
+This approach is well-formed even with \header{stdc_contract.h} included,
+but probably not intended and may break in the future:
+An obviously correct alternative is:
+\cppblock{
+#ifdef __cplusplus
+  #define debug_pre(...) pre<debug>(__VA_ARGS__) // P3400
+#elifdef NDEBUG
+  #define debug_pre(...) _Pre(true)        // ignore on release
+#else
+  #define debug_pre(...) _Pre(__VA_ARGS__) // enforce on debug
+#endif
+}
 }
 
-\h3{Move attributes}
+\h4{Breaking the GCC extension}
 
+As an extension, GCC \em{already} allows the placement of attributes
+after the \grammarterm{function-contract-specifier-seq},
+meaning that the following code is valid:
+\cppblock{
+void f() pre [[standard]] (true) [[wtf]]; // [[wtf]] appertains to f()
+}
+
+Making the suffix syntax valid now would
+\ul{
+  \li{silently change what \tcode{[[wtf]]} appertains to, and}
+  \li{break existing code which places attributes like \tcode{[[standard]]}.}
+}
+
+\h4{Fool-proof syntax}
+
+The attribute placement in C++ is anything but obvious,
+sometimes resulting in people randomly guessing or misremembering where attributes go.
+A major issue with the suffix syntax is that it would accept the \q{random guess}
+of putting an attribute at the very end:
+\cppblock{
+void f() pre(true) [[attrib]];
+}
+
+This may be problematic when an attribute has different meaning
+depending on whether it appertains to a precondition or to the function type,
+and it's quite plausible that \tcode{[[attrib]]} was intended to apply to \tcode{f()} instead.
+
+By comparison, the syntax \tcode{pre [[attrib]] (true)} is more fool-proof
+because the attribute is \q{sandwiched} inside of the \grammarterm{precondition-specifier},
+so it obviously applies to the precondition.
+It is also hard to imagine someone placing an attribute immediately following \tcode{pre}
+as the result of a random guess.
+
+\h4{Perfect forward compatibility}
+
+Another argument in support of the current syntax
+is the perfect forward compatibility.
+That is, because \tcode{[[attrib]]}
+is placed immediately after the \tcode{pre} keyword,
+we can ensure that no matter where contracts are placed in the future,
+an attribute would never cause ambiguity.
+By contrast, prefix and suffix notation either cause ambiguities already
+or could theoretically cause ambiguities in the future:
+\cppblock{
+// With prefix syntax, this would be ambiguous:
+void f() [[attrib]] pre(true);
+
+// With suffix syntax, a hypothetical future construct
+// with prefix attributes could be ambiguous:
+void f() pre(true) [[attrib]];                // OK
+[[attrib]] \i{\cowel_highlight_as("keyword"){hypothetical-construct}};            // OK
+pre(true) [[attrib]] \i{\cowel_highlight_as("keyword"){hypothetical-construct}};  // ambiguous
+}
+
+That being said, there are no concrete suggestions for a
+\tcode{\i{\cowel_highlight_as("keyword"){hypothetical-construct}}}
+affected by suffix syntax … yet.
+
+\h3{Suffix syntax}
+
+\h4{C compatibility of suffix syntax}
+
+The immediate benefit of the suffix syntax is that it maintains compatibility
+with the \ref("WG14-N3929") \q{macro approach} of \tcode{#define pre(...)}.
+While future extensions like \ref("P3098R2") and \ref("P3400R5")
+may introduce further syntax that makes the macro approach incompatible,
+the current attribute placement is the only syntactical incompatibility
+that already exists today in C++26.
+Relocating the attribute as FR02-077 suggests would thus give WG14 and WG21
+until C++29 to find a solution.
+
+That being said,
+we must not make hasty technical decisions solely motivated by deadlines,
+and given the planned future extensions,
+the current macro approach seems unsustainable anyway.
+
+\h4{Readability of suffix syntax}
+
+Even purely looking at C++,
+the suffix syntax can be justified with technical arguments.
+The above example that \ref("P3088R1") provides to demonstrate confusion can also be formatted as:
+
+\cppblock{
+void f(int* i)
+  pre(i != nullptr) [[vendor::something]]
+  pre(*i > 0) [[vendor::something]];
+}
+
+\Bnote{
+This example results in undefined behavior with observe semantic,
+but that's not relevant to the syntactical discussion.
+}
+
+With this style,
+it is obvious what the attributes appertain to.
+The rule that \tcode{pre} and \tcode{post} are at the beginning of a new line
+can also be enforced by auto-formatters.
+With vendor attributes in place,
+preconditions may take up so much space that such multi-line formatting is desirable
+and often necessary to fit within a column limit anyway.
+
+\h4{Suffix syntax combined with captures and labels}
+
+We must consider how a suffix syntax composes with the future extensions
+in \ref("P3098R2") and \ref("P3400R5"):
+\cppblock{
+void f(int i)
+  pre<audit>(i < size())                      [[vendor::something]]  // P3400
+  post[old_size = size()](size() == old_size) [[vendor::something]]; // P3098
+}
+
+For reference,
+the syntax currently proposed in those papers places attributes as follows:
+\cppblock{
+void f(int i)
+  pre  [[vendor::something]] <audit>(i < size())
+  post [[vendor::something]] [old_size = size()] (size() == old_size);
+}
+
+There are several reasons to prefer to the suffix syntax:
+
+\ol{
+  \li{
+    The information provided by attributes is pushed to the edge of the screen.
+    This makes sense because information provided by attributes
+    is typically less important than any of the other elements of a contract.
+    Attributes can often be ignored by some readers,
+    so placing them immediately after \tcode{pre} is annoying.
+    \Bex{
+    Concretely, attributes could provide custom diagnostic strings in the future.
+    The status quo would look as follows:
+\cppblock{
+void f()
+  pre [[message("i must be positive")]] (i >= 0);
+}
+This appears undesirable;
+the failure message is by far the least important bit of information,
+but it receives a dominant position.
+This improves with a suffix syntax:
+\cppblock{
+void f()
+  pre(i >= 0) [[message("i must be positive")]];
+}
+    Note that this specific example would become irrelevant
+    if \ref("P3099R3") \q{Contracts for C++: User-defined Diagnostic Messages} were accepted,
+    which provides the syntax:
+\cppblock{
+void f()
+  pre(i >= 0, "i must be positive");
+}
+}
+  }
+  \li{
+    With the suffix syntax,
+    there is a simple and consistent rule for both function types and contracts
+    that the attribute is placed after the closing parenthesis.
+  }
+  \li{
+    With the current syntax,
+    it is not obvious to users whether \tcode{[[attrib]]}
+    should be placed before or after the captures in a postcondition.
+    Note that lambdas have the syntax \tcode{[x=0] [[attrib]] {}},
+    i.e. attributes go after the captures.
+    However, \ref("P3098R2") proposes the opposite ordering.
+    Both relative orderings of captures and attributes
+    are counter-intuitive in their own way.
+    Even if attributes were placed after the postcondition captures
+    (hypothetically),
+    this could create large visual distance between the captures and
+    the condition that references them,
+    decreasing readability.
+    For example, consider:
+\cppblock{
+void f() post[x=0] [[vendor::something, vendor::other_thing]] (x > 0);
+}
+    While this is \u{not} the current direction of \ref("P3098R2"),
+    it is an option for C++29 as an extension of the current syntax,
+    so worth mentioning here.
+  }
+  \li{
+    Regardless of the relative ordering in the current syntax,
+    it is problematic to have two square-brackets constructs
+    immediately following one another because it leaves the author with two options:
+    \ul{
+      \li{
+        Write \tcode{post[[attrib]][x=0](...)} compactly,
+        which results in visual clutter.
+      }
+      \li{
+        Write \tcode{post [[attrib]] [x=0](...)},
+        i.e. create space around the attribute for readability.
+        However, this takes up more space and is inconsistent
+        with the otherwise compact \tcode{post(...)} notation that most people would use.
+      }
+    }
+    The suffix notation isolates the attribute and
+    avoids putting it next to other square brackets.
+  }
+}
+
+\h4{Suffix syntax for macro-expanded pre- and postconditions}
+
+The suffix syntax allows for \tcode{pre} with \ref("P3400R5") labels
+to be expanded from macros,
+with attributes placed outside:
+\cppblock{
+#define MY_LIB_DEBUG_PRE(...) pre<::my_lib::contracts::debug>(__VA_ARGS__)
+#define MY_LIB_RELEASE_PRE(...) pre<::my_lib::contracts::release>(__VA_ARGS__)
+
+void f(int i)
+  // attribute appertains to pre<::my_lib::contracts::debug>
+  \cowel_highlight_as("name-macro"){MY_LIB_DEBUG_PRE}(i >= 0) [[attrib]];
+}
+
+By comparison, the current syntax makes it difficult to apply attributes
+to macro-expanded pre- and postconditions.
+
+\Bex{
+A concrete example would be a postcondition that is guarded behind a feature-test macro
+because it only becomes spellable once there are \tcode{post} captures:
+\cppblock{
+#if __cpp_contracts >= 202808L
+  #define CAP_POST(cap, ...) post[cap](__VA_ARGS__) // yay!
+#else
+  #define CAP_POST(cap, ...) post(true)             // can't spell it yet :(
+#endif
+
+void f() \cowel_highlight_as("name-macro"){CAP_POST}(old=size(), old <= size()) [[attrib]];
+}
+Note that this example would not work
+if we expanded \tcode{\cowel_highlight_as("name-macro"){CAP_POST}} to nothing.
+}
+
+\Bex{
+Similarly, some users may not be comfortable with the current \tcode{pre}
+but would use the always-enforced contracts once available.
+After all, the lack of always-enforced contracts is one of the most common criticisms.
+However, with macros, we could write preconditions that are always enforced
+if such a semantic is available,
+or at the very least, are not evaluated with observe semantic.
+This leads to the following macro-expanded preconditions:
+\cppblock{
+#if __cpp_contracts >= 202808L
+  // P3400.
+  #define PRE(...) pre<enforce>(__VA_ARGS__)
+#elifdef __builtin_contract_semantic_is_enforced
+  // Using an extension that informs us about the contract evaluation semantic.
+  #define PRE(...) pre(__VA_ARGS__)
+#else
+  // Otherwise, disable.
+  // Alternatively, we could use #error here
+  // if we wanted a hard "it's enforced or it errors" guarantee.
+  #define PRE(...) pre(true)
+#endif
+
+void f(int i) \cowel_highlight_as("name-macro"){PRE}(i >= 0) [[attrib]];
+}
+}
+
+\Bex{
+If \ref("P3099R3") were accepted,
+users may write:
+\cppblock{
+#ifdef __cpp_contracts_message
+  // High-tech solution: P3099.
+  #define PRE_MSG(expr, msg) pre(expr, msg)
+#else
+  // Low-tech solution: rely on conversion of string literals to bool
+  // to make the message part of the expression.
+  #define PRE_MSG(expr, msg) pre(bool(expr) && bool(msg))
+#endif
+
+void f(int i) \cowel_highlight_as("name-macro"){PRE_MSG}(i >= 0, "i must be positive") [[attrib]];
+}
+}
+
+Since Contracts are not yet in their final state of completion,
+there will undoubtedly be features
+that force users to guard certain pre- and postconditions behind feature-test macros.
+While making a new \tcode{#ifdef} block is always possible,
+it is much more noisy than expanding only the postcondition itself
+from a macro like \tcode{\cowel_highlight_as("name-macro"){CAP_POST}}.
 
 \h3{Remove attributes}
 
 Another option is to remove attributes from contracts entirely.
 This would give WG21 more time to discuss possible designs and
 more time to coordinate with WG14.
+In spirit,
+removal would resolve FR02-077
+because C++26 would introduce no incompatibility with the current C design.
 
 While the option is drastic,
 there are no standard attributes that motivate attribute usage on contracts.
@@ -199,23 +517,134 @@ is to allow for vendor-specific attributes,
 similar to how \ref("CWG2262") added attributes for \tcode{asm} statements.
 Despite \ref("P3088R1") providing extensive motivation
 in the form of possible \tcode{[[vendor::audit]]}, \tcode{[[vendor::assume]]}, etc. attributes,
-there may not be sufficient \em{urgency} to justify keeping attributes in C++26.
+there may not be sufficient urgency to justify keeping attributes in C++26.
+
+However, attributes have been added
+specifically because vendors have requested a standard location,
+not \q{just because},
+so the motivation for removal would have to be really compelling.
+
+\h3{Note on grammatical ambiguity}
+
+To be clear,
+both the current syntax and the FR02-077 suffix syntax have no grammatical ambiguity.
+
+\Bex{
+To provide attributes that appertain to a declaration,
+a function type, and
+a precondition, at the same time, one can write:
+\cppblock{
+[[dcl_attrib]] void f() [[f_attrib]] pre [[contract_attrib]] (true); // N5054
+[[dcl_attrib]] void f() [[f_attrib]] pre(true) [[contract_attrib]];  // FR02-077
+}
+}
+
+\Bex{
+To provide an attribute that appertains to an \grammarterm{alias-declaration},
+one can write:
+\cppblock{
+using T [[alias_attrib]] = void f() [[contract_attrib]] pre(true); // N5054
+using T [[alias_attrib]] = void f() pre(true) [[contract_attrib]]; // FR02-077
+}
+}
+
+The only \em{true} ambiguity would be introduced by a prefix syntax
+because in \tcode{void f() [[attrib]] pre(true)},
+the attribute could appertain to either the function type or the precondition.
 
 \h2{Wording}
 
 The changes are relative to \ref("N5054").
+Wording is provided for both the suffix syntax and for removal of attributes.
 
-\h3(show_number=false){[version.syn]}
+\h3{Wording for suffix syntax}
 
-Add a feature-test macro to \eelis{version.syn} as follows:
+Change the grammar in \eelis{dcl.contract.func} as follows:
 
-\Bins{
+\Bdiff{
+\dl(class="grammar"){
+  \dt{\grammarterm{function-contract-specifier-seq}:}
+  \dd{function-contract-specifier \opt{function-contract-specifier-seq}}
+
+  \dt{\grammarterm{function-contract-specifier}:}
+  \dd{precondition-specifier}
+  \dd{postcondition-specifier}
+
+  \dt{\grammarterm{precondition-specifier}:}
+  \dd{
+    \tcode{pre} \del{\opt{attribute-specifier-seq}} \tcode{(} conditional-expression \tcode{)} \ins{\opt{attribute-specifier-seq}}
+  }
+
+  \dt{\grammarterm{postcondition-specifier}:}
+  \dd{
+    \tcode{post} \del{\opt{attribute-specifier-seq}} \tcode{(} \opt{result-name-introducer} conditional-expression \tcode{)} \ins{\opt{attribute-specifier-seq}}
+  }
+}
+}
+
+Change \eelis{dcl.contract.func#3} as follows:
+
+\Bdiff{
+Each \grammarterm{function-contract-specifier}
+of a \grammarterm{function-contract-specifier-seq} (if any)
+of an unspecified first declaration\iref{basic.def}
+of a function introduces a corresponding function contract assertion for that function.
+The optional \grammarterm{attribute-specifier-seq}
+\del{following \tcode{pre} or \tcode{post}}
+\ins{of a \grammarterm{precondition-specifier} or \grammarterm{postcondition-specifier}}
+appertains to the introduced contract assertion.
+}
+
+Bump the feature-test macro in \eelis{cpp.predefined} as follows:
+
+\Bdiff{
 \itemdecl{
-#define __cpp_my_new_feature 20XXXXL // \serif{freestanding, also in \tt{<header>}}
+__cpp_contracts \del{202606L} \ins{202611L}
 }
 }
 
-A \tcode{std::vector} is a \exposid{std-vector}.
+\h3{Wording for removal}
+
+Change the grammar in \eelis{dcl.contract.func} as follows:
+
+\Bdiff{
+\dl(class="grammar"){
+  \dt{\grammarterm{function-contract-specifier-seq}:}
+  \dd{function-contract-specifier \opt{function-contract-specifier-seq}}
+
+  \dt{\grammarterm{function-contract-specifier}:}
+  \dd{precondition-specifier}
+  \dd{postcondition-specifier}
+
+  \dt{\grammarterm{precondition-specifier}:}
+  \dd{
+    \tcode{pre} \del{\opt{attribute-specifier-seq}} \tcode{(} conditional-expression \tcode{)}
+  }
+
+  \dt{\grammarterm{postcondition-specifier}:}
+  \dd{
+    \tcode{post} \del{\opt{attribute-specifier-seq}} \tcode{(} \opt{result-name-introducer} conditional-expression
+  }
+}
+}
+
+Change \eelis{dcl.contract.func#3} as follows:
+
+\Bdiff{
+Each \grammarterm{function-contract-specifier}
+of a \grammarterm{function-contract-specifier-seq} (if any)
+of an unspecified first declaration\iref{basic.def}
+of a function introduces a corresponding function contract assertion for that function.
+\del{The optional \grammarterm{attribute-specifier-seq}
+following \tcode{pre} or \tcode{post}
+appertains to the introduced contract assertion.}
+}
+
+\editnote{
+The feature-test macro is not bumped.
+Doing so would be pointless because there is no new capability after this proposal is applied.
+Effectively, it is as if attributes never existed on contracts in the first place.
+}
 
 \h2{References}
 
@@ -253,11 +682,19 @@ A \tcode{std::vector} is a \exposid{std-vector}.
 )\
 \bib(
   id = "P3098R2",
-  title = "Contracts for C++:Postcondition captures",
+  title = "Contracts for C++: Postcondition captures",
   date = "2026-05-12",
   author = "Joshua Berne",
   link = "https://wg21.link/p3098r2",
   long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3098r2.pdf",
+)\
+\bib(
+  id = "P3099R3",
+  title = "Contracts for C++: User-defined Diagnostic Messages",
+  date = "2026-07-15",
+  author = "Timur Doumler, Peter Bindels, Joshua Berne",
+  link = "https://wg21.link/p3099r3",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3099r3.pdf",
 )\
 \bib(
   id = "P3400R5",
