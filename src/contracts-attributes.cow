@@ -1,0 +1,278 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+
+\wg21_head(
+  title = {Revisiting attribute placement on Contracts}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{P3688R0}}
+  \dt{Date:}            \dd{\tt{2026-05-55}}
+  \dt{Audience:}        \dd{LEWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P3688/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/main/src/template-9.cow")}
+}
+\hr
+}
+
+\Babstract{
+This paper explores potential resolutions for NB comments FR02-077 on the C++26 DIS.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+FR02-077 states:
+\Bquote{
+The syntax is still not in phase with the compromise
+that was found in the liaison study group between WG21 and WG14:
+attributes are in the wrong place and hurt possible processing in a future C version of contracts.
+}
+
+The change would look as follows:
+
+\cppblock{
+void f() pre \del{[[attrib]]} (true);  // N5054
+void f() pre(true) \ins{[[attrib]]};   // FR02-077
+}
+
+That is, the position of the \grammarterm{attribute-specifier-seq}
+would move from after \tcode{pre} or \tcode{post}
+to after the entire \grammarterm{precondition-specifier} or \grammarterm{postcondition-specifier}.
+
+While this change was not discussed or polled during an SG22 telecon,
+it can be considered a \q{compromise} because it increases compatibility
+with the in-development C version of contracts in \ref("WG14-N3929"),
+with the following C syntax:
+
+\cowel_macro("_Pre"){\cowel_highlight_as("keyword"){_Pre}}
+
+\cppblock{
+void f(int n) \_Pre()(n > 0);
+// or
+#include <stdc_contract.h> // provides #define pre(...) _Pre(__VA_ARGS__)
+void f(int n) pre(n > 0);
+}
+
+Notably, the current C++ syntax is incompatible with the \tcode{#define pre(...)} approach
+because an attribute between \tcode{pre} and the parameter list
+would prevent macro substitution.
+Earlier revision of \ref("WG14-N3929") actually supported an attribute list
+in the same location as C++,
+i.e. \tcode{\_Pre [[attrib]] (true)} would be valid,
+but this was removed in later revisions.
+
+\h2{Possible solutions}
+
+At this point, there are three plausible solutions to this situation:
+\ol{
+  \li{
+    Keep attributes where they are, as proposed in P2900.
+  }
+  \li{
+    Move attributes to the location suggested in FR02-077,
+    i.e. after the \grammarterm{precondition-specifier}.
+  }
+  \li{
+    Remove attributes from contracts entirely for the time being and revisit the issue in C++29.
+  }
+}
+
+Find below an argument for each of the possible solutions.
+
+\h3{Keep attributes where they are}
+
+The placement of attributes on Contracts
+was explored extensively in \ref("P3088R1").
+On the subject of the suffix location, it states the following:
+
+\Bquote{
+We could consider placing the \grammarterm{attribute-specifier-seq} after the contract assertion:
+\cppblock{
+bool binary_search(Range r, const T& value)
+  pre (is_sorted(r)) [[vendor::audit]];
+void f() {
+  int i = get_i();
+  contract_assert (i > 0) [[vendor::assume]];
+  // ...
+}
+}
+While the suffix location seems technically possible — as far as we can tell,
+it does not create any outright collisions with existing grammar — it is far from ideal,
+in particularly because, just like the prefix location,
+it is not obvious to the reader what the attribute appertains to:
+\cppblock{
+// which pre does the attribute appertain to?
+void f(int* i)
+  pre(i != nullptr) [[vendor::xxx]] pre (*i > 0);
+  // does the attribute appertain to the pre or to the function g as a whole?
+void g(int j) pre(j > 0) [[vendor::yyy]];
+}
+We therefore do not propose the suffix location.
+}
+
+Besides this argument of readability,
+two extensions for Contracts are already in the pipeline for C++29
+which would also make the \tcode{#define} approach incompatible:
+\ul{
+  \li{
+    \ref("P3098R2") \q{Contracts for C++: Postcondition captures} adds:
+    \Bindent{\itemdecl{post [old_size = size()] (size() == old_size + 1)}}
+    The new \grammarterm{contract-capture-clause} following \tcode{post}
+    inhibits macro expansion of \tcode{#define post(...)}.
+  }
+  \li{
+    \ref("P3400R5") \q{Controlling Contract-Assertion Properties} adds:
+    \Bindent{\itemdecl{pre<audit>(std::is_sorted(begin, end))}}
+    The new \grammarterm{assertion-control-specifier} inhibits macro expansion.
+  }
+}
+
+WG21 has never agreed to have an approach that is entirely compatible
+with the macro-based solution in C.
+Doing so would essentially require all future extensions
+to go inside the parentheses of \tcode{pre},
+which seems undesirable.
+
+Furthermore, C compatibility with the current C++26 syntax is not entirely infeasible.
+There at least two possible approaches:
+\ul{
+  \li{
+    Make \tcode{pre} a contextual keyword in C, just like in C++,
+    rather than pursuing a \tcode{#define pre(...)} approach.
+  }
+  \li{
+    Instead define \tcode{#define pre _Pre}.
+    However, this would affect any use of the identifier,
+    including the use of \tcode{pre} as a variable name.
+  }
+}
+
+Last but not least,
+the \ref("WG14-N3929") approach is only
+superficially and syntactically compatible with C++ Contracts:
+there is no support for ignore semantic,
+there is an additional \tcode{\cowel_highlight_as("keyword"){_Inv}} specifier
+that combines preconditions and postconditions, etc.
+The author of \ref("WG14-N3929") does not seek to maximize C++ compatibility
+but vehemently opposes design principles of \ref("P2900R14").
+Even if attributes were moved to the proposed location,
+C++ Contracts with ignore semantic would remain incompatible.
+
+\Bnote{
+Ignored preconditions can still be emulated in C just like for \tcode{assert}:
+\cppblock{
+#ifdef __cplusplus
+// do nothing in C++
+#elifdef NDEBUG
+#define pre(...) _Pre(true)        // ignore on release
+#else
+#define pre(...) _Pre(__VA_ARGS__) // enforce on debug
+#endif
+
+void f() pre(cond) [[attrib]];
+}
+Assuming that the suffix syntax for attributes was used in both languages
+and that (quick-)enforce semantic is used in C++
+this approach is compatible.
+It is important that \tcode{pre} does not expand to an empty token sequence
+because the following \tcode{[[attrib]]} would otherwise apply to the function.
+}
+
+\h3{Move attributes}
+
+
+\h3{Remove attributes}
+
+Another option is to remove attributes from contracts entirely.
+This would give WG21 more time to discuss possible designs and
+more time to coordinate with WG14.
+
+While the option is drastic,
+there are no standard attributes that motivate attribute usage on contracts.
+The only reason \ref("P3088R1") supports attributes
+is to allow for vendor-specific attributes,
+similar to how \ref("CWG2262") added attributes for \tcode{asm} statements.
+Despite \ref("P3088R1") providing extensive motivation
+in the form of possible \tcode{[[vendor::audit]]}, \tcode{[[vendor::assume]]}, etc. attributes,
+there may not be sufficient \em{urgency} to justify keeping attributes in C++26.
+
+\h2{Wording}
+
+The changes are relative to \ref("N5054").
+
+\h3(show_number=false){[version.syn]}
+
+Add a feature-test macro to \eelis{version.syn} as follows:
+
+\Bins{
+\itemdecl{
+#define __cpp_my_new_feature 20XXXXL // \serif{freestanding, also in \tt{<header>}}
+}
+}
+
+A \tcode{std::vector} is a \exposid{std-vector}.
+
+\h2{References}
+
+
+\bib(
+  id = "N5054",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2026-07-16",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5054",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
+)\
+\bib(
+  id = "WG14-N3929",
+  title = "C semantics for contracts",
+  date = "2026-07-13",
+  author = "Jens Gustedt",
+  link = "https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3929.htm",
+)\
+\bib(
+  id = "P2900R14",
+  title = "Contracts for C++",
+  date = "2026-02-13",
+  author = "Joshua Berne, Timur Doumler, Andrzej Krzemieński, et al.",
+  link = "https://wg21.link/p2900",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2900r14.pdf",
+)\
+\bib(
+  id = "P3088R1",
+  title = "Attributes for contract assertions",
+  date = "2024-02-13",
+  author = "Timur Doumler, Joshua Berne",
+  link = "https://wg21.link/p3088",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3088r1.pdf",
+)\
+\bib(
+  id = "P3098R2",
+  title = "Contracts for C++:Postcondition captures",
+  date = "2026-05-12",
+  author = "Joshua Berne",
+  link = "https://wg21.link/p3098r2",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3098r2.pdf",
+)\
+\bib(
+  id = "P3400R5",
+  title = "Controlling Contract-Assertion Properties",
+  date = "2026-11-23",
+  author = "Joshua Berne",
+  link = "https://wg21.link/p3400",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3400r5.pdf",
+)\
+\bib(
+  id = "CWG2262",
+  title = "Attributes for asm-definition",
+  date = "2016-05-04",
+  author = "Richard Smith",
+  link = "https://wg21.link/cwg2262",
+)\
+
+\make_bib
