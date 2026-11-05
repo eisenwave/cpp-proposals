@@ -333,8 +333,8 @@ For reference,
 the syntax currently proposed in those papers places attributes as follows:
 \cppblock{
 void f(int i)
-  pre  [[vendor::something]] <audit>(i < size())
-  post [[vendor::something]] [old_size = size()] (size() == old_size);
+  pre<audit> [[vendor::something]] (i < size())                       // P3400
+  post [[vendor::something]] [old_size = size()](size() == old_size); // P3098
 }
 
 There are several reasons to prefer to the suffix syntax:
@@ -371,9 +371,17 @@ void f()
 }
   }
   \li{
-    With the suffix syntax,
-    there is a simple and consistent rule for both function types and contracts
-    that the attribute is placed after the closing parenthesis.
+    The suffix syntax vaguely follows precedent established by functions,
+    at least if no \tcode{const} or \tcode{noexcept} is applied.
+    That is, a \grammarterm{attribute-specifier-seq} appears
+    at the end of \grammarterm{parameters-and-qualifiers}.
+    It is unclear what precedent \ref("P3400R5") relies on,
+    as it has the syntax \tcode{pre<audit>[[attrib]](true)}.
+    This is surprising because there is
+    \q{the attribute goes after the keyword}
+    precedent set by \tcode{struct [[attrib]] S {}}
+    (i.e. in a \grammarterm{class-head}).
+    This precedent is followed by \ref("P3098R2") but not by \ref("P3400R5").
   }
   \li{
     With the current syntax,
