@@ -5,8 +5,8 @@
   title = {\tcode{std::uabs}}
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{D4247}}
-  \dt{Date:}            \dd{\tt{2026-05-25}}
+  \dt{Document number:} \dd{\docnum{P4247R0}}
+  \dt{Date:}            \dd{\tt{2026-11-06}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -54,6 +54,7 @@ WG14 has solved this problem with a
 \ref("https://cstd.eisie.net/c2y.html#decl-uabs"){\tt{uabs} function in \tt{<stdlib.h>} in C2y},
 which takes \tcode{int} and returns \tcode{unsigned int},
 meaning that the result is always representable.
+This was added by WG14 paper \ref("N3349").
 
 The C++26 standard library has also solved this problem
 with the exposition-only helper \tcode{\exposid{abs-if-needed}}
@@ -61,35 +62,60 @@ in \eelis{linalg.helpers.abs}.
 
 \h2{Motivation}
 
-While a \tcode{std::uabs} function is relatively trivial to implement,
-it should still exist in the standard library.
-C2y compatibility is one obvious reason,
-but even without that factor,
-\tcode{uabs} is a function that users frequently reinvent:
+C2y compatibility is part of the motivation,
+but not the only factor.
+
+Taking the absolute value of an integer is simply a fundamental operation
+that any standard library should provide,
+and while \tcode{std::abs} exists,
+it has undefined behavior that makes it unsafe and unusable for certain use cases.
+Consequently, \tcode{uabs} is a function that users frequently reinvent:
 a GitHub code search for
 \ref("https://github.com/search?q=language%3AC%2B%2B%20-is%3Afork%20%2F%5Cbuabs%5Cb%2F&type=code"){\tt{language:C++ -is:fork /\\buabs\\b/}}
-yields 1.1K files at the time of writing.
+yields 2.6K files at the time of writing.
+
+The numbers for Rust's \tcode{unsigned_abs} are more compelling:
+a GitHub code search for
+\ref("https://github.com/search?q=language%3Arust+%2F%5Cbunsigned_abs%5Cb%2F+-is%3Afork&type=code"){\tt{language:rust /\\bunsigned_abs\\b/ -is:fork}}
+yield 98K files at the time of writing.
 
 \h2{Design}
 
-\h3{Accepting unsigned integers}
+\h3{Accepting wider integers}
 
-Similar to \tcode{std::abs} and many functions in \header{cmath},
-the C++ counterpart to the equally named C function would accept more types.
-\tcode{std::uabs} should also accept unsigned integers
-(and would essentially be a no-op for those)
-because this is useful in generic code.
+The way C supports unsigned integers in \tcode{uabs} is problematic for adoption in C++
+because it has a single overload:
+\cppblock{
+unsigned int uabs(int j);
+}
 
-For example, a decomposition such as \tcode{decompose} in \ref("#introduction")
-is performed many times in the reference implementation of an upcoming \tcode{std::big_int}
-proposal (\ref("Reference-Impl")),
-and if the \tcode{uabs} function template in that code base didn't accept unsigned integers,
-every call site would need a special case for those.
+This means that if C++ mirrored the overload set of \tcode{std::abs},
+which also accepts \tcode{long} and \tcode{long long},
+there could silently be different results because
+argument truncation would take place only in C, but not in C++.
+For example,
+C's \tcode{uabs(1ll << 40)} produces zero due to truncation,
+whereas \tcode{std::uabs(1ll << 40)} would produce \tcode{-(1ull << 40)}.
 
-Accepting unsigned integers in \tcode{std::uabs} does not motivate a change to \tcode{std::abs}
-because its contract is arguably to take a signed integer and return a signed integer.
-Changing that after so many years of \tcode{std::abs} existing may not be a good idea
-and can be proposed separately.
+\Bnote{
+\tcode{std::abs} has a similar issue:
+\ul{
+  \li{
+    C's \tcode{abs(1ull << 40)} produces zero due to truncation,
+    whereas \tcode{std::abs(1ull << 40)} produces \tcode{-(1ull << 40)}.
+  }
+  \li{
+    C's \tcode{abs(1ull << 32)} may have UB due to negation of \tcode{INT_MIN},
+    whereas \tcode{std::abs(1ull << 32)} produces \tcode{-(1ull << 32)}.
+  }
+}
+}
+
+However, \tcode{std::uabs} should still support these wider types
+because it becomes unusable in generic code otherwise;
+it could only be used with arguments of type \tcode{int} in particular.
+Not accepting the wider types would also be surprising and inconsistent with the \tcode{std::abs}
+overload set.
 
 \h3{Accepting bit-precise integers}
 
@@ -97,7 +123,7 @@ There is no reason why \tcode{std::uabs} (or \tcode{std::abs}) couldn't accept
 bit-precise integers.
 The implementation is equally trivial for any kind of integer.
 
-There is only the slight problem that \tcode{std::abs} is not a template
+There is only a slight problem in that \tcode{std::abs} is not a template
 but an overload set of concrete functions,
 and it currently guarantees that the result is promoted.
 That is, \tcode{std::abs} invoked with a \tcode{signed char} returns \tcode{int}.
@@ -113,12 +139,23 @@ because it would leave a strange gap if only standard and bit-precise integers w
 and this gap may be a problem for generic code that is intended to support any integer type.
 
 For extended integer types,
-it is possible to extended the existing overload-based design by requiring an additional overload
+it is possible to extend the existing overload-based design by requiring an additional overload
 for any non-promotable extended integer type.
 That is, there would be no overload for an \tcode{__int8} type,
 but there would be an overload for a \tcode{__int128} type,
 meaning that for a \tcode{__int8} input,
-the overloads \q{\tcode{int std::abs(int)}} and \q{\tcode{unsigned std::uabs(int)}} get invoked.
+the overloads \q{\tcode{int std::abs(int)}} and \q{\tcode{unsigned std::uabs(int)}} are invoked.
+
+It would also be possible for the template that supports bit-precise integer types
+to accept extended integer types too.
+However, that would be inconsistent with the fact that currently,
+\tcode{std::abs} is designed to produce the result of \tcode{(j < 0 ? -j : j)}
+\em{in type and in value}.
+That is, when \tcode{-j} would be subject to integer promotion,
+\tcode{std::abs} returns the promoted result too.
+Furthermore, a template would not automatically accept unscoped enumeration types
+whose underlying type is an extended integer type,
+but those types are accepted by \tcode{std::abs}.
 
 \Bnote{
 Similarly, \tcode{std::to_chars}
@@ -126,39 +163,67 @@ mandates a separate overload for every standard or extended integer type,
 so there is some precedent for a non-template design that accepts any integer type.
 }
 
+\h3{No overloads for unsigned types}
+
+When calling C's \tcode{uabs} with \tcode{unsigned int},
+there is an implicit conversion to \tcode{int},
+and a negation takes place if the original value was greater than \tcode{INT_MAX}.
+Therefore, accepting unsigned integers \q{directly} in \tcode{std::uabs}
+(and returning the argument unchanged)
+would silently yield different results in the two languages.
+
+This is why,
+even though it would be useful in generic code,
+\tcode{std::uabs} should not accept unsigned integers directly.
+Consequently, unsigned integers would fail overload resolution
+since there would be several competing overloads for \tcode{int}, \tcode{long}.
+
+\h3{No additional functions for specific types}
+
+C2y also provides additional named overloads
+such as \tcode{ulabs}, \tcode{umaxabs}, etc.
+These are not proposed for C++ in this paper
+because there is no particular urgency to add them;
+they would exist purely for C compatibility.
+
+It would be better to wait for the eventual rebase of the standard library on C2y,
+especially considering that there have been recent changes to the names of these functions.
+In particular, \ref("N3577") renamed \tcode{uimaxabs} to \tcode{umaxabs}.
+
 \h2{Implementation}
 
 A \tcode{std::uabs} overload set can be implemented as follows:
 
 \cppblock{
-constexpr unsigned int           uabs(int x) { // C2y
-  return x < 0 ? -unsigned(x) : unsigned(x);
-}
-constexpr unsigned long int      uabs(long int x) { /* ... */ }
-constexpr unsigned long long int uabs(long long int x) { /* ... */ }
-// Overloads for extended signed integer types:
-constexpr unsigned __int128      uabs(__int128 x) { /* ... */ }
-// ...
-
-constexpr unsigned int           uabs(unsigned int x) {
-  return x;
-}
-constexpr unsigned long int      uabs(unsigned long int x) { /* ... */ }
-constexpr unsigned long long int uabs(unsigned long long int x) { /* ... */ }
-// Overloads for extended unsigned integer types:
-constexpr unsigned __int128      uabs(unsigned __int128 x) { /* ... */ }
-// ...
-
-template<\exposid{bit-precise-integer-type} T>
-std::make_unsigned_t<T> uabs(T x) {
+template<class T>
+std::make_unsigned_t<T> __uabs(T x) noexcept {
   return x < 0 ? -static_cast<make_unsigned_t<T>>(x)
                :  static_cast<make_unsigned_t<T>>(x);
 }
+
+// Standard integer types:
+constexpr unsigned int           uabs(int x) noexcept { return __uabs(x); }
+constexpr unsigned long int      uabs(long int x) noexcept { return __uabs(x); }
+constexpr unsigned long long int uabs(long long int x) { return __uabs(x); }
+
+// Extended integer types:
+constexpr unsigned __int128      uabs(__int128 x) noexcept { return __uabs(x); }
+// ...
+
+// Bit-precise integer types:
+template<\exposid{bit-precise-integer-type} T>
+std::make_unsigned_t<T> uabs(T x) noexcept { return __uabs(x); }
 }
 
 \h2{Wording}
 
-The changes are relative to \ref("N5046").
+The changes are relative to \ref("N5054").
+
+\Bimp{
+The changes that introduce new overloads for bit-precise integer types
+are only to be applied if \ref("P3666R5") (or later revision)
+has been applied to the working draft.
+}
 
 \h3(show_number=false){[version.syn]}
 
@@ -170,42 +235,151 @@ Add a feature-test macro to \eelis{version.syn} as follows:
 }
 }
 
-In \eelis{cstdlib.syn},
+In both \eelis{cstdlib.syn} and \eelis{cmath.syn},
 change the synopsis as follows:
 
 \Bdiff{
 \itemdecl{
 namespace std {
-  //\serif{ \eelis{c.math.abs}, absolute values}
-    constexpr int abs(int j);                                           // freestanding
-  constexpr long int abs(long int j);                                   // freestanding
-  constexpr long long int abs(long long int j);                         // freestanding
-  constexpr floating-point-type abs(floating-point-type j);            // freestanding-deleted
+  \etc
 
-  constexpr long int labs(long int j);                                  // freestanding
-  constexpr long long int llabs(long long int j);                       // freestanding
+  //\serif{ \eelis{c.math.abs}, absolute values}
+  constexpr int abs(int j);                                            //\serif{ freestanding}
+  constexpr long int abs(long int j);                                  //\serif{ freestanding}
+  constexpr long long int abs(long long int j);                        //\serif{ freestanding}
+\ins{  constexpr \exposid{extended-signed-type} abs(\exposid{extended-signed-type} j);          //\serif{ freestanding}
+  template<class T> constexpr T abs(T j);                              //\serif{ freestanding}}
+  constexpr \exposid{floating-point-type} abs(\exposid{floating-point-type} j);            //\serif{ freestanding-deleted}
+
+  constexpr long int labs(long int j);                                  //\serif{ freestanding}
+  constexpr long long int llabs(long long int j);                       //\serif{ freestanding}
+
+\ins{  constexpr unsigned int uabs(int j);                                            //\serif{ freestanding}
+  constexpr unsigned long int uabs(long int j);                                  //\serif{ freestanding}
+  constexpr unsigned long long int uabs(long long int j);                        //\serif{ freestanding}
+  constexpr make_unsigned_t<\exposid{extended-signed-type}> uabs(\exposid{extended-signed-type} j);  //\serif{ freestanding}
+  template<class T> constexpr make_unsigned_t<T> uabs(T j);                      //\serif{ freestanding}}
+
+  \etc
 }
+}
+}
+
+Change \eelis{c.math.abs} as follows:
+
+\Bdiff{
+¶
+\note{
+The headers \header{cstdlib} and \header{cmath}
+declare the functions described in this subclause.
+}
+
+\ins{¶
+For each function with a parameter of type \tcode{\exposid{extended-signed-type}},
+the implementation provides an overload
+for each extended signed integer type\iref{basic.fundamental}
+that is not subject to integral promotion\iref{conv.prom},
+where all uses of \tcode{\exposid{extended-signed-type}}
+in the function signature
+are replaced with that integer type.}
+
+\itemdecl{
+constexpr int abs(int j);
+constexpr long int abs(long int j);
+constexpr long long int abs(long long int j);
+\ins{constexpr \exposid{extended-signed-type} abs(\exposid{extended-signed-type} j);
+template<class T> constexpr T abs(T j);}
+}
+
+\itemdescr{
+¶
+\effects
+\del{These functions have the semantics specified in the C standard library
+for the functions \tcode{abs}, \tcode{labs}, and \tcode{llabs}, respectively.}
+\ins{Equivalent to:
+\tcode{return j < 0 ? -j : j;}}
+
+\del{¶
+\remarks
+If \tcode{abs} is called with an argument of type \tcode{X}
+for which \tcode{is_unsigned_v<X>} is \tcode{true} and if \tcode{X}
+cannot be converted to \tcode{int} by integral promotion,
+the program is ill-formed.}
+\br\del{\note{
+Allowing arguments that can be promoted to \tcode{int} provides compatibility with C.
+}}
+}
+
+\itemdecl{
+constexpr floating-point-type abs(floating-point-type x);
+}
+
+\itemdescr{
+¶
+\returns
+The absolute value of \tcode{x}.
+}
+
+See also: ISO/IEC 9899:2024, 7.12.8.3, 7.24.7.1
+}
+
+Append the following items in \eelis{c.math.abs}:
+
+\Bins{
+\itemdecl{
+constexpr unsigned int uabs(int j) noexcept;
+constexpr unsigned long int uabs(long int j) noexcept;
+constexpr unsigned long long int uabs(long long int j) noexcept;
+constexpr make_unsigned_t<\exposid{extended-signed-type}> uabs(\exposid{extended-signed-type} j) noexcept;
+template<class T> constexpr make_unsigned_t<T> uabs(T j) noexcept;
+}
+
+\itemdescr{
+¶
+Let \tcode{U} be the return type.
+
+¶
+\constraints
+\tcode{T} is a bit-precise signed integer type.
+
+¶
+\effects
+Equivalent to:
+\tcode{return j < 0 ? -static_cast<U>(j) : static_cast<U>(j);}
 }
 }
 
 \h2{References}
 
-
 \bib(
-  id = "N5046",
-  title = "Working Draft, Programming Languages — C++",
-  date = "2026-05-12",
-  author = "Thomas Köppe",
-  link = "https://wg21.link/n5046",
-  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5046.pdf",
+  id = "N3349",
+  title = "Abs Without Undefined Behavior",
+  date = "2024-09-18",
+  author = "Lenard Mollenkpf, Anton Zellerhoff",
+  link = "https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3349.pdf",
 )\
 \bib(
-  id = "P3666R4",
+  id = "N3577",
+  title = "Rename s/uimaxabs/umaxabs/",
+  date = "2025-05-09",
+  author = "Alejandro Colomar",
+  link = "https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3577.pdf",
+)\
+\bib(
+  id = "N5054",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2026-07-16",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5054",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
+)\
+\bib(
+  id = "P3666R5",
   title = "Bit-precise integers",
-  date = "2026-05-12",
+  date = "2026-10-18",
   author = "Jan Schultke",
-  link = "https://wg21.link/p3666r4",
-  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r4.html",
+  link = "https://wg21.link/p3666r5",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r5.html",
 )\
 \bib(
   id = "Reference-Impl",

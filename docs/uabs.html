@@ -1579,8 +1579,8 @@ if (theme !== null) {
 <div class=wg21-head><h1><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>uabs</h-></code></h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/D4247>D4247</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-05-25</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P4247R0>P4247R0</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-11-06</tt-></dd>
   <dt>Audience:</dt>        <dd>LEWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1604,11 +1604,15 @@ as a UB-free counterpart to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</
 <div class=toc-num data-level=2>3</div>
 <a href=#design><h2>Design</h2></a>
 <div class=toc-num data-level=3>3.1</div>
-<a href=#accepting-unsigned-integers><h3>Accepting unsigned integers</h3></a>
+<a href=#accepting-wider-integers><h3>Accepting wider integers</h3></a>
 <div class=toc-num data-level=3>3.2</div>
 <a href=#accepting-bit-precise-integers><h3>Accepting bit-precise integers</h3></a>
 <div class=toc-num data-level=3>3.3</div>
 <a href=#accepting-extended-integers><h3>Accepting extended integers</h3></a>
+<div class=toc-num data-level=3>3.4</div>
+<a href=#no-overloads-for-unsigned-types><h3>No overloads for unsigned types</h3></a>
+<div class=toc-num data-level=3>3.5</div>
+<a href=#no-additional-functions-for-specific-types><h3>No additional functions for specific types</h3></a>
 <div class=toc-num data-level=2>4</div>
 <a href=#implementation><h2>Implementation</h2></a>
 <div class=toc-num data-level=2>5</div>
@@ -1646,6 +1650,7 @@ and negating <code><h- data-h=name>INT_MIN</h-></code> is UB due to the result n
 <a href=https://cstd.eisie.net/c2y.html#decl-uabs><tt->uabs</tt-> function in <tt->&lt;stdlib.h&gt;</tt-> in C2y</a>,
 which takes <code><h- data-h=kw_type>int</h-></code> and returns <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-></code>,
 meaning that the result is always representable.
+This was added by WG14 paper <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3349%2epdf">[N3349]</a>.
 </p>
 <p>The C++26 standard library has also solved this problem
 with the exposition-only helper <code><i><h- data-h=name>abs-if-needed</h-></i></code>
@@ -1653,35 +1658,58 @@ in <a href=https://eel.is/c++draft/linalg.helpers.abs>[linalg.helpers.abs]</a>.
 </p>
 <h2 id=motivation><a class=para href=#motivation></a>2. Motivation</h2>
 
-<p>While a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>uabs</h-></code> function is relatively trivial to implement,
-it should still exist in the standard library.
-C2y compatibility is one obvious reason,
-but even without that factor,
-<code><h- data-h=name>uabs</h-></code> is a function that users frequently reinvent:
+<p>C2y compatibility is part of the motivation,
+but not the only factor.
+</p>
+<p>Taking the absolute value of an integer is simply a fundamental operation
+that any standard library should provide,
+and while <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code> exists,
+it has undefined behavior that makes it unsafe and unusable for certain use cases.
+Consequently, <code><h- data-h=name>uabs</h-></code> is a function that users frequently reinvent:
 a GitHub code search for
 <a href="https://github.com/search?q=language%3AC%2B%2B%20-is%3Afork%20%2F%5Cbuabs%5Cb%2F&type=code"><tt->language:C++ -is:fork /\buabs\b/</tt-></a>
-yields 1.1K files at the time of writing.
+yields 2.6K files at the time of writing.
+</p>
+<p>The numbers for Rust's <code><h- data-h=name>unsigned_abs</h-></code> are more compelling:
+a GitHub code search for
+<a href="https://github.com/search?q=language%3Arust+%2F%5Cbunsigned_abs%5Cb%2F+-is%3Afork&type=code"><tt->language:rust /\bunsigned_abs\b/ -is:fork</tt-></a>
+yield 98K files at the time of writing.
 </p>
 <h2 id=design><a class=para href=#design></a>3. Design</h2>
 
-<h3 id=accepting-unsigned-integers><a class=para href=#accepting-unsigned-integers></a>3.1. Accepting unsigned integers</h3>
+<h3 id=accepting-wider-integers><a class=para href=#accepting-wider-integers></a>3.1. Accepting wider integers</h3>
 
-<p>Similar to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code> and many functions in <code><h- data-h=str>&lt;cmath&gt;</h-></code>,
-the C++ counterpart to the equally named C function would accept more types.
-<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>uabs</h-></code> should also accept unsigned integers
-(and would essentially be a no-op for those)
-because this is useful in generic code.
+<p>The way C supports unsigned integers in <code><h- data-h=name>uabs</h-></code> is problematic for adoption in C++
+because it has a single overload:
+</p><code-block><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<p>This means that if C++ mirrored the overload set of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code>,
+which also accepts <code><h- data-h=kw_type>long</h-></code> and <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-></code>,
+there could silently be different results because
+argument truncation would take place only in C, but not in C++.
+For example,
+C's <code><h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=num_deco>ll</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>40</h-><h- data-h=sym_par>)</h-></code> produces zero due to truncation,
+whereas <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=num_deco>ll</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>40</h-><h- data-h=sym_par>)</h-></code> would produce <code><h- data-h=sym_op>-</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=num_deco>ull</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>40</h-><h- data-h=sym_par>)</h-></code>.
 </p>
-<p>For example, a decomposition such as <code><h- data-h=name>decompose</h-></code> in <a href=#introduction>§1. Introduction</a>
-is performed many times in the reference implementation of an upcoming <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>
-proposal (<a href="https://github%2ecom/eisenwave/std-big-int/">[Reference-Impl]</a>),
-and if the <code><h- data-h=name>uabs</h-></code> function template in that code base didn't accept unsigned integers,
-every call site would need a special case for those.
-</p>
-<p>Accepting unsigned integers in <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>uabs</h-></code> does not motivate a change to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code>
-because its contract is arguably to take a signed integer and return a signed integer.
-Changing that after so many years of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code> existing may not be a good idea
-and can be proposed separately.
+<note-block><p><intro-></intro-> 
+<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code> has a similar issue:
+</p><ul>
+  <li>
+    C's <code><h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=num_deco>ull</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>40</h-><h- data-h=sym_par>)</h-></code> produces zero due to truncation,
+    whereas <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=num_deco>ull</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>40</h-><h- data-h=sym_par>)</h-></code> produces <code><h- data-h=sym_op>-</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=num_deco>ull</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>40</h-><h- data-h=sym_par>)</h-></code>.
+  </li>
+  <li>
+    C's <code><h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=num_deco>ull</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>32</h-><h- data-h=sym_par>)</h-></code> may have UB due to negation of <code><h- data-h=name>INT_MIN</h-></code>,
+    whereas <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=num_deco>ull</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>32</h-><h- data-h=sym_par>)</h-></code> produces <code><h- data-h=sym_op>-</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=num_deco>ull</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>32</h-><h- data-h=sym_par>)</h-></code>.
+  </li>
+</ul>
+</note-block>
+
+<p>However, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>uabs</h-></code> should still support these wider types
+because it becomes unusable in generic code otherwise;
+it could only be used with arguments of type <code><h- data-h=kw_type>int</h-></code> in particular.
+Not accepting the wider types would also be surprising and inconsistent with the <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code>
+overload set.
 </p>
 <h3 id=accepting-bit-precise-integers><a class=para href=#accepting-bit-precise-integers></a>3.2. Accepting bit-precise integers</h3>
 
@@ -1689,7 +1717,7 @@ and can be proposed separately.
 bit-precise integers.
 The implementation is equally trivial for any kind of integer.
 </p>
-<p>There is only the slight problem that <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code> is not a template
+<p>There is only a slight problem in that <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code> is not a template
 but an overload set of concrete functions,
 and it currently guarantees that the result is promoted.
 That is, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code> invoked with a <code><h- data-h=kw_type>signed</h-> <h- data-h=kw_type>char</h-></code> returns <code><h- data-h=kw_type>int</h-></code>.
@@ -1705,12 +1733,23 @@ because it would leave a strange gap if only standard and bit-precise integers w
 and this gap may be a problem for generic code that is intended to support any integer type.
 </p>
 <p>For extended integer types,
-it is possible to extended the existing overload-based design by requiring an additional overload
+it is possible to extend the existing overload-based design by requiring an additional overload
 for any non-promotable extended integer type.
 That is, there would be no overload for an <code><h- data-h=kw_type>__int8</h-></code> type,
 but there would be an overload for a <code><h- data-h=kw_type>__int128</h-></code> type,
 meaning that for a <code><h- data-h=kw_type>__int8</h-></code> input,
-the overloads <q><code><h- data-h=kw_type>int</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-><h- data-h=sym_par>)</h-></code></q> and <q><code><h- data-h=kw_type>unsigned</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-><h- data-h=sym_par>)</h-></code></q> get invoked.
+the overloads <q><code><h- data-h=kw_type>int</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-><h- data-h=sym_par>)</h-></code></q> and <q><code><h- data-h=kw_type>unsigned</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-><h- data-h=sym_par>)</h-></code></q> are invoked.
+</p>
+<p>It would also be possible for the template that supports bit-precise integer types
+to accept extended integer types too.
+However, that would be inconsistent with the fact that currently,
+<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code> is designed to produce the result of <code><h- data-h=sym_par>(</h-><h- data-h=name>j</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=sym_op>-</h-><h- data-h=name>j</h-> <h- data-h=sym_punc>:</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-></code>
+<em>in type and in value</em>.
+That is, when <code><h- data-h=sym_op>-</h-><h- data-h=name>j</h-></code> would be subject to integer promotion,
+<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code> returns the promoted result too.
+Furthermore, a template would not automatically accept unscoped enumeration types
+whose underlying type is an extended integer type,
+but those types are accepted by <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code>.
 </p>
 <note-block><p><intro-></intro-> 
 Similarly, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_chars</h-></code>
@@ -1718,38 +1757,66 @@ mandates a separate overload for every standard or extended integer type,
 so there is some precedent for a non-template design that accepts any integer type.
 </p></note-block>
 
+<h3 id=no-overloads-for-unsigned-types><a class=para href=#no-overloads-for-unsigned-types></a>3.4. No overloads for unsigned types</h3>
+
+<p>When calling C's <code><h- data-h=name>uabs</h-></code> with <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-></code>,
+there is an implicit conversion to <code><h- data-h=kw_type>int</h-></code>,
+and a negation takes place if the original value was greater than <code><h- data-h=name>INT_MAX</h-></code>.
+Therefore, accepting unsigned integers <q>directly</q> in <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>uabs</h-></code>
+(and returning the argument unchanged)
+would silently yield different results in the two languages.
+</p>
+<p>This is why,
+even though it would be useful in generic code,
+<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>uabs</h-></code> should not accept unsigned integers directly.
+Consequently, unsigned integers would fail overload resolution
+since there would be several competing overloads for <code><h- data-h=kw_type>int</h-></code>, <code><h- data-h=kw_type>long</h-></code>.
+</p>
+<h3 id=no-additional-functions-for-specific-types><a class=para href=#no-additional-functions-for-specific-types></a>3.5. No additional functions for specific types</h3>
+
+<p>C2y also provides additional named overloads
+such as <code><h- data-h=name>ulabs</h-></code>, <code><h- data-h=name>umaxabs</h-></code>, etc.
+These are not proposed for C++ in this paper
+because there is no particular urgency to add them;
+they would exist purely for C compatibility.
+</p>
+<p>It would be better to wait for the eventual rebase of the standard library on C2y,
+especially considering that there have been recent changes to the names of these functions.
+In particular, <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3577%2epdf">[N3577]</a> renamed <code><h- data-h=name>uimaxabs</h-></code> to <code><h- data-h=name>umaxabs</h-></code>.
+</p>
 <h2 id=implementation><a class=para href=#implementation></a>4. Implementation</h2>
 
 <p>A <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>uabs</h-></code> overload set can be implemented as follows:
 </p>
-<code-block><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h->           <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> C2y</h->
-  <h- data-h=kw_ctrl>return</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=sym_op>-</h-><h- data-h=kw_type>unsigned</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_punc>:</h-> <h- data-h=kw_type>unsigned</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<h- data-h=sym_brac>}</h->
-<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h->      <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>}</h->
-<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>}</h->
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Overloads for extended signed integer types:</h->
-<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>__int128</h->      <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>__int128</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>}</h->
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
-
-<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h->           <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
-  <h- data-h=kw_ctrl>return</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>;</h->
-<h- data-h=sym_brac>}</h->
-<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h->      <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>}</h->
-<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>}</h->
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Overloads for extended unsigned integer types:</h->
-<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>__int128</h->      <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>__int128</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-> <h- data-h=cmt_dlim>/*</h-><h- data-h=cmt> ... </h-><h- data-h=cmt_dlim>*/</h-> <h- data-h=sym_brac>}</h->
-<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
-
-<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>bit-precise-integer-type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
-<h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>make_unsigned_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>make_unsigned_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>__uabs</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=kw_ctrl>return</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=sym_op>-</h-><h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>make_unsigned_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h->
                <h- data-h=sym_punc>:</h->  <h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>make_unsigned_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
-<h- data-h=sym_brac>}</h-></code-block>
+<h- data-h=sym_brac>}</h->
+
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Standard integer types:</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h->           <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h-> <h- data-h=kw_ctrl>return</h-> <h- data-h=name>__uabs</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h->      <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h-> <h- data-h=kw_ctrl>return</h-> <h- data-h=name>__uabs</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h-> <h- data-h=kw_ctrl>return</h-> <h- data-h=name>__uabs</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h->
+
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Extended integer types:</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>__int128</h->      <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>__int128</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h-> <h- data-h=kw_ctrl>return</h-> <h- data-h=name>__uabs</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> ...</h->
+
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Bit-precise integer types:</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>bit-precise-integer-type</h-></i> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>make_unsigned_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-> <h- data-h=sym_brac>{</h-> <h- data-h=kw_ctrl>return</h-> <h- data-h=name>__uabs</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h-></code-block>
 
 <h2 id=wording><a class=para href=#wording></a>5. Wording</h2>
 
-<p>The changes are relative to <a href="https://wg21%2elink/n5046">[N5046]</a>.
+<p>The changes are relative to <a href="https://wg21%2elink/n5054">[N5054]</a>.
 </p>
+<important-block><p><intro-></intro-> 
+The changes that introduce new overloads for bit-precise integer types
+are only to be applied if <a href="https://wg21%2elink/p3666r5">[P3666R5]</a> (or later revision)
+has been applied to the working draft.
+</p></important-block>
+
 <h3 id=version.syn><a class=para href=#version%2esyn></a>[version.syn]</h3>
 
 <p>Add a feature-test macro to <a href=https://eel.is/c++draft/version.syn>[version.syn]</a> as follows:
@@ -1758,37 +1825,136 @@ so there is some precedent for a non-template design that accepts any integer ty
 <code-block class=borderless><h- data-h=name_mac>#define __cpp_lib_uabs 20XXXXL </h-><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> </h-><f-serif><h- data-h=cmt>freestanding, also in </h-><tt-><h- data-h=cmt>&lt;header&gt;</h-></tt-></f-serif></code-block>
 </ins-block>
 
-<p>In <a href=https://eel.is/c++draft/cstdlib.syn>[cstdlib.syn]</a>,
+<p>In both <a href=https://eel.is/c++draft/cstdlib.syn>[cstdlib.syn]</a> and <a href=https://eel.is/c++draft/cmath.syn>[cmath.syn]</a>,
 change the synopsis as follows:
 </p>
 <diff-block>
 <code-block class=borderless><h- data-h=kw>namespace</h-> <h- data-h=name>std</h-> <h- data-h=sym_brac>{</h->
-  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> </h-><a href=https://eel.is/c++draft/c.math.abs>[c.math.abs]</a><h- data-h=cmt>, absolute values</h-></f-serif>
-    <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                                           <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> freestanding</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                                   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> freestanding</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> freestanding</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->            <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> freestanding-deleted</h->
+  […]
 
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>labs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                                  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> freestanding</h->
-  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>llabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                       <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> freestanding</h->
+  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> </h-><a href=https://eel.is/c++draft/c.math.abs>[c.math.abs]</a><h- data-h=cmt>, absolute values</h-></f-serif>
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                                            <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding</h-></f-serif>
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                                  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding</h-></f-serif>
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                        <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding</h-></f-serif>
+<ins>  <h- data-h=kw>constexpr</h-> <i><h- data-h=name>extended-signed-type</h-></i> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><i><h- data-h=name>extended-signed-type</h-></i> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->          <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding</h-></f-serif>
+  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                              <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding</h-></f-serif></ins>
+  <h- data-h=kw>constexpr</h-> <i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->            <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding-deleted</h-></f-serif>
+
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>labs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                                  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding</h-></f-serif>
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>llabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                       <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding</h-></f-serif>
+
+<ins>  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                                            <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding</h-></f-serif>
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                                  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding</h-></f-serif>
+  <h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                        <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding</h-></f-serif>
+  <h- data-h=kw>constexpr</h-> <h- data-h=name_type>make_unsigned_t</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>extended-signed-type</h-></i><h- data-h=sym_op>&gt;</h-> <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><i><h- data-h=name>extended-signed-type</h-></i> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->  <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding</h-></f-serif>
+  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name_type>make_unsigned_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->                      <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> freestanding</h-></f-serif></ins>
+
+  […]
 <h- data-h=sym_brac>}</h-></code-block>
 </diff-block>
+
+<p>Change <a href=https://eel.is/c++draft/c.math.abs>[c.math.abs]</a> as follows:
+</p>
+<diff-block>
+<p>¶
+[<i>Note</i>: 
+The headers <code><h- data-h=str>&lt;cstdlib&gt;</h-></code> and <code><h- data-h=str>&lt;cmath&gt;</h-></code>
+declare the functions described in this subclause.
+ — <i>end note</i>]</p>
+
+<p><ins>¶
+For each function with a parameter of type <code><i><h- data-h=name>extended-signed-type</h-></i></code>,
+the implementation provides an overload
+for each extended signed integer type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>)
+that is not subject to integral promotion (<a href=https://eel.is/c++draft/conv.prom>[conv.prom]</a>),
+where all uses of <code><i><h- data-h=name>extended-signed-type</h-></i></code>
+in the function signature
+are replaced with that integer type.</ins></p>
+
+<code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<ins><h- data-h=kw>constexpr</h-> <i><h- data-h=name>extended-signed-type</h-></i> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><i><h- data-h=name>extended-signed-type</h-></i> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name>T</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></ins></code-block>
+
+<div class=indent>
+<p>¶
+<i>Effects</i>:
+<del>These functions have the semantics specified in the C standard library
+for the functions <code><h- data-h=name>abs</h-></code>, <code><h- data-h=name>labs</h-></code>, and <code><h- data-h=name>llabs</h-></code>, respectively.</del>
+<ins>Equivalent to:
+<code><h- data-h=kw_ctrl>return</h-> <h- data-h=name>j</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=sym_op>-</h-><h- data-h=name>j</h-> <h- data-h=sym_punc>:</h-> <h- data-h=name>j</h-><h- data-h=sym_punc>;</h-></code></ins></p>
+
+<p><del>¶
+<i>Remarks</i>:
+If <code><h- data-h=name>abs</h-></code> is called with an argument of type <code><h- data-h=name>X</h-></code>
+for which <code><h- data-h=name>is_unsigned_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>X</h-><h- data-h=sym_op>&gt;</h-></code> is <code><h- data-h=bool>true</h-></code> and if <code><h- data-h=name>X</h-></code>
+cannot be converted to <code><h- data-h=kw_type>int</h-></code> by integral promotion,
+the program is ill-formed.</del>
+<br/><del>[<i>Note</i>: 
+Allowing arguments that can be promoted to <code><h- data-h=kw_type>int</h-></code> provides compatibility with C.
+ — <i>end note</i>]</del>
+</p></div>
+
+<code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-> <h- data-h=name>abs</h-><h- data-h=sym_par>(</h-><h- data-h=name>floating</h-><h- data-h=sym_op>-</h-><h- data-h=name>point</h-><h- data-h=sym_op>-</h-><h- data-h=name>type</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p>¶
+<i>Returns</i>:
+The absolute value of <code><h- data-h=name>x</h-></code>.
+</p></div>
+
+<p>See also: ISO/IEC 9899:2024, 7.12.8.3, 7.24.7.1
+</p></diff-block>
+
+<p>Append the following items in <a href=https://eel.is/c++draft/c.math.abs>[c.math.abs]</a>:
+</p>
+<ins-block>
+<code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>constexpr</h-> <h- data-h=name_type>make_unsigned_t</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>extended-signed-type</h-></i><h- data-h=sym_op>&gt;</h-> <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><i><h- data-h=name>extended-signed-type</h-></i> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name_type>make_unsigned_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>uabs</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>j</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>noexcept</h-><h- data-h=sym_punc>;</h-></code-block>
+
+<div class=indent>
+<p>¶
+Let <code><h- data-h=name>U</h-></code> be the return type.
+</p>
+<p>¶
+<i>Constraints</i>:
+<code><h- data-h=name>T</h-></code> is a bit-precise signed integer type.
+</p>
+<p>¶
+<i>Effects</i>:
+Equivalent to:
+<code><h- data-h=kw_ctrl>return</h-> <h- data-h=name>j</h-> <h- data-h=sym_op>&lt;</h-> <h- data-h=num>0</h-> <h- data-h=sym_op>?</h-> <h- data-h=sym_op>-</h-><h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>U</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>j</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_punc>:</h-> <h- data-h=kw>static_cast</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>U</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>j</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code>
+</p></div>
+</ins-block>
 
 <h2 id=references><a class=para href=#references></a>6. References</h2>
 
 
-
-<div class=bib><div id=bib-item-N5046 class=bib-item>
-<a href="https://wg21%2elink/n5046">[N5046]</a>
+<div class=bib><div id=bib-item-N3349 class=bib-item>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3349%2epdf">[N3349]</a>
+<span class=bib-author>Lenard Mollenkpf, Anton Zellerhoff.</span>
+<span class=bib-title>Abs Without Undefined Behavior</span>
+<span class=bib-date>2024-09-18</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3349%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3349.pdf</a></div><div id=bib-item-N3577 class=bib-item>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3577%2epdf">[N3577]</a>
+<span class=bib-author>Alejandro Colomar.</span>
+<span class=bib-title>Rename s/uimaxabs/umaxabs/</span>
+<span class=bib-date>2025-05-09</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3577%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3577.pdf</a></div><div id=bib-item-N5054 class=bib-item>
+<a href="https://wg21%2elink/n5054">[N5054]</a>
 <span class=bib-author>Thomas Köppe.</span>
 <span class=bib-title>Working Draft, Programming Languages — C++</span>
-<span class=bib-date>2026-05-12</span>
-<a href="https://open-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/n5046%2epdf" class=bib-link>https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5046.pdf</a></div><div id=bib-item-P3666R4 class=bib-item>
-<a href="https://wg21%2elink/p3666r4">[P3666R4]</a>
+<span class=bib-date>2026-07-16</span>
+<a href="https://open-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/n5054%2epdf" class=bib-link>https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf</a></div><div id=bib-item-P3666R5 class=bib-item>
+<a href="https://wg21%2elink/p3666r5">[P3666R5]</a>
 <span class=bib-author>Jan Schultke.</span>
 <span class=bib-title>Bit-precise integers</span>
-<span class=bib-date>2026-05-12</span>
-<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/p3666r4%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r4.html</a></div><div id=bib-item-Reference-Impl class=bib-item>
+<span class=bib-date>2026-10-18</span>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/p3666r5%2ehtml" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3666r5.html</a></div><div id=bib-item-Reference-Impl class=bib-item>
 <a href="https://github%2ecom/eisenwave/std-big-int/">[Reference-Impl]</a>
 <span class=bib-title>eisenwave/std-big-int reference implementation</span>
 <a href="https://github%2ecom/eisenwave/std-big-int/" class=bib-link>https://github.com/eisenwave/std-big-int/</a></div></div>
