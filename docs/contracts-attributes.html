@@ -1774,7 +1774,10 @@ and the proposed feature is not in the C2y working draft.
   </li>
 </ol>
 
-<p>Find below an argument for each of the possible solutions.
+<p>The direction should be examined both
+from the perspective of compatibility with future C standards, and
+purely from the perspective of which attribute location is better for C++.
+Find below an argument for each of the possible solutions.
 </p>
 <h3 id=keep-attributes-where-they-are><a class=para href=#keep-attributes-where-they-are></a>2.1. Keep attributes where they are</h3>
 
@@ -1809,17 +1812,21 @@ it is not obvious to the reader what the attribute appertains to:
 <h4 id=c-compatibility-is-limited-anyway><a class=para href=#c-compatibility-is-limited-anyway></a>2.1.2. C compatibility is limited anyway</h4>
 
 <p>Two extensions for Contracts are already in the pipeline for C++29
-which would also make the <code><h- data-h=name_mac>#define</h-></code> approach incompatible:
-</p><ul>
+which would make the <code><h- data-h=name_mac>#define pre(...)</h-></code> approach incompatible <em>in general</em>,
+no matter what changes are made to <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3929%2ehtm">[WG14-N3929]</a>
+(which wouldn't be compatible with the suffix syntax currently,
+see <a href=#procedural-disclaimers>§1.3. Procedural disclaimers</a>):
+</p>
+<ul>
   <li>
     <a href="https://wg21%2elink/p3098r2">[P3098R2]</a> <q>Contracts for C++: Postcondition captures</q> adds:
-    <div class=indent><code-block class=borderless><h- data-h=kw>post</h-> <h- data-h=sym_sqr>[</h-><h- data-h=name>old_size</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_par>(</h-><h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>==</h-> <h- data-h=name>old_size</h-> <h- data-h=sym_op>+</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code-block></div>
+    <code-block><h- data-h=kw>post</h-> <h- data-h=sym_sqr>[</h-><h- data-h=name>old_size</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_par>(</h-><h- data-h=name>size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>==</h-> <h- data-h=name>old_size</h-> <h- data-h=sym_op>+</h-> <h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code-block>
     The new <g-term>contract-capture-clause</g-term> following <code><h- data-h=kw>post</h-></code>
     inhibits macro expansion of <code><h- data-h=name_mac>#define post(...)</h-></code>.
   </li>
   <li>
     <a href="https://wg21%2elink/p3400">[P3400R5]</a> <q>Controlling Contract-Assertion Properties</q> adds:
-    <div class=indent><code-block class=borderless><h- data-h=kw>pre</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>audit</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_sorted</h-><h- data-h=sym_par>(</h-><h- data-h=name>begin</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>end</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code-block></div>
+    <code-block><h- data-h=kw>pre</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>audit</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_sorted</h-><h- data-h=sym_par>(</h-><h- data-h=name>begin</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>end</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-></code-block>
     The new <g-term>assertion-control-specifier</g-term> inhibits macro expansion.
   </li>
 </ul>
@@ -1929,11 +1936,14 @@ in an <code><h- data-h=name_mac>#ifdef</h-></code> block.
 sometimes resulting in people randomly guessing or misremembering where attributes go.
 A major issue with the suffix syntax is that it would accept the <q>random guess</q>
 of putting an attribute at the very end:
-</p><code-block><h- data-h=kw_type>void</h-> <h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>pre</h-><h- data-h=sym_par>(</h-><h- data-h=bool>true</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>attrib</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>;</h-></code-block>
+</p>
+<code-block><h- data-h=kw_type>void</h-> <h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>pre</h-><h- data-h=sym_par>(</h-><h- data-h=bool>true</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>attrib</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <p>This may be problematic when an attribute has different meaning
 depending on whether it appertains to a precondition or to the function type,
 and it's quite plausible that <code><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>attrib</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-></code> was intended to apply to <code><h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> instead.
+The same bad outcome results from appending <code><h- data-h=kw>pre</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>...</h-><h- data-h=sym_par>)</h-></code> after <code><h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>
+when <code><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>attrib</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-></code> is already applied to it.
 </p>
 <p>By comparison, the syntax <code><h- data-h=kw>pre</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>attrib</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_par>(</h-><h- data-h=bool>true</h-><h- data-h=sym_par>)</h-></code> is more fool-proof
 because the attribute is <q>sandwiched</q> inside of the <g-term>precondition-specifier</g-term>,
@@ -1998,7 +2008,7 @@ but that's not relevant to the syntactical discussion.
 </p></note-block>
 
 <p>With this style,
-it is obvious what the attributes appertain to.
+it is more apparent what the attributes appertain to.
 The rule that <code><h- data-h=kw>pre</h-></code> and <code><h- data-h=kw>post</h-></code> are at the beginning of a new line
 can also be enforced by auto-formatters.
 With vendor attributes in place,
@@ -2067,7 +2077,10 @@ This improves with a suffix syntax:
     i.e. attributes go after the captures.
     However, <a href="https://wg21%2elink/p3098r2">[P3098R2]</a> proposes the opposite ordering.
     Both relative orderings of captures and attributes
-    are counter-intuitive in their own way.
+    are counter-intuitive in their own way,
+    although if the user gets it wrong,
+    the code will simply fail to compile
+    instead of the attribute appertaining to the wrong construct.
     Even if attributes were placed after the postcondition captures
     (hypothetically),
     this could create large visual distance between the captures and
@@ -2175,6 +2188,16 @@ While making a new <code><h- data-h=name_mac>#ifdef</h-></code> block is always 
 it is much more noisy than expanding only the postcondition itself
 from a macro like <code><h- data-h=name_mac>CAP_POST</h-></code>.
 </p>
+<note-block><p><intro-></intro-> 
+All of these examples are based on the assumption
+that expanding a macro to <code><h- data-h=kw>pre</h-><h- data-h=sym_par>(</h-><h- data-h=bool>true</h-><h- data-h=sym_par>)</h-></code> does not cause any issues,
+even if the subsequent attribute is applied to <code><h- data-h=kw>pre</h-><h- data-h=sym_par>(</h-><h- data-h=bool>true</h-><h- data-h=sym_par>)</h-></code>.
+This is somewhat speculative.
+As mentioned in <a href=#macro-hazards>§2.1.4. Macro hazards</a>,
+expanding to nothing would cause issues
+because the attribute would appertain to the function instead.
+</p></note-block>
+
 <h3 id=remove-attributes><a class=para href=#remove-attributes></a>2.3. Remove attributes</h3>
 
 <p>Another option is to remove attributes from contracts entirely.
@@ -2201,7 +2224,7 @@ so the motivation for removal would have to be really compelling.
 <h3 id=note-on-grammatical-ambiguity><a class=para href=#note-on-grammatical-ambiguity></a>2.4. Note on grammatical ambiguity</h3>
 
 <p>To be clear,
-both the current syntax and the FR02-077 suffix syntax have no grammatical ambiguity.
+both the current syntax and the FR02-077 suffix syntax have no grammatical ambiguity in C++.
 </p>
 <example-block><p><intro-></intro-> 
 To provide attributes that appertain to a declaration,

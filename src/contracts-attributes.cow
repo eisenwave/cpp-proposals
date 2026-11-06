@@ -163,6 +163,9 @@ At this point, there are three plausible solutions to this situation:
   }
 }
 
+The direction should be examined both
+from the perspective of compatibility with future C standards, and
+purely from the perspective of which attribute location is better for C++.
 Find below an argument for each of the possible solutions.
 
 \h3{Keep attributes where they are}
@@ -202,17 +205,21 @@ We therefore do not propose the suffix location.
 \h4{C compatibility is limited anyway}
 
 Two extensions for Contracts are already in the pipeline for C++29
-which would also make the \tcode{#define} approach incompatible:
+which would make the \tcode{#define pre(...)} approach incompatible \em{in general},
+no matter what changes are made to \ref("WG14-N3929")
+(which wouldn't be compatible with the suffix syntax currently,
+see \ref("#procedural-disclaimers")):
+
 \ul{
   \li{
     \ref("P3098R2") \q{Contracts for C++: Postcondition captures} adds:
-    \Bindent{\itemdecl{post [old_size = size()] (size() == old_size + 1)}}
+    \cppblock{post [old_size = size()] (size() == old_size + 1)}
     The new \grammarterm{contract-capture-clause} following \tcode{post}
     inhibits macro expansion of \tcode{#define post(...)}.
   }
   \li{
     \ref("P3400R5") \q{Controlling Contract-Assertion Properties} adds:
-    \Bindent{\itemdecl{pre<audit>(std::is_sorted(begin, end))}}
+    \cppblock{pre<audit>(std::is_sorted(begin, end))}
     The new \grammarterm{assertion-control-specifier} inhibits macro expansion.
   }
 }
@@ -330,6 +337,7 @@ The attribute placement in C++ is anything but obvious,
 sometimes resulting in people randomly guessing or misremembering where attributes go.
 A major issue with the suffix syntax is that it would accept the \q{random guess}
 of putting an attribute at the very end:
+
 \cppblock{
 void f() pre(true) [[attrib]];
 }
@@ -337,6 +345,8 @@ void f() pre(true) [[attrib]];
 This may be problematic when an attribute has different meaning
 depending on whether it appertains to a precondition or to the function type,
 and it's quite plausible that \tcode{[[attrib]]} was intended to apply to \tcode{f()} instead.
+The same bad outcome results from appending \tcode{pre(...)} after \tcode{f()}
+when \tcode{[[attrib]]} is already applied to it.
 
 By comparison, the syntax \tcode{pre [[attrib]] (true)} is more fool-proof
 because the attribute is \q{sandwiched} inside of the \grammarterm{precondition-specifier},
@@ -405,7 +415,7 @@ but that's not relevant to the syntactical discussion.
 }
 
 With this style,
-it is obvious what the attributes appertain to.
+it is more apparent what the attributes appertain to.
 The rule that \tcode{pre} and \tcode{post} are at the beginning of a new line
 can also be enforced by auto-formatters.
 With vendor attributes in place,
@@ -484,7 +494,10 @@ void f()
     i.e. attributes go after the captures.
     However, \ref("P3098R2") proposes the opposite ordering.
     Both relative orderings of captures and attributes
-    are counter-intuitive in their own way.
+    are counter-intuitive in their own way,
+    although if the user gets it wrong,
+    the code will simply fail to compile
+    instead of the attribute appertaining to the wrong construct.
     Even if attributes were placed after the postcondition captures
     (hypothetically),
     this could create large visual distance between the captures and
@@ -602,6 +615,16 @@ While making a new \tcode{#ifdef} block is always possible,
 it is much more noisy than expanding only the postcondition itself
 from a macro like \tcode{\cowel_highlight_as("name-macro"){CAP_POST}}.
 
+\Bnote{
+All of these examples are based on the assumption
+that expanding a macro to \tcode{pre(true)} does not cause any issues,
+even if the subsequent attribute is applied to \tcode{pre(true)}.
+This is somewhat speculative.
+As mentioned in \ref("#macro-hazards"),
+expanding to nothing would cause issues
+because the attribute would appertain to the function instead.
+}
+
 \h3{Remove attributes}
 
 Another option is to remove attributes from contracts entirely.
@@ -628,7 +651,7 @@ so the motivation for removal would have to be really compelling.
 \h3{Note on grammatical ambiguity}
 
 To be clear,
-both the current syntax and the FR02-077 suffix syntax have no grammatical ambiguity.
+both the current syntax and the FR02-077 suffix syntax have no grammatical ambiguity in C++.
 
 \Bex{
 To provide attributes that appertain to a declaration,
