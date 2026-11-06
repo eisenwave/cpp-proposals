@@ -1,0 +1,266 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+
+\wg21_head(
+  title = {\tcode{std::widening_mul}}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{P4459R0}}
+  \dt{Date:}            \dd{\tt{2026-11-06}}
+  \dt{Audience:}        \dd{LEWG}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P4459/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/main/src/widening-mul.cow")}
+}
+\hr
+}
+
+\Babstract{
+The \tcode{std::widening_mul} function proposed in \ref("P3161R6")
+should return \tcode{std::wide_result},
+similar to \tcode{std::widening_clmul} from \ref("P3642R7").
+Wording is also provided for adding \tcode{std::widening_mul} to the working draft by itself.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+\ref("P3161R6") \q{Unified integer overflow arithmetic}
+provides a number of functions that provide crucial and extremely useful numeric operations
+such as \tcode{std::carrying_add} and \tcode{std::widening_mul}.
+
+While most of these have no remaining design issues,
+the return type of \tcode{std::widening_mul} in that paper is problematic
+because \ref("P3642R7") \q{Carry-less product: \tcode{std::clmul}}
+provides a \tcode{std::wide_result} class template specifically for the purpose
+of representing the result of widening multiplication operations.
+That paper is currently in LWG,
+and while it uses \tcode{std::wide_result} only for \tcode{std::widening_clmul},
+\tcode{std::wide_result} should also be used
+for the proposed \tcode{std::widening_mul} function template.
+\ref("P3161R6") still uses a \tcode{std::widening_mul_result} aggregate,
+and LWG pushed back on the use of an aggregate for a variety of design reasons;
+see \ref("P3642R7") for details.
+
+To resolve this dilemma,
+I propose the following direction:
+\ul{
+  \li{
+    Change \tcode{std::wide_result} so that it accepts signed integer types
+    in addition to unsigned integer types.
+    The current restriction makes sense because \tcode{std::widening_clmul}
+    only accepts unsigned types anyway,
+    but \tcode{std::widening_mul} should obviously accept integers of any signedness.
+  }
+  \li{
+    Either factor out \tcode{std::widening_mul} into this paper
+    (i.e. delete it from \ref("P3161R6"))
+    or merge the proposed changes into \ref("P3161R6").
+    Merging the changes into \ref("P3161R6") would put the burden
+    of modifying \tcode{std::wide_result} onto that paper's author,
+    which may be cumbersome and force the author
+    to become the owner of features he did not originally propose.
+  }
+}
+
+\Bnote{
+The other aggregate results in \ref("P3161R6") are a non-issue.
+\tcode{std::carrying_add_result} pairs a \tcode{T} with a \tcode{bool} member.
+These are simply two unrelated objects bundled into an aggregate,
+so considerations like endianness and matching the layout of a wider integer type are irrelevant.
+
+Similarly, \tcode{std::div_result<T>} pairs a \tcode{T} quotient and \tcode{T} remainder.
+Again, these are two unrelated objects.
+
+\tcode{std::widening_mul_result} is special because it has two members
+that store the bits of a single integer value.
+}
+
+\Bnote{
+For motivation, implementation experience, and more,
+see \ref("P3161R6").
+}
+
+\h2{Wording}
+
+The changes are relative to \ref("N5054")
+with the changes in \ref("P3642R7") applied.
+
+In \eelis{version.syn}, ad a feature-test macro as follows:
+
+\Bins{
+\itemdecl{
+#define __cpp_lib_widening_mul 20XXXXL //\serif{freestanding, also in \header{numeric}}
+}
+}
+
+In \eelis{numeric.ops.overview},
+move \tcode{wide_result} into a separate subclause,
+and add a declaration of \tcode{widening_mul}:
+
+\Bdiff{
+\itemdecl{
+\etc
+
+\ins{//\serif{ [numeric.wide.result], class template \tt{wide_result}}
+template<class T> class wide_result;}
+
+\ins{//\serif{ [numeric.wide.mul], function template \tt{widening_mul}}
+template<class T> wide_result<T> widening_mul(T x, T y) noexcept;}
+
+//\serif{ [numeric.clmul], carry-less product}
+\del{template<class T>
+class wide_result {
+public:
+  constexpr wide_result(T high, T low) noexcept
+    : \exposid{high-bits}(high), \exposid{low-bits}(low) {}
+
+  constexpr T high() const noexcept { return \exposid{high-bits}; }
+  constexpr T low() const noexcept { return \exposid{low-bits}; }
+
+  friend constexpr bool operator==(const wide_result&, const wide_result&) = default;
+  friend constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
+    noexcept;
+private:
+  T \exposid{high-bits}, \exposid{low-bits}; // \serif{exposition-only}
+};}
+
+template<class T>
+  constexpr wide_result<T> widening_clmul(T x, T y) noexcept;
+template<class T>
+  constexpr T clmul(T x, T y) noexcept;
+}
+\etc
+}
+
+Remove the following from \eelis{numeric.clmul}:
+
+\Bdel{
+¶
+A specialization \tcode{wide_result<T>} is ill-formed
+unless \tcode{T} is an unsigned integer type\iref{basic.fundamental}.
+
+¶
+A specialization \tcode{wide_result<T>} is a standard-layout,
+trivially copyable class type.
+The members \tcode{\exposid{high-bits}} and \tcode{\exposid{low-bits}}
+of any specialization of \tcode{wide_result} may be reordered.
+
+\itemdecl{
+constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
+  noexcept;
+}
+
+\itemdescr{
+¶
+\returns
+\tcode{tie(x.\exposid{high-bits}, x.\exposid{low-bits}) <=> tie(y.\exposid{high-bits}, y.\exposid{low-bits})}.
+}
+}
+
+Insert a new subclause for \tcode{wide_result} in \eelis{numeric.ops}:
+
+\Bins{
+\cowel_html_element("h3"){Class template \tcode{wide_result} \stable_ref{numeric.wide.result}}
+
+\itemdecl{
+template<class T>
+class wide_result {
+public:
+  using high_type = T;
+  using low_type = make_unsigned_t<T>;
+
+  constexpr wide_result(high_type high, low_type low) noexcept
+    : \exposid{high-bits}(high), \exposid{low-bits}(low) {}
+
+  constexpr high_type high() const noexcept { return \exposid{high-bits}; }
+  constexpr low_type low() const noexcept { return \exposid{low-bits}; }
+
+  friend constexpr bool operator==(const wide_result&, const wide_result&) = default;
+  friend constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
+    noexcept;
+private:
+  high_type \exposid{high-bits}; // \serif{exposition only}
+  low_type \exposid{low-bits};   // \serif{exposition only}
+};
+}
+
+¶
+A specialization \tcode{wide_result<T>} is ill-formed
+unless \tcode{T} is a signed or unsigned integer type\iref{basic.fundamental}.
+
+¶
+A specialization \tcode{wide_result<T>} is a standard-layout,
+trivially copyable class type.
+The members \tcode{\exposid{high-bits}} and \tcode{\exposid{low-bits}}
+of any specialization of \tcode{wide_result} may be reordered.
+
+\itemdecl{
+constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
+  noexcept;
+}
+
+\itemdescr{
+¶
+\returns
+\tcode{tie(x.\exposid{high-bits}, x.\exposid{low-bits}) <=> tie(y.\exposid{high-bits}, y.\exposid{low-bits})}.
+}
+}
+
+Insert a new subclause for \tcode{widening_mul} in \eelis{numeric.ops}:
+
+\Bins{
+\cowel_html_element("h3"){Function template \tcode{widening_mul} \stable_ref{numeric.wide.mul}}
+
+\itemdecl{
+template<class T> constexpr wide_result<T> widening_mul(T x, T y) noexcept;
+}
+
+\itemdescr{
+¶
+\constraints
+\tcode{T} is a signed or unsigned integer type\iref{basic.fundamental}.
+
+¶
+\returns
+A \tcode{wide_result<T>} object storing the bits of the product of \tcode{x} and \tcode{y},
+so that
+\tcode{\exposid{low-bits}} stores the least significant bits of the product and
+\tcode{\exposid{high-bits}} stores the subsequent bits.
+}
+}
+
+
+\h2{References}
+
+
+\bib(
+  id = "N5054",
+  title = "Working Draft, Programming Languages — C++",
+  date = "2026-07-16",
+  author = "Thomas Köppe",
+  link = "https://wg21.link/n5054",
+  long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
+)\
+\bib(
+  id = "P3161R6",
+  title = "Unified integer overflow arithmetic",
+  date = "2026-06-02",
+  author = "Tiago Freire",
+  link = "https://wg21.link/p3161r6",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3161r6.html",
+)\
+\bib(
+  id = "P3642R7",
+  title = "Carry-less product: std::clmul",
+  date = "2026-09-21",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3642r7",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3642r7.html",
+)\
+
+\make_bib
