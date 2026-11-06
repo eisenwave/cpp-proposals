@@ -18,7 +18,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{P4456R0}}
-  \dt{Date:}            \dd{\tt{2026-11-05}}
+  \dt{Date:}            \dd{\tt{2026-11-06}}
   \dt{Audience:}        \dd{EWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -37,6 +37,8 @@ This paper explores potential resolutions to NB comment FR02-077 on the C++26 DI
 \make_contents
 
 \h2{Introduction}
+
+\h3{NB Comment FR02-077}
 
 FR02-077 states:
 \Bquote{
@@ -59,11 +61,8 @@ void f() pre(true) \ins{[[attrib]]};   // FR02-077
 That is, the position of the \grammarterm{attribute-specifier-seq}
 would move from after \tcode{pre} or \tcode{post}
 to the end of the \grammarterm{precondition-specifier} or \grammarterm{postcondition-specifier}.
-
-While this change was not discussed or polled during an SG22 telecon,
-it can be considered a \q{compromise} because it increases compatibility
-with the in-development C version of contracts in \ref("WG14-N3929"),
-with the following C syntax:
+This change \em{might} be compatible with future version of C contracts
+proposed in \ref("WG14-N3929"), with the following C syntax:
 
 \cowel_macro("_Pre"){\cowel_highlight_as("keyword"){_Pre}}
 
@@ -77,27 +76,76 @@ void f(int n) pre(n > 0);
 Notably, the current C++ syntax is incompatible with the \tcode{#define pre(...)} approach
 because an attribute between \tcode{pre} and the parameter list
 would prevent macro substitution.
-Earlier revision of \ref("WG14-N3929") actually supported an attribute list
-in the same location as C++,
-i.e. \tcode{\_Pre [[attrib]] (true)} would be valid,
-but this was removed in later revisions.
-The current paper doesn't support attributes in any position,
-but the suggested suffix syntax may result in them being reintroduced.
+The current \ref("WG14-N3929") doesn't support attributes on contracts in any position,
+but the suggested suffix syntax would open up that possibility.
 
-\Bnote{
-If C had contracts and
-if \header{stdc_contract.h} were included in the C++ standard,
-this would presumably be done as a header with no effect,
-similar to \header{stdbool.h} in the past,
-which defined \tcode{true} in C while having no effect in C++.
+\h3{\tt{stdc_contract.h}}
+
+The contents of the proposed \header{stdc_contract.h} header in \ref("WG14-N3929")
+are as follows:
+
+\cppblock{
+#ifdef __cplusplus
+# define post(...) post(_ReturnValue: __VA_ARGS__)
+#else
+# ifndef inv
+#  define inv(...)  _Inv(__VA_ARGS__)
+# endif
+# ifndef pre
+#  define pre(...)  _Pre(__VA_ARGS__)
+# endif
+# ifndef post
+#  define post(...) _Post(__VA_ARGS__)
+# endif
+#endif
+}
 
 Making the C++ header also provide \tcode{#define post(...)}
 would be highly problematic because it would affect many existing functions
 such as \tcode{boost::asio::post}.
-In C, it is common practice to prefix the identifiers themselves with a library-specific prefix,
-whereas C++ developers generally assume that these short identifiers are safe to use
-(at least as a member function or in a namespace).
+This makes the \tcode{#ifdef __cpluplus} part especially strange
+because it attempts to impose a requirement on the C++ programming language
+from inside the C standard.
+
+The remaining macros are suggested to be absent in C++,
+similar to how C++'s \header{stdbool.h} used to be an empty header.
+That approach may be preferable in general,
+including for \tcode{\cowel_highlight_as("name-macro"){post}}.
+
+\h3{Procedural disclaimers}
+
+It is misleading for the NB comment to refers to the suggested change as a
+\q{compromise that was found in the liaison study group}.
+Changing the location of attributes like this was never discussed during an SG22 telecon.
+Up to and including \ref("WG14-N3789") \q{C semantics for contracts}
+(superseded by a later revision only in April 2026),
+the syntax was actually \tcode{\_Pre [[attrib]] (true)},
+which was consistent with the C++26 DIS attribute location.
+That is, the idea of deviating from the C++26 attribute location only manifested
+\em{after} the C++26 DIS was already ratified.
+
+Furthermore, applying the current change does not create compatibility with anything for now,
+not even with the most recent \ref("WG14-N3929") paper.
+This is because in the C2y grammar, the syntax is
+\q{\grammarterm{function-declarator} \opt{\grammarterm{attribute-specifier-sequence}}},
+and \ref("WG14-N3929") contracts go inside of the \grammarterm{function-declarator}.
+
+\Bex{
+As per \ref("WG14-N3929"), the attribute in the following declaration
+would appertain to \tcode{f}, not to \tcode{\_Pre}:
+\cppblock{
+void f(int n) \_Pre()(n > 0) [[vendor::audit]];
 }
+This happens because \tcode{f(int n) \_Pre()(n >0)} is a \grammarterm{function-declarator},
+so the following attribute appertains to it as a whole.
+}
+
+Instead, making this change to the C++26 DIS would open a pathway
+for future revisions of \ref("WG14-N3929")
+to make \tcode{[[vendor::audit]]} appertain to \tcode{\_Pre}.
+Whether that would actually happen is unclear;
+WG14 has not design-approved C contracts,
+and the proposed feature is not in the C2y working draft.
 
 \h2{Possible solutions}
 
@@ -744,6 +792,13 @@ Effectively, it is as if attributes never existed on contracts in the first plac
   author = "Thomas Köppe",
   link = "https://wg21.link/n5054",
   long_link = "https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf",
+)\
+\bib(
+  id = "WG14-N3789",
+  title = "C semantics for contracts",
+  date = "2026-01-25",
+  author = "Jens Gustedt",
+  link = "https://open-std.org/JTC1/SC22/WG14/www/docs/n3789.htm",
 )\
 \bib(
   id = "WG14-N3929",

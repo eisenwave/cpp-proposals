@@ -1591,7 +1591,7 @@ if (theme !== null) {
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/P4456R0>P4456R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-11-05</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2026-11-06</tt-></dd>
   <dt>Audience:</dt>        <dd>EWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1609,6 +1609,12 @@ This paper explores potential resolutions to NB comment FR02-077 on the C++26 DI
 
 <div class=toc><div class=toc-num data-level=2>1</div>
 <a href=#introduction><h2>Introduction</h2></a>
+<div class=toc-num data-level=3>1.1</div>
+<a href=#nb-comment-fr02-077><h3>NB Comment FR02-077</h3></a>
+<div class=toc-num data-level=3>1.2</div>
+<a href=#stdc_contract%2eh><h3><tt->stdc_contract.h</tt-></h3></a>
+<div class=toc-num data-level=3>1.3</div>
+<a href=#procedural-disclaimers><h3>Procedural disclaimers</h3></a>
 <div class=toc-num data-level=2>2</div>
 <a href=#possible-solutions><h2>Possible solutions</h2></a>
 <div class=toc-num data-level=3>2.1</div>
@@ -1651,6 +1657,8 @@ This paper explores potential resolutions to NB comment FR02-077 on the C++26 DI
 
 <h2 id=introduction><a class=para href=#introduction></a>1. Introduction</h2>
 
+<h3 id=nb-comment-fr02-077><a class=para href=#nb-comment-fr02-077></a>1.1. NB Comment FR02-077</h3>
+
 <p>FR02-077 states:
 </p><blockquote>
 <p>The syntax is still not in phase with the compromise
@@ -1670,11 +1678,8 @@ attributes are in the wrong place and hurt possible processing in a future C ver
 <p>That is, the position of the <g-term>attribute-specifier-seq</g-term>
 would move from after <code><h- data-h=kw>pre</h-></code> or <code><h- data-h=kw>post</h-></code>
 to the end of the <g-term>precondition-specifier</g-term> or <g-term>postcondition-specifier</g-term>.
-</p>
-<p>While this change was not discussed or polled during an SG22 telecon,
-it can be considered a <q>compromise</q> because it increases compatibility
-with the in-development C version of contracts in <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3929%2ehtm">[WG14-N3929]</a>,
-with the following C syntax:
+This change <em>might</em> be compatible with future version of C contracts
+proposed in <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3929%2ehtm">[WG14-N3929]</a>, with the following C syntax:
 </p>
 
 
@@ -1686,28 +1691,73 @@ with the following C syntax:
 <p>Notably, the current C++ syntax is incompatible with the <code><h- data-h=name_mac>#define pre(...)</h-></code> approach
 because an attribute between <code><h- data-h=kw>pre</h-></code> and the parameter list
 would prevent macro substitution.
-Earlier revision of <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3929%2ehtm">[WG14-N3929]</a> actually supported an attribute list
-in the same location as C++,
-i.e. <code><h- data-h=kw>_Pre</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>attrib</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_par>(</h-><h- data-h=bool>true</h-><h- data-h=sym_par>)</h-></code> would be valid,
-but this was removed in later revisions.
-The current paper doesn't support attributes in any position,
-but the suggested suffix syntax may result in them being reintroduced.
+The current <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3929%2ehtm">[WG14-N3929]</a> doesn't support attributes on contracts in any position,
+but the suggested suffix syntax would open up that possibility.
 </p>
-<note-block><p><intro-></intro-> 
-If C had contracts and
-if <code><h- data-h=str>&lt;stdc_contract.h&gt;</h-></code> were included in the C++ standard,
-this would presumably be done as a header with no effect,
-similar to <code><h- data-h=str>&lt;stdbool.h&gt;</h-></code> in the past,
-which defined <code><h- data-h=bool>true</h-></code> in C while having no effect in C++.
+<h3 id=stdc_contract.h><a class=para href=#stdc_contract%2eh></a>1.2. <tt->stdc_contract.h</tt-></h3>
+
+<p>The contents of the proposed <code><h- data-h=str>&lt;stdc_contract.h&gt;</h-></code> header in <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3929%2ehtm">[WG14-N3929]</a>
+are as follows:
 </p>
+<code-block><h- data-h=name_mac>#ifdef __cplusplus</h->
+<h- data-h=name_mac># define post(...) post(_ReturnValue: __VA_ARGS__)</h->
+<h- data-h=name_mac>#else</h->
+<h- data-h=name_mac># ifndef inv</h->
+<h- data-h=name_mac>#  define inv(...)  _Inv(__VA_ARGS__)</h->
+<h- data-h=name_mac># endif</h->
+<h- data-h=name_mac># ifndef pre</h->
+<h- data-h=name_mac>#  define pre(...)  _Pre(__VA_ARGS__)</h->
+<h- data-h=name_mac># endif</h->
+<h- data-h=name_mac># ifndef post</h->
+<h- data-h=name_mac>#  define post(...) _Post(__VA_ARGS__)</h->
+<h- data-h=name_mac># endif</h->
+<h- data-h=name_mac>#endif</h-></code-block>
+
 <p>Making the C++ header also provide <code><h- data-h=name_mac>#define post(...)</h-></code>
 would be highly problematic because it would affect many existing functions
 such as <code><h- data-h=name>boost</h-><h- data-h=sym_op>::</h-><h- data-h=name>asio</h-><h- data-h=sym_op>::</h-><h- data-h=kw>post</h-></code>.
-In C, it is common practice to prefix the identifiers themselves with a library-specific prefix,
-whereas C++ developers generally assume that these short identifiers are safe to use
-(at least as a member function or in a namespace).
-</p></note-block>
+This makes the <code><h- data-h=name_mac>#ifdef __cpluplus</h-></code> part especially strange
+because it attempts to impose a requirement on the C++ programming language
+from inside the C standard.
+</p>
+<p>The remaining macros are suggested to be absent in C++,
+similar to how C++'s <code><h- data-h=str>&lt;stdbool.h&gt;</h-></code> used to be an empty header.
+That approach may be preferable in general,
+including for <code><h- data-h=name_mac>post</h-></code>.
+</p>
+<h3 id=procedural-disclaimers><a class=para href=#procedural-disclaimers></a>1.3. Procedural disclaimers</h3>
 
+<p>It is misleading for the NB comment to refers to the suggested change as a
+<q>compromise that was found in the liaison study group</q>.
+Changing the location of attributes like this was never discussed during an SG22 telecon.
+Up to and including <a href="https://open-std%2eorg/JTC1/SC22/WG14/www/docs/n3789%2ehtm">[WG14-N3789]</a> <q>C semantics for contracts</q>
+(superseded by a later revision only in April 2026),
+the syntax was actually <code><h- data-h=kw>_Pre</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>attrib</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-> <h- data-h=sym_par>(</h-><h- data-h=bool>true</h-><h- data-h=sym_par>)</h-></code>,
+which was consistent with the C++26 DIS attribute location.
+That is, the idea of deviating from the C++26 attribute location only manifested
+<em>after</em> the C++26 DIS was already ratified.
+</p>
+<p>Furthermore, applying the current change does not create compatibility with anything for now,
+not even with the most recent <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3929%2ehtm">[WG14-N3929]</a> paper.
+This is because in the C2y grammar, the syntax is
+<q><g-term>function-declarator</g-term> <g-term>attribute-specifier-sequence</g-term><sub class=opt>opt</sub></q>,
+and <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3929%2ehtm">[WG14-N3929]</a> contracts go inside of the <g-term>function-declarator</g-term>.
+</p>
+<example-block><p><intro-></intro-> 
+As per <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3929%2ehtm">[WG14-N3929]</a>, the attribute in the following declaration
+would appertain to <code><h- data-h=name>f</h-></code>, not to <code><h- data-h=kw>_Pre</h-></code>:
+</p><code-block><h- data-h=kw_type>void</h-> <h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=name>n</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>_Pre</h-><h- data-h=sym_par>(</h-><h- data-h=name>n</h-> <h- data-h=sym_op>&gt;</h-> <h- data-h=num>0</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>vendor</h-><h- data-h=sym_op>::</h-><h- data-h=name>audit</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>;</h-></code-block>
+<p>This happens because <code><h- data-h=name>f</h-><h- data-h=sym_par>(</h-><h- data-h=kw_type>int</h-> <h- data-h=name>n</h-><h- data-h=sym_par>)</h-> <h- data-h=kw>_Pre</h-><h- data-h=sym_par>(</h-><h- data-h=name>n</h-> <h- data-h=sym_op>&gt;</h-><h- data-h=num>0</h-><h- data-h=sym_par>)</h-></code> is a <g-term>function-declarator</g-term>,
+so the following attribute appertains to it as a whole.
+</p></example-block>
+
+<p>Instead, making this change to the C++26 DIS would open a pathway
+for future revisions of <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3929%2ehtm">[WG14-N3929]</a>
+to make <code><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>vendor</h-><h- data-h=sym_op>::</h-><h- data-h=name>audit</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_sqr>]</h-></code> appertain to <code><h- data-h=kw>_Pre</h-></code>.
+Whether that would actually happen is unclear;
+WG14 has not design-approved C contracts,
+and the proposed feature is not in the C2y working draft.
+</p>
 <h2 id=possible-solutions><a class=para href=#possible-solutions></a>2. Possible solutions</h2>
 
 <p>At this point, there are three plausible solutions to this situation:
@@ -2308,7 +2358,12 @@ Effectively, it is as if attributes never existed on contracts in the first plac
 <span class=bib-author>Thomas Köppe.</span>
 <span class=bib-title>Working Draft, Programming Languages — C++</span>
 <span class=bib-date>2026-07-16</span>
-<a href="https://open-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/n5054%2epdf" class=bib-link>https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf</a></div><div id=bib-item-WG14-N3929 class=bib-item>
+<a href="https://open-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/n5054%2epdf" class=bib-link>https://open-std.org/jtc1/sc22/wg21/docs/papers/2026/n5054.pdf</a></div><div id=bib-item-WG14-N3789 class=bib-item>
+<a href="https://open-std%2eorg/JTC1/SC22/WG14/www/docs/n3789%2ehtm">[WG14-N3789]</a>
+<span class=bib-author>Jens Gustedt.</span>
+<span class=bib-title>C semantics for contracts</span>
+<span class=bib-date>2026-01-25</span>
+<a href="https://open-std%2eorg/JTC1/SC22/WG14/www/docs/n3789%2ehtm" class=bib-link>https://open-std.org/JTC1/SC22/WG14/www/docs/n3789.htm</a></div><div id=bib-item-WG14-N3929 class=bib-item>
 <a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg14/www/docs/n3929%2ehtm">[WG14-N3929]</a>
 <span class=bib-author>Jens Gustedt.</span>
 <span class=bib-title>C semantics for contracts</span>
