@@ -1,0 +1,528 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+
+\style{
+  .striped td {
+    border-top: 1px solid var(--border-color);
+  }
+  .striped tr:nth-child(even) td {
+    background-color: var(--deep-background-color);
+  }
+  .center {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  td.unspecified {
+    background-color: rgba(255, 0, 0, 0.2) !important;
+  }
+}
+
+\wg21_head(
+  title = {The discombobulation\br of extensible math functions}
+){
+\dl{
+  \dt{Document number:} \dd{\docnum{P4461R0}}
+  \dt{Date:}            \dd{\tt{2026-11-07}}
+  \dt{Audience:}        \dd{SG6}
+  \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+  \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+  \dt{GitHub Issue:}    \dd{\ref("https://wg21.link/P4461/github")}
+  \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/main/src/ext-math-problems.cow")}
+}
+\hr
+}
+
+\Babstract{
+\ref("P4188R1") has a clear customization mechanism,
+which is the main focus of the paper.
+However, low-level numerical details are treated as out-of-scope,
+which makes it difficult to use and customize the proposed functions for arbitrary types.
+This issue is presented using a case study of the \tcode{std::math::sqrt} customization point,
+and the issue's impact on users and library authors is presented.
+}
+
+\h2(listed=false){Contents}
+
+\make_contents
+
+\h2{Introduction}
+
+\ref("P4188R1") proposes \q{extensible math functions}.
+For example, there would be a new \tcode{std::math} function object
+which acts as a customizable alternative to \tcode{std::sqrt},
+which only supports floating-point types and also has a \tt{std::complex} overload.
+While \tcode{std::math::sqrt} is somewhat clearly specific for these inputs
+because it simply delegates to \tcode{std::sqrt},
+for user-defined types,
+few requirements are imposed.
+
+There are significant issues with the lack of clarity
+and the limited usability of the customization point,
+which are described below.
+
+\h2{The difficulty of specifying a math function}
+
+To understand the issue,
+we must first consider what aspects of a mathematical function
+may need to be specified for floating-point operands.
+
+\h3{Aspects of a math function}
+
+\dl{
+  \dt{Mathematical result}
+  \dd{The result of the mathematical operation, in terms of real number arithmetic.}
+
+  \dt{Sign of zero}
+  \dd{Whether negative or positive zero is returned.}
+
+  \dt{Subnormal flushing}
+  \dd{
+    Whether subnormal numbers are treated as if they were zero.
+    This can typically be configured via CPU flag and may improve performance
+    because handling subnormal numbers is much more expensive.
+  }
+
+  \dt{Domain of definition}
+  \dd{
+    The set of input values for which the function is defined.
+    Inputs outside this domain result either in NaN,
+    in an unspecified result, or in undefined behavior.
+    In \header{cmath} functions, a domain error may occur.
+  }
+
+  \dt{Overflow and underflow}
+  \dd{
+    In what cases an overly large result causes overflow (resulting in infinity)
+    or underflow (resulting in a subnormal number or zero, i.e. a \dfn{tiny} result).
+    Note that underflow only occurs when a result is both inexact and tiny,
+    and there is a question of whether tininess is detected before or after rounding.
+  }
+
+  \dt{Infinity and NaN propagation}
+  \dd{
+    How the function handles infinity and NaN inputs.
+    This is different from the domain of definition because \q{pre-existing}
+    infinities and NaNs are usually propagated by \header{cmath} functions.
+  }
+
+  \dt{Response to signaling NaNs}
+  \dd{
+    How signaling NaNs are handled by the function.
+    Typically, a quiet NaN is returned and a floating-point exception is raised.
+  }
+
+  \dt{\tt{errno} interaction}
+  \dd{
+    Whether upon encountering domain errors, overflow, etc.
+    \tt{errno} is accessed.
+  }
+
+  \dt{Resulting NaN payloads and sign bits}
+  \dd{
+    What bit pattern a resulting NaN has.
+    Note that there are many possible bit patterns that all represent the same NaN value,
+    and these bit patterns can be used to indicate error information.
+  }
+
+  \dt{Canonical results}
+  \dd{
+    Whether the representation of the result is canonical,
+    meaning it is not an alternative and \q{discouraged} (but valid)
+    representation of the same value.
+  }
+
+  \dt{Erroneous result in the absence of NaN or infinity}
+  \dd{
+    How domain errors, division by zero, overflow, and underflow are handled
+    when they cannot be communicated via NaN or infinity results.
+    This may be the case because the numeric type cannot represent these error values,
+    in which case the math function needs to return some arbitrary result
+    or exit abnormally (exception, \tcode{std::terminate}, etc.).
+  }
+
+  \dt{Rounding mode}
+  \dd{
+    What rounding mode is used to compute the result.
+    This is typically the current rounding mode of the floating-point environment.
+  }
+
+  \dt{Correct rounding}
+  \dd{
+    Whether correct rounding is guaranteed for the result.
+    That is, whether the computed result is always precise down to the least significant bit.
+  }
+
+  \dt{Preferred quantum exponent}
+  \dd{
+    ISO/IEC 60559 decimal interchange floating-point types represent numbers
+    as an integer \math{\mi{m}} and a base-10 exponent \math{\mi{e}},
+    so that the mathematical values is
+    \math{\mrow{\mi{m}\mo{×}\msup{\mn{10}\mi{e}}}},
+    where \math{\msup{\mn{10}\mi{e}}} is the \dfn{quantum} and
+    \math{\mi{e}} is the \dfn{quantum exponent}.
+    For example, \math{\mn{0.5}} can be represented as
+    \math{\mrow{\mn{5}\mo{×}\msup{\mn{10}\mi{-1}}}} but also as
+    \math{\mrow{\mi{50}\mo{×}\msup{\mn{10}\mi{-2}}}}.
+    A library can specify a \dfn{preferred quantum exponent} (often zero)
+    which is chosen when possible.
+  }
+
+  \dt{Floating-point exceptions}
+  \dd{
+    The floating-point exceptions raised by the function, if any.
+    The C standard floating-point exceptions include
+    \tcode{FE_INVALID},
+    \tcode{FE_DIVBYZERO},
+    \tcode{FE_OVERFLOW},
+    \tcode{FE_UNDERFLOW}, and
+    \tcode{FE_INEXACT}.
+    These exceptions are basically \q{flags} that are raised as a side product
+    of floating-point operations, often with hardware support.
+    It may also be possible to interrupt the CPU when these are raised.
+    However, the support for these is entirely optional,
+    and targets such as WebAssembly do not support them.
+  }
+
+  \dt{Constant evaluation}
+  \dd{
+    Whether constant evaluation is supported and how the compile-time behavior
+    may differ from the runtime behavior.
+    For example, a default floating-point environment is used for C++ constant expressions,
+    and results may differ for \header{cmath} functions
+    between constant evaluation and runtime evaluation.
+  }
+}
+
+\Bnote{
+The listed aspects are limited to scalar floating-point operations.
+For SIMD types, complex numbers, rational numbers, arbitrary-precision types, etc.
+there may be further considerations.
+}
+
+\h3{Case study: square root}
+
+Find below the table comparing the degree of detail
+with which the square root operation is specified in different places.
+
+\cowel_macro("mathfun"){\math{\mrow{
+  \mi{\cowel_put{0}}}
+  \mo(stretchy=false){(}
+  \mi{\cowel_put}
+  \mo(stretchy=false){)}
+}}
+
+\style{
+  #sqrt-table td:nth-child(1) {
+    font-weight: bold;
+  }
+}
+
+\table(id="sqrt-table", class="center striped"){
+  \tr{
+    \th{Detail}
+    \th{\tt{std::sqrt} or \tt{std::math::sqrt(float)}}
+    \th{\tt{std::sqrt}\br+ C Annex F & H}
+    \th{WASM \tt{f32.sqrt}\br and \tt{f64.sqrt}}
+    \th{\tt{std::math::sqrt} (user-defined types)}
+  }
+  \tr{
+    \td{Math result}
+    \td{\math{\msqrt{\mi{x}}}}
+    \td{\math{\msqrt{\mi{x}}}}
+    \td{\math{\msqrt{\mi{x}}}}
+    \td{\math{\msqrt{\mi{x}}}}
+  }
+  \tr{
+    \td{Sign of zero}
+    \td(class="unspecified"){unspecified}
+    \td{\math{\mrow{\msqrt{\mrow{\mo{±}\mn{0}}}\mo{=}\mrow{\mo{±}\mn{0}}}}}
+    \td{\math{\mrow{\msqrt{\mrow{\mo{±}\mn{0}}}\mo{=}\mrow{\mo{±}\mn{0}}}}}
+    \td(class="unspecified"){unspecified}
+  }
+  \tr{
+    \td{Subnormal flushing}
+    \td{implementation-defined}
+    \td{no}
+    \td{no}
+    \td(class="unspecified"){unspecified}
+  }
+  \tr{
+    \td{Domain}
+    \td{\math{\mrow{\mi{x}\mo{≥}\mn{0}}}}
+    \td{\math{\mrow{\mi{x}\mo{≥}\mn{0}}}}
+    \td{\math{\mrow{\mi{x}\mo{≥}\mn{0}}}}
+    \td(class="unspecified"){unspecified}
+  }
+  \tr{
+    \td{Overflow and underflow}
+    \td{underflow possible}
+    \td{underflow possible}
+    \td{underflow possible}
+    \td(class="unspecified"){unspecified}
+  }
+  \tr{
+    \td{Infinity/NaN propagation}
+    \td(class="unspecified"){unspecified}
+    \td{
+      \math{\mrow{\msqrt{\mi{∞}}\mo{=}\mi{∞}}},\br
+      \math{\mrow{\msqrt{\mi{NaN}}\mo{=}\mi{NaN}}}
+    }
+    \td{
+      \math{\mrow{\msqrt{\mi{∞}}\mo{=}\mi{∞}}},\br
+      \math{\mrow{\msqrt{\mi{NaN}}\mo{=}\mi{NaN}}}
+    }
+    \td(class="unspecified"){unspecified}
+  }
+  \tr{
+    \td{Signaling NaNs}
+    \td(class="unspecified"){unspecified}
+    \td{\math{\mrow{\msqrt{\mi{sNaN}}\mo{=}\mi{qNaN}}}}
+    \td{WASM only has quiet NaNs}
+    \td(class="unspecified"){unspecified}
+  }
+  \tr{
+    \td{\tt{errno}}
+    \td{\tcode{math_errhandling}}
+    \td{\tcode{math_errhandling}}
+    \td{not supported by WASM/emscripten}
+    \td(class="unspecified"){unspecified}
+  }
+  \tr{
+    \td{NaN bit patterns}
+    \td(class="unspecified"){unspecified}
+    \td(class="unspecified"){unspecified}
+    \td{specified since WASM 3.0 with deterministic profile}
+    \td(class="unspecified"){unspecified}
+  }
+  \tr{
+    \td{Canonical results}
+    \td(class="unspecified"){\q{typically} yes}
+    \td{yes}
+    \td{\tt{f32} and \tt{f64} are always canonical}
+    \td(class="unspecified"){unspecified}
+  }
+  \tr{
+    \td{Errors when no\br{}NaN or infinity}
+    \td{implementation-defined result}
+    \td{impossible for\br{}ISO/IEC 60559 types}
+    \td{\tt{f32} and \tt{f64} have NaN and infinity}
+    \td(class="unspecified"){unspecified}
+  }
+  \tr{
+    \td{Rounding mode}
+    \td{\tcode{FLT_ROUNDS}}
+    \td{\tcode{FLT_ROUNDS}}
+    \td{to nearest, ties to even}
+    \td(class="unspecified"){unspecified}
+  }
+  \tr{
+    \td{Correct rounding}
+    \td{no, not even in Annex F}
+    \td{no, not even in Annex F}
+    \td{yes}
+    \td(class="unspecified"){unspecified}
+  }
+  \tr{
+    \td{Preferred quantum exponent}
+    \td(class="unspecified"){no requirement}
+    \td{
+      \math{
+        \mrow{
+          \mi{Q}
+          \mo(fence=true, form="prefix", stretchy=false){(}
+          \msqrt{\mi{x}}
+          \mo(fence=true, form="suffix", stretchy=false){)}
+          \mo{=}
+          \mo(fence=true, form="prefix", stretchy=true){⌊}
+          \mfrac{
+            \mrow{
+              \mi{Q}
+              \mo(fence=true, form="prefix", stretchy=false){(}
+              \mi{x}
+              \mo(fence=true, form="suffix", stretchy=false){)}
+            }
+            \mn{2}
+          }
+          \mo(fence=true, form="suffix", stretchy=true){⌋}
+        }
+      }
+    }
+    \td{no decimal floating-point}
+    \td(class="unspecified"){unspecified}
+  }
+  \tr{
+    \td{Constant evaluation}
+    \td{supported except for errors, may differ from runtime results}
+    \td{supported except for errors, may differ from runtime results}
+    \td{not applicable}
+    \td(class="unspecified"){unspecified}
+  }
+}
+
+\Bnote{
+The \ref("P4188R1") column refers to guarantees provided for the customizable interface
+of \tcode{std::math::sqrt},
+specified by the \q{Contract} subsection in §5.1.1.1.
+\ref("P4188R1") provides specializations for fundamental floating-point types
+and for \tt{std::complex},
+where \tcode{std::math::sqrt} is equivalent to \tcode{std::sqrt}.
+However, this equivalence doesn't provide any insight into how \tcode{std::math::sqrt}
+should behave for user-defined types,
+including but not limited to \q{software floating-point types} (aka. \q{soft floats}).
+}
+
+\h4{Too unclear for many users}
+
+From this table,
+we can tell that in generic code where we don't know the input type,
+virtually all aspects are unspecified.
+While the interface is more rigorously specified for fundamental floating-point types,
+those are already covered by \tcode{std::sqrt}.
+A user who knows they are working with a fundamental floating-point type
+has no need for this customization point and can call \tcode{std::sqrt} directly.
+
+\h4{Too unclear for library authors}
+
+This severe underspecification also makes it difficult to provide
+customizations as a library author.
+Consider for example how an author of Bloomberg's \tt{bdldfp_decimal} library
+for decimal floating-point types would customize \tcode{std::math::sqrt}
+for \tcode{bdldfp::Decimal64}:
+they would have nothing more than the description \q{\math{\msqrt{\mi{x}}}},
+leaving them with questions such as:
+\ul{
+  \li{How should rounding work?}
+  \li{Should \tcode{math_errhandling} and thus \tcode{errno} be used?}
+  \li{Should the preferred quantum exponent be that of \tcode{std::sqrt}?}
+  \li{Should the operation strictly adhere to the ISO/IEC 60559 \tt{squareRoot} operation?}
+}
+
+\h4{Unclear design strategy}
+
+The issues faced by users and library authors are a result of the fact
+that the overall design strategy of \ref("P4188R1") is unclear.
+Are these customization points intended to be
+\ul{
+  \li{
+    \dfn{maximally strict}, i.e. adhere to ISO/IEC 60559 and perform correct rounding,
+  }
+  \li{
+    \dfn{maximally fast}, i.e. prioritize computing \math{\msqrt{\mi{x}}}
+    and deliberately ignore any of these details,
+    in the spirit of \tt{-ffast-math}, or
+  }
+  \li{
+    \dfn{maximally C-compatible}, i.e. behave as closely as possible to \tcode{std::sqrt},
+    even inheriting questionable quirks like writing to \tcode{errno}?
+  }
+}
+
+Since there is an unbounded set of user-defined types,
+at the very least,
+there needs to be a \q{fallback} or \q{when in doubt} answer whenever a question arises,
+and the overall design strategy could do that.
+
+Simply saying \q{the priority is whatever the library author wants}
+does not work because the delegation of \tcode{std::math::sqrt} to \tcode{std::sqrt}
+could make choices that conflict with a library author's intent.
+For example, if they want to customize \tcode{std::math::sqrt} for their type to be maximally fast,
+then \tcode{std::math::sqrt} would be a great inconvenience
+because its performance is impeded by checking for negative inputs and writing to \tcode{errno}.
+Furthermore, if one library author customizes \tcode{std::math::sqrt} to be maximally fast
+and another customizes \tcode{std::math::sqrt} to be maximally strict,
+how can \tcode{std::math::sqrt} be used portably in generic code by users?
+They would have no idea what kind of square root they are signing up for.
+
+\h2{One or multiple customization points}
+
+The possible strategies in \ref("#unclear-design-strategy") hint at another problem:
+since there are radically different \q{top priorities} (strictness, performance, C compatibility),
+it is not obvious that there should be a single \tcode{std::math::sqrt} customization point
+instead of two, three, or even more customization points.
+There could be \tcode{std::math::fast_sqrt} and
+\tcode{std::math::cr_sqrt}
+customization points, for example.
+
+Analogously, the C standard reserves the prefix \tcode{cr_} for correctly rounded
+(see \ref("#aspects-of-a-math-function"))
+counterparts to the existing math functions.
+Correct rounding is often difficult to implement and may incur a severe performance penalty,
+which makes it a bad default for operations in general,
+but it does make sense to let users explicitly opt into correct rounding.
+Thus, in the future, we may have
+\ul{
+  \li{the current \tcode{std::sqrt} function which prioritizes performance, and}
+  \li{
+    a new \tcode{std::cr_sqrt} function which prioritizes strictness/accuracy,
+    similar to the one in \ref("P3864R1").
+  }
+}
+
+\ref("P4188R1") somewhat covers this problem in
+§2.3.1.1 \q{Rounding modes, precision/performance control}
+and states that there could be e.g. an additional template parameter
+to provide further customization.
+However, as shown in the discussion above,
+it's already unclear what the \q{base form} of the customization point should be.
+
+This problem is further compounded by the fact that different domains have different priorities.
+For example, in computer graphics, accuracy is often irrelevant because
+whether a vertex is off by one pixel or whether an RGB value
+is off by one is usually not noticeable.
+For scientific computing on the other hand,
+accuracy is often paramount.
+This makes a library author who is providing some numeric type
+and customizing \tcode{std::math::sqrt} ask the question:
+\Bquote{
+Am I customizing \tcode{std::math::sqrt} for performance or for accuracy?
+}
+For a domain-specific third-party library,
+there may be an obvious answer,
+but not in general.
+
+\h2{Conclusion}
+
+WG21 must come to a consensus on the overarching design strategy
+for the numeric behavior of extensible math functions.
+
+\ref("P4188R1") in its current form leaves virtually all aspects of e.g. \tcode{std::math::sqrt}
+up to the author's discretion,
+except for fundamental types (delegated to \tcode{std::sqrt}) and for \tt{std::complex}.
+Unpopular historical choices
+like \tcode{std::sqrt} writing to \tcode{errno} make this delegation questionable.
+\ref("P4188R1") focuses almost exclusively on the mechanism for customization;
+low-level numerical details are treated as out-of-scope.
+
+A plausible response from WG21 may also be that clarifying the behavior of the customization point
+(instead of just pointing at \tcode{std::sqrt})
+is effectively redesigning a math library from scratch.
+It is implausible that the capacity and expertise required to do so exists in WG21
+(or in SG6, the Numeric study group), as compared to WG14,
+which has a larger and much more active floating-point study group.
+After all, the floating-point specification in the C++ standard
+has been severely neglected for decades
+and only tiny extensions like \tcode{std::lerp} have been added over the years,
+compared to WG14's mega-projects like new C23 math functions,
+C23 Annex F and Annex H, etc.
+
+\h2{References}
+
+\bib(
+  id = "P3864R1",
+  title = "Correctly rounded floating-point maths functions",
+  date = "2026-02-22",
+  author = "Guy Davidson, Jan Schultke",
+  link = "https://wg21.link/p3864r1",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3864r1.pdf",
+)\
+\bib(
+  id = "P4188R1",
+  title = "Extensible Math Functions for C++",
+  date = "2026-07-04",
+  author = "Stéphane Gros-Lemesre",
+  link = "https://wg21.link/p4188r1",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4188r1.pdf",
+)\
+
+\make_bib
