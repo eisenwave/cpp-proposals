@@ -1,0 +1,580 @@
+\: cowel 0.10.2
+\cowel_include("libwg21-9.cow")
+\cowel_include("libslides-9.cow")
+
+\cowel_macro("footsep"){\'EM SPACE'|\'EM SPACE'}
+
+\cowel_macro("slidefoot"){
+J. Schultke, M. Borland, C. Kormanyos
+\footsep
+Slides for P4444R1
+\'EM DASH'
+\tcode{std::big_int}
+\footsep
+Búzios 2026
+\footsep
+Slide \(slidenum)
+}
+
+\style{
+section>h1 {
+  margin-top: calc(0.15 * var(--sw)) !important;
+  line-height: 0.8;
+  font-size: 500%;
+  text-align: center;
+}
+
+#docnum {
+  font-family: var(--sans-serif-family);
+  font-size: 40%;
+  font-weight: normal;
+}
+
+li>ul {
+  margin-top: 0;
+}
+
+.center {
+  margin-left: auto;
+  margin-right: auto;
+}
+.striped tr:nth-child(even) td {
+  background-color: var(--deep-background-color);
+}
+
+#tony-table {
+  margin-left: auto;
+  margin-right: auto;
+  width: 90%;
+  table-layout: fixed;
+}
+#tony-table td {
+  background-color: var(--deep-background-color);
+  width: 50%;
+}
+#tony-table code-block {
+  margin: 0.25em auto;
+  width: fit-content;
+}
+section math {
+  font-size: 100%;
+}
+
+ol ol,
+ol ul,
+ul ol,
+ul ul {
+  margin: 0;
+}
+}
+
+\wg21_head(
+    title = {Slides for P4444R1 \br \tcode{std::big_int}}
+){
+\dl{
+    \dt{Document number:} \dd{\docnum{DXXXXR0}}
+    \dt{Date:}            \dd{\tt{2026-11-08}}
+    \dt{Audience:}        \dd{SG6}
+    \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
+    \dt{Reply-To:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
+    \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/big-int-slides.cow")}
+}
+\hr
+\slide_controls
+}
+
+\slide{
+\cowel_html_element("h1"){\tcode{std::big_int}\br
+\span(id="docnum"){P4444R1}}
+}
+
+\slide{
+\slideh{Introduction}
+
+\tcode{std::big_int} is an \dfn{arbitrary-precision},
+\dfn{elastic}, numeric class type.
+
+\cppblock{
+#include <big_int>
+
+std::big_int x = 1n << 1'000'000; // \cowel_highlight_as("comment"){\math{\msup{\mn{2}\mn{1,000,000}}}}
+}
+
+\dl{
+  \dt{arbitrary-precision}
+  \dd{
+    It has no fixed size.
+    It can represent arbitrarily large integers (up to \tcode{max_size()}).
+    If needed, dynamic allocations take place.
+  }
+
+  \dt{elastic}
+  \dd{
+    It grows and shrink as needed without explicit request to fit the result.
+  }
+}
+}
+
+\slide{
+\slideh{History}
+
+\ul{
+  \li{Several prior proposals tried to standardize \tcode{std::integer}:\ul{
+    \li{\ref("N1692") (2004), \ref("N1744") (2005), \ref("N2143") (2007)}
+    \li{all abandoned, despite positive reception}
+  }}
+  \li{Meanwhile, arbitrary-precision integer support becomes the norm:\ul{
+    \li{
+      \b{Builtin}: Python, Ruby, Lisp, Scheme, Racket, Clojure,
+      Haskell, Prolog, Wolfram Language, Maxima, Erlang, JavaScript, TypeScript
+    }
+    \li{
+      \b{Standard library}:
+      Java, Kotlin, Julia, C#, F#, Visual Basic .NET, Go, Perl, Ada, Zig, Standard ML, MATLAB, PHP
+    }
+  }}
+  \li{third-party solutions like Boost.Multiprecision in C++}
+}
+}
+
+\slide{
+\slideh{More people use \tt{big_int} than you think}
+
+\table(class="center striped"){
+  \tr{
+    \th{Language}
+    \th{GitHub code search}
+    \th{# Files}
+  }
+  \tr{
+    \td{TypeScript}
+    \td{
+      \ref("https://github.com/search?q=language%3ATypeScript+%2F%5Cbbigint%2F+-is%3Afork&type=code"){\tt{language:TypeScript  /\\bbigint/ -is:fork}}
+    }
+    \td{1.9M}
+  }
+  \tr{
+    \td{Java}
+    \td{
+      \ref("https://github.com/search?q=language%3AJava++%2F%5Cbbigint%2F+-is%3Afork&type=code"){\tt{language:Java  /\\bbigint/ -is:fork}}
+    }
+    \td{1.3M}
+  }
+  \tr{
+    \td{JavaScript}
+    \td{
+      \ref("https://github.com/search?q=language%3AJavaScript+%2F%5Cbbigint%2F+-is%3Afork&type=code"){\tt{language:JavaScript  /\\bbigint/ -is:fork}}
+    }
+    \td{999K}
+  }
+  \tr{
+    \td{C++}
+    \td{
+      \ref("https://github.com/search?q=language%3AC%2B%2B+%2F%5Cb%28big%7Ccpp%29_%3Fu%3Fint%2F+-is%3Afork&type=code"){\tt{language:C++ /\\b(big|cpp)_?u?int/ -is:fork}}
+    }
+    \td{468K}
+  }
+  \tr{
+    \td{Rust}
+    \td{
+      \ref("https://github.com/search?q=language%3ARust+%2F%5Cbbig_%3Fint%2F+-is%3Afork&type=code"){\tt{language:Rust /\\bbig_?int/ -is:fork}}
+    }
+    \td{198K}
+  }
+}
+
+\Bnote{
+For reference,
+there are ~4.5M C++ files using \tcode{unordered_map}.
+}
+}
+
+\slide{
+\slideh{Motivation}
+
+\ol{
+  \li{\tcode{big_int} is needed to represent large numbers\ul{
+    \li{sometimes \dfn{potentially big}, sometimes \dfn{actually big}}
+    \li{serialization, scientific computing, cryptography, …}
+  }}
+  \li{\tcode{big_int} is a vocabulary type}
+  \li{\tcode{big_int} makes correctness easy}
+  \li{\tcode{big_int} enables \q{\tt{rational}}, \q{\tt{big_float}}, and \q{\tt{big_decimal}}}
+  \li{\tcode{big_int} is extremely platform-dependent and hard to implement\ul{
+    \li{
+      \tt{beman.big_int} has > 1000
+      \tcode{#if}, \tcode{#elif}, and \tcode{if constexpr}
+    }
+  }}
+}
+}
+
+\slide{
+\slideh{\tt{big_int} is a vocabulary type}
+
+\style{
+#big-int-vocabulary {
+  position: relative;
+  width: 100%;
+  margin: 0.5em auto 0;
+}
+#big-int-vocabulary > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+#big-int-vocabulary .big-int-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#big-int-vocabulary .big-int-column {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  font-family: var(--serif-family);
+  font-size: 90%;
+  font-weight: 400;
+  line-height: 1;
+}
+#big-int-vocabulary .big-int-column.left {
+  left: 2.5%;
+  width: 25%;
+}
+#big-int-vocabulary .big-int-column.right {
+  right: 2.5%;
+  width: 25%;
+}
+#big-int-vocabulary .big-int-column > div {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  transform: translateY(-75%);
+  text-align: center;
+}
+#big-int-vocabulary .big-int-column > div:nth-child(1) { top: 10.714%; }
+#big-int-vocabulary .big-int-column > div:nth-child(2) { top: 23.810%; }
+#big-int-vocabulary .big-int-column > div:nth-child(3) { top: 36.905%; }
+#big-int-vocabulary .big-int-column > div:nth-child(4) { top: 50%; }
+#big-int-vocabulary .big-int-column > div:nth-child(5) { top: 63.095%; }
+#big-int-vocabulary .big-int-column > div:nth-child(6) { top: 76.190%; }
+#big-int-vocabulary .big-int-column > div:nth-child(7) { top: 89.286%; }
+#big-int-vocabulary .big-int-center-label {
+  position: absolute;
+  top: 50%;
+  left: 40.5%;
+  width: 19%;
+  transform: translateY(-50%);
+  font-family: var(--monospace-family);
+  font-size: 100%;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+}
+
+\cowel_html_element("div", attr=(id="big-int-vocabulary")){
+  \cowel_text_as_html{\cowel_include_text("../slides/big-int-vocabulary.svg")}
+  \cowel_text_as_html{
+    <div class="big-int-labels">
+      <div class="big-int-column left">
+        <div>Crypto Library</div>
+        <div>Spreadsheet</div>
+        <div>Database</div>
+        <div>Config File</div>
+        <div>GUI Toolkit</div>
+        <div>Numeric Library</div>
+        <div>Logging Library</div>
+      </div>
+      <div class="big-int-center-label">std::big_int</div>
+      <div class="big-int-column right">
+        <div>Crypto Library</div>
+        <div>Spreadsheet</div>
+        <div>Database</div>
+        <div>Config File</div>
+        <div>GUI Toolkit</div>
+        <div>Numeric Library</div>
+        <div>Logging Library</div>
+      </div>
+    </div>
+  }
+}
+}
+
+\slide{
+\slideh{Design philosophy}
+
+\ol(style="font-size: 125%"){
+  \li{\tcode{big_int} should be easy to use and feel like \tcode{int}.}
+  \li{\tcode{big_int} should be viable for almost all applications.}
+  \li{\tcode{big_int} should allow the user to provide additional operations without overhead.}
+  \li{\tcode{big_int} should have \u{value-preserving} conversions.}
+  \li{\tcode{big_int} should be \tcode{constexpr}.}
+}
+}
+
+\slide{
+\slideh{Interface}
+
+\cppblock{
+// in header <big_int>
+namespace std {
+  using uint_multiprecision_t = \exposid{implementation-defined};
+
+  template<size_t min_inplace_capacity, /* in bits */
+           class Limb  = uint_multiprecision_t,
+           class Alloc = allocator<uint_multiprecision_t>>
+    class basic_big_int;
+
+  using big_int = basic_big_int<\exposid{implementation-defined}>;
+
+  inline namespace literals { /* for 123n ... */ }
+}
+}
+}
+
+\slide{
+\slideh{Mental model}
+
+\ul{
+  \li{\tcode{big_int} is a \q{\tt{small_vector}} with numeric operators}
+  \li{representation uses sign and magnitude, small object optimization}
+}
+
+\cppblock{
+template</* ... */> class basic_big_int { // example layout
+  uint32_t limb_count_and_sign, limb_capacity;
+  union {
+    uint64_t inplace_storage[/* ... */];
+    uint64_t* dynamic_storage;
+  };
+  constexpr span<const uint64_t> representation() const noexcept;
+  // big_int is not a container: no begin(), no end()
+};
+}
+}
+
+\slide{
+\slideh{Small object optimization}
+
+\ul{
+  \li{\b{Idea}: store small integers in the container}
+  \li{\b{Benefit}: avoid heap allocations for small values\ul{
+    \li{much more beneficial than for \tcode{std::string}}
+    \li{values outside 64-bit range are uncommon in many applications}
+    \li{zero memory access for small \tcode{big_int} passed by register}
+  }}
+  \li{\b{Cost}: additional branches, more invalidation, possibly larger container}
+  \li{customizable via \tcode{min_inplace_capacity} parameter\ul{
+    \li{default should typically be \tcode{64} for \tcode{std::big_int}}
+  }}
+}
+}
+
+\slide{
+\slideh{Accessing the limb array}
+
+\cppblock{
+span<const uint_multiprecision_t> representation() const noexcept;
+}
+
+\ul{
+  \li{\b{Motivation}: let user add \tcode{big_int} ops. without overhead\ul{
+    \li{e.g. \tcode{popcount(const big_int&)} by counting bits in each limb}
+    \li{pointer can be passed to runtime library, possibly GMP}
+  }}
+  \li{little-endian (least significant limb first) ⇒ cheap truncation/zero-ext.}
+  \li{\b{Invariant}: always canonicalized (no trailing zero limbs)\ul{
+    \li{canonicalize once on write ⇒ avoid trimming on every read}
+  }}
+  \li{invalidated by most operations, including move construction}
+}
+}
+
+\slide{
+\slideh{Operators are complicated}
+
+\ul{
+  \li{ops should not wastefully allocate:\ul{
+    \li{in \tcode{(x+y+z)}, second addition should reuse alloc. of \tcode{x+y}}
+    \li{user gets performance benefits without mental effort}
+    \li{\tcode{x|=y} should modify limbs of \tcode{x} in-place if possible}
+    \li{for large \tcode{_BitInt(N)} operands, no temporary \tcode{big_int} created}
+  }}
+  \li{different algorithms chosen at compile time:\ul{
+    \li{use \tcode{_BitInt} if possible}
+    \li{use simple algorithms to keep more code in runtime library}
+  }}
+  \li{different algorithms chosen based on limb count}
+}
+}
+
+\slide{
+\slideh{Operators \'EM DASH' Example of division}
+
+\div(style="font-size: 90%"){
+\cppblock{
+template<class L, class R>
+  constexpr \exposid{common-big-int-type}<L, R> operator/(L&& x, R&& y);
+}
+
+\ol{
+  \li{If constant-evaluated, delegate to \tcode{_BitInt(N)} division if available}
+  \li{Otherwise, if both are single-limb, use builtin division operator}
+  \li{Otherwise, if right operand is single-limb, use short division (#1, #2)}
+  \li{Otherwise, if both are ≤ 128-bit, use \tcode{__udivti3} for GCC and Clang}
+  \li{Otherwise, use long division (#3)}
+}
+
+\cppblock{
+void short_div(span<u64> dest, span<const u64> x, u64 y);              // #1
+void short_div(span<u64> x_dest, u64 y);                               // #2
+void long_div (span<u64> dest, span<const u64> x, span<const u64> y);  // #3
+}
+}
+}
+
+\slide{
+\slideh{Initialization and conversion}
+
+\cppblock{
+std::big_int x;              // default-init represents zero
+std::big_int y = 1n + 1N;    // init using UDL
+std::big_int z = 1;          // implicit int → big_int
+
+auto a = std::big_int(1.0);  // explicit trunc. double → big_int
+auto b = int(z);             // explicit trunc. big_int → int
+auto c = double(z);          // explicit big_int → double
+
+auto u = std::saturating_cast<int>(z);
+std::string s = std::to_string(z); // std::format("{}", z)
+std::from_chars(s.data(), s.data() + s.size(), z);
+// ...
+}
+}
+
+\slide{
+\slideh{Library support}
+
+Existing library facilities receive specializations/overloads:
+\ul{
+  \li{\tcode{std::hash} (hashing the integer value)}
+  \li{\tcode{std::numeric_limits} (first class type to be supported)}
+  \li{\tcode{std::in_range} (but not \tcode{std::cmp_*})}
+  \li{\tcode{std::abs}, \tcode{std::gcd}, \tcode{std::lcm}, \tcode{std::midpoint}}
+  \li{\tcode{std::saturating_cast} (but not rest of saturation arithmetic)}
+  \li{\header{charconv}, \header{format}, and \tcode{std::to_string}}
+}
+
+\header{bit} support is omitted for now;
+consider e.g. \tcode{std::countl_zero}.
+}
+
+\slide{
+\slideh{Case study \'EM DASH' \tcode{std::abs}}
+
+\div(style="font-size: 85%"){
+\cppblock{
+template<size_t b, class L, class A>
+  constexpr basic_big_int<b, L, A> abs(const basic_big_int<b, L, A>& j);
+template<size_t b, class L, class A>
+  constexpr basic_big_int<b, L, A> abs(basic_big_int<b, L, A>&& j) noexcept;
+}
+}
+
+\ul{
+  \li{all specializations supported, not just \tcode{std::big_int}}
+  \li{multiple overloads better than forwarding reference\ul{
+    \li{only one instantiation for lvalues and \tcode{const} lvalues}
+  }}
+  \li{\tcode{noexcept} because of sign and magnitude representation\ul{
+    \li{\tcode{std::abs} clears the sign bit and returns \tcode{j}}
+  }}
+  \li{does \header{cstdlib} provide \tcode{std::big_int} now?}
+}
+}
+
+\slide{
+\slideh{Challenges specific to standardization}
+
+\ul{
+  \li{increased complexity of any future integer utility (like \tcode{std::simd})}
+  \li{high implementation effort, especially for numeric parts\ul{
+    \li{\b{Possible solution}: factor out portion into third-party component}
+    \li{\tt{beman.big_int} has some hand-written assembly}
+    \li{precedent provided by Boost.Math}
+  }}
+  \li{\tcode{big_int} ABI would be hard to change}
+  \li{\tcode{big_int} overloads bloat lightweight headers like \header{charconv}}
+  \li{ecosystem remains fragmented at first (see \ref("https://xkcd.com/927/"){xkcd \'EM DASH' Standards})}
+}
+}
+
+\slide{
+\slideh{Naming}
+
+\style{
+.compact h3,
+.compact h4 {
+  margin-bottom: 0.0;
+}
+.compact ul {
+  margin-top: 0;
+  margin-top: 0;
+}
+}
+
+\div(class="compact"){
+\cowel_html_element("h4", (class="subh")){\tcode{std::big_int}}
+\ul{
+  \li{almost every standard lib. in other languages uses \q{big integer}}
+  \li{\tcode{std::integer} is unclear, confusable with concept like \tcode{std::integral}}
+}
+
+\cowel_html_element("h4"){\tcode{operator""n}}
+\ul{
+  \li{chosen for symmetry with JavaScript}
+}
+
+\cowel_html_element("h4"){\tcode{std::uint_multiprecision_t}}
+\ul{
+  \li{seems more fitting and focused than \q{limb type}}
+  \li{name deliberately long; type is necessary \tcode{std::intmax_t}-like evil}
+}
+}
+}
+
+\bib(
+  id = "N1692",
+  title = "A Proposal to add the Infinite Precision Integer to the C++ Standard Library",
+  date = "2004-07-01",
+  author = "M.J. Kronenburg",
+  link = "https://wg21.link/n1692",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2004/n1692.pdf",
+)\
+\bib(
+  id = "N1744",
+  title = "Big Integer Library Proposal for C++0x",
+  date = "2005-01-13",
+  author = "Michiel Salters",
+  link = "https://wg21.link/n1744",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1744.pdf",
+)\
+\bib(
+  id = "N2143",
+  title = "Proposal for an Infinite Precision Integer for Library Technical Report 2",
+  date = "2007-01-11",
+  author = "M.J. Kronenburg",
+  link = "https://wg21.link/n2143",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2007/n2143.pdf",
+)\
+\bib(
+  id = "N4035",
+  title = "Implicit Evaluation of “auto” Variables and Arguments",
+  date = "2014-05-23",
+  author = "Joel Falcou, Peter Gottschling, Herb Sutter",
+  link = "https://wg21.link/n4035",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4035.html",
+)\
+
