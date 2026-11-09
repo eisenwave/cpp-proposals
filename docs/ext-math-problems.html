@@ -1596,7 +1596,7 @@ if (theme !== null) {
 <div class=wg21-head><h1>The discombobulation<br/> of extensible math functions</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/P4461R0>P4461R0</a></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/D4461R1>D4461R1</a></dd>
   <dt>Date:</dt>            <dd><tt->2026-11-09</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
@@ -1632,6 +1632,8 @@ and the issue's impact on users and library authors is presented.
 <a href=#too-unclear-for-library-authors><h4>Too unclear for library authors</h4></a>
 <div class=toc-num data-level=4>2.2.3</div>
 <a href=#unclear-design-strategy><h4>Unclear design strategy</h4></a>
+<div class=toc-num data-level=4>2.2.4</div>
+<a href=#square-root-in-linalg><h4>Square root in <tt->&lt;linalg&gt;</tt-></h4></a>
 <div class=toc-num data-level=2>3</div>
 <a href=#one-or-multiple-customization-points><h2>One or multiple customization points</h2></a>
 <div class=toc-num data-level=2>4</div>
@@ -1663,6 +1665,8 @@ may need to be specified for floating-point operands.
 </p>
 <h3 id=aspects-of-a-math-function><a class=para href=#aspects-of-a-math-function></a>2.1. Aspects of a math function</h3>
 
+<p>Any mathematical function that involves floating-point numbers has the following aspects:
+</p>
 <dl>
   <dt>Mathematical result</dt>
   <dd>The result of the mathematical operation, in terms of real number arithmetic.</dd>
@@ -1794,20 +1798,97 @@ For SIMD types, complex numbers, rational numbers, arbitrary-precision types, et
 there may be further considerations.
 </p></note-block>
 
+<p>Of these aspects, the most important one is correct rounding,
+as many mathematical properties only hold under correct rounding.
+A few such mathematical properties are listed below,
+but this list is not exhaustive.
+</p>
+
+
+<dl>
+  <dt>Monotonicity</dt>
+  <dd>
+    Does <math display=inline><mrow><mi>x</mi><mo>≤</mo><mi>y</mi></mrow></math> imply
+    <math display=inline><mrow><mrow>
+  <mi>f</mi></mrow>
+  <mo stretchy=false>(</mo>
+  <mi>x</mi>
+  <mo stretchy=false>)</mo>
+<mo>≤</mo><mrow>
+  <mi>f</mi></mrow>
+  <mo stretchy=false>(</mo>
+  <mi>y</mi>
+  <mo stretchy=false>)</mo>
+</mrow></math>?
+  </dd>
+
+  <dt>Boundedness, non-negativity</dt>
+  <dd>
+    Does <math display=inline><mrow><mrow>
+  <mi>f</mi></mrow>
+  <mo stretchy=false>(</mo>
+  <mi>x</mi>
+  <mo stretchy=false>)</mo>
+<mo>≥</mo><mn>0</mn></mrow></math> hold,
+    or any other bounds?
+    If the result is merely said to be an approximation within some distance
+    of the mathematical result, strict bounds like non-negativity may not hold.
+  </dd>
+
+  <dt>Fixed points</dt>
+  <dd>
+    Does <math display=inline><mrow><mrow>
+  <mi>f</mi></mrow>
+  <mo stretchy=false>(</mo>
+  <mi>x</mi>
+  <mo stretchy=false>)</mo>
+<mo>=</mo><mi>x</mi></mrow></math> hold for any <math display=inline><mi>x</mi></math>?
+  </dd>
+
+  <dt>Multiplicativity</dt>
+  <dd>
+    Does <math display=inline><mrow>
+  <mi>f</mi></mrow>
+  <mo stretchy=false>(</mo>
+  <mrow><mi>x</mi><mi>y</mi></mrow>
+  <mo stretchy=false>)</mo>
+</math> equal
+    <math display=inline><mrow><mrow>
+  <mi>f</mi></mrow>
+  <mo stretchy=false>(</mo>
+  <mi>x</mi>
+  <mo stretchy=false>)</mo>
+<mrow>
+  <mi>f</mi></mrow>
+  <mo stretchy=false>(</mo>
+  <mi>y</mi>
+  <mo stretchy=false>)</mo>
+</mrow></math>?
+  </dd>
+</dl>
+
 <h3 id=case-study:-square-root><a class=para href=#case-study:-square-root></a>2.2. Case study: square root</h3>
 
 <p>Find below the table comparing the degree of detail
 with which the square root operation is specified in different places.
 </p>
-
-
 <style>
-  #sqrt-table td:nth-child(1) {
+  .sqrt-table td:nth-child(1) {
     font-weight: bold;
+  }
+  .sqrt-table {
+    table-layout: fixed;
   }
 </style>
 
-<table id=sqrt-table class="center striped">
+<table class="sqrt-table center striped">
+  <colgroup>
+    <col style="width: 20%"></col>
+    <col style="width: 20%"></col>
+    <col style="width: 20%"></col>
+    <col style="width: 20%"></col>
+    <col style="width: 20%"></col>
+  </colgroup>
   <tr>
     <th>Detail</th>
     <th><tt->std::sqrt</tt-> or <tt->std::math::sqrt(float)</tt-></th>
@@ -1949,6 +2030,66 @@ with which the square root operation is specified in different places.
   </tr>
 </table>
 
+<p>Based on the properties above and using some additional guarantees provided by the specification
+we can derived several secondary properties for the functions:
+</p>
+<table class="sqrt-table center striped">
+  <colgroup>
+    <col style="width: 20%"></col>
+    <col style="width: 20%"></col>
+    <col style="width: 20%"></col>
+    <col style="width: 20%"></col>
+    <col style="width: 20%"></col>
+  </colgroup>
+  <tr>
+    <th>Secondary property</th>
+    <th><tt->std::sqrt</tt-> or <tt->std::math::sqrt(float)</tt-></th>
+    <th><tt->std::sqrt</tt-><br/>+ C Annex F &amp; H</th>
+    <th>WASM <tt->f32.sqrt</tt-><br/> and <tt->f64.sqrt</tt-></th>
+    <th><tt->std::math::sqrt</tt-> (user-defined types)</th>
+  </tr>
+  <tr>
+    <td>Deterministic</td>
+    <td>❌ no, incorrect rounding, unspec. NaN payloads, compile-time and runtime differences, excess precision</td>
+    <td>❌ no, incorrect rounding, unspec. NaN payloads, compile-time and runtime differences, excess precision</td>
+    <td>✅ yes</td>
+    <td>❌ no</td>
+  </tr>
+  <tr>
+    <td>Monotonic</td>
+    <td>❌ no, due to lack of correct rounding</td>
+    <td>❌ no, due to lack of correct rounding</td>
+    <td>✅ yes</td>
+    <td>❌ no</td>
+  </tr>
+  <tr>
+    <td>Non-negative</td>
+    <td>✅ yes</td>
+    <td>✅ yes</td>
+    <td>✅ yes</td>
+    <td>❌ no</td>
+  </tr>
+  <tr>
+    <td>Fixed points</td>
+    <td>❌ none</td>
+    <td>
+       <math display=inline><mrow><msqrt><mrow><mo>±</mo><mn>0</mn></mrow></msqrt><mo>=</mo><mrow><mo>±</mo><mn>0</mn></mrow></mrow></math>
+    </td>
+    <td>
+      <math display=inline><mrow><msqrt><mrow><mo>±</mo><mn>0</mn></mrow></msqrt><mo>=</mo><mrow><mo>±</mo><mn>0</mn></mrow></mrow></math>,<br/>
+      <math display=inline><mrow><msqrt><mn>1</mn></msqrt><mo>=</mo><mn>1</mn></mrow></math>
+    </td>
+    <td>❌ none</td>
+  </tr>
+  <tr>
+    <td>Multiplicative</td>
+    <td>❌ no</td>
+    <td>❌ no</td>
+    <td>⚠️ only if all operations are exact</td>
+    <td>❌ no</td>
+  </tr>
+</table>
+
 <note-block><p><intro-></intro-> 
 The <a href="https://wg21%2elink/p4188r1">[P4188R1]</a> column refers to guarantees provided for the customizable interface
 of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>math</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code>,
@@ -1961,15 +2102,88 @@ should behave for user-defined types,
 including but not limited to <q>software floating-point types</q> (aka. <q>soft floats</q>).
 </p></note-block>
 
+<note-block><p><intro-></intro-> 
+Some of these properties combine into other meaningful guarantees.
+For example, monotonicity and the fixed points at <math display=inline><mn>0</mn></math> and <math display=inline><mn>1</mn></math> imply that:
+</p><math display=block><mrow>
+  <mn>0</mn><mo>≤</mo><msqrt><mi>x</mi></msqrt><mo>≤</mo><mn>1</mn>
+  <mo>,</mo><mspace width=0.5em></mspace><mtext>for</mtext><mspace width=0.25em></mspace>
+  <mn>0</mn><mo>≤</mo><mi>x</mi><mo>≤</mo><mn>1</mn>
+</mrow></math>
+
+</note-block>
+
 <h4 id=too-unclear-for-many-users><a class=para href=#too-unclear-for-many-users></a>2.2.1. Too unclear for many users</h4>
 
 <p>From this table,
 we can tell that in generic code where we don't know the input type,
 virtually all aspects are unspecified.
-While the interface is more rigorously specified for fundamental floating-point types,
+Without any guarantee regarding determinism, monotonicity, non-negativity, etc.,
+the function becomes essentially unusable for some applications
+because violating certain assumptions results in numerical instability, crashes,
+and other unexpected behavior.
+</p>
+<example-block><p><intro-></intro-> 
+A quaternion representing a rotation should satisfy
+<math display=inline><mrow>
+  <msup><mi>w</mi><mn>2</mn></msup><mo>+</mo>
+  <msup><mi>x</mi><mn>2</mn></msup><mo>+</mo>
+  <msup><mi>y</mi><mn>2</mn></msup><mo>+</mo>
+  <msup><mi>z</mi><mn>2</mn></msup>
+  <mo>=</mo><mn>1</mn>
+</mrow></math>.
+A function to normalize a quaternion may looks as follows:
+</p>
+<code-block><h- data-h=kw>struct</h-> <h- data-h=name>quat</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=name>number</h-> <h- data-h=name>w</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>y</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>z</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+
+<h- data-h=name>quat</h-> <h- data-h=name>normalize</h-><h- data-h=sym_par>(</h-><h- data-h=name>quat</h-> <h- data-h=name>q</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=name>number</h-> <h- data-h=name>r</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>math</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-><h- data-h=sym_par>(</h-><h- data-h=name>q</h-><h- data-h=sym_op>.</h-><h- data-h=name>w</h-><h- data-h=sym_op>*</h-><h- data-h=name>q</h-><h- data-h=sym_op>.</h-><h- data-h=name>w</h-> <h- data-h=sym_op>+</h-> <h- data-h=name>q</h-><h- data-h=sym_op>.</h-><h- data-h=name>x</h-><h- data-h=sym_op>*</h-><h- data-h=name>q</h-><h- data-h=sym_op>.</h-><h- data-h=name>x</h-> <h- data-h=sym_op>+</h-> <h- data-h=name>q</h-><h- data-h=sym_op>.</h-><h- data-h=name>y</h-><h- data-h=sym_op>*</h-><h- data-h=name>q</h-><h- data-h=sym_op>.</h-><h- data-h=name>y</h-> <h- data-h=sym_op>+</h-> <h- data-h=name>q</h-><h- data-h=sym_op>.</h-><h- data-h=name>z</h-><h- data-h=sym_op>*</h-><h- data-h=name>q</h-><h- data-h=sym_op>.</h-><h- data-h=name>z</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=sym_brac>{</h->
+    <h- data-h=name>q</h-><h- data-h=sym_op>.</h-><h- data-h=name>w</h-> <h- data-h=sym_op>/</h-> <h- data-h=name>r</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>q</h-><h- data-h=sym_op>.</h-><h- data-h=name>x</h-> <h- data-h=sym_op>/</h-> <h- data-h=name>r</h-><h- data-h=sym_punc>,</h->
+    <h- data-h=name>q</h-><h- data-h=sym_op>.</h-><h- data-h=name>y</h-> <h- data-h=sym_op>/</h-> <h- data-h=name>r</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>q</h-><h- data-h=sym_op>.</h-><h- data-h=name>z</h-> <h- data-h=sym_op>/</h-> <h- data-h=name>r</h-><h- data-h=sym_punc>,</h->
+  <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+
+<ul>
+  <li>
+    If subnormal flushing or simply low accuracy can incorrectly produce zero,
+    <code><h- data-h=name>normalize</h-></code> divides by zero.
+  </li>
+  <li>
+    Without a strict guarantee that <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>math</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&gt;=</h-> <h- data-h=num>0</h-></code> holds,
+    we might get a <q>negative unit quaternion</q>.
+  </li>
+  <li>
+    Without a deterministic <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>math</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code>,
+    we cannot guarantee that <code><h- data-h=name>normalize</h-></code> is deterministic either.
+  </li>
+  <li>
+    Without guarantees that negative inputs are accepted in <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>math</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code>
+    (and result in NaN),
+    <code><h- data-h=name>normalize</h-></code> may crash or throw.
+  </li>
+  <li>
+    Without correct rounding and with no fixed points,
+    normalization could actually make the quaternion drift away from being a unit quaternion.
+    Without a fixed point at <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>math</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code>,
+    even exact unit quaternions may drift.
+  </li>
+</ul>
+</example-block>
+
+<p>While the interface is more rigorously specified for fundamental floating-point types,
 those are already covered by <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code>.
 A user who knows they are working with a fundamental floating-point type
 has no need for this customization point and can call <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code> directly.
+</p>
+<p>This leaves the use case of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>math</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code> relatively limited,
+to situations where we write code as if it was doing real number arithmetic,
+ignoring most of these details.
+To be fair, such use cases do exist, and C++26 <code><h- data-h=str>&lt;linalg&gt;</h-></code> is one of them,
+as it works with user-defined types and uses <code><h- data-h=kw>operator</h-><h- data-h=sym_op>+</h-></code> as a customization point
+with basically no specific requirements.
 </p>
 <h4 id=too-unclear-for-library-authors><a class=para href=#too-unclear-for-library-authors></a>2.2.2. Too unclear for library authors</h4>
 
@@ -2022,6 +2236,22 @@ Furthermore, if one library author customizes <code><h- data-h=name>std</h-><h- 
 and another customizes <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>math</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code> to be maximally strict,
 how can <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>math</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code> be used portably in generic code by users?
 They would have no idea what kind of square root they are signing up for.
+</p>
+<h4 id=square-root-in-linalg><a class=para href=#square-root-in-linalg></a>2.2.4. Square root in <tt->&lt;linalg&gt;</tt-></h4>
+
+<p>The C++26 linear algebra library can be used as a case study
+of how mathematical operations could be performed on user-defined types.
+<a href=https://eel.is/c++draft/linalg.reqs.alg>[linalg.reqs.alg]</a> imposes requirements on the meaning of
+<code><h- data-h=sym_op>*</h-></code>, <code><h- data-h=sym_op>*=</h-></code>, and other operators.
+</p>
+<p><a href="https://cplusplus%2egithub%2eio/LWG/issue4315">[LWG4315]</a> pointed out
+that the specification of <code><h- data-h=name>vector_two_norm</h-></code> and <code><h- data-h=name>matrix_frob_norm</h-></code> is unclear
+since the functions return a <q>square root</q> without any specification
+of how a square root is computed.
+This issue was resolved for C++26
+by limiting those functions to floating-point types and to <tt->std::complex</tt->.
+Presumably, the <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>math</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code> proposed in <a href="https://wg21%2elink/p4188r1">[P4188R1]</a>
+could be used to obtain such a generic square root for arbitrary types.
 </p>
 <h2 id=one-or-multiple-customization-points><a class=para href=#one-or-multiple-customization-points></a>3. One or multiple customization points</h2>
 
@@ -2108,6 +2338,11 @@ C23 Annex F and Annex H, etc.
 <span class=bib-author>Stéphane Gros-Lemesre.</span>
 <span class=bib-title>Extensible Math Functions for C++</span>
 <span class=bib-date>2026-07-04</span>
-<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/p4188r1%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4188r1.pdf</a></div></div>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/p4188r1%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4188r1.pdf</a></div><div id=bib-item-LWG4315 class=bib-item>
+<a href="https://cplusplus%2egithub%2eio/LWG/issue4315">[LWG4315]</a>
+<span class=bib-author>Mark Hoemmen.</span>
+<span class=bib-title>Insufficient specification of vector_two_norm and matrix_frob_norm</span>
+<span class=bib-date>2025-08-14</span>
+<a href="https://cplusplus%2egithub%2eio/LWG/issue4315" class=bib-link>https://cplusplus.github.io/LWG/issue4315</a></div></div>
 </main></body>
 </html>

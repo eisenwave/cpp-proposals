@@ -22,7 +22,7 @@
   title = {The discombobulation\br of extensible math functions}
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P4461R0}}
+  \dt{Document number:} \dd{\docnum{D4461R1}}
   \dt{Date:}            \dd{\tt{2026-11-09}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
@@ -68,6 +68,8 @@ we must first consider what aspects of a mathematical function
 may need to be specified for floating-point operands.
 
 \h3{Aspects of a math function}
+
+Any mathematical function that involves floating-point numbers has the following aspects:
 
 \dl{
   \dt{Mathematical result}
@@ -200,25 +202,67 @@ For SIMD types, complex numbers, rational numbers, arbitrary-precision types, et
 there may be further considerations.
 }
 
+Of these aspects, the most important one is correct rounding,
+as many mathematical properties only hold under correct rounding.
+A few such mathematical properties are listed below,
+but this list is not exhaustive.
+
+\cowel_macro("mf"){\mrow{
+  \mi{\cowel_put{0}}}
+  \mo(stretchy=false){(}
+  \cowel_put
+  \mo(stretchy=false){)}
+}
+
+\dl{
+  \dt{Monotonicity}
+  \dd{
+    Does \math{\mrow{\mi{x}\mo{≤}\mi{y}}} imply
+    \math{\mrow{\mf("f"){\mi{x}}\mo{≤}\mf("f"){\mi{y}}}}?
+  }
+
+  \dt{Boundedness, non-negativity}
+  \dd{
+    Does \math{\mrow{\mf("f"){\mi{x}}\mo{≥}\mn{0}}} hold,
+    or any other bounds?
+    If the result is merely said to be an approximation within some distance
+    of the mathematical result, strict bounds like non-negativity may not hold.
+  }
+
+  \dt{Fixed points}
+  \dd{
+    Does \math{\mrow{\mf("f"){\mi{x}}\mo{=}\mi{x}}} hold for any \math{\mi{x}}?
+  }
+
+  \dt{Multiplicativity}
+  \dd{
+    Does \math{\mf("f"){\mrow{\mi{x}\mi{y}}}} equal
+    \math{\mrow{\mf("f"){\mi{x}}\mf("f"){\mi{y}}}}?
+  }
+}
+
 \h3{Case study: square root}
 
 Find below the table comparing the degree of detail
 with which the square root operation is specified in different places.
 
-\cowel_macro("mathfun"){\math{\mrow{
-  \mi{\cowel_put{0}}}
-  \mo(stretchy=false){(}
-  \mi{\cowel_put}
-  \mo(stretchy=false){)}
-}}
-
 \style{
-  #sqrt-table td:nth-child(1) {
+  .sqrt-table td:nth-child(1) {
     font-weight: bold;
+  }
+  .sqrt-table {
+    table-layout: fixed;
   }
 }
 
-\table(id="sqrt-table", class="center striped"){
+\table(class="sqrt-table center striped"){
+  \colgroup{
+    \col(style="width: 20%")
+    \col(style="width: 20%")
+    \col(style="width: 20%")
+    \col(style="width: 20%")
+    \col(style="width: 20%")
+  }
   \tr{
     \th{Detail}
     \th{\tt{std::sqrt} or \tt{std::math::sqrt(float)}}
@@ -360,6 +404,66 @@ with which the square root operation is specified in different places.
   }
 }
 
+Based on the properties above and using some additional guarantees provided by the specification
+we can derived several secondary properties for the functions:
+
+\table(class="sqrt-table center striped"){
+  \colgroup{
+    \col(style="width: 20%")
+    \col(style="width: 20%")
+    \col(style="width: 20%")
+    \col(style="width: 20%")
+    \col(style="width: 20%")
+  }
+  \tr{
+    \th{Secondary property}
+    \th{\tt{std::sqrt} or \tt{std::math::sqrt(float)}}
+    \th{\tt{std::sqrt}\br+ C Annex F & H}
+    \th{WASM \tt{f32.sqrt}\br and \tt{f64.sqrt}}
+    \th{\tt{std::math::sqrt} (user-defined types)}
+  }
+  \tr{
+    \td{Deterministic}
+    \td{❌ no, incorrect rounding, unspec. NaN payloads, compile-time and runtime differences, excess precision}
+    \td{❌ no, incorrect rounding, unspec. NaN payloads, compile-time and runtime differences, excess precision}
+    \td{✅ yes}
+    \td{❌ no}
+  }
+  \tr{
+    \td{Monotonic}
+    \td{❌ no, due to lack of correct rounding}
+    \td{❌ no, due to lack of correct rounding}
+    \td{✅ yes}
+    \td{❌ no}
+  }
+  \tr{
+    \td{Non-negative}
+    \td{✅ yes}
+    \td{✅ yes}
+    \td{✅ yes}
+    \td{❌ no}
+  }
+  \tr{
+    \td{Fixed points}
+    \td{❌ none}
+    \td{
+       \math{\mrow{\msqrt{\mrow{\mo{±}\mn{0}}}\mo{=}\mrow{\mo{±}\mn{0}}}}
+    }
+    \td{
+      \math{\mrow{\msqrt{\mrow{\mo{±}\mn{0}}}\mo{=}\mrow{\mo{±}\mn{0}}}},\br
+      \math{\mrow{\msqrt{\mn{1}}\mo{=}\mn{1}}}
+    }
+    \td{❌ none}
+  }
+  \tr{
+    \td{Multiplicative}
+    \td{❌ no}
+    \td{❌ no}
+    \td{⚠️ only if all operations are exact}
+    \td{❌ no}
+  }
+}
+
 \Bnote{
 The \ref("P4188R1") column refers to guarantees provided for the customizable interface
 of \tcode{std::math::sqrt},
@@ -372,15 +476,90 @@ should behave for user-defined types,
 including but not limited to \q{software floating-point types} (aka. \q{soft floats}).
 }
 
+\Bnote{
+Some of these properties combine into other meaningful guarantees.
+For example, monotonicity and the fixed points at \math{\mn{0}} and \math{\mn{1}} imply that:
+\mathblock{\mrow{
+  \mn{0}\mo{≤}\msqrt{\mi{x}}\mo{≤}\mn{1}
+  \mo{,}\mspace(width="0.5em"){}\mtext{for}\mspace(width="0.25em"){}
+  \mn{0}\mo{≤}\mi{x}\mo{≤}\mn{1}
+}}
+
+}
+
 \h4{Too unclear for many users}
 
 From this table,
 we can tell that in generic code where we don't know the input type,
 virtually all aspects are unspecified.
+Without any guarantee regarding determinism, monotonicity, non-negativity, etc.,
+the function becomes essentially unusable for some applications
+because violating certain assumptions results in numerical instability, crashes,
+and other unexpected behavior.
+
+\Bex{
+A quaternion representing a rotation should satisfy
+\math{\mrow{
+  \msup{\mi{w}\mn{2}}\mo{+}
+  \msup{\mi{x}\mn{2}}\mo{+}
+  \msup{\mi{y}\mn{2}}\mo{+}
+  \msup{\mi{z}\mn{2}}
+  \mo{=}\mn{1}
+}}.
+A function to normalize a quaternion may looks as follows:
+
+\cppblock{
+struct quat {
+  number w, x, y, z;
+};
+
+quat normalize(quat q) {
+  number r = std::math::sqrt(q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z);
+  return {
+    q.w / r, q.x / r,
+    q.y / r, q.z / r,
+  };
+}
+}
+
+\ul{
+  \li{
+    If subnormal flushing or simply low accuracy can incorrectly produce zero,
+    \tcode{normalize} divides by zero.
+  }
+  \li{
+    Without a strict guarantee that \tcode{std::math::sqrt(x) >= 0} holds,
+    we might get a \q{negative unit quaternion}.
+  }
+  \li{
+    Without a deterministic \tcode{std::math::sqrt},
+    we cannot guarantee that \tcode{normalize} is deterministic either.
+  }
+  \li{
+    Without guarantees that negative inputs are accepted in \tcode{std::math::sqrt}
+    (and result in NaN),
+    \tcode{normalize} may crash or throw.
+  }
+  \li{
+    Without correct rounding and with no fixed points,
+    normalization could actually make the quaternion drift away from being a unit quaternion.
+    Without a fixed point at \tcode{std::math::sqrt(1)},
+    even exact unit quaternions may drift.
+  }
+}
+}
+
 While the interface is more rigorously specified for fundamental floating-point types,
 those are already covered by \tcode{std::sqrt}.
 A user who knows they are working with a fundamental floating-point type
 has no need for this customization point and can call \tcode{std::sqrt} directly.
+
+This leaves the use case of \tcode{std::math::sqrt} relatively limited,
+to situations where we write code as if it was doing real number arithmetic,
+ignoring most of these details.
+To be fair, such use cases do exist, and C++26 \header{linalg} is one of them,
+as it works with user-defined types and uses \tcode{operator+} as a customization point
+with basically no specific requirements.
 
 \h4{Too unclear for library authors}
 
@@ -433,6 +612,22 @@ Furthermore, if one library author customizes \tcode{std::math::sqrt} to be maxi
 and another customizes \tcode{std::math::sqrt} to be maximally strict,
 how can \tcode{std::math::sqrt} be used portably in generic code by users?
 They would have no idea what kind of square root they are signing up for.
+
+\h4{Square root in \tt{<linalg>}}
+
+The C++26 linear algebra library can be used as a case study
+of how mathematical operations could be performed on user-defined types.
+\eelis{linalg.reqs.alg} imposes requirements on the meaning of
+\tcode{*}, \tcode{*=}, and other operators.
+
+\ref("LWG4315") pointed out
+that the specification of \tcode{vector_two_norm} and \tcode{matrix_frob_norm} is unclear
+since the functions return a \q{square root} without any specification
+of how a square root is computed.
+This issue was resolved for C++26
+by limiting those functions to floating-point types and to \tt{std::complex}.
+Presumably, the \tcode{std::math::sqrt} proposed in \ref("P4188R1")
+could be used to obtain such a generic square root for arbitrary types.
 
 \h2{One or multiple customization points}
 
@@ -523,6 +718,13 @@ C23 Annex F and Annex H, etc.
   author = "Stéphane Gros-Lemesre",
   link = "https://wg21.link/p4188r1",
   long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4188r1.pdf",
+)\
+\bib(
+  id = "LWG4315",
+  title = "Insufficient specification of vector_two_norm and matrix_frob_norm",
+  date = "2025-08-14",
+  author = "Mark Hoemmen",
+  link = "https://cplusplus.github.io/LWG/issue4315",
 )\
 
 \make_bib
