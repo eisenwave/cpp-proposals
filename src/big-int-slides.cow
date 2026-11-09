@@ -20,7 +20,7 @@ Slide \(slidenum)
 section>h1 {
   margin-top: calc(0.15 * var(--sw)) !important;
   line-height: 0.8;
-  font-size: 500%;
+  font-size: 450%;
   text-align: center;
 }
 
@@ -72,8 +72,8 @@ ul ul {
     title = {Slides for P4444R1 \br \tcode{std::big_int}}
 ){
 \dl{
-    \dt{Document number:} \dd{\docnum{DXXXXR0}}
-    \dt{Date:}            \dd{\tt{2026-11-08}}
+    \dt{Document number:} \dd{\docnum{D4468R0}}
+    \dt{Date:}            \dd{\tt{2026-11-09}}
     \dt{Audience:}        \dd{SG6}
     \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
     \dt{Reply-To:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -198,8 +198,8 @@ there are ~4.5M C++ files using \tcode{unordered_map}.
     \li{serialization, scientific computing, cryptography, …}
   }}
   \li{\tcode{big_int} is a vocabulary type}
-  \li{\tcode{big_int} makes correctness easy}
   \li{\tcode{big_int} enables \q{\tt{rational}}, \q{\tt{big_float}}, and \q{\tt{big_decimal}}}
+  \li{\tcode{big_int} makes correctness easy}
   \li{\tcode{big_int} is extremely platform-dependent and hard to implement\ul{
     \li{
       \tt{beman.big_int} has > 1000
@@ -342,16 +342,40 @@ namespace std {
   \li{representation uses sign and magnitude, small object optimization}
 }
 
+\div(style="font-size: 90%"){
 \cppblock{
-template</* ... */> class basic_big_int { // example layout
-  uint32_t limb_count_and_sign, limb_capacity;
+template</* ... */> struct basic_big_int { // example layout
+  uint32_t \exposid{limb-count-and-sign}; // 31-bit size, 1-bit sign
+  uint32_t \exposid{limb-capacity};       // if zero, inplace_storage is active
   union {
-    uint64_t inplace_storage[/* ... */];
-    uint64_t* dynamic_storage;
+    uint64_t \exposid{inplace-storage}[/* ... */];
+    uint64_t* \exposid{dynamic-storage};
   };
   constexpr span<const uint64_t> representation() const noexcept;
   // big_int is not a container: no begin(), no end()
 };
+}
+}
+}
+
+\slide{
+\slideh{Why sign and magnitude?}
+
+
+\div(class="compact"){
+\cowel_html_element("h4"){Why mandate a representation? Why no implementation freedom?}
+\ul{
+  \li{necessary for consistent algorithmic complexity, \tcode{noexcept}}
+  \li{\b{Example}: \tcode{operator-} is \bigoh{1} with S&M, \bigoh{\math{\mi{n}}} with two's complement}
+}
+
+\cowel_html_element("h4"){Why sign and magnitude in particular?}
+\ul{
+  \li{industry standard, also in Boost.Multiprecision}
+  \li{simpler \tcode{+}, \tcode{-}, \tcode{*}, \tcode{/} etc. \'EM DASH' separate sign & magnitude calculations}
+  \li{negation and \tcode{abs} become \bigoh{1}}
+  \li{\b{Downside}: bitwise ops emulate two's complement \q{on the fly}}
+}
 }
 }
 
@@ -496,6 +520,28 @@ template<size_t b, class L, class A>
 }
 
 \slide{
+\slideh{User-defined literals}
+
+\cppblock{
+// in namespace std::literals::big_int_literals
+template<char... digits>
+  constexpr big_int operator""n() noexcept(/* ... */);
+// also operator""N
+}
+
+\ul{
+  \li{provides notation \tcode{123n}, \tcode{0xFFN}, etc.}
+  \li{\q{manual parsing} during constant evaluation into limb array}
+  \li{… followed by constructing \tcode{big_int} at runtime}
+  \li{compiler support worth exploring:}
+}
+
+\cppblock{
+constexpr big_int operator""n(const uint_multiprecision_t*, size_t);
+}
+}
+
+\slide{
 \slideh{Challenges specific to standardization}
 
 \ul{
@@ -508,6 +554,50 @@ template<size_t b, class L, class A>
   \li{\tcode{big_int} ABI would be hard to change}
   \li{\tcode{big_int} overloads bloat lightweight headers like \header{charconv}}
   \li{ecosystem remains fragmented at first (see \ref("https://xkcd.com/927/"){xkcd \'EM DASH' Standards})}
+}
+}
+
+\slide{
+\slideh{Implementation experience}
+
+\ul{
+  \li{full reference implementation at \ref("https://github.com/bemanproject/big_int"){\sans{beman.big_int}}}
+  \li{heavily inspired by Boost.Multiprecision, but\ul{
+    \li{\tcode{constexpr} out of the box, no \tcode{union} type punning}
+    \li{significant modernization using C++23, more lightweight}
+  }}
+  \li{rigorously tested, 92% test coverage}
+}
+
+\div(class="compact"){
+\cowel_html_element("h4"){Performance}
+\ul{
+  \li{similar to Boost \tcode{cpp_int}, sometimes better}
+  \li{slightly worse than Boost \tcode{gmp_int}, better in rare cases}
+}
+}
+}
+
+\slide{
+\slideh{Error handling}
+
+\ul{
+  \li{errors can be \q{numeric errors} or \q{container errors}}
+  \li{functions are \tcode{noexcept} if neither can occur}
+}
+
+\div(class="compact"){
+\cowel_html_element("h4"){Numeric errors}
+\ul{
+  \li{\b{Cause}: division by zero, conversion of infinity to \tcode{std::big_int}, etc.}
+  \li{\b{Effect}: undefined behavior}
+}
+
+\cowel_html_element("h4"){Container errors}
+\ul{
+  \li{\b{Cause}: exceeding \tcode{max_size()}, allocation failure}
+  \li{\b{Effect}: exception (e.g. \tcode{std::bad_alloc})}
+}
 }
 }
 
@@ -532,7 +622,7 @@ template<size_t b, class L, class A>
   \li{\tcode{std::integer} is unclear, confusable with concept like \tcode{std::integral}}
 }
 
-\cowel_html_element("h4"){\tcode{operator""n}}
+\cowel_html_element("h4"){\tcode{operator""n} / \tcode{operator""N}}
 \ul{
   \li{chosen for symmetry with JavaScript}
 }
@@ -541,6 +631,89 @@ template<size_t b, class L, class A>
 \ul{
   \li{seems more fitting and focused than \q{limb type}}
   \li{name deliberately long; type is necessary \tcode{std::intmax_t}-like evil}
+}
+}
+}
+
+\slide{
+\slideh{Future direction \'EM DASH' What comes after P4444?}
+
+\div(class="compact"){
+\cowel_html_element("h4"){Language support}
+\ul{
+  \li{\tcode{template<std::big_int>}}
+  \li{better language support for \tcode{operator""n}}
+  \li{non-transient allocations (\tcode{constexpr std::big_int} variables)}
+}
+
+\cowel_html_element("h4"){Library support}
+\ul{
+  \li{new integer numeric functions (e.g. \tcode{std::ipow})}
+  \li{additional constructors (e.g. from integer and exponent)}
+  \li{manipulating and iterating over individual bits}
+  \li{\header{random} support, possibly just distributions}
+}
+}
+}
+
+\slide{
+\slideh{⛔ Why no expression templates?}
+
+\b{Idea}:
+Expressions return a symbolic object (\tcode{std::big_int_expre\'SHY'ssion<...>})
+instead of \tcode{std::big_int}.
+This allows transformations:
+
+\cppblock{
+abs(abs(x))    →  abs(x)
+pow(x, y) % m  →  pow_mod(x, y, m)
+}
+
+\div(class="compact"){
+\cowel_html_element("h4"){Problems}
+\ul{
+  \li{increased complexity, maintenance burden, compile-time overhead}
+  \li{countless rules, special cases to be memorized by user}
+  \li{unreliable if optimizations optional, otherwise unfit for ISO process}
+  \li{bad interaction with \tcode{auto}, lifetime issues}
+}
+}
+}
+
+\slide{
+\slideh{⛔ Why no \tcode{std::big_int_view}?}
+
+\div(class="compact"){
+\b{Idea}:
+Provide non-owning type (in addition or instead),
+similar to \tcode{std::string_view}.
+
+\cowel_html_element("h4"){Problems}
+\ul{
+  \li{\tcode{big_int_view} parameter cannot accept large \tcode{_BitInt}}
+  \li{provides not allocator for result\ul{
+    \li{analogous to lacking \tcode{operator+} between \tcode{std::string_view}}
+    \li{only read-only operations are possible, no \tcode{+}, \tcode{-}, \tcode{*}, \tcode{/}, etc.}
+  }}
+  \li{provides no scratch space allocator}
+}
+}
+}
+
+\slide{
+\slideh{⛔ Why no \tcode{std::big_uint}?}
+
+\b{Idea}:
+Provide unsigned variant of \tcode{std::big_int}.
+
+\div(class="compact"){
+\cowel_html_element("h4"){Problems}
+
+\ul{
+  \li{bifurcation of ecosystem and APIs}
+  \li{harmful to use of \tcode{std::big_int} as vocabulary type}
+  \li{storing sign bit is cheap ⇒ unsigned variant adds little value}
+  \li{overflow on subtraction}
 }
 }
 }
