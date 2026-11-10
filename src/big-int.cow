@@ -22,8 +22,8 @@ h1 {
 
 \wg21_head(title={\tcode{std::big_int}}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P4444R1}}
-  \dt{Date:}            \dd{\tt{2026-10-10}}
+  \dt{Document number:} \dd{\docnum{P4444R2}}
+  \dt{Date:}            \dd{\tt{2026-11-10}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -50,6 +50,16 @@ with elastic operations.
 
 \h2{Revision history}
 
+\h3{Changes since R1}
+
+\ul{
+  \li{
+    Respecified compound assignment operators in \ref("#big.int.modifiers")
+    so that they set the integer value without changing the allocator of \tcode{*this},
+    rather than move-assigning the result of the corresponding binary operator
+  }
+}
+
 \h3{Changes since R0}
 
 \ul{
@@ -59,11 +69,6 @@ with elastic operations.
   \li{
     Aligned wording for move assignment and for \tcode{basic_big_int::swap}
     in \ref("#big.int.modifiers") with other containers
-  }
-  \li{
-    Respecified compound assignment operators in \ref("#big.int.modifiers")
-    so that they set the integer value without changing the allocator of \tcode{*this},
-    rather than move-assigning the result of the corresponding binary operator
   }
 }
 
@@ -5186,11 +5191,11 @@ The same as that of \tcode{*this @ x}\iref{big.int.binary}.
 
 \pnum
 \remarks
-If \tcode{T} is a specialization of \tcode{basic_big_int},
+If \tcode{remove_cvref_t<T>} is a specialization of \tcode{basic_big_int},
 \tcode{x} is left in a valid but unspecified state.
 \br\note{
 The allocator of this object is not changed.
-If \tcode{T} is a specialization of \tcode{basic_big_int},
+If \tcode{remove_cvref_t<T>} is a specialization of \tcode{basic_big_int},
 the storage of \tcode{x} can be used for intermediate results,
 and if additionally \tcode{get_allocator() == x.get_allocator()} is \tcode{true},
 that storage can be reused to hold the integer value of \tcode{*this}.
@@ -5209,8 +5214,6 @@ the move assignment would violate its preconditions,
 as for two \tcode{pmr::big_int} objects using different memory resources.
 Instead, like \tcode{basic_string::operator+=}\iref{string.op.append},
 compound assignment keeps the allocator of the left operand.
-
-The shift compound assignments below are specified in the same way for consistency.
 }
 
 \itemdecl{
@@ -5219,20 +5222,8 @@ template<\exposid{signed-or-unsigned} S> constexpr basic_big_int& operator<<=(S 
 
 \itemdescr{
 \pnum
-\expects
-\tcode{s} is greater than or equal to zero.
-
-\pnum
 \effects
-Sets the integer value to that of \tcode{*this << s}.
-
-\pnum
-\returns
-\tcode{*this}.
-
-\pnum
-\complexity
-The same as that of \tcode{*this << s}\iref{big.int.binary}.
+Equivalent to: \tcode{return *this = std::move(*this) << s;}
 }
 
 \itemdecl{
@@ -5241,20 +5232,8 @@ template<\exposid{signed-or-unsigned} S> constexpr basic_big_int& operator>>=(S 
 
 \itemdescr{
 \pnum
-\expects
-\tcode{s} is greater than or equal to zero.
-
-\pnum
 \effects
-Sets the integer value to that of \tcode{*this >> s}.
-
-\pnum
-\returns
-\tcode{*this}.
-
-\pnum
-\complexity
-The same as that of \tcode{*this >> s}\iref{big.int.binary}.
+Equivalent to: \tcode{return *this = std::move(*this) >> s;}
 }
 
 \itemdecl{

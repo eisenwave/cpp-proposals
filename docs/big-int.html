@@ -1598,8 +1598,8 @@ h1 {
 <div class=wg21-head><h1><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code></h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/P4444R1>P4444R1</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-10-10</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P4444R2>P4444R2</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-11-10</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;<br/>
@@ -1622,6 +1622,8 @@ with elastic operations.
 <div class=toc><div class=toc-num data-level=2>1</div>
 <a href=#revision-history><h2>Revision history</h2></a>
 <div class=toc-num data-level=3>1.1</div>
+<a href=#changes-since-r1><h3>Changes since R1</h3></a>
+<div class=toc-num data-level=3>1.2</div>
 <a href=#changes-since-r0><h3>Changes since R0</h3></a>
 <div class=toc-num data-level=2>2</div>
 <a href=#introduction><h2>Introduction</h2></a>
@@ -1886,7 +1888,17 @@ with elastic operations.
 
 <h2 id=revision-history><a class=para href=#revision-history></a>1. Revision history</h2>
 
-<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.1. Changes since R0</h3>
+<h3 id=changes-since-r1><a class=para href=#changes-since-r1></a>1.1. Changes since R1</h3>
+
+<ul>
+  <li>
+    Respecified compound assignment operators in <a href=#big.int.modifiers>§ [big.int.modifiers]</a>
+    so that they set the integer value without changing the allocator of <code><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-></code>,
+    rather than move-assigning the result of the corresponding binary operator
+  </li>
+</ul>
+
+<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.2. Changes since R0</h3>
 
 <ul>
   <li>
@@ -1895,11 +1907,6 @@ with elastic operations.
   <li>
     Aligned wording for move assignment and for <code><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>::</h-><h- data-h=name>swap</h-></code>
     in <a href=#big.int.modifiers>§ [big.int.modifiers]</a> with other containers
-  </li>
-  <li>
-    Respecified compound assignment operators in <a href=#big.int.modifiers>§ [big.int.modifiers]</a>
-    so that they set the integer value without changing the allocator of <code><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-></code>,
-    rather than move-assigning the result of the corresponding binary operator
   </li>
 </ul>
 
@@ -6807,11 +6814,11 @@ The same as that of <code><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-> @
 </p>
 <p>17
 <i>Remarks</i>:
-If <code><h- data-h=name>T</h-></code> is a specialization of <code><h- data-h=name>basic_big_int</h-></code>,
+If <code><h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> is a specialization of <code><h- data-h=name>basic_big_int</h-></code>,
 <code><h- data-h=name>x</h-></code> is left in a valid but unspecified state.
 <br/>[<i>Note</i>: 
 The allocator of this object is not changed.
-If <code><h- data-h=name>T</h-></code> is a specialization of <code><h- data-h=name>basic_big_int</h-></code>,
+If <code><h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> is a specialization of <code><h- data-h=name>basic_big_int</h-></code>,
 the storage of <code><h- data-h=name>x</h-></code> can be used for intermediate results,
 and if additionally <code><h- data-h=name>get_allocator</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>==</h-> <h- data-h=name>x</h-><h- data-h=sym_op>.</h-><h- data-h=name>get_allocator</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> is <code><h- data-h=bool>true</h-></code>,
 that storage can be reused to hold the integer value of <code><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-></code>.
@@ -6830,48 +6837,22 @@ the move assignment would violate its preconditions,
 as for two <code><h- data-h=name>pmr</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> objects using different memory resources.
 Instead, like <code><h- data-h=name>basic_string</h-><h- data-h=sym_op>::</h-><h- data-h=kw>operator</h-><h- data-h=sym_op>+=</h-></code> (<a href=https://eel.is/c++draft/string.op.append>[string.op.append]</a>),
 compound assignment keeps the allocator of the left operand.
-</p>
-<p>The shift compound assignments below are specified in the same way for consistency.
 </p></note-block>
 
 <code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>signed-or-unsigned</h-></i> <h- data-h=name>S</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;&lt;=</h-><h- data-h=sym_par>(</h-><h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
 <p>18
-<i>Preconditions</i>:
-<code><h- data-h=name>s</h-></code> is greater than or equal to zero.
-</p>
-<p>19
 <i>Effects</i>:
-Sets the integer value to that of <code><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=name>s</h-></code>.
-</p>
-<p>20
-<i>Returns</i>:
-<code><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-></code>.
-</p>
-<p>21
-<i>Complexity</i>:
-The same as that of <code><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=name>s</h-></code> (<a href=https://eel.is/c++draft/big.int.binary>[big.int.binary]</a>).
+Equivalent to: <code><h- data-h=kw_ctrl>return</h-> <h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>move</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=name>s</h-><h- data-h=sym_punc>;</h-></code>
 </p></div>
 
 <code-block class=borderless><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>signed-or-unsigned</h-></i> <h- data-h=name>S</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&gt;&gt;=</h-><h- data-h=sym_par>(</h-><h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
-<p>22
-<i>Preconditions</i>:
-<code><h- data-h=name>s</h-></code> is greater than or equal to zero.
-</p>
-<p>23
+<p>19
 <i>Effects</i>:
-Sets the integer value to that of <code><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-> <h- data-h=sym_op>&gt;&gt;</h-> <h- data-h=name>s</h-></code>.
-</p>
-<p>24
-<i>Returns</i>:
-<code><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-></code>.
-</p>
-<p>25
-<i>Complexity</i>:
-The same as that of <code><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-> <h- data-h=sym_op>&gt;&gt;</h-> <h- data-h=name>s</h-></code> (<a href=https://eel.is/c++draft/big.int.binary>[big.int.binary]</a>).
+Equivalent to: <code><h- data-h=kw_ctrl>return</h-> <h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>move</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&gt;&gt;</h-> <h- data-h=name>s</h-><h- data-h=sym_punc>;</h-></code>
 </p></div>
 
 <code-block class=borderless><h- data-h=kw>constexpr</h-> <h- data-h=kw_type>void</h-> <h- data-h=name>swap</h-><h- data-h=sym_par>(</h-><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_par>)</h->
@@ -6879,12 +6860,12 @@ The same as that of <code><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-> <
            <h- data-h=name>allocator_traits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>Allocator</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_always_equal</h-><h- data-h=sym_op>::</h-><h- data-h=name>value</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
-<p>26
+<p>20
 <i>Preconditions</i>:
 <code><h- data-h=name>allocator_traits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>Allocator</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>propagate_on_container_swap</h-><h- data-h=sym_op>::</h-><h- data-h=name>value</h-></code> is <code><h- data-h=bool>true</h-></code> or
 <code><h- data-h=name>get_allocator</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>==</h-> <h- data-h=name>x</h-><h- data-h=sym_op>.</h-><h- data-h=name>get_allocator</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> is <code><h- data-h=bool>true</h-></code>.
 </p>
-<p>27
+<p>21
 <i>Effects</i>:
 Exchanges the integer values and <code><h- data-h=name>capacity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>
 of <code><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-></code> and of <code><h- data-h=name>x</h-></code>.
@@ -6892,11 +6873,11 @@ If <code><h- data-h=name>allocator_traits</h-><h- data-h=sym_op>&lt;</h-><wbr/><
 is <code><h- data-h=bool>true</h-></code>,
 exchanges <code><h- data-h=name>x</h-><h- data-h=sym_op>.</h-><h- data-h=name>get_allocator</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> and the allocator of this object.
 </p>
-<p>28
+<p>22
 <i>Throws</i>:
 Nothing.
 </p>
-<p>29
+<p>23
 <i>Complexity</i>:
 Constant.
 </p></div>
