@@ -1896,6 +1896,11 @@ with elastic operations.
     so that they set the integer value without changing the allocator of <code><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-></code>,
     rather than move-assigning the result of the corresponding binary operator
   </li>
+  <li>
+    Made division and remainder by zero, negative shift counts,
+    and conversion of non-finite floating-point values throw <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>domain_error</h-></code>
+    (see <a href=#error-handling>§4.15. Error handling</a>)
+  </li>
 </ul>
 
 <h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.2. Changes since R0</h3>
@@ -4035,8 +4040,8 @@ This would allow having only one internal function while still handling all type
     An explicit conversion from any floating-point type.
     This could be implicit, but is not value-preserving.
     See also <a href=#explicit-conversions-to-arithmetic-types>§4.9.2. Explicit conversions to arithmetic types</a> for more rationale.
-    Similar to division by zero and analogous to converting <code><h- data-h=kw_type>float</h-></code> to <code><h- data-h=kw_type>int</h-></code>,
-    converting non-finite values results in undefined behavior.
+    Similar to division by zero,
+    converting non-finite values throws <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>domain_error</h-></code>.
     See also <a href=#error-handling>§4.15. Error handling</a>.
   </li>
   <li>
@@ -4063,9 +4068,8 @@ and the converting constructor is <code><h- data-h=kw>noexcept</h-></code>.
 </p></example-block>
 
 <p>Since floating-point types may have non-finite values and converting those to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>
-results in undefined behavior,
-conversions from floating-point types are never <code><h- data-h=kw>noexcept</h-></code>,
-consistent with the Lakos rule.
+throws <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>domain_error</h-></code>,
+conversions from floating-point types are never <code><h- data-h=kw>noexcept</h-></code>.
 </p>
 <h4 id=explicit-conversions-to-arithmetic-types><a class=para href=#explicit-conversions-to-arithmetic-types></a>4.9.2. Explicit conversions to arithmetic types</h4>
 
@@ -4656,35 +4660,41 @@ same as for any other container.
 <p>Fallible operations include
 </p><ul>
   <li>
-    <code><h- data-h=kw>operator</h-><h- data-h=sym_op>/</h-></code> and <code><h- data-h=kw>operator</h-><h- data-h=sym_op>%</h-></code>,
+    <code><h- data-h=kw>operator</h-><h- data-h=sym_op>/</h-></code> and <code><h- data-h=kw>operator</h-><h- data-h=sym_op>%</h-></code> (and their compound assignments),
     if the divisor is zero,
   </li>
   <li>
-    conversion from <code><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>float</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>infinity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>
+    conversion of a non-finite floating-point value,
+    such as <code><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>float</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>infinity</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>,
     to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>, and
   </li>
   <li>
-    <code><h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;&lt;</h-></code> and <code><h- data-h=kw>operator</h-><h- data-h=sym_op>&gt;&gt;</h-></code> with negative shifts.
+    <code><h- data-h=kw>operator</h-><h- data-h=sym_op>&lt;&lt;</h-></code> and <code><h- data-h=kw>operator</h-><h- data-h=sym_op>&gt;&gt;</h-></code> (and their compound assignments)
+    with negative shifts.
   </li>
 </ul>
 
-<p>We handle this as undefined behavior.
-From a runtime cost perspective,
-this is unjustified because <code><h- data-h=kw>operator</h-><h- data-h=sym_op>/</h-></code> already cannot be minimal and entirely branchless
+<p>These operations throw <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>domain_error</h-></code>,
+since each is given an operand outside the domain of the operation.
+The operand is checked before anything is modified,
+so as with any other exception thrown by <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>,
+the operation has no other effect.
+</p>
+<p>From a runtime cost perspective, the check is negligible:
+<code><h- data-h=kw>operator</h-><h- data-h=sym_op>/</h-></code> already cannot be minimal and entirely branchless
 due to the <a href=#small-object-optimizations>§4.2.3. Small object optimizations</a>,
 even if there is no extra check for division by zero.
 <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> division is also a fairly heavy operation,
 so the general principle of <q>don't harden high-performance, low-level numerics</q>
 doesn't really apply here.
+The same holds for shifts and floating-point conversions,
+which already need to inspect the shift amount or the exponent.
 </p>
-<p>The reason we still have undefined behavior for these cases is that there is no clear precedent
-for error handling in <q>heavy numerics</q> in the standard library.
-<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bitset</h-></code> offers some precedent,
-but arguably goes too far by throwing on runtime checks even in fast and low-level operations
-like <code><h- data-h=kw>operator</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>]</h-></code>,
-making the type less attractive for some high-performance use cases.
-The proposed undefined behavior can be thought of as a placeholder,
-and undefined behavior can always be <q>filled in</q> with something better at a later point.
+<p>Throwing also matches how <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> already reports exceeding <code><h- data-h=name>max_size</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code>,
+namely with <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>length_error</h-></code>.
+Where exceptions are unavailable,
+implementations commonly terminate instead, as they already do for allocation failure;
+the reference implementation traps.
 </p>
 
 <h2 id=future-direction><a class=para href=#future-direction></a>5. Future direction</h2>
@@ -4922,9 +4932,9 @@ this suggests that the feature is unfit for standardization.
   <tr>
     <td>Error handling</td>
     <td>
-      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is entirely non-throwing,
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> is non-throwing,
       except for exceptions thrown during allocation failure
-      or as the result of undefined behavior
+      and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>domain_error</h-></code> for the rare numeric errors
       (e.g. division by zero in <code><h- data-h=kw>operator</h-><h- data-h=sym_op>/</h-></code>).
     </td>
     <td>
@@ -4938,11 +4948,11 @@ this suggests that the feature is unfit for standardization.
           the error handling of which can be customized.
         </li>
         <li>
-          The undefined behavior in the rare error cases
-          does not preclude anyone from using the type.
-          They can always add their own runtime checks where needed to prevent UB.
-          It would be much less flexible if the runtime check was forced
-          and came with a certain behavior, like throwing an exception.
+          The rare numeric errors throw <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>domain_error</h-></code>.
+          The check is negligible next to the operations it guards,
+          and a well-defined, recoverable outcome spares users
+          from adding their own runtime checks before every division, shift, or conversion
+          (see <a href=#error-handling>§4.15. Error handling</a>).
         </li>
       </ul>
     </td>
@@ -6376,11 +6386,6 @@ or with the same allocator but different <code><h- data-h=name>min_inplace_capac
 </p></note-block>
 
 <p>13
-<i>Preconditions</i>:
-If <code><h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> is a floating-point type,
-the value of <code><h- data-h=name>x</h-></code> is finite.
-</p>
-<p>14
 <i>Effects</i>:
 If <code><h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> is an integral type or
 a specialization of <code><h- data-h=name>basic_big_int</h-></code>,
@@ -6389,14 +6394,16 @@ Otherwise, <code><h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;<
 and this object is initialized to the integer value obtained
 by discarding the fractional part of <code><h- data-h=name>x</h-></code>.
 </p>
-<p>15
+<p>14
 <i>Throws</i>:
-Nothing if the effective width of the integer value
+<code><h- data-h=name>domain_error</h-></code> if <code><h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> is a floating-point type
+and the value of <code><h- data-h=name>x</h-></code> is not finite.
+Otherwise, nothing if the effective width of the integer value
 this object is initialized with
 is less than or equal to <code><h- data-h=name>inplace_bits</h-></code>;
 otherwise, exceptions thrown during allocation.
 </p>
-<p>16
+<p>15
 <i>Remarks</i>:
 The constructor is explicit if <code><h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> is neither
 a signed or unsigned integer type (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>) nor
@@ -6416,12 +6423,7 @@ which is arguably needed because character types and integers are used in differ
     <h- data-h=kw>noexcept</h-><h- data-h=sym_par>(</h-><i><h- data-h=name>no-alloc-constructible-from</h-></i><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
-<p>17
-<i>Preconditions</i>:
-If <code><h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> is a floating-point type,
-the value of <code><h- data-h=name>x</h-></code> is finite.
-</p>
-<p>18
+<p>16
 <i>Effects</i>:
 If <code><h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> is an integral type or
 a specialization of <code><h- data-h=name>basic_big_int</h-></code>,
@@ -6431,9 +6433,11 @@ and this object is initialized to the integer value obtained
 by discarding the fractional part of <code><h- data-h=name>x</h-></code>.
 Initializes the allocator to <code><h- data-h=name>a</h-></code>.
 </p>
-<p>19
+<p>17
 <i>Throws</i>:
-Nothing if the effective width of the integer value
+<code><h- data-h=name>domain_error</h-></code> if <code><h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> is a floating-point type
+and the value of <code><h- data-h=name>x</h-></code> is not finite.
+Otherwise, nothing if the effective width of the integer value
 this object is initialized with
 is less than or equal to <code><h- data-h=name>inplace_bits</h-></code>;
 otherwise, exceptions thrown during allocation.
@@ -6444,7 +6448,7 @@ otherwise, exceptions thrown during allocation.
   <h- data-h=kw>constexpr</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_par>(</h-><h- data-h=name>I</h-> <h- data-h=name>begin</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>S</h-> <h- data-h=name>end</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>Allocator</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>a</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>Allocator</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
-<p>20
+<p>18
 <i>Effects</i>:
 Initializes the integer value to an integer value formed
 by concatenating the base-2 representation of each element
@@ -6456,13 +6460,13 @@ the combined base-2 representation is interpreted as that of a signed integer,
 otherwise as that of an unsigned integer.
 Initializes the allocator to <code><h- data-h=name>a</h-></code>.
 </p>
-<p>21
+<p>19
 <i>Throws</i>:
 Nothing if the effective width of the combined integer value
 is less than or equal to <code><h- data-h=name>inplace_bits</h-></code>;
 otherwise, exceptions thrown during allocation.
 </p>
-<p>22
+<p>20
 <i>Complexity</i>:
 Linear in the size of <code><h- data-h=sym_sqr>[</h-><h- data-h=name>begin</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>end</h-><h- data-h=sym_par>)</h-></code>.
 </p></div>
@@ -6472,7 +6476,7 @@ Linear in the size of <code><h- data-h=sym_sqr>[</h-><h- data-h=name>begin</h-><
   <h- data-h=kw>constexpr</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_par>(</h-><h- data-h=name_type>from_range_t</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>R</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>r</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>const</h-> <h- data-h=name>Allocator</h-><h- data-h=sym_op>&amp;</h-> <h- data-h=name>a</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>Allocator</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
 <div class=indent>
-<p>23
+<p>21
 <i>Effects</i>:
 Equivalent to:
 <code><h- data-h=name>basic_big_int</h-><h- data-h=sym_par>(</h-><h- data-h=name>ranges</h-><h- data-h=sym_op>::</h-><h- data-h=name>begin</h-><h- data-h=sym_par>(</h-><h- data-h=name>r</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>ranges</h-><h- data-h=sym_op>::</h-><h- data-h=name>end</h-><h- data-h=sym_par>(</h-><h- data-h=name>r</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>a</h-><h- data-h=sym_par>)</h-></code>.
@@ -6796,17 +6800,17 @@ Let <code>@</code> be a placeholder for the token
 in the respective <code><h- data-h=kw>operator</h->@=</code>.
 </p>
 <p>13
-<i>Preconditions</i>:
-For <code><h- data-h=kw>operator</h-><h- data-h=sym_op>/=</h-></code> and <code><h- data-h=kw>operator</h-><h- data-h=sym_op>%=</h-></code>,
-the integer value of <code><h- data-h=name>x</h-></code> is nonzero.
-</p>
-<p>14
 <i>Effects</i>:
 Sets the integer value to that of <code><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-> @ <h- data-h=name>x</h-></code>.
 </p>
-<p>15
+<p>14
 <i>Returns</i>:
 <code><h- data-h=sym_op>*</h-><h- data-h=kw_this>this</h-></code>.
+</p>
+<p>15
+<i>Throws</i>:
+For <code><h- data-h=kw>operator</h-><h- data-h=sym_op>/=</h-></code> and <code><h- data-h=kw>operator</h-><h- data-h=sym_op>%=</h-></code>,
+<code><h- data-h=name>domain_error</h-></code> if the integer value of <code><h- data-h=name>x</h-></code> is zero.
 </p>
 <p>16
 <i>Complexity</i>:
@@ -7126,11 +7130,6 @@ This may involve multi-precision comparisons such as in <code><h- data-h=name>bi
 
 <div class=indent>
 <p>1
-<i>Preconditions</i>:
-For <code><h- data-h=kw>operator</h-><h- data-h=sym_op>/</h-></code> and <code><h- data-h=kw>operator</h-><h- data-h=sym_op>%</h-></code>,
-the integer value of <code><h- data-h=name>y</h-></code> is nonzero.
-</p>
-<p>2
 <i>Returns</i>:
 For each operator function template <code><h- data-h=kw>operator</h->@</code>
 where <code>@</code> is a placeholder for the token in the respective <code><h- data-h=kw>operator</h->@</code>,
@@ -7144,7 +7143,11 @@ positive numbers have an infinite number of leading zeroes, and
 negative numbers have an infinite number of leading ones.
  — <i>end note</i>]</p>
 
-
+<p>2
+<i>Throws</i>:
+For <code><h- data-h=kw>operator</h-><h- data-h=sym_op>/</h-></code> and <code><h- data-h=kw>operator</h-><h- data-h=sym_op>%</h-></code>,
+<code><h- data-h=name>domain_error</h-></code> if the integer value of <code><h- data-h=name>y</h-></code> is zero.
+</p>
 <p>3
 Let <math display=inline><mi>n</mi></math> be the representation size of <code><h- data-h=name>x</h-></code> and
 let <math display=inline><mi>m</mi></math> be the representation size of <code><h- data-h=name>y</h-></code>.
@@ -7182,16 +7185,16 @@ Let <code>@</code> be
 <code><h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> is a specialization of <code><h- data-h=name>basic_big_int</h-></code>.
 </p>
 <p>7
-<i>Preconditions</i>:
-<code><h- data-h=name>s</h-></code> is greater or equal to zero.
-</p>
-<p>8
 <i>Effects</i>:
 Equivalent to:
 </p><code-block class=borderless><h- data-h=kw_ctrl>return</h-> <i><h- data-h=name>big-int-combine</h-></i><h- data-h=sym_par>(</h-><h- data-h=sym_sqr>[</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_par>(</h-><h- data-h=kw>auto</h-> <h- data-h=name>x_int</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>auto</h-> <h- data-h=name>shift</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=kw_ctrl>return</h-> <h- data-h=name>x_int</h-> @ <h- data-h=name>shift</h-><h- data-h=sym_punc>;</h->
 <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>forward</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
+<p>8
+<i>Throws</i>:
+<code><h- data-h=name>domain_error</h-></code> if <code><h- data-h=name>s</h-></code> is negative.
+</p>
 <p>9
 <i>Complexity</i>:
 Linear in the size of the representation of <code><h- data-h=name>x</h-></code>.

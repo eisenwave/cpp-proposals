@@ -58,6 +58,11 @@ with elastic operations.
     so that they set the integer value without changing the allocator of \tcode{*this},
     rather than move-assigning the result of the corresponding binary operator
   }
+  \li{
+    Made division and remainder by zero, negative shift counts,
+    and conversion of non-finite floating-point values throw \tcode{std::domain_error}
+    (see \ref("#error-handling"))
+  }
 }
 
 \h3{Changes since R0}
@@ -2269,8 +2274,8 @@ This allows:
     An explicit conversion from any floating-point type.
     This could be implicit, but is not value-preserving.
     See also \ref("#explicit-conversions-to-arithmetic-types") for more rationale.
-    Similar to division by zero and analogous to converting \tcode{float} to \tcode{int},
-    converting non-finite values results in undefined behavior.
+    Similar to division by zero,
+    converting non-finite values throws \tcode{std::domain_error}.
     See also \ref("#error-handling").
   }
   \li{
@@ -2297,9 +2302,8 @@ and the converting constructor is \tcode{noexcept}.
 }
 
 Since floating-point types may have non-finite values and converting those to \tcode{std::big_int}
-results in undefined behavior,
-conversions from floating-point types are never \tcode{noexcept},
-consistent with the Lakos rule.
+throws \tcode{std::domain_error},
+conversions from floating-point types are never \tcode{noexcept}.
 
 \h4{Explicit conversions to arithmetic types}
 
@@ -2912,35 +2916,41 @@ same as for any other container.
 Fallible operations include
 \ul{
   \li{
-    \tcode{operator/} and \tcode{operator%},
+    \tcode{operator/} and \tcode{operator%} (and their compound assignments),
     if the divisor is zero,
   }
   \li{
-    conversion from \tcode{numeric_limits<float>::infinity()}
+    conversion of a non-finite floating-point value,
+    such as \tcode{numeric_limits<float>::infinity()},
     to \tcode{std::big_int}, and
   }
   \li{
-    \tcode{operator<<} and \tcode{operator>>} with negative shifts.
+    \tcode{operator<<} and \tcode{operator>>} (and their compound assignments)
+    with negative shifts.
   }
 }
 
-We handle this as undefined behavior.
-From a runtime cost perspective,
-this is unjustified because \tcode{operator/} already cannot be minimal and entirely branchless
+These operations throw \tcode{std::domain_error},
+since each is given an operand outside the domain of the operation.
+The operand is checked before anything is modified,
+so as with any other exception thrown by \tcode{std::big_int},
+the operation has no other effect.
+
+From a runtime cost perspective, the check is negligible:
+\tcode{operator/} already cannot be minimal and entirely branchless
 due to the \ref("#small-object-optimizations"),
 even if there is no extra check for division by zero.
 \tcode{std::big_int} division is also a fairly heavy operation,
 so the general principle of \q{don't harden high-performance, low-level numerics}
 doesn't really apply here.
+The same holds for shifts and floating-point conversions,
+which already need to inspect the shift amount or the exponent.
 
-The reason we still have undefined behavior for these cases is that there is no clear precedent
-for error handling in \q{heavy numerics} in the standard library.
-\tcode{std::bitset} offers some precedent,
-but arguably goes too far by throwing on runtime checks even in fast and low-level operations
-like \tcode{operator[]},
-making the type less attractive for some high-performance use cases.
-The proposed undefined behavior can be thought of as a placeholder,
-and undefined behavior can always be \q{filled in} with something better at a later point.
+Throwing also matches how \tcode{std::big_int} already reports exceeding \tcode{max_size()},
+namely with \tcode{std::length_error}.
+Where exceptions are unavailable,
+implementations commonly terminate instead, as they already do for allocation failure;
+the reference implementation traps.
 
 \:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
@@ -3180,9 +3190,9 @@ Some concrete trade-offs for \tcode{std::big_int} (and our response to these) ar
   \tr{
     \td{Error handling}
     \td{
-      \tcode{std::big_int} is entirely non-throwing,
+      \tcode{std::big_int} is non-throwing,
       except for exceptions thrown during allocation failure
-      or as the result of undefined behavior
+      and \tcode{std::domain_error} for the rare numeric errors
       (e.g. division by zero in \tcode{operator/}).
     }
     \td{
@@ -3196,11 +3206,11 @@ Some concrete trade-offs for \tcode{std::big_int} (and our response to these) ar
           the error handling of which can be customized.
         }
         \li{
-          The undefined behavior in the rare error cases
-          does not preclude anyone from using the type.
-          They can always add their own runtime checks where needed to prevent UB.
-          It would be much less flexible if the runtime check was forced
-          and came with a certain behavior, like throwing an exception.
+          The rare numeric errors throw \tcode{std::domain_error}.
+          The check is negligible next to the operations it guards,
+          and a well-defined, recoverable outcome spares users
+          from adding their own runtime checks before every division, shift, or conversion
+          (see \ref("#error-handling")).
         }
       }
     }
@@ -4717,11 +4727,6 @@ or with the same allocator but different \tcode{min_inplace_capacity}.
 }
 
 \pnum
-\expects
-If \tcode{remove_cvref_t<T>} is a floating-point type,
-the value of \tcode{x} is finite.
-
-\pnum
 \effects
 If \tcode{remove_cvref_t<T>} is an integral type or
 a specialization of \tcode{basic_big_int},
@@ -4732,7 +4737,9 @@ by discarding the fractional part of \tcode{x}.
 
 \pnum
 \throws
-Nothing if the effective width of the integer value
+\tcode{domain_error} if \tcode{remove_cvref_t<T>} is a floating-point type
+and the value of \tcode{x} is not finite.
+Otherwise, nothing if the effective width of the integer value
 this object is initialized with
 is less than or equal to \tcode{inplace_bits};
 otherwise, exceptions thrown during allocation.
@@ -4760,11 +4767,6 @@ template<\exposid{arbitrary-arithmetic-type} T>
 
 \itemdescr{
 \pnum
-\expects
-If \tcode{remove_cvref_t<T>} is a floating-point type,
-the value of \tcode{x} is finite.
-
-\pnum
 \effects
 If \tcode{remove_cvref_t<T>} is an integral type or
 a specialization of \tcode{basic_big_int},
@@ -4776,7 +4778,9 @@ Initializes the allocator to \tcode{a}.
 
 \pnum
 \throws
-Nothing if the effective width of the integer value
+\tcode{domain_error} if \tcode{remove_cvref_t<T>} is a floating-point type
+and the value of \tcode{x} is not finite.
+Otherwise, nothing if the effective width of the integer value
 this object is initialized with
 is less than or equal to \tcode{inplace_bits};
 otherwise, exceptions thrown during allocation.
@@ -5173,17 +5177,17 @@ Let \tcode{@} be a placeholder for the token
 in the respective \tcode{operator@=}.
 
 \pnum
-\expects
-For \tcode{operator/=} and \tcode{operator%=},
-the integer value of \tcode{x} is nonzero.
-
-\pnum
 \effects
 Sets the integer value to that of \tcode{*this @ x}.
 
 \pnum
 \returns
 \tcode{*this}.
+
+\pnum
+\throws
+For \tcode{operator/=} and \tcode{operator%=},
+\tcode{domain_error} if the integer value of \tcode{x} is zero.
 
 \pnum
 \complexity
@@ -5535,11 +5539,6 @@ template<class L, class R> constexpr \exposid{common-big-int-type}<L, R> operato
 
 \itemdescr{
 \pnum
-\expects
-For \tcode{operator/} and \tcode{operator%},
-the integer value of \tcode{y} is nonzero.
-
-\pnum
 \returns
 For each operator function template \tcode{operator@}
 where \tcode{@} is a placeholder for the token in the respective \tcode{operator@},
@@ -5555,6 +5554,10 @@ positive numbers have an infinite number of leading zeroes, and
 negative numbers have an infinite number of leading ones.
 }
 
+\pnum
+\throws
+For \tcode{operator/} and \tcode{operator%},
+\tcode{domain_error} if the integer value of \tcode{y} is zero.
 
 \pnum
 Let \math{\mi{n}} be the representation size of \tcode{x} and
@@ -5595,10 +5598,6 @@ Let \tcode{@} be
 \tcode{remove_cvref_t<T>} is a specialization of \tcode{basic_big_int}.
 
 \pnum
-\expects
-\tcode{s} is greater or equal to zero.
-
-\pnum
 \effects
 Equivalent to:
 \itemdecl{
@@ -5606,6 +5605,10 @@ return \exposid{big-int-combine}([](auto x_int, auto shift) {
   return x_int @ shift;
 }, std::forward<T>(x), s);
 }
+
+\pnum
+\throws
+\tcode{domain_error} if \tcode{s} is negative.
 
 \pnum
 \complexity
