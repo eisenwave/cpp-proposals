@@ -60,6 +60,11 @@ with elastic operations.
     Aligned wording for move assignment and for \tcode{basic_big_int::swap}
     in \ref("#big.int.modifiers") with other containers
   }
+  \li{
+    Respecified compound assignment operators in \ref("#big.int.modifiers")
+    so that they set the integer value without changing the allocator of \tcode{*this},
+    rather than move-assigning the result of the corresponding binary operator
+  }
 }
 
 \:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -5159,14 +5164,53 @@ template<\exposid{common-big-int-type-with}<basic_big_int> T>
 
 \itemdescr{
 \pnum
-\effects
-Equivalent to:
-\itemdecl{
-*this = std::move(*this) @ std::forward<T>(x);
-return *this;
-}
-where \tcode{@} is a placeholder for the token
+Let \tcode{@} be a placeholder for the token
 in the respective \tcode{operator@=}.
+
+\pnum
+\expects
+For \tcode{operator/=} and \tcode{operator%=},
+the integer value of \tcode{x} is nonzero.
+
+\pnum
+\effects
+Sets the integer value to that of \tcode{*this @ x}.
+
+\pnum
+\returns
+\tcode{*this}.
+
+\pnum
+\complexity
+The same as that of \tcode{*this @ x}\iref{big.int.binary}.
+
+\pnum
+\remarks
+If \tcode{T} is a specialization of \tcode{basic_big_int},
+\tcode{x} is left in a valid but unspecified state.
+\br\note{
+The allocator of this object is not changed.
+If \tcode{T} is a specialization of \tcode{basic_big_int},
+the storage of \tcode{x} can be used for intermediate results,
+and if additionally \tcode{get_allocator() == x.get_allocator()} is \tcode{true},
+that storage can be reused to hold the integer value of \tcode{*this}.
+}
+}
+
+\editnote{
+The compound assignment operators are intentionally not specified as
+\tcode{*this = std::move(*this) @ std::forward<T>(x)}.
+If \tcode{x} is an rvalue,
+\tcode{\exposid{big-int-combine}} in \ref("#big.int.expos") can obtain the allocator of the result from \tcode{x}.
+If \tcode{allocator_traits<Allocator>::propagate_on_container_move_assignment::value} is \tcode{true},
+the subsequent move assignment would then replace the allocator of \tcode{*this};
+otherwise, if the allocators compare unequal,
+the move assignment would violate its preconditions,
+as for two \tcode{pmr::big_int} objects using different memory resources.
+Instead, like \tcode{basic_string::operator+=}\iref{string.op.append},
+compound assignment keeps the allocator of the left operand.
+
+The shift compound assignments below are specified in the same way for consistency.
 }
 
 \itemdecl{
@@ -5175,8 +5219,20 @@ template<\exposid{signed-or-unsigned} S> constexpr basic_big_int& operator<<=(S 
 
 \itemdescr{
 \pnum
+\expects
+\tcode{s} is greater than or equal to zero.
+
+\pnum
 \effects
-Equivalent to: \tcode{return *this = std::move(*this) << s;}
+Sets the integer value to that of \tcode{*this << s}.
+
+\pnum
+\returns
+\tcode{*this}.
+
+\pnum
+\complexity
+The same as that of \tcode{*this << s}\iref{big.int.binary}.
 }
 
 \itemdecl{
@@ -5185,8 +5241,20 @@ template<\exposid{signed-or-unsigned} S> constexpr basic_big_int& operator>>=(S 
 
 \itemdescr{
 \pnum
+\expects
+\tcode{s} is greater than or equal to zero.
+
+\pnum
 \effects
-Equivalent to: \tcode{return *this = std::move(*this) >> s;}
+Sets the integer value to that of \tcode{*this >> s}.
+
+\pnum
+\returns
+\tcode{*this}.
+
+\pnum
+\complexity
+The same as that of \tcode{*this >> s}\iref{big.int.binary}.
 }
 
 \itemdecl{
