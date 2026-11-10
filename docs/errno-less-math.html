@@ -1580,7 +1580,7 @@ if (theme !== null) {
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/D4447R0>D4447R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-11-02</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2026-11-10</tt-></dd>
   <dt>Audience:</dt>        <dd>LEWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;<br/>
@@ -1602,6 +1602,8 @@ We propose the ability to disable interactions with <tt->errno</tt-> in mathemat
 <div class=toc-num data-level=3>1.1</div>
 <a href=#performance-problem><h3>Performance problem</h3></a>
 <div class=toc-num data-level=3>1.2</div>
+<a href=#simd-problem><h3>[simd] problem</h3></a>
+<div class=toc-num data-level=3>1.3</div>
 <a href=#constexpr-problem><h3><code><h- data-h=kw>constexpr</h-></code> problem</h3></a>
 <div class=toc-num data-level=2>2</div>
 <a href=#design><h2>Design</h2></a>
@@ -1627,11 +1629,34 @@ We propose the ability to disable interactions with <tt->errno</tt-> in mathemat
 
 <h2 id=introduction><a class=para href=#introduction></a>1. Introduction</h2>
 
-<p>Functions in header <code><h- data-h=str>&lt;cmath&gt;</h-></code> currently write to <tt->errno</tt-> to indicate errors such
+<p>Functions in header <code><h- data-h=str>&lt;cmath&gt;</h-></code> may currently write to <tt->errno</tt-> to indicate errors such
 as domain errors, overflow, or underflow.
 For example, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-><h- data-h=sym_par>(</h-><h- data-h=sym_op>-</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-></code> doesn't simply yield NaN;
 it also sets <tt->errno</tt-> to <tt->EDOM</tt->.
 </p>
+<p><code><h- data-h=name>errno</h-></code> is the cockroach of the C programming language.
+It gets everywhere,
+is uniformly disliked,
+but it is shockingly resilient against efforts to remove it.
+</p>
+<p>With modern language design and hardware capabilities in mind,
+<code><h- data-h=name>errno</h-></code> is obsolete and harmful to performance.
+<code><h- data-h=name>errno</h-></code> is legacy baggage inherited from Unix in the 1970s
+that ended up standardized in C89.
+However, even at that time, <code><h- data-h=name>errno</h-></code> was widely understood to be a mistake.
+In 1990, the WG14 convener P.J. Plauger wrote the following in <a href="https://jacobfilipp%2ecom/DrDobbs/articles/CUJ/1990/9012/plauger/plauger%2ehtm">[Plauger1990]</a>:
+</p>
+<blockquote>
+<p>If I had to identify one part of the C Standard that is uniformly disliked,
+I would not have to look far.
+Nobody likes <i>errno</i> or the machinery that it implies.
+I can't recall anybody defending this approach to error reporting,
+not in two dozen or more meetings of X3J11.
+Several alternatives were proposed over the years.
+At least one faction favored simply discarding <i>errno</i>.
+Yet it endures.
+</p></blockquote>
+
 <h3 id=performance-problem><a class=para href=#performance-problem></a>1.1. Performance problem</h3>
 
 <p>The runtime checks and write to <code><h- data-h=name>errno</h-></code>
@@ -1819,7 +1844,42 @@ and <tt->-fno-math-errno</tt-> is the default.
 </p></div>
 </blockquote>
 
-<h3 id=constexpr-problem><a class=para href=#constexpr-problem></a>1.2. <code><h- data-h=kw>constexpr</h-></code> problem</h3>
+<h3 id=simd-problem><a class=para href=#simd-problem></a>1.2. [simd] problem</h3>
+
+<p>As shown in the example of <code><h- data-h=name>vs</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> above,
+whether <code><h- data-h=name>errno</h-></code> is accessed impacts code generation dramatically.
+Dozens of instructions can be effectively turned into a single <code><h- data-h=name_inst>vsqrtpd</h-></code> instruction
+by just ignoring <code><h- data-h=name>errno</h-></code>.
+<code><h- data-h=str>&lt;simd&gt;</h-></code> was designed with this problem in mind,
+and throughout subclause <a href=https://eel.is/c++draft/simd.math>[simd.math]</a> and <a href=https://eel.is/c++draft/simd.complex.math>[simd.complex.math]</a>,
+<a href=https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html#index-fno-math-errno><tt->-fno-math-errno</tt-></a> is permitted for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>simd</h-></code> functions:
+</p>
+<blockquote>
+<p><i>Remarks</i>:
+It is unspecified whether errno (<a href=https://eel.is/c++draft/errno>[errno]</a>) is accessed.
+</p></blockquote>
+
+<p>However, this is only a partial solution to the problem.
+In reality, any high-quality SIMD library is going to need <code><h- data-h=name>errno</h-></code>-less variants
+of math functions.
+The whole point of <code><h- data-h=str>&lt;simd&gt;</h-></code> is to provide high-performance vectorized operations,
+which is antithetical to the overhead of setting <code><h- data-h=name>errno</h-></code>.
+If a C++ implementation provides such function,
+an <code><h- data-h=name>errno</h-></code>-less <code><h- data-h=str>&lt;cmath&gt;</h-></code> can be implemented in terms of <code><h- data-h=str>&lt;simd&gt;</h-></code>.
+</p>
+<example-block><p><intro-></intro-> 
+<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code> can be implemented using <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>simd</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code> as follows:
+</p><code-block><h- data-h=kw>constexpr</h-> <i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>sqrt</h-><h- data-h=sym_par>(</h-><i><h- data-h=name>floating-point-type</h-></i> <h- data-h=name>x</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=name>simd</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-><h- data-h=sym_par>(</h-><h- data-h=name>simd</h-><h- data-h=sym_op>::</h-><h- data-h=name>vec</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>floating-point-type</h-></i><h- data-h=sym_punc>,</h-> <h- data-h=num>1</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>x</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h-><h- data-h=sym_sqr>[</h-><h- data-h=num>0</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+</example-block>
+
+<p>If an implementation provided <code><h- data-h=name>errno</h-></code>-less functions for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>simd</h-></code>,
+it would be silly if users had to port all their existing <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><i><h- data-h=name>function</h-></i></code> calls
+to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>simd</h-><h- data-h=sym_op>::</h-><i><h- data-h=name>function</h-></i></code> calls.
+They should simply have the upgrade option to make all their existing functions <code><h- data-h=name>errno</h-></code>-less too.
+</p>
+<h3 id=constexpr-problem><a class=para href=#constexpr-problem></a>1.3. <code><h- data-h=kw>constexpr</h-></code> problem</h3>
 
 <p>Since there can be no writes to <code><h- data-h=name>errno</h-></code> during constant evaluation,
 the committee is stuck with two bad options
@@ -1871,7 +1931,7 @@ On platforms where <q>errno-less mode</q> is already the default (e.g. Darwin),
 no action is required.
 </p>
 <note-block><p><intro-></intro-> 
-The aforementioned <a href=#constexpr-problem>§1.2. <code><h- data-h=kw>constexpr</h-></code> problem</a> is not resolved in this paper,
+The aforementioned <a href=#constexpr-problem>§1.3. <code><h- data-h=kw>constexpr</h-></code> problem</a> is not resolved in this paper,
 but provides motivation for the direction.
 </p></note-block>
 
@@ -1923,7 +1983,7 @@ At first glance, it seems like we are mandating quality of implementation.
 However, there are key factors that make standardization necessary:
 </p><ul>
   <li>
-    An <code><h- data-h=name>errno</h-></code>-less math mode is likely necessary to resolve the <a href=#constexpr-problem>§1.2. <code><h- data-h=kw>constexpr</h-></code> problem</a>.
+    An <code><h- data-h=name>errno</h-></code>-less math mode is likely necessary to resolve the <a href=#constexpr-problem>§1.3. <code><h- data-h=kw>constexpr</h-></code> problem</a>.
   </li>
   <li>
     Hosted implementations <em>must</em> provide floating-point exceptions
@@ -2008,8 +2068,17 @@ insert a new paragraph:
 <ins-block>
 <p>The meaning of the macro <code><h- data-h=name>math_errhandling</h-></code> is the same
 as of that in the C standard library header <code><h- data-h=str>&lt;math.h&gt;</h-></code>,
-except that <code><h- data-h=name>math_errhandling</h-></code> may equal <code><h- data-h=num>0</h-></code> even for a hosted implementation.
-</p></ins-block>
+except that</p><ul>
+  <li>
+    <code><h- data-h=name>math_errhandling</h-></code> may equal <code><h- data-h=num>0</h-></code>
+    even for a hosted implementation, and
+  </li>
+  <li>
+    if <code><h- data-h=name>math_errhandling</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=name>MATH_ERRNO</h-></code> equals <code><h- data-h=num>0</h-></code>,
+    <code><h- data-h=name>errno</h-></code> is not accessed by any functions described in subclause <a href=https://eel.is/c++draft/c.math>[c.math]</a>.
+  </li>
+</ul>
+</ins-block>
 
 <h2 id=references><a class=para href=#references></a>5. References</h2>
 
@@ -2025,6 +2094,11 @@ except that <code><h- data-h=name>math_errhandling</h-></code> may equal <code><
 <span class=bib-author>Stéphane Gros-Lemesre.</span>
 <span class=bib-title>Extensible Math Functions for C++</span>
 <span class=bib-date>2026-07-04</span>
-<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/p4188r1%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4188r1.pdf</a></div></div>
+<a href="https://www%2eopen-std%2eorg/jtc1/sc22/wg21/docs/papers/2026/p4188r1%2epdf" class=bib-link>https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4188r1.pdf</a></div><div id=bib-item-Plauger1990 class=bib-item>
+<a href="https://jacobfilipp%2ecom/DrDobbs/articles/CUJ/1990/9012/plauger/plauger%2ehtm">[Plauger1990]</a>
+<span class=bib-author>P.J. Plauger.</span>
+<span class=bib-title>Standard C — &lt;errno.h&gt;</span>
+<span class=bib-date>1990</span>
+<a href="https://jacobfilipp%2ecom/DrDobbs/articles/CUJ/1990/9012/plauger/plauger%2ehtm" class=bib-link>https://jacobfilipp.com/DrDobbs/articles/CUJ/1990/9012/plauger/plauger.htm</a></div></div>
 </main></body>
 </html>

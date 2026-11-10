@@ -6,7 +6,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{D4447R0}}
-  \dt{Date:}            \dd{\tt{2026-11-02}}
+  \dt{Date:}            \dd{\tt{2026-11-10}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -27,10 +27,33 @@ We propose the ability to disable interactions with \tt{errno} in mathematical f
 
 \h2{Introduction}
 
-Functions in header \header{cmath} currently write to \tt{errno} to indicate errors such
+Functions in header \header{cmath} may currently write to \tt{errno} to indicate errors such
 as domain errors, overflow, or underflow.
 For example, \tcode{std::sqrt(-1)} doesn't simply yield NaN;
 it also sets \tt{errno} to \tt{EDOM}.
+
+\tcode{errno} is the cockroach of the C programming language.
+It gets everywhere,
+is uniformly disliked,
+but it is shockingly resilient against efforts to remove it.
+
+With modern language design and hardware capabilities in mind,
+\tcode{errno} is obsolete and harmful to performance.
+\tcode{errno} is legacy baggage inherited from Unix in the 1970s
+that ended up standardized in C89.
+However, even at that time, \tcode{errno} was widely understood to be a mistake.
+In 1990, the WG14 convener P.J. Plauger wrote the following in \ref("Plauger1990"):
+
+\Bquote{
+If I had to identify one part of the C Standard that is uniformly disliked,
+I would not have to look far.
+Nobody likes \i{errno} or the machinery that it implies.
+I can't recall anybody defending this approach to error reporting,
+not in two dozen or more meetings of X3J11.
+Several alternatives were proposed over the years.
+At least one faction favored simply discarding \i{errno}.
+Yet it endures.
+}
 
 \h3{Performance problem}
 
@@ -229,6 +252,43 @@ and \tt{-fno-math-errno} is the default.
 }}
 }
 
+\h3{[simd] problem}
+
+As shown in the example of \tcode{vs()} above,
+whether \tcode{errno} is accessed impacts code generation dramatically.
+Dozens of instructions can be effectively turned into a single \code("asm"){vsqrtpd} instruction
+by just ignoring \tcode{errno}.
+\header{simd} was designed with this problem in mind,
+and throughout subclause \eelis{simd.math} and \eelis{simd.complex.math},
+\fno_math_errno is permitted for \tcode{std::simd} functions:
+
+\Bquote{
+\remarks
+It is unspecified whether errno\iref{errno} is accessed.
+}
+
+However, this is only a partial solution to the problem.
+In reality, any high-quality SIMD library is going to need \tcode{errno}-less variants
+of math functions.
+The whole point of \header{simd} is to provide high-performance vectorized operations,
+which is antithetical to the overhead of setting \tcode{errno}.
+If a C++ implementation provides such function,
+an \tcode{errno}-less \header{cmath} can be implemented in terms of \header{simd}.
+
+\Bex{
+\tcode{std::sqrt} can be implemented using \tcode{std::simd::sqrt} as follows:
+\cppblock{
+constexpr \exposid{floating-point-type} sqrt(\exposid{floating-point-type} x) {
+  return simd::sqrt(simd::vec<\exposid{floating-point-type}, 1>(x))[0];
+}
+}
+}
+
+If an implementation provided \tcode{errno}-less functions for \tcode{std::simd},
+it would be silly if users had to port all their existing \tcode{std::\exposid{function}} calls
+to \tcode{std::simd::\exposid{function}} calls.
+They should simply have the upgrade option to make all their existing functions \tcode{errno}-less too.
+
 \h3{\tcode{constexpr} problem}
 
 Since there can be no writes to \tcode{errno} during constant evaluation,
@@ -420,7 +480,16 @@ Append a new paragraph to \eelis{cmath.syn}:
 \Bins{
 The meaning of the macro \tcode{math_errhandling} is the same
 as of that in the C standard library header \header{math.h},
-except that \tcode{math_errhandling} may equal \tcode{0} even for a hosted implementation.
+except that\ul{
+  \li{
+    \tcode{math_errhandling} may equal \tcode{0}
+    even for a hosted implementation, and
+  }
+  \li{
+    if \tcode{math_errhandling & MATH_ERRNO} equals \tcode{0},
+    \tcode{errno} is not accessed by any functions described in subclause \eelis{c.math}.
+  }
+}
 }
 
 \h2{References}
@@ -441,6 +510,13 @@ except that \tcode{math_errhandling} may equal \tcode{0} even for a hosted imple
   author = "Stéphane Gros-Lemesre",
   link = "https://wg21.link/p4188r1",
   long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p4188r1.pdf",
+)\
+\bib(
+  id = "Plauger1990",
+  title = "Standard C — <errno.h>",
+  date = "1990",
+  author = "P.J. Plauger",
+  link = "https://jacobfilipp.com/DrDobbs/articles/CUJ/1990/9012/plauger/plauger.htm"
 )\
 
 \make_bib
