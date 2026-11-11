@@ -1597,7 +1597,7 @@ if (theme !== null) {
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/D4461R1>D4461R1</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-11-09</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2026-11-11</tt-></dd>
   <dt>Audience:</dt>        <dd>SG6</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1619,30 +1619,49 @@ and the issue's impact on users and library authors is presented.
 <h2 id=contents><a class=para href=#contents></a>Contents</h2>
 
 <div class=toc><div class=toc-num data-level=2>1</div>
-<a href=#introduction><h2>Introduction</h2></a>
+<a href=#revision-history><h2>Revision history</h2></a>
+<div class=toc-num data-level=3>1.1</div>
+<a href=#changes-since-r0><h3>Changes since R0</h3></a>
 <div class=toc-num data-level=2>2</div>
-<a href=#the-difficulty-of-specifying-a-math-function><h2>The difficulty of specifying a math function</h2></a>
-<div class=toc-num data-level=3>2.1</div>
-<a href=#aspects-of-a-math-function><h3>Aspects of a math function</h3></a>
-<div class=toc-num data-level=3>2.2</div>
-<a href=#case-study:-square-root><h3>Case study: square root</h3></a>
-<div class=toc-num data-level=4>2.2.1</div>
-<a href=#too-unclear-for-many-users><h4>Too unclear for many users</h4></a>
-<div class=toc-num data-level=4>2.2.2</div>
-<a href=#too-unclear-for-library-authors><h4>Too unclear for library authors</h4></a>
-<div class=toc-num data-level=4>2.2.3</div>
-<a href=#unclear-design-strategy><h4>Unclear design strategy</h4></a>
-<div class=toc-num data-level=4>2.2.4</div>
-<a href=#square-root-in-linalg><h4>Square root in <tt->&lt;linalg&gt;</tt-></h4></a>
+<a href=#introduction><h2>Introduction</h2></a>
 <div class=toc-num data-level=2>3</div>
-<a href=#one-or-multiple-customization-points><h2>One or multiple customization points</h2></a>
+<a href=#the-difficulty-of-specifying-a-math-function><h2>The difficulty of specifying a math function</h2></a>
+<div class=toc-num data-level=3>3.1</div>
+<a href=#aspects-of-a-math-function><h3>Aspects of a math function</h3></a>
+<div class=toc-num data-level=3>3.2</div>
+<a href=#case-study:-square-root><h3>Case study: square root</h3></a>
+<div class=toc-num data-level=4>3.2.1</div>
+<a href=#too-unclear-for-many-customization-point-users><h4>Too unclear for many customization point users</h4></a>
+<div class=toc-num data-level=4>3.2.2</div>
+<a href=#too-unclear-for-customization-authors><h4>Too unclear for customization authors</h4></a>
+<div class=toc-num data-level=4>3.2.3</div>
+<a href=#unclear-design-strategy><h4>Unclear design strategy</h4></a>
+<div class=toc-num data-level=4>3.2.4</div>
+<a href=#square-root-in-linalg><h4>Square root in <tt->&lt;linalg&gt;</tt-></h4></a>
 <div class=toc-num data-level=2>4</div>
-<a href=#conclusion><h2>Conclusion</h2></a>
+<a href=#one-or-multiple-customization-points><h2>One or multiple customization points</h2></a>
 <div class=toc-num data-level=2>5</div>
+<a href=#conclusion><h2>Conclusion</h2></a>
+<div class=toc-num data-level=2>6</div>
 <a href=#references><h2>References</h2></a>
 </div>
 
-<h2 id=introduction><a class=para href=#introduction></a>1. Introduction</h2>
+<h2 id=revision-history><a class=para href=#revision-history></a>1. Revision history</h2>
+
+<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.1. Changes since R0</h3>
+
+<ul>
+  <li>Added mathematical properties in <a href=#aspects-of-a-math-function>§3.1. Aspects of a math function</a></li>
+  <li>
+    Expanded and clarified discussion in <a href=#case-study:-square-root>§3.2. Case study: square root</a>
+  </li>
+  <li>
+    Fixed incorrect information: <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code> is correctly rounded
+    for an implementation conforming to C Annex F
+  </li>
+</ul>
+
+<h2 id=introduction><a class=para href=#introduction></a>2. Introduction</h2>
 
 <p><a href="https://wg21%2elink/p4188r1">[P4188R1]</a> proposes <q>extensible math functions</q>.
 For example, there would be a new <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>math</h-></code> function object
@@ -1657,13 +1676,13 @@ few requirements are imposed.
 and the limited usability of the customization point,
 which are described below.
 </p>
-<h2 id=the-difficulty-of-specifying-a-math-function><a class=para href=#the-difficulty-of-specifying-a-math-function></a>2. The difficulty of specifying a math function</h2>
+<h2 id=the-difficulty-of-specifying-a-math-function><a class=para href=#the-difficulty-of-specifying-a-math-function></a>3. The difficulty of specifying a math function</h2>
 
 <p>To understand the issue,
 we must first consider what aspects of a mathematical function
 may need to be specified for floating-point operands.
 </p>
-<h3 id=aspects-of-a-math-function><a class=para href=#aspects-of-a-math-function></a>2.1. Aspects of a math function</h3>
+<h3 id=aspects-of-a-math-function><a class=para href=#aspects-of-a-math-function></a>3.1. Aspects of a math function</h3>
 
 <p>Any mathematical function that involves floating-point numbers has the following aspects:
 </p>
@@ -1867,7 +1886,7 @@ but this list is not exhaustive.
   </dd>
 </dl>
 
-<h3 id=case-study:-square-root><a class=para href=#case-study:-square-root></a>2.2. Case study: square root</h3>
+<h3 id=case-study:-square-root><a class=para href=#case-study:-square-root></a>3.2. Case study: square root</h3>
 
 <p>Find below the table comparing the degree of detail
 with which the square root operation is specified in different places.
@@ -1989,7 +2008,7 @@ with which the square root operation is specified in different places.
   <tr>
     <td>Correct rounding</td>
     <td>no, not even in Annex F</td>
-    <td>no, not even in Annex F</td>
+    <td>yes</td>
     <td>yes</td>
     <td class=unspecified>unspecified</td>
   </tr>
@@ -2051,14 +2070,14 @@ we can derived several secondary properties for the functions:
   <tr>
     <td>Deterministic</td>
     <td>❌ no, incorrect rounding, unspec. NaN payloads, compile-time and runtime differences, excess precision</td>
-    <td>❌ no, incorrect rounding, unspec. NaN payloads, compile-time and runtime differences, excess precision</td>
+    <td>❌ no, unspec. NaN payloads, compile-time and runtime differences</td>
     <td>✅ yes</td>
     <td>❌ no</td>
   </tr>
   <tr>
     <td>Monotonic</td>
     <td>❌ no, due to lack of correct rounding</td>
-    <td>❌ no, due to lack of correct rounding</td>
+    <td>✅ yes</td>
     <td>✅ yes</td>
     <td>❌ no</td>
   </tr>
@@ -2073,7 +2092,8 @@ we can derived several secondary properties for the functions:
     <td>Fixed points</td>
     <td>❌ none</td>
     <td>
-       <math display=inline><mrow><msqrt><mrow><mo>±</mo><mn>0</mn></mrow></msqrt><mo>=</mo><mrow><mo>±</mo><mn>0</mn></mrow></mrow></math>
+       <math display=inline><mrow><msqrt><mrow><mo>±</mo><mn>0</mn></mrow></msqrt><mo>=</mo><mrow><mo>±</mo><mn>0</mn></mrow></mrow></math>,<br/>
+       <math display=inline><mrow><msqrt><mn>1</mn></msqrt><mo>=</mo><mn>1</mn></mrow></math>
     </td>
     <td>
       <math display=inline><mrow><msqrt><mrow><mo>±</mo><mn>0</mn></mrow></msqrt><mo>=</mo><mrow><mo>±</mo><mn>0</mn></mrow></mrow></math>,<br/>
@@ -2084,7 +2104,7 @@ we can derived several secondary properties for the functions:
   <tr>
     <td>Multiplicative</td>
     <td>❌ no</td>
-    <td>❌ no</td>
+    <td>⚠️ only if all operations are exact</td>
     <td>⚠️ only if all operations are exact</td>
     <td>❌ no</td>
   </tr>
@@ -2113,7 +2133,7 @@ For example, monotonicity and the fixed points at <math display=inline><mn>0</mn
 
 </note-block>
 
-<h4 id=too-unclear-for-many-users><a class=para href=#too-unclear-for-many-users></a>2.2.1. Too unclear for many users</h4>
+<h4 id=too-unclear-for-many-customization-point-users><a class=para href=#too-unclear-for-many-customization-point-users></a>3.2.1. Too unclear for many customization point users</h4>
 
 <p>From this table,
 we can tell that in generic code where we don't know the input type,
@@ -2185,7 +2205,7 @@ To be fair, such use cases do exist, and C++26 <code><h- data-h=str>&lt;linalg&g
 as it works with user-defined types and uses <code><h- data-h=kw>operator</h-><h- data-h=sym_op>+</h-></code> as a customization point
 with basically no specific requirements.
 </p>
-<h4 id=too-unclear-for-library-authors><a class=para href=#too-unclear-for-library-authors></a>2.2.2. Too unclear for library authors</h4>
+<h4 id=too-unclear-for-customization-authors><a class=para href=#too-unclear-for-customization-authors></a>3.2.2. Too unclear for customization authors</h4>
 
 <p>This severe underspecification also makes it difficult to provide
 customizations as a library author.
@@ -2201,7 +2221,7 @@ leaving them with questions such as:
   <li>Should the operation strictly adhere to the ISO/IEC 60559 <tt->squareRoot</tt-> operation?</li>
 </ul>
 
-<h4 id=unclear-design-strategy><a class=para href=#unclear-design-strategy></a>2.2.3. Unclear design strategy</h4>
+<h4 id=unclear-design-strategy><a class=para href=#unclear-design-strategy></a>3.2.3. Unclear design strategy</h4>
 
 <p>The issues faced by users and library authors are a result of the fact
 that the overall design strategy of <a href="https://wg21%2elink/p4188r1">[P4188R1]</a> is unclear.
@@ -2237,7 +2257,7 @@ and another customizes <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h
 how can <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>math</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code> be used portably in generic code by users?
 They would have no idea what kind of square root they are signing up for.
 </p>
-<h4 id=square-root-in-linalg><a class=para href=#square-root-in-linalg></a>2.2.4. Square root in <tt->&lt;linalg&gt;</tt-></h4>
+<h4 id=square-root-in-linalg><a class=para href=#square-root-in-linalg></a>3.2.4. Square root in <tt->&lt;linalg&gt;</tt-></h4>
 
 <p>The C++26 linear algebra library can be used as a case study
 of how mathematical operations could be performed on user-defined types.
@@ -2253,9 +2273,9 @@ by limiting those functions to floating-point types and to <tt->std::complex</tt
 Presumably, the <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>math</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code> proposed in <a href="https://wg21%2elink/p4188r1">[P4188R1]</a>
 could be used to obtain such a generic square root for arbitrary types.
 </p>
-<h2 id=one-or-multiple-customization-points><a class=para href=#one-or-multiple-customization-points></a>3. One or multiple customization points</h2>
+<h2 id=one-or-multiple-customization-points><a class=para href=#one-or-multiple-customization-points></a>4. One or multiple customization points</h2>
 
-<p>The possible strategies in <a href=#unclear-design-strategy>§2.2.3. Unclear design strategy</a> hint at another problem:
+<p>The possible strategies in <a href=#unclear-design-strategy>§3.2.3. Unclear design strategy</a> hint at another problem:
 since there are radically different <q>top priorities</q> (strictness, performance, C compatibility),
 it is not obvious that there should be a single <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>math</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code> customization point
 instead of two, three, or even more customization points.
@@ -2264,7 +2284,7 @@ There could be <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h
 customization points, for example.
 </p>
 <p>Analogously, the C standard reserves the prefix <code><h- data-h=name>cr_</h-></code> for correctly rounded
-(see <a href=#aspects-of-a-math-function>§2.1. Aspects of a math function</a>)
+(see <a href=#aspects-of-a-math-function>§3.1. Aspects of a math function</a>)
 counterparts to the existing math functions.
 Correct rounding is often difficult to implement and may incur a severe performance penalty,
 which makes it a bad default for operations in general,
@@ -2300,7 +2320,7 @@ and customizing <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-
 there may be an obvious answer,
 but not in general.
 </p>
-<h2 id=conclusion><a class=para href=#conclusion></a>4. Conclusion</h2>
+<h2 id=conclusion><a class=para href=#conclusion></a>5. Conclusion</h2>
 
 <p>WG21 must come to a consensus on the overarching design strategy
 for the numeric behavior of extensible math functions.
@@ -2325,7 +2345,7 @@ and only tiny extensions like <code><h- data-h=name>std</h-><h- data-h=sym_op>::
 compared to WG14's mega-projects like new C23 math functions,
 C23 Annex F and Annex H, etc.
 </p>
-<h2 id=references><a class=para href=#references></a>5. References</h2>
+<h2 id=references><a class=para href=#references></a>6. References</h2>
 
 
 <div class=bib><div id=bib-item-P3864R1 class=bib-item>

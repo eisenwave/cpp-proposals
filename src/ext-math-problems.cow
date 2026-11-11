@@ -23,7 +23,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{D4461R1}}
-  \dt{Date:}            \dd{\tt{2026-11-09}}
+  \dt{Date:}            \dd{\tt{2026-11-11}}
   \dt{Audience:}        \dd{SG6}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -45,6 +45,21 @@ and the issue's impact on users and library authors is presented.
 \h2(listed=false){Contents}
 
 \make_contents
+
+\h2{Revision history}
+
+\h3{Changes since R0}
+
+\ul{
+  \li{Added mathematical properties in \ref("#aspects-of-a-math-function")}
+  \li{
+    Expanded and clarified discussion in \ref("#case-study:-square-root")
+  }
+  \li{
+    Fixed incorrect information: \tcode{std::sqrt} is correctly rounded
+    for an implementation conforming to C Annex F
+  }
+}
 
 \h2{Introduction}
 
@@ -363,7 +378,7 @@ with which the square root operation is specified in different places.
   \tr{
     \td{Correct rounding}
     \td{no, not even in Annex F}
-    \td{no, not even in Annex F}
+    \td{yes}
     \td{yes}
     \td(class="unspecified"){unspecified}
   }
@@ -425,14 +440,14 @@ we can derived several secondary properties for the functions:
   \tr{
     \td{Deterministic}
     \td{❌ no, incorrect rounding, unspec. NaN payloads, compile-time and runtime differences, excess precision}
-    \td{❌ no, incorrect rounding, unspec. NaN payloads, compile-time and runtime differences, excess precision}
+    \td{❌ no, unspec. NaN payloads, compile-time and runtime differences}
     \td{✅ yes}
     \td{❌ no}
   }
   \tr{
     \td{Monotonic}
     \td{❌ no, due to lack of correct rounding}
-    \td{❌ no, due to lack of correct rounding}
+    \td{✅ yes}
     \td{✅ yes}
     \td{❌ no}
   }
@@ -447,7 +462,8 @@ we can derived several secondary properties for the functions:
     \td{Fixed points}
     \td{❌ none}
     \td{
-       \math{\mrow{\msqrt{\mrow{\mo{±}\mn{0}}}\mo{=}\mrow{\mo{±}\mn{0}}}}
+       \math{\mrow{\msqrt{\mrow{\mo{±}\mn{0}}}\mo{=}\mrow{\mo{±}\mn{0}}}},\br
+       \math{\mrow{\msqrt{\mn{1}}\mo{=}\mn{1}}}
     }
     \td{
       \math{\mrow{\msqrt{\mrow{\mo{±}\mn{0}}}\mo{=}\mrow{\mo{±}\mn{0}}}},\br
@@ -458,7 +474,7 @@ we can derived several secondary properties for the functions:
   \tr{
     \td{Multiplicative}
     \td{❌ no}
-    \td{❌ no}
+    \td{⚠️ only if all operations are exact}
     \td{⚠️ only if all operations are exact}
     \td{❌ no}
   }
@@ -487,7 +503,7 @@ For example, monotonicity and the fixed points at \math{\mn{0}} and \math{\mn{1}
 
 }
 
-\h4{Too unclear for many users}
+\h4{Too unclear for many customization point users}
 
 From this table,
 we can tell that in generic code where we don't know the input type,
@@ -561,7 +577,7 @@ To be fair, such use cases do exist, and C++26 \header{linalg} is one of them,
 as it works with user-defined types and uses \tcode{operator+} as a customization point
 with basically no specific requirements.
 
-\h4{Too unclear for library authors}
+\h4{Too unclear for customization authors}
 
 This severe underspecification also makes it difficult to provide
 customizations as a library author.
