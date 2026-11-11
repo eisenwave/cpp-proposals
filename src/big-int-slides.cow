@@ -393,6 +393,10 @@ template</* ... */> struct basic_big_int { // example layout
   \li{customizable via \tcode{min_inplace_capacity} parameter\ul{
     \li{default should typically be \tcode{64} for \tcode{std::big_int}}
   }}
+  \li{
+    \ref("https://bemanproject.github.io/big_int/benchmarks.html#benchmarks_small_value_results"){benchmarks}:
+    small \tcode{big_int} vs. builtin integer types
+  }
 }
 }
 
@@ -437,7 +441,7 @@ span<const uint_multiprecision_t> representation() const noexcept;
 \slide{
 \slideh{Operators \'EM DASH' Example of division}
 
-\div(style="font-size: 90%"){
+\div(style="font-size: 80%"){
 \cppblock{
 template<class L, class R>
   constexpr \exposid{common-big-int-type}<L, R> operator/(L&& x, R&& y);
@@ -448,7 +452,9 @@ template<class L, class R>
   \li{Otherwise, if both are single-limb, use builtin division operator}
   \li{Otherwise, if right operand is single-limb, use short division (#1, #2)}
   \li{Otherwise, if both are ≤ 128-bit, use \tcode{__udivti3} for GCC and Clang}
-  \li{Otherwise, use long division (#3)}
+  \li{Otherwise, if right operand is small, use long division (#3)}
+  \li{Otherwise, use Burnikel–Ziegler sub-quadratic division\br
+    (right operand ≥ 40 limbs on AArch64, ≥ 160 limbs on x86-64)}
 }
 
 \cppblock{
@@ -570,10 +576,14 @@ constexpr big_int operator""n(const uint_multiprecision_t*, size_t);
 }
 
 \div(class="compact"){
-\cowel_html_element("h4"){Performance}
+\cowel_html_element("h4"){Performance
+  (\ref("https://bemanproject.github.io/big_int/benchmarks.html#benchmarks_libraries"){benchmarks})}
 \ul{
-  \li{similar to Boost \tcode{cpp_int}, sometimes better}
-  \li{slightly worse than Boost \tcode{gmp_int}, better in rare cases}
+  \li{nearly uniformly better than Boost \tcode{cpp_int}}
+  \li{
+    generally behind Boost \tcode{gmp_int},
+    but ahead across wide size ranges of some operations
+  }
 }
 }
 }
@@ -589,8 +599,8 @@ constexpr big_int operator""n(const uint_multiprecision_t*, size_t);
 \div(class="compact"){
 \cowel_html_element("h4"){Numeric errors}
 \ul{
-  \li{\b{Cause}: division by zero, conversion of infinity to \tcode{std::big_int}, etc.}
-  \li{\b{Effect}: undefined behavior}
+  \li{\b{Cause}: division by zero, negative shift count}
+  \li{\b{Effect}: exception (\tcode{std::domain_error}), or a trap without exceptions}
 }
 
 \cowel_html_element("h4"){Container errors}

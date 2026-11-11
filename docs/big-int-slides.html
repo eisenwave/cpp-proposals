@@ -2242,6 +2242,10 @@ Slide 10
   <li>customizable via <code><h- data-h=name>min_inplace_capacity</h-></code> parameter<ul>
     <li>default should typically be <code><h- data-h=num>64</h-></code> for <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code></li>
   </ul></li>
+  <li>
+    <a href=https://bemanproject.github.io/big_int/benchmarks.html#benchmarks_small_value_results>benchmarks</a>:
+    small <code><h- data-h=name>big_int</h-></code> vs. builtin integer types
+  </li>
 </ul>
 
 <div class=slide-foot>
@@ -2323,7 +2327,7 @@ Slide 13
 
 <h2 id=slide-h-14>Operators — Example of division</h2>
 
-<div style="font-size: 90%">
+<div style="font-size: 80%">
 <code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>R</h-><h- data-h=sym_op>&gt;</h->
   <h- data-h=kw>constexpr</h-> <i><h- data-h=name>common-big-int-type</h-></i><h- data-h=sym_op>&lt;</h-><h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>R</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>/</h-><h- data-h=sym_par>(</h-><h- data-h=name>L</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>R</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h-></code-block>
 
@@ -2332,7 +2336,9 @@ Slide 13
   <li>Otherwise, if both are single-limb, use builtin division operator</li>
   <li>Otherwise, if right operand is single-limb, use short division (#1, #2)</li>
   <li>Otherwise, if both are ≤ 128-bit, use <code><h- data-h=name>__udivti3</h-></code> for GCC and Clang</li>
-  <li>Otherwise, use long division (#3)</li>
+  <li>Otherwise, if right operand is small, use long division (#3)</li>
+  <li>Otherwise, use Burnikel–Ziegler sub-quadratic division<br/>
+    (right operand ≥ 40 limbs on AArch64, ≥ 160 limbs on x86-64)</li>
 </ol>
 
 <code-block><h- data-h=kw_type>void</h-> <h- data-h=name>short_div</h-><h- data-h=sym_par>(</h-><h- data-h=name>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>u64</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>dest</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>span</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>const</h-> <h- data-h=name>u64</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>u64</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->              <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> #1</h->
@@ -2522,10 +2528,14 @@ Slide 19
 </ul>
 
 <div class=compact>
-<h4>Performance</h4>
+<h4>Performance
+  (<a href=https://bemanproject.github.io/big_int/benchmarks.html#benchmarks_libraries>benchmarks</a>)</h4>
 <ul>
-  <li>similar to Boost <code><h- data-h=name>cpp_int</h-></code>, sometimes better</li>
-  <li>slightly worse than Boost <code><h- data-h=name>gmp_int</h-></code>, better in rare cases</li>
+  <li>nearly uniformly better than Boost <code><h- data-h=name>cpp_int</h-></code></li>
+  <li>
+    generally behind Boost <code><h- data-h=name>gmp_int</h-></code>,
+    but ahead across wide size ranges of some operations
+  </li>
 </ul>
 </div>
 
@@ -2554,8 +2564,8 @@ Slide 20
 <div class=compact>
 <h4>Numeric errors</h4>
 <ul>
-  <li><b>Cause</b>: division by zero, conversion of infinity to <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>, etc.</li>
-  <li><b>Effect</b>: undefined behavior</li>
+  <li><b>Cause</b>: division by zero, negative shift count</li>
+  <li><b>Effect</b>: exception (<code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>domain_error</h-></code>), or a trap without exceptions</li>
 </ul>
 
 <h4>Container errors</h4>
