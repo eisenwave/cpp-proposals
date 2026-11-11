@@ -1580,7 +1580,7 @@ if (theme !== null) {
 
 <dl>
   <dt>Document number:</dt> <dd><a href=https://wg21.link/D4447R0>D4447R0</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-11-10</tt-></dd>
+  <dt>Date:</dt>            <dd><tt->2026-11-11</tt-></dd>
   <dt>Audience:</dt>        <dd>LEWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;<br/>
@@ -1612,8 +1612,10 @@ We propose the ability to disable interactions with <tt->errno</tt-> in mathemat
 <div class=toc-num data-level=3>2.2</div>
 <a href=#floating-point-exceptions><h3>Floating-point exceptions</h3></a>
 <div class=toc-num data-level=3>2.3</div>
-<a href=#feature-testing><h3>Feature testing</h3></a>
+<a href=#error-handling-without-errno><h3>Error handling without <code><h- data-h=name>errno</h-></code></h3></a>
 <div class=toc-num data-level=3>2.4</div>
+<a href=#feature-testing><h3>Feature testing</h3></a>
+<div class=toc-num data-level=3>2.5</div>
 <a href=#is-this-not-merely-quality-of-implementation><h3>Is this not merely quality of implementation?</h3></a>
 <div class=toc-num data-level=2>3</div>
 <a href=#implementation-experience><h2>Implementation experience</h2></a>
@@ -1623,6 +1625,8 @@ We propose the ability to disable interactions with <tt->errno</tt-> in mathemat
 <a href=#intro%2ecompliance%2egeneral><h3>[intro.compliance.general]</h3></a>
 <div class=toc-num data-level=3>4.2</div>
 <a href=#cmath%2esyn><h3>[cmath.syn]</h3></a>
+<div class=toc-num data-level=3>4.3</div>
+<a href=#simd><h3>[simd]</h3></a>
 <div class=toc-num data-level=2>5</div>
 <a href=#references><h2>References</h2></a>
 </div>
@@ -1856,7 +1860,7 @@ and throughout subclause <a href=https://eel.is/c++draft/simd.math>[simd.math]</
 </p>
 <blockquote>
 <p><i>Remarks</i>:
-It is unspecified whether errno (<a href=https://eel.is/c++draft/errno>[errno]</a>) is accessed.
+It is unspecified whether <code><h- data-h=name>errno</h-></code> (<a href=https://eel.is/c++draft/errno>[errno]</a>) is accessed.
 </p></blockquote>
 
 <p>However, this is only a partial solution to the problem.
@@ -1930,6 +1934,17 @@ Every single math function would need to have an <q>errno-less</q> variant avail
 On platforms where <q>errno-less mode</q> is already the default (e.g. Darwin),
 no action is required.
 </p>
+<p><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>simd</h-></code> math functions (<a href=https://eel.is/c++draft/simd.math>[simd.math]</a>, <a href=https://eel.is/c++draft/simd.complex.math>[simd.complex.math]</a>)
+should always use the <code><h- data-h=name>errno</h-></code>-less math functions,
+whether <code><h- data-h=str>&lt;cmath&gt;</h-></code> is currently configured to be <code><h- data-h=name>errno</h-></code>-less or not.
+The <code><h- data-h=name>errno</h-></code>-less math function
+must exist somewhere in the C++ runtime library or in <tt->libc</tt->,
+so <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>simd</h-></code> functions should just access those internal functions.
+This is not a breaking change because <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>simd</h-></code> math functions
+already have unspecified access to <code><h- data-h=name>errno</h-></code>,
+meaning that even if <code><h- data-h=name>errno</h-></code> is written to by <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code>,
+the user has no guarantee that <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>simd</h-><h- data-h=sym_op>::</h-><h- data-h=name>sqrt</h-></code> does the same.
+</p>
 <note-block><p><intro-></intro-> 
 The aforementioned <a href=#constexpr-problem>§1.3. <code><h- data-h=kw>constexpr</h-></code> problem</a> is not resolved in this paper,
 but provides motivation for the direction.
@@ -1964,7 +1979,43 @@ in addition to a a <code><h- data-h=name>errno</h-></code>-less mode because
   </li>
 </ul>
 
-<h3 id=feature-testing><a class=para href=#feature-testing></a>2.3. Feature testing</h3>
+<h3 id=error-handling-without-errno><a class=para href=#error-handling-without-errno></a>2.3. Error handling without <code><h- data-h=name>errno</h-></code></h3>
+
+<p>When <code><h- data-h=name>errno</h-></code> is removed and support for floating-point exceptions isn't mandated either,
+there is no more <q>side channel</q> for error reporting anymore.
+The only possible way to detect errors is by checking the result of expressions then.
+</p>
+<p>This is fine for a number of reasons:
+</p><ul>
+  <li>
+    Overflow, pole errors (division by zero), and domain errors
+    can be detected by checking whether the result is NaN or infinity.
+    Since most operations silently propagate NaN or infinity,
+    this doesn't need to happen after each operation, typically.
+  </li>
+  <li>
+    Underflow (<code><h- data-h=name>FE_UNDERFLOW</h-></code>) cannot be detected by checking the result,
+    but it was never reliably detectable using other means anyway;
+    support for underflow exceptions and for setting <code><h- data-h=name>errno</h-></code> on underflow is optional in C.
+  </li>
+  <li>
+    Inexact operations (<code><h- data-h=name>FE_INEXACT</h-></code>) cannot be detected by checking the result either,
+    but this exception is relatively obscure and often unhelpful
+    because almost every floating-point operation is inexact.
+  </li>
+  <li>
+    The programming model where only the result can be used for error handling is tried and tested.
+    Targets like WASM/emscripten support only this model,
+    and there are many programming languages (e.g. Java, JavaScript, Python)
+    which have neither an <code><h- data-h=name>errno</h-></code>-like construct nor floating-point exceptions.
+    This model does heavily rely on having NaN and infinity values
+    (which not every floating-point format has),
+    but given that ISO/IEC 60559 types have become the norm,
+    having those error values has become the rule rather than an exception.
+  </li>
+</ul>
+
+<h3 id=feature-testing><a class=para href=#feature-testing></a>2.4. Feature testing</h3>
 
 <p>Feature testing should work entirely through <code><h- data-h=name>math_errhandling</h-></code>,
 which is a standard library bitmask macro,
@@ -1975,7 +2026,7 @@ if <code><h- data-h=name>errno</h-></code> is used for error handling in <code><
 to make that expression <code><h- data-h=bool>false</h-></code>,
 i.e. to disable <code><h- data-h=name>errno</h-></code>.
 </p>
-<h3 id=is-this-not-merely-quality-of-implementation><a class=para href=#is-this-not-merely-quality-of-implementation></a>2.4. Is this not merely quality of implementation?</h3>
+<h3 id=is-this-not-merely-quality-of-implementation><a class=para href=#is-this-not-merely-quality-of-implementation></a>2.5. Is this not merely quality of implementation?</h3>
 
 <p>One may argue that the change in this paper is somewhat pointless
 because providing an <code><h- data-h=name>errno</h-></code>-less math library is already permitted.
@@ -2079,6 +2130,31 @@ except that</p><ul>
   </li>
 </ul>
 </ins-block>
+
+<note-block class=edit><p><intro-></intro-> 
+The first bullet fixes the issue that hosted implementations
+are required to use <code><h- data-h=name>MATH_ERRNO</h-></code> or <code><h- data-h=name>MATH_ERREXCEPT</h-></code>.
+</p>
+<p>The second bullet fixes the issue that
+even if <code><h- data-h=name>math_errhandling</h-> <h- data-h=sym_op>&amp;</h-> <h- data-h=name>MATH_ERRNO</h-></code> equals <code><h- data-h=num>0</h-></code>,
+<code><h- data-h=name>errno</h-></code> can be accessed.
+It becomes unspecified and the user cannot rely on it happening,
+but it also isn't guaranteed that the implementation won't access <code><h- data-h=name>errno</h-></code>.
+We wouldn't want implementations to vacuously comply by reporting
+<code><h- data-h=name>math_errhandling</h-></code> as zero while still accessing <code><h- data-h=name>errno</h-></code>.
+</p></note-block>
+
+<h3 id=simd><a class=para href=#simd></a>[simd]</h3>
+
+<p><b>Bulk edit</b>:
+Throughout subclauses <a href=https://eel.is/c++draft/simd.math>[simd.math]</a> and <a href=https://eel.is/c++draft/simd.complex.math>[simd.complex.math]</a>,
+make the following change to <i>Remarks</i> elements:
+</p>
+<diff-block>
+<p><i>Remarks</i>:
+<del>It is unspecified whether</del>
+<code><h- data-h=name>errno</h-></code> (<a href=https://eel.is/c++draft/errno>[errno]</a>) is <ins>not</ins> accessed.
+</p></diff-block>
 
 <h2 id=references><a class=para href=#references></a>5. References</h2>
 

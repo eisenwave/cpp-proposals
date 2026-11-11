@@ -6,7 +6,7 @@
 ){
 \dl{
   \dt{Document number:} \dd{\docnum{D4447R0}}
-  \dt{Date:}            \dd{\tt{2026-11-10}}
+  \dt{Date:}            \dd{\tt{2026-11-11}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
@@ -264,7 +264,7 @@ and throughout subclause \eelis{simd.math} and \eelis{simd.complex.math},
 
 \Bquote{
 \remarks
-It is unspecified whether errno\iref{errno} is accessed.
+It is unspecified whether \tcode{errno}\iref{errno} is accessed.
 }
 
 However, this is only a partial solution to the problem.
@@ -340,6 +340,17 @@ Every single math function would need to have an \q{errno-less} variant availabl
 On platforms where \q{errno-less mode} is already the default (e.g. Darwin),
 no action is required.
 
+\tcode{std::simd} math functions (\eelis{simd.math}, \eelis{simd.complex.math})
+should always use the \tcode{errno}-less math functions,
+whether \header{cmath} is currently configured to be \tcode{errno}-less or not.
+The \tcode{errno}-less math function
+must exist somewhere in the C++ runtime library or in \tt{libc},
+so \tcode{std::simd} functions should just access those internal functions.
+This is not a breaking change because \tcode{std::simd} math functions
+already have unspecified access to \tcode{errno},
+meaning that even if \tcode{errno} is written to by \tcode{std::sqrt},
+the user has no guarantee that \tcode{std::simd::sqrt} does the same.
+
 \Bnote{
 The aforementioned \ref("#constexpr-problem") is not resolved in this paper,
 but provides motivation for the direction.
@@ -371,6 +382,42 @@ in addition to a a \tcode{errno}-less mode because
   \li{
     floating-point exceptions are less problematic from a performance standpoint
     and are simply byproducts of hardware instructions.
+  }
+}
+
+\h3{Error handling without \tcode{errno}}
+
+When \tcode{errno} is removed and support for floating-point exceptions isn't mandated either,
+there is no more \q{side channel} for error reporting anymore.
+The only possible way to detect errors is by checking the result of expressions then.
+
+This is fine for a number of reasons:
+\ul{
+  \li{
+    Overflow, pole errors (division by zero), and domain errors
+    can be detected by checking whether the result is NaN or infinity.
+    Since most operations silently propagate NaN or infinity,
+    this doesn't need to happen after each operation, typically.
+  }
+  \li{
+    Underflow (\tcode{FE_UNDERFLOW}) cannot be detected by checking the result,
+    but it was never reliably detectable using other means anyway;
+    support for underflow exceptions and for setting \tcode{errno} on underflow is optional in C.
+  }
+  \li{
+    Inexact operations (\tcode{FE_INEXACT}) cannot be detected by checking the result either,
+    but this exception is relatively obscure and often unhelpful
+    because almost every floating-point operation is inexact.
+  }
+  \li{
+    The programming model where only the result can be used for error handling is tried and tested.
+    Targets like WASM/emscripten support only this model,
+    and there are many programming languages (e.g. Java, JavaScript, Python)
+    which have neither an \tcode{errno}-like construct nor floating-point exceptions.
+    This model does heavily rely on having NaN and infinity values
+    (which not every floating-point format has),
+    but given that ISO/IEC 60559 types have become the norm,
+    having those error values has become the rule rather than an exception.
   }
 }
 
@@ -490,6 +537,31 @@ except that\ul{
     \tcode{errno} is not accessed by any functions described in subclause \eelis{c.math}.
   }
 }
+}
+
+\editnote{
+The first bullet fixes the issue that hosted implementations
+are required to use \tcode{MATH_ERRNO} or \tcode{MATH_ERREXCEPT}.
+
+The second bullet fixes the issue that
+even if \tcode{math_errhandling & MATH_ERRNO} equals \tcode{0},
+\tcode{errno} can be accessed.
+It becomes unspecified and the user cannot rely on it happening,
+but it also isn't guaranteed that the implementation won't access \tcode{errno}.
+We wouldn't want implementations to vacuously comply by reporting
+\tcode{math_errhandling} as zero while still accessing \tcode{errno}.
+}
+
+\h3(show_number=false){[simd]}
+
+\b{Bulk edit}:
+Throughout subclauses \eelis{simd.math} and \eelis{simd.complex.math},
+make the following change to \Fundescx{Remarks} elements:
+
+\Bdiff{
+\remarks
+\del{It is unspecified whether}
+\tcode{errno}\iref{errno} is \ins{not} accessed.
 }
 
 \h2{References}
