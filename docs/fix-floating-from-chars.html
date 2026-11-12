@@ -1581,8 +1581,8 @@ if (theme !== null) {
   (LWG3081, LWG3082, LWG3456)</h1>
 
 <dl>
-  <dt>Document number:</dt> <dd><a href=https://wg21.link/P4168R1>P4168R1</a></dd>
-  <dt>Date:</dt>            <dd><tt->2026-09-21</tt-></dd>
+  <dt>Document number:</dt> <dd><a href=https://wg21.link/P4168R2>P4168R2</a></dd>
+  <dt>Date:</dt>            <dd><tt->2026-11-12</tt-></dd>
   <dt>Audience:</dt>        <dd>LEWG</dd>
   <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
   <dt>Reply-to:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
@@ -1607,6 +1607,8 @@ and every implementation diverges from the wording in the standard.
 <div class=toc><div class=toc-num data-level=2>1</div>
 <a href=#revision-history><h2>Revision history</h2></a>
 <div class=toc-num data-level=3>1.1</div>
+<a href=#changes-since-r1><h3>Changes since R1</h3></a>
+<div class=toc-num data-level=3>1.2</div>
 <a href=#changes-since-r0><h3>Changes since R0</h3></a>
 <div class=toc-num data-level=2>2</div>
 <a href=#introduction><h2>Introduction</h2></a>
@@ -1656,7 +1658,18 @@ and every implementation diverges from the wording in the standard.
 
 <h2 id=revision-history><a class=para href=#revision-history></a>1. Revision history</h2>
 
-<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.1. Changes since R0</h3>
+<h3 id=changes-since-r1><a class=para href=#changes-since-r1></a>1.1. Changes since R1</h3>
+
+<ul>
+  <li>
+    Fixed handling of underflow in <a href=#tininess-detection>§3.5. Tininess detection</a>
+    to be consistent with the C23 definition,
+    with ISO/IEC 60559, and
+    with <code><h- data-h=name>strtod</h-></code>
+  </li>
+</ul>
+
+<h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.2. Changes since R0</h3>
 
 <ul>
   <li>
@@ -1795,7 +1808,9 @@ as well as the returned <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><
 </table>
 
 <note-block><p><intro-></intro-> 
-The libc++ and MSVC STL behavior is proposed.
+The libc++ and MSVC STL behavior is proposed,
+except that underflow to subnormals should also be diagnosed,
+not just to zero.
 </p></note-block>
 
 <h3 id=defective-wording><a class=para href=#defective-wording></a>2.2. Defective wording</h3>
@@ -2022,13 +2037,68 @@ before or after rounding.
 That is, if a value is mathematically less than the smallest normal value
 and is rounded up,
 that may not be detected as underflow.
+<a href=https://cstd.eisie.net/c23.html#7.12.1p6>C23 §7.12.1 paragraph 6</a>
+defines underflow identically, and
+<a href=https://cstd.eisie.net/c23.html#7.24.1.5p13>C23 §7.24.1.5 paragraph 13</a>
+specifies that <code><h- data-h=name>strtod</h-></code> treats underflow during interpretation
+of the parsed number in the ISO/IEC 60559 way.
 </p>
-<p>In the case of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>from_chars</h-></code>,
-detecting tininess after rounding is the only plausible option because
-whether a value is mathematically less than the smallest normal value
-is sometimes only determined tens or hundreds of digits into the string.
-The usual implementation strategy is to parse only the significant digits of the string,
-which is e.g. 17 digits in the case of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>float64_t</h-></code>.
+<p>The currently implemented behavior in the MSVC STL and libc++ is
+to only consider inexact zero results to be underflow,
+but this is wrong from an ISO/IEC 60559 perspective and
+is inconsistent with <code><h- data-h=name>strtod</h-></code>.
+Perplexingly, libc++ goes out of its way to do the <q>wrong</q> thing
+in order to comply with (a false understanding of) C++ standard, in
+<a href=https://github.com/llvm/llvm-project/blob/3c100d5d548d511d09746dd5a2fee29bdd00805c/libcxx/src/include/from_chars_floating_point.h#L232-L268><tt->from_chars_floating_point.h</tt-></a>:
+</p>
+<blockquote>
+<code-block><h- data-h=kw>template</h-> <h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>_Fp</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>_Tp</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=name>__from_chars_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>_Fp</h-><h- data-h=sym_op>&gt;</h->
+<h- data-h=name>__calculate_result</h-><h- data-h=sym_par>(</h-><h- data-h=name>_Tp</h-> <h- data-h=name>__mantissa</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>int</h-> <h- data-h=name>__exponent</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>bool</h-> <h- data-h=name>__negative</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>__from_chars_result</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>_Fp</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>__result</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw>auto</h-> <h- data-h=name>__r</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>LIBC_NAMESPACE</h-><h- data-h=sym_op>::</h-><h- data-h=name>shared</h-><h- data-h=sym_op>::</h-><h- data-h=name>FPBits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>_Fp</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=name>__r</h-><h- data-h=sym_op>.</h-><h- data-h=name>set_mantissa</h-><h- data-h=sym_par>(</h-><h- data-h=name>__mantissa</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=name>__r</h-><h- data-h=sym_op>.</h-><h- data-h=name>set_biased_exponent</h-><h- data-h=sym_par>(</h-><h- data-h=name>__exponent</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+
+
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> C17 7.12.1/6</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> The result underflows if the magnitude of the mathematical result is so</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> small that the mathematical result cannot be represented, without</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> extraordinary roundoff error, in an object of the specified type.237) If</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> the result underflows, the function returns an implementation-defined</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> value whose magnitude is no greater than the smallest normalized positive</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> number in the specified type; if the integer expression math_errhandling</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> &amp; MATH_ERRNO is nonzero, whether errno acquires the value ERANGE is</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> implementation-defined; if the integer expression math_errhandling &amp;</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> MATH_ERREXCEPT is nonzero, whether the "underflow" floating-point</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> exception is raised is implementation-defined.</h->
+  <h- data-h=cmt_dlim>//</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> LLVM-LIBC sets ERAGNE for subnormal values</h->
+  <h- data-h=cmt_dlim>//</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> [charconv.from.chars]/1</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt>   ... If the parsed value is not in the range representable by the type of</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt>   value, value is unmodified and the member ec of the return value is</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt>   equal to errc::result_out_of_range. ...</h->
+  <h- data-h=cmt_dlim>//</h->
+  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> Undo the ERANGE for subnormal values.</h->
+<mark>  <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>__result</h-><h- data-h=sym_op>.</h-><h- data-h=name>__ec</h-> <h- data-h=sym_op>==</h-> <h- data-h=name>errc</h-><h- data-h=sym_op>::</h-><h- data-h=name>result_out_of_range</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>__r</h-><h- data-h=sym_op>.</h-><h- data-h=name>is_subnormal</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=sym_op>!</h-><h- data-h=name>__r</h-><h- data-h=sym_op>.</h-><h- data-h=name>is_zero</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_par>)</h->
+    <h- data-h=name>__result</h-><h- data-h=sym_op>.</h-><h- data-h=name>__ec</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>errc</h-><h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h-></mark>
+
+
+  <h- data-h=kw_ctrl>if</h-> <h- data-h=sym_par>(</h-><h- data-h=name>__negative</h-><h- data-h=sym_par>)</h->
+    <h- data-h=name>__result</h-><h- data-h=sym_op>.</h-><h- data-h=name>__value</h-> <h- data-h=sym_op>=</h-> <h- data-h=sym_op>-</h-><h- data-h=name>__r</h-><h- data-h=sym_op>.</h-><h- data-h=name>get_val</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw_ctrl>else</h->
+    <h- data-h=name>__result</h-><h- data-h=sym_op>.</h-><h- data-h=name>__value</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>__r</h-><h- data-h=sym_op>.</h-><h- data-h=name>get_val</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
+
+
+  <h- data-h=kw_ctrl>return</h-> <h- data-h=name>__result</h-><h- data-h=sym_punc>;</h->
+<h- data-h=sym_brac>}</h-></code-block>
+</blockquote>
+
+<p>The <mark>marked lines</mark> show that libc++ implementers understand
+how underflow works and they already have the proper detection mechanism for it,
+but <em>undo</em> the correct result by clearing <code><h- data-h=name>__ec</h-></code> for nonzero results.
+</p>
+<p>The proposed fix is to detect underflow in a way consistent with ISO/IEC 60559.
 </p>
 <h3 id=further-edge-cases><a class=para href=#further-edge-cases></a>3.6. Further edge cases</h3>
 
@@ -2515,10 +2585,14 @@ closest to the value of the string matching the pattern.
       <li>
         <math display=inline><mi>r</mi></math> is negative or positive infinity or
         <math display=inline><mi>q</mi></math> is not in the range of values
-        representable by the type of <code><h- data-h=name>value</h-></code>,
+        representable by the type of <code><h- data-h=name>value</h-></code>, or
       </li>
       <li>
-        <math display=inline><mi>r</mi></math> is zero and <math display=inline><mi>q</mi></math> is not zero.
+        the rounding of <math display=inline><mi>q</mi></math> to <math display=inline><mi>r</mi></math> underflows.
+        <br/>[<i>Note</i>: 
+        The conditions for underflow are described in
+        <a href=https://cstd.eisie.net/c23.html#7.12.1p6>ISO/IEC 9899:2024, 7.21.1</a>.
+         — <i>end note</i>]
       </li>
     </ul>
     Otherwise, the member <code><h- data-h=name>ec</h-></code> of the result is value-initialized.

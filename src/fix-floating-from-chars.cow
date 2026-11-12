@@ -4,8 +4,8 @@
 \wg21_head(title={Fix defects in floating-point \tcode{std::from_chars}\br
   (LWG3081, LWG3082, LWG3456)}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P4168R1}}
-  \dt{Date:}            \dd{\tt{2026-09-21}}
+  \dt{Document number:} \dd{\docnum{P4168R2}}
+  \dt{Date:}            \dd{\tt{2026-11-12}}
   \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -30,6 +30,17 @@ and every implementation diverges from the wording in the standard.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R1}
+
+\ul{
+  \li{
+    Fixed handling of underflow in \ref("#tininess-detection")
+    to be consistent with the C23 definition,
+    with ISO/IEC 60559, and
+    with \tcode{strtod}
+  }
+}
 
 \h3{Changes since R0}
 
@@ -172,7 +183,9 @@ as well as the returned \tcode{std::errc} value.
 }
 
 \Bnote{
-The libc++ and MSVC STL behavior is proposed.
+The libc++ and MSVC STL behavior is proposed,
+except that underflow to subnormals should also be diagnosed,
+not just to zero.
 }
 
 \h3{Defective wording}
@@ -399,13 +412,70 @@ before or after rounding.
 That is, if a value is mathematically less than the smallest normal value
 and is rounded up,
 that may not be detected as underflow.
+\ref("https://cstd.eisie.net/c23.html#7.12.1p6"){C23 §7.12.1 paragraph 6}
+defines underflow identically, and
+\ref("https://cstd.eisie.net/c23.html#7.24.1.5p13"){C23 §7.24.1.5 paragraph 13}
+specifies that \tcode{strtod} treats underflow during interpretation
+of the parsed number in the ISO/IEC 60559 way.
 
-In the case of \tcode{std::from_chars},
-detecting tininess after rounding is the only plausible option because
-whether a value is mathematically less than the smallest normal value
-is sometimes only determined tens or hundreds of digits into the string.
-The usual implementation strategy is to parse only the significant digits of the string,
-which is e.g. 17 digits in the case of \tcode{std::float64_t}.
+The currently implemented behavior in the MSVC STL and libc++ is
+to only consider inexact zero results to be underflow,
+but this is wrong from an ISO/IEC 60559 perspective and
+is inconsistent with \tcode{strtod}.
+Perplexingly, libc++ goes out of its way to do the \q{wrong} thing
+in order to comply with (a false understanding of) C++ standard, in
+\ref("https://github.com/llvm/llvm-project/blob/3c100d5d548d511d09746dd5a2fee29bdd00805c/libcxx/src/include/from_chars_floating_point.h#L232-L268"){\tt{from_chars_floating_point.h}}:
+
+\Bquote{
+\cppblock{
+template <class _Fp, class _Tp>
+__from_chars_result<_Fp>
+__calculate_result(_Tp __mantissa, int __exponent, bool __negative, __from_chars_result<_Fp> __result) {
+  auto __r = LIBC_NAMESPACE::shared::FPBits<_Fp>();
+  __r.set_mantissa(__mantissa);
+  __r.set_biased_exponent(__exponent);
+
+
+  // C17 7.12.1/6
+  // The result underflows if the magnitude of the mathematical result is so
+  // small that the mathematical result cannot be represented, without
+  // extraordinary roundoff error, in an object of the specified type.237) If
+  // the result underflows, the function returns an implementation-defined
+  // value whose magnitude is no greater than the smallest normalized positive
+  // number in the specified type; if the integer expression math_errhandling
+  // & MATH_ERRNO is nonzero, whether errno acquires the value ERANGE is
+  // implementation-defined; if the integer expression math_errhandling &
+  // MATH_ERREXCEPT is nonzero, whether the "underflow" floating-point
+  // exception is raised is implementation-defined.
+  //
+  // LLVM-LIBC sets ERAGNE for subnormal values
+  //
+  // [charconv.from.chars]/1
+  //   ... If the parsed value is not in the range representable by the type of
+  //   value, value is unmodified and the member ec of the return value is
+  //   equal to errc::result_out_of_range. ...
+  //
+  // Undo the ERANGE for subnormal values.
+\mark{  if (__result.__ec == errc::result_out_of_range && __r.is_subnormal() && !__r.is_zero())
+    __result.__ec = errc{};}
+
+
+  if (__negative)
+    __result.__value = -__r.get_val();
+  else
+    __result.__value = __r.get_val();
+
+
+  return __result;
+}
+}
+}
+
+The \mark{marked lines} show that libc++ implementers understand
+how underflow works and they already have the proper detection mechanism for it,
+but \em{undo} the correct result by clearing \tcode{__ec} for nonzero results.
+
+The proposed fix is to detect underflow in a way consistent with ISO/IEC 60559.
 
 \h3{Further edge cases}
 
@@ -898,10 +968,14 @@ closest to the value of the string matching the pattern.
       \li{
         \math{\mi{r}} is negative or positive infinity or
         \math{\mi{q}} is not in the range of values
-        representable by the type of \tcode{value},
+        representable by the type of \tcode{value}, or
       }
       \li{
-        \math{\mi{r}} is zero and \math{\mi{q}} is not zero.
+        the rounding of \math{\mi{q}} to \math{\mi{r}} underflows.
+        \br\note{
+        The conditions for underflow are described in
+        \ref("https://cstd.eisie.net/c23.html#7.12.1p6"){\IsoC{}, 7.21.1}.
+        }
       }
     }
     Otherwise, the member \tcode{ec} of the result is value-initialized.
