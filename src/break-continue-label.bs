@@ -1,9 +1,9 @@
 <pre class='metadata'>
 Title: <code>break label;</code> and <code>continue label;</code>
 Shortname: P3568
-Revision: 3
+Revision: 4
 Status: P
-Date: 2026-10-11
+Date: 2026-11-12
 Group: WG21
 Audience: CWG
 Editor: Jan Schultke, janschultke@gmail.com
@@ -16,6 +16,13 @@ Abstract: Introduce `break label` and `continue label` to `break` and `continue`
 </pre>
 
 # Revision history # {#history}
+
+## Since R3 ## {#history-since-r3}
+
+- Made minor editorial improvements to [[#proposed-wording]]
+- Fixed a wording bug that would prevent `label: while ...`
+    from being used in *expansion-statement*s,
+    in coordination with CWG reflector feedback
 
 ## Since R2 ## {#history-since-r2}
 
@@ -922,6 +929,9 @@ del {
     color: inherit;
     text-decoration: strikethrough;
 }
+.del-block {
+    background: rgba(255, 93, 93, 0.2) !important;
+}
 </style>
 
 The wording is relative to [[!N5054]]
@@ -976,7 +986,7 @@ c: { d: switch (0) {           // unlike c:, d: labels the switch statement
 </div>
 </blockquote>
 
-Note: This defines the term *(to) label*, which is used extensively below.
+Note: This defines the verb *(to) label (something)*, which is used extensively below.
 We also don't want `case` or `default` labels to label statements, since this would inadvertently
 permit `break i` given `case i:`, considering how we word [stmt.break].
 
@@ -1001,6 +1011,17 @@ Note: While the restriction still primarily applies to `goto`
 (preventing the user from e.g. jumping into an `if constexpr` statement),
 if other statements can also refer to labels, it is misleading to say
 "statement ([stmt.goto])" as if `goto` was the only relevant statement.
+
+Delete
+<a href="https://eel.is/c++draft/stmt.label">[stmt.label]</a>
+paragraph 4:
+
+<blockquote>
+<div class="del-block">
+An identifier label shall not be enclosed by an <i>expansion-statement</i> ([stmt.expand]).
+</div>
+</blockquote>
+
 
 ---
 
@@ -1111,15 +1132,16 @@ The `goto` statement unconditionally transfers control to <del>the</del><ins>a</
 labeled <ins>([stmt.label])</ins> by <del>the identifier</del>
 <ins>a *label* in the current function containing *identifier*</ins>.
 <del>The identifier shall be a label ([stmt.label]) located in the current function.</del>
-<ins>There shall be exactly one such label.</ins>
+<ins>There shall be exactly one such label,
+and such a label shall not be enclosed by an <i>expansion-statement</i>.</ins>
 </blockquote>
 
 <div class=note>
 <span class=marker>Note:</span>
 This wording has always been defective and our proposal fixes this.
-The term "to label" was never defined,
+The verb "(to) label (something)" was never defined,
 and the requirement that an identifier shall be a label is impossible to satisfy because
-a label ends with a `:`, and an *identifier* in itself would never match the *label* rule.
+a *label* ends with a `:`, and an *identifier* in itself would never match the *label* rule.
 </div>
 
 ---
