@@ -63,6 +63,9 @@ with elastic operations.
     and conversion of non-finite floating-point values throw \tcode{std::domain_error}
     (see \ref("#error-handling"))
   }
+  \li{
+    Added \ref("#appendix-cpp-int")
+  }
 }
 
 \h3{Changes since R0}
@@ -3452,6 +3455,8 @@ To be fair:
 \h2{Implementation experience}
 
 Our reference implementation can be found at \ref("Reference-Impl").
+\ref("#appendix-cpp-int") compares it in detail with \tcode{boost::multiprecision::cpp_int},
+from which it takes heavy inspiration.
 
 \h3{Deployment experience}
 
@@ -4120,9 +4125,9 @@ namespace std {
   template<class T, \exposid{signed-or-unsigned} S> constexpr remove_cvref_t<T> operator>>(T&& x, S s);
 
   namespace pmr {
-    template<size_t b, class L>
+    template<size_t b, class L = uint_multiprecision_t>
       using basic_big_int = std::basic_big_int<b, L, polymorphic_allocator<L>>;
-    using big_int = basic_big_int<std::big_int::inplace_bits>;
+    using big_int = basic_big_int<std::big_int::inplace_capacity>;
   }
 
   //\serif{ swap}
@@ -4381,7 +4386,7 @@ leaves the corresponding argument in a valid but unspecified state.
 \pnum
 During constant evaluation,
 if the effective width of the integer value of a \tcode{basic_big_int}
-is less than or equal to its \tcode{inplace_bits} member,
+is less than or equal to its \tcode{inplace_capacity} member,
 the object holds no allocation following any operation.
 \br\note{
 The behavior is as if \tcode{shrink_to_fit()} were called
@@ -4521,7 +4526,7 @@ template<class T>
 \effects
 \tcode{\exposid{no-alloc-constructible-from}} is \tcode{true} if
 \tcode{remove_cvref_t<T>} is a signed or unsigned integer type
-whose width is less than or equal to \tcode{inplace_bits},
+whose width is less than or equal to \tcode{inplace_capacity},
 and \tcode{false} otherwise.
 }
 
@@ -4663,7 +4668,7 @@ imposed in \eelis{container.requirements}.
 \pnum
 \throws
 Nothing if the effective width of the integer value of \tcode{x}
-is less than or equal to \tcode{inplace_bits};
+is less than or equal to \tcode{inplace_capacity};
 otherwise, exceptions thrown during allocation.
 
 \pnum
@@ -4741,7 +4746,7 @@ by discarding the fractional part of \tcode{x}.
 and the value of \tcode{x} is not finite.
 Otherwise, nothing if the effective width of the integer value
 this object is initialized with
-is less than or equal to \tcode{inplace_bits};
+is less than or equal to \tcode{inplace_capacity};
 otherwise, exceptions thrown during allocation.
 
 \pnum
@@ -4782,7 +4787,7 @@ Initializes the allocator to \tcode{a}.
 and the value of \tcode{x} is not finite.
 Otherwise, nothing if the effective width of the integer value
 this object is initialized with
-is less than or equal to \tcode{inplace_bits};
+is less than or equal to \tcode{inplace_capacity};
 otherwise, exceptions thrown during allocation.
 }
 
@@ -4808,7 +4813,7 @@ Initializes the allocator to \tcode{a}.
 \pnum
 \throws
 Nothing if the effective width of the combined integer value
-is less than or equal to \tcode{inplace_bits};
+is less than or equal to \tcode{inplace_capacity};
 otherwise, exceptions thrown during allocation.
 
 \pnum
@@ -5060,7 +5065,7 @@ constexpr void shrink_to_fit();
 \pnum
 \effects
 If the effective width of the integer value is
-less than or equal to \tcode{inplace_bits},
+less than or equal to \tcode{inplace_capacity},
 \tcode{shrink_to_fit} frees the allocation and stores the integer value
 within the \tcode{basic_big_int} object.
 Otherwise, \tcode{shrink_to_fit} is a non-binding request
@@ -5453,7 +5458,7 @@ A specialization of \tcode{basic_big_int} with an implementation-defined
 argument \math{\mi{B}} for the \tcode{min_inplace_capacity} constant template parameter,
 chosen so that
 \math{\mi{B}} is greater than or equal to \tcode{numeric_limits<uint_multiprecision_t>::digits} and
-\math{\mi{B}} equals \tcode{basic_big_int<\math{\mi{B}}>::inplace_\'SOFT HYPHEN'bits}.
+\math{\mi{B}} equals \tcode{basic_big_int<\math{\mi{B}}>::inplace_\'SOFT HYPHEN'capacity}.
 
 \pnum
 \recommended
@@ -5463,7 +5468,7 @@ may represent the value of all commonly used integer types without allocating.
 }
 
 \editnote{
-\tcode{big_int::min_inplace_bits} is typically \tcode{64} on a 64-bit architecture,
+\tcode{big_int::inplace_capacity} is typically \tcode{64} on a 64-bit architecture,
 and it cannot be any less because it needs to be at least one limb width.
 However, an implementation could also decide to choose \tcode{128}, \tcode{192}, etc.
 
@@ -5737,7 +5742,7 @@ of \math{\mi{s}} interpreted as an \grammarterm{integer-literal}.
 \remarks
 The function specialization has a non-throwing exception specification
 if the effective width of the integer value returned by a function call expression
-is less than or equal to \tcode{big_int::inplace_bits}.
+is less than or equal to \tcode{big_int::inplace_capacity}.
 }
 }
 
@@ -6090,5 +6095,967 @@ Thanks to Jay Ghiron for providing extensive wording feedback.
   publisher = "Microsoft",
   link = "https://www.microsoft.com/en-us/research/wp-content/uploads/2022/07/int.pdf",
 )\
+\bib(
+  id = "Boost-Multiprecision",
+  title = "Boost.Multiprecision",
+  author = "John Maddock, Christopher Kormanyos",
+  link = "https://www.boost.org/doc/libs/latest/libs/multiprecision/doc/html/index.html",
+)\
+\bib(
+  id = "Reference-Impl-Benchmarks",
+  title = "bemanproject/big_int benchmarks",
+  link = "https://bemanproject.github.io/big_int/benchmarks.html",
+)\
 
 \make_bib
+
+\:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+\h2(id="appendix-cpp-int", show_number=false){Appendix A \'EM DASH' Comparison with \tt{boost::multiprecision::cpp_int}}
+
+\style{
+  .cmp th,
+  .cmp td {
+    text-align: left;
+    vertical-align: top;
+  }
+  .cmp td:first-child {
+    font-weight: bold;
+  }
+  .cmp-num td:nth-child(n+2) {
+    text-align: right;
+  }
+}
+
+Our \ref("Reference-Impl") of \tcode{std::big_int}
+takes heavy inspiration from \tcode{boost::multiprecision::cpp_int},
+which has shipped in \ref("Boost-Multiprecision")
+since that library's first release in Boost 1.53 (2013).
+Two of the authors of this paper, Matt Borland and Christopher Kormanyos,
+are maintainers of Boost.Multiprecision,
+and Christopher Kormanyos is one of its original authors, together with John Maddock.
+This appendix compares the two implementations in detail:
+what \tcode{std::big_int} inherits from \tcode{cpp_int},
+where it deliberately departs,
+and what each library currently provides.
+
+Many of the differences follow from different goals.
+Boost.Multiprecision is a header-only C++14 library
+whose \tcode{number<Backend>} front end serves integer, rational, and floating-point back ends alike,
+and \tcode{cpp_int_backend} also provides fixed-width, unsigned, and overflow-checked integers.
+\tcode{std::big_int} is a single vocabulary type with a single job:
+a signed integer of arbitrary precision.
+
+\Bnote{
+Unless stated otherwise,
+this comparison refers to the \tt{develop} branch of Boost.Multiprecision
+at commit \tt{14ba2728} (2026-08-05),
+which differs from the Boost 1.92 release in no way relevant here,
+and to \tt{bemanproject/big_int} at commit \tt{7edd29e} (2026-11-11).
+Statements about run-time behavior were verified with test programs
+compiled against both libraries with Apple Clang 21 on AArch64 macOS;
+performance figures in \ref("#cpp-int-performance") were measured separately
+and come with their own environment.
+}
+
+\h3(id="cpp-int-summary", show_number=false){A.1. Summary}
+
+\table(class="striped cmp"){
+  \tr{
+    \th{Aspect}
+    \th{\tcode{boost::multiprecision::cpp_int}}
+    \th{\tcode{std::big_int} (reference implementation)}
+  }
+  \tr{
+    \td{Type}
+    \td{\tcode{number<cpp_int_backend<>>}: a generic front end over an integer back end}
+    \td{\tcode{basic_big_int<64>}: a single class template}
+  }
+  \tr{
+    \td{Template parameters}
+    \td{\tcode{MinBits}, \tcode{MaxBits}, \tcode{SignType}, \tcode{Checked}, \tcode{Allocator},
+        plus \tcode{ExpressionTemplates} on \tcode{number}}
+    \td{\tcode{min_inplace_capacity}, \tcode{Limb}, \tcode{Allocator}}
+  }
+  \tr{
+    \td{Fixed-width, unsigned, and checked variants}
+    \td{Yes, e.g. \tcode{int128_t}, \tcode{uint512_t}, \tcode{checked_cpp_int}}
+    \td{No; fixed width is left to \tcode{_BitInt}}
+  }
+  \tr{
+    \td{Representation}
+    \td{Sign and magnitude, little-endian limb array}
+    \td{Sign and magnitude, little-endian limb array}
+  }
+  \tr{
+    \td{Limb type}
+    \td{64 bits where \tcode{__int128} is available, 32 bits otherwise (e.g. MSVC)}
+    \td{\tcode{uint_multiprecision_t}: 64 bits on all 64-bit targets, including MSVC and WASM32}
+  }
+  \tr{
+    \td{\tcode{sizeof} / \tcode{alignof}}
+    \td{32 / 16 (with \tcode{__int128})}
+    \td{16 / 8}
+  }
+  \tr{
+    \td{Value bits stored in place by default}
+    \td{128}
+    \td{64}
+  }
+  \tr{
+    \td{Capacity growth factor}
+    \td{4}
+    \td{2}
+  }
+  \tr{
+    \td{Maximum size}
+    \td{Limited by \tcode{size_t} and available memory}
+    \td{\math{\mrow{\msup{\mn{2}\mn{31}}\mo{-}\mn{1}}} limbs; exceeding it throws \tcode{length_error}}
+  }
+  \tr{
+    \td{Expression templates}
+    \td{On by default}
+    \td{None}
+  }
+  \tr{
+    \td{Operators reuse storage of rvalue operands}
+    \td{Yes}
+    \td{Yes}
+  }
+  \tr{
+    \td{Comparison}
+    \td{\tcode{==}, \tcode{!=}, \tcode{<}, \tcode{<=}, \tcode{>}, \tcode{>=}}
+    \td{\tcode{==}, \tcode{<=>} (\tcode{strong_ordering})}
+  }
+  \tr{
+    \td{Mixed-type arithmetic}
+    \td{Built-in integers and other \tcode{cpp_int_backend} types}
+    \td{Built-in integers, including \tcode{__int128} and \tcode{_BitInt}}
+  }
+  \tr{
+    \td{\tcode{constexpr}}
+    \td{Only fixed-width types without an allocator; \tcode{cpp_int} is not a literal type}
+    \td{All operations; values that fit in place can be \tcode{constexpr} variables}
+  }
+  \tr{
+    \td{Out-of-range conversion to built-in integers}
+    \td{Saturating, modular, or throwing, depending on the target and the sign}
+    \td{Modular, like built-in integer conversions;
+        \tcode{saturating_cast} and \tcode{in_range} are provided separately}
+  }
+  \tr{
+    \td{Division by zero, negative shifts, non-finite floating-point input}
+    \td{Exceptions of various types}
+    \td{Throws \tcode{std::domain_error}}
+  }
+  \tr{
+    \td{Text conversion}
+    \td{\tcode{str()}, iostreams, string constructor}
+    \td{\tcode{to_chars}, \tcode{from_chars}, \tcode{std::format}, \tcode{to_string}}
+  }
+  \tr{
+    \td{Literals}
+    \td{\tt{_cppi}, \tt{_cppui}: hexadecimal only, produce fixed-width types}
+    \td{\tt{n}, \tt{N}: any base, produce \tcode{big_int}}
+  }
+  \tr{
+    \td{Allocator support}
+    \td{\tcode{Allocator} template parameter}
+    \td{Allocator-aware like the standard containers, with \tcode{pmr} aliases}
+  }
+  \tr{
+    \td{Integer functions}
+    \td{Many, e.g. \tcode{sqrt}, \tcode{pow}, \tcode{powm}, \tcode{gcd}, \tcode{lcm}, \tcode{msb}, \tcode{bit_test}}
+    \td{\tcode{abs}, \tcode{gcd}, \tcode{lcm}, \tcode{midpoint}, \tcode{saturating_cast}, \tcode{in_range}}
+  }
+  \tr{
+    \td{Multiplication}
+    \td{Schoolbook, Karatsuba}
+    \td{Schoolbook (with assembly kernels), Karatsuba, Toom-Cook 3, 4, 6.5, and 8.5, FFT}
+  }
+  \tr{
+    \td{Division}
+    \td{Schoolbook long division}
+    \td{Knuth long division, Burnikel–Ziegler, Barrett}
+  }
+  \tr{
+    \td{Conversion to and from decimal}
+    \td{Quadratic}
+    \td{Sub-quadratic}
+  }
+  \tr{
+    \td{GCD}
+    \td{Lehmer, in Jebelean's double-digit form}
+    \td{Lehmer, in Jebelean's double-digit form}
+  }
+  \tr{
+    \td{Distribution}
+    \td{Header-only, C++14, part of Boost or standalone}
+    \td{Headers plus a compiled library, C++23, optional named module}
+  }
+}
+
+\h3(id="cpp-int-lineage", show_number=false){A.2. What \tt{std::big_int} inherits and what it changes}
+
+The following parts of the design are shared with \tcode{cpp_int}:
+
+\ul{
+  \li{
+    A sign-and-magnitude representation over a little-endian array of machine-word limbs
+    (see \ref("#sign-and-magnitude") and \ref("#representation-endianness")).
+  }
+  \li{
+    A union of in-place limbs and a (pointer, capacity) pair,
+    with the in-place size chosen by the first template parameter:
+    \tcode{MinBits} in Boost, \tcode{min_inplace_capacity} in \tcode{std::basic_big_int}
+    (see \ref("#soo-customization")).
+  }
+  \li{
+    An \tcode{Allocator} template parameter defaulting to \tcode{std::allocator} of the limb type.
+  }
+  \li{
+    Semantics that match the built-in signed integers:
+    quotients truncate toward zero,
+    right shifts of negative values round toward negative infinity,
+    and bitwise operations on negative values behave as if the value were stored
+    in two's complement with infinitely many sign bits
+    (see \ref("#cpp-int-semantics")).
+  }
+  \li{
+    Operators that reuse the storage of rvalue operands instead of allocating.
+  }
+  \li{
+    Implicit conversion from integers, explicit conversion from floating-point types,
+    and explicit conversion to arithmetic types.
+  }
+  \li{
+    Exceptions for division by zero, negative shifts, and non-finite floating-point input,
+    although \tcode{std::big_int} throws \tcode{std::domain_error} in all three cases,
+    whereas \tcode{cpp_int} throws a different exception type for each
+    (see \ref("#cpp-int-errors")).
+  }
+  \li{
+    Access to the limbs:
+    \tcode{backend().limbs()} in Boost, \tcode{representation()} in \tcode{std::big_int}
+    (see \ref("#cpp-int-representation-access")).
+  }
+  \li{
+    Specializations of \tcode{std::numeric_limits} (with \tcode{is_bounded == false})
+    and of \tcode{std::hash}.
+  }
+  \li{
+    The GCD algorithm: Lehmer's algorithm in Jebelean's double-digit form.
+  }
+}
+
+\tcode{cpp_int} is also a reference oracle for the implementation's test suite:
+many of its tests, as well as its differential fuzzers,
+check results against \tcode{cpp_int}.
+
+The following parts differ deliberately,
+for reasons explained in the main body of this paper:
+
+\ul{
+  \li{
+    No expression templates (see \ref("#expression-templates")).
+    Storage reuse for rvalue operands, which \tcode{number} provides alongside expression templates,
+    is generalized to all eight operand forms of every binary operator
+    (see \ref("#optimal-operator-overloads")).
+  }
+  \li{
+    No fixed-width, unsigned, or overflow-checked variants
+    (see \ref("#template-parameters") and \ref("#why-no-big-uint")).
+  }
+  \li{
+    A smaller object (16 bytes instead of 32 bytes) with 64 bits in place instead of 128
+    (see \ref("#cpp-int-layout")).
+  }
+  \li{
+    Every operation is \tcode{constexpr}, including those that allocate
+    (see \ref("#constexpr-support")).
+  }
+  \li{
+    Conversions to built-in integers are modular,
+    with saturation available through \tcode{std::saturating_cast}
+    (see \ref("#std::saturating_cast")).
+  }
+  \li{
+    Text conversion through \tcode{<charconv>} and \tcode{<format>}
+    instead of iostreams and string constructors,
+    and a user-defined literal for any base
+    (see \ref("#user-defined-literals-vs.-string-constructors")).
+  }
+  \li{
+    Allocator-aware container semantics (see \ref("#cpp-int-allocators")).
+  }
+  \li{
+    Asymptotically faster algorithms for large operands (see \ref("#cpp-int-algorithms")).
+  }
+}
+
+\h3(id="cpp-int-type-structure", show_number=false){A.3. Type structure and template parameters}
+
+Boost.Multiprecision separates a generic front end, \tcode{number},
+from the back ends that store values and implement arithmetic:
+
+\cppblock{
+namespace boost::multiprecision {
+  template <std::size_t MinBits = 0,
+            std::size_t MaxBits = 0,
+            cpp_integer_type SignType = signed_magnitude,
+            cpp_int_check_type Checked = unchecked,
+            class Allocator = std::allocator<limb_type>>
+    struct cpp_int_backend;
+
+  template <class Backend,
+            expression_template_option ExpressionTemplates = /* et_on for cpp_int */>
+    class number;
+
+  using cpp_int  = number<cpp_int_backend<>>;
+  using int128_t = number<cpp_int_backend<128, 128, signed_magnitude, unchecked, void>>;
+  using checked_cpp_int = number<cpp_int_backend<0, 0, signed_magnitude, checked>>;
+}
+}
+
+The same \tcode{number} template also wraps \tcode{cpp_bin_float}, \tcode{cpp_dec_float},
+\tcode{gmp_int}, \tcode{mpfr_float}, rational adaptors, and so on.
+This is what makes the library interoperable across back ends,
+and also why the arithmetic is spelled in terms of \tcode{eval_*} customization points
+rather than member functions.
+
+\tcode{std::big_int} has no front end and no back end:
+
+\cppblock{
+namespace std {
+  template<size_t min_inplace_capacity,
+           class Limb = uint_multiprecision_t,
+           class Allocator = allocator<Limb>>
+    class basic_big_int;
+
+  using big_int = basic_big_int<\exposid{implementation-defined}>;
+
+  namespace pmr {
+    template<size_t b, class L = uint_multiprecision_t>
+      using basic_big_int = std::basic_big_int<b, L, polymorphic_allocator<L>>;
+    using big_int = basic_big_int<std::big_int::inplace_capacity>;
+  }
+}
+}
+
+In the reference implementation, \tcode{big_int} is \tcode{basic_big_int<64>}.
+
+\tcode{MinBits} and \tcode{min_inplace_capacity} have the same meaning:
+the minimum number of value bits that the in-place storage must hold,
+rounded up to whole limbs.
+\tcode{MaxBits} and \tcode{SignType} have no counterpart
+because they only matter for fixed-width integers
+(\tcode{unsigned_magnitude} is not allowed for arbitrary precision).
+\tcode{Checked} mostly matters for fixed-width integers too,
+where it turns overflow into an exception;
+for \tcode{checked_cpp_int}, it also makes out-of-range conversions to built-in types throw
+instead of saturating.
+Boost's \tcode{limb_type} is a fixed, library-wide alias,
+whereas \tcode{basic_big_int} has a \tcode{Limb} parameter
+that currently must be \tcode{uint_multiprecision_t},
+but leaves room for future extension (see \ref("#limb-type-parameter")).
+
+\h3(id="cpp-int-layout", show_number=false){A.4. Layout and storage management}
+
+Simplified, the data members of \tcode{cpp_int_backend<>} are:
+
+\cppblock{
+union {
+  struct { std::size_t capacity; limb_type* data; } ld;  // dynamic storage
+  limb_type la[internal_limb_count];                     // in-place storage
+  double_limb_type double_first;                         // in-place storage, as one
+                                                         // double-width integer
+};
+std::size_t m_limbs;   // number of limbs in use
+bool m_sign;           // true if negative
+bool m_internal;       // true if the in-place storage is active
+bool m_alias;          // true if the storage is borrowed (used internally by Karatsuba)
+}
+
+The layout of the reference implementation is shown in
+\ref("#layout-in-our-reference-implementation").
+It packs the limb count, the sign, and the capacity into two 32-bit integers,
+and uses a capacity of zero to indicate that in-place storage is active.
+This halves the size of the object,
+at the cost of limiting the size to \math{\mrow{\msup{\mn{2}\mn{31}}\mo{-}\mn{1}}} limbs.
+On a 64-bit target with \tcode{__int128}:
+
+\table(class="center striped cmp-num"){
+  \tr{
+    \th{Type}
+    \th{\tcode{sizeof}}
+    \th{\tcode{alignof}}
+    \th{Bits in place}
+  }
+  \tr{
+    \td{\tcode{cpp_int}}
+    \td{32}
+    \td{16}
+    \td{128}
+  }
+  \tr{
+    \td{\tcode{big_int}}
+    \td{16}
+    \td{8}
+    \td{64}
+  }
+  \tr{
+    \td{\tcode{basic_big_int<128>}}
+    \td{24}
+    \td{8}
+    \td{128}
+  }
+  \tr{
+    \td{\tcode{pmr::big_int}}
+    \td{24}
+    \td{8}
+    \td{64}
+  }
+}
+
+\tcode{cpp_int} gets its 128 in-place bits for free:
+the union is 16 bytes wide anyway because it has to hold a capacity and a pointer.
+The \tcode{double_limb_type} member raises its alignment to 16 bytes.
+The consequence for users is that values between 65 and 128 bits wide
+are stored without allocation by \tcode{cpp_int},
+but not by \tcode{big_int}, unless \tcode{basic_big_int<128>} is used.
+
+Further differences in storage management:
+
+\ul{
+  \li{
+    \b{Limb width.}
+    \tcode{cpp_int} uses 64-bit limbs only if \tcode{__int128} is available
+    to hold the double-width products,
+    and falls back to 32-bit limbs otherwise, notably on MSVC.
+    The reference implementation uses compiler intrinsics such as
+    \tcode{_umul128} and \tcode{_udiv128} where there is no 128-bit integer type,
+    so \tcode{uint_multiprecision_t} is 64 bits wide on all 64-bit targets,
+    and also on WASM32 (see \ref("#std::uint_multiprecision_t")).
+  }
+  \li{
+    \b{Growth.}
+    When it needs more storage,
+    \tcode{cpp_int} grows its capacity by a factor of 4
+    (2, 8, 32, … limbs),
+    and the reference implementation by a factor of 2
+    (1, 2, 4, 8, … limbs).
+    Neither releases storage automatically at run time when a value shrinks.
+  }
+  \li{
+    \b{Capacity control.}
+    \tcode{number} has no public \tcode{reserve} or \tcode{shrink_to_fit};
+    \tcode{basic_big_int} provides \tcode{reserve}, \tcode{capacity}, and \tcode{shrink_to_fit},
+    like other containers.
+  }
+  \li{
+    \b{Maximum size.}
+    \tcode{cpp_int} stores its limb count in a \tcode{size_t}
+    and is only limited by available memory.
+    \tcode{big_int} supports up to
+    \math{\mrow{\mo{(}\msup{\mn{2}\mn{31}}\mo{-}\mn{1}\mo{)}\mo{×}\mn{64}}} bits
+    (about 137 billion)
+    and throws \tcode{std::length_error} if an operation would exceed that.
+  }
+}
+
+\h3(id="cpp-int-representation-access", show_number=false){A.5. Access to the representation}
+
+\tcode{cpp_int} exposes its limbs through the back end:
+\tcode{x.backend().limbs()} returns a pointer to the limbs
+and \tcode{x.backend().size()} the number of limbs in use.
+For a non-\tcode{const} object, the pointer is non-\tcode{const},
+so it is possible to break the invariants of the object,
+such as producing a non-normalized limb count or a negative zero.
+For portable conversion to and from sequences of digits of any width,
+Boost provides \tcode{import_bits} and \tcode{export_bits}.
+
+\tcode{std::big_int} only provides read access,
+through \tcode{representation()}, which returns \tcode{span<const uint_multiprecision_t>}.
+Values are constructed from limbs or other integers
+with the iterator-pair or \tcode{from_range} constructors.
+See \ref("#access-to-the-underlying-representation") for the rationale.
+
+\h3(id="cpp-int-semantics", show_number=false){A.6. Arithmetic semantics}
+
+The arithmetic, shift, and bitwise operators of both libraries have the same semantics:
+both emulate two's complement for bitwise operations on negative values,
+both round right shifts of negative values toward negative infinity,
+and both truncate quotients toward zero, like built-in integer division.
+For example:
+
+\table(class="center striped"){
+  \tr{
+    \th{Expression}
+    \th{Result in both libraries}
+  }
+  \tr{\td{\tcode{-7 / 2}}\td{\tcode{-3}}}
+  \tr{\td{\tcode{-7 % 2}}\td{\tcode{-1}}}
+  \tr{\td{\tcode{7 % -2}}\td{\tcode{1}}}
+  \tr{\td{\tcode{-5 >> 1}}\td{\tcode{-3}}}
+  \tr{\td{\tcode{-1 >> 10}}\td{\tcode{-1}}}
+  \tr{\td{\tcode{-6 & 3}}\td{\tcode{2}}}
+  \tr{\td{\tcode{-6 | 3}}\td{\tcode{-5}}}
+  \tr{\td{\tcode{-6 ^ 3}}\td{\tcode{-7}}}
+  \tr{\td{\tcode{-6 & -3}}\td{\tcode{-8}}}
+  \tr{\td{\tcode{~5}}\td{\tcode{-6}}}
+}
+
+\Bnote{
+In this table, the left-hand operands are of type \tcode{cpp_int} or \tcode{big_int} respectively.
+}
+
+Both libraries follow the behavior of the built-in signed integers here,
+which also means that code migrating from \tcode{cpp_int} to \tcode{std::big_int}
+keeps its meaning.
+Conversions and error handling are where the two differ
+(see \ref("#cpp-int-conversions") and \ref("#cpp-int-errors")).
+
+\h3(id="cpp-int-operators", show_number=false){A.7. Operators and expression templates}
+
+\tcode{cpp_int} enables expression templates by default.
+An arithmetic expression whose operands are all lvalues yields an expression object
+that is evaluated when it is assigned or converted to \tcode{cpp_int}.
+If at least one operand is an rvalue, \tcode{number} returns a \tcode{cpp_int} directly
+and reuses that operand's storage.
+Expression templates can be disabled by using \tcode{number<cpp_int_backend<>, et_off>}
+instead of \tcode{cpp_int}.
+This has the problems explained in \ref("#expression-templates"),
+the most practical of which is the interaction with \tcode{auto}:
+
+\cppblock{
+cpp_int a = 3, b = 4;
+auto e = a * b;   // not a cpp_int, but detail::expression<multiply_immediates, ...>
+
+auto f = [] { return pow(cpp_int(2), 100); };
+cpp_int r = f();  // undefined behavior: the returned expression refers to
+                  // the temporary cpp_int(2), which no longer exists
+}
+
+\tcode{std::big_int} has no expression templates:
+every operator returns \tcode{basic_big_int},
+and the forwarding-reference overloads described in \ref("#optimal-operator-overloads")
+reuse storage of rvalue operands in all eight operand forms.
+
+Further differences:
+
+\ul{
+  \li{
+    \b{Comparison.}
+    \tcode{cpp_int} provides the six relational operators
+    and does not satisfy \tcode{std::three_way_comparable}.
+    \tcode{big_int} provides \tcode{==} and \tcode{<=>}, returning \tcode{std::strong_ordering},
+    both with \tcode{big_int} and with built-in integer operands.
+  }
+  \li{
+    \b{Mixed types.}
+    \tcode{cpp_int} allows arithmetic between different \tcode{number} types
+    when one is implicitly convertible to the other;
+    for example, \tcode{checked_int128_t() + cpp_int()} has type \tcode{cpp_int}.
+    \tcode{big_int} only mixes with built-in integer types,
+    including \tcode{__int128} and \tcode{_BitInt};
+    other \tcode{basic_big_int} specializations need an explicit conversion
+    (see \ref("#converting-constructor")).
+    Neither library allows floating-point operands.
+  }
+}
+
+\h3(id="cpp-int-conversions", show_number=false){A.8. Conversions}
+
+\table(class="striped cmp"){
+  \tr{
+    \th{Conversion}
+    \th{\tcode{cpp_int}}
+    \th{\tcode{big_int}}
+  }
+  \tr{
+    \td{From integers (including \tcode{__int128})}
+    \td{Implicit}
+    \td{Implicit}
+  }
+  \tr{
+    \td{From floating-point types}
+    \td{Explicit; truncates toward zero; throws \tcode{std::runtime_error} for infinity and NaN}
+    \td{Explicit; truncates toward zero; throws \tcode{std::domain_error} for infinity and NaN}
+  }
+  \tr{
+    \td{To floating-point types}
+    \td{Explicit; rounded to nearest, ties to even}
+    \td{Explicit; rounded to nearest, ties to even}
+  }
+  \tr{
+    \td{To a signed integer that cannot represent the value}
+    \td{Explicit; saturates, e.g. \math{\msup{\mn{2}\mn{200}}} → \tcode{INT_MAX}}
+    \td{Explicit; modular, i.e. keeps the low-order bits}
+  }
+  \tr{
+    \td{To an unsigned integer, value too large}
+    \td{Explicit; modular}
+    \td{Explicit; modular}
+  }
+  \tr{
+    \td{To an unsigned integer, value negative}
+    \td{Throws \tcode{std::range_error}}
+    \td{Modular, e.g. \tcode{-1} → \tcode{UINT_MAX}}
+  }
+  \tr{
+    \td{From strings}
+    \td{Explicit constructor from \tcode{const char*}, \tcode{std::string}, and \tcode{std::string_view}}
+    \td{None; use \tcode{from_chars} or a literal}
+  }
+}
+
+The \tcode{big_int} conversions behave exactly like conversions between built-in integer types,
+which keeps generic code that handles both correct.
+For the saturating behavior,
+the reference implementation provides \tcode{saturating_cast},
+and \tcode{in_range} tests whether a value is representable,
+which together provide the saturating and range-checked behavior of the \tcode{cpp_int} conversions
+when it is wanted
+(see \ref("#std::saturating_cast") and \ref("#std::in_range")).
+
+\h3(id="cpp-int-errors", show_number=false){A.9. Error handling}
+
+\table(class="striped cmp"){
+  \tr{
+    \th{Situation}
+    \th{\tcode{cpp_int}}
+    \th{\tcode{big_int}}
+  }
+  \tr{
+    \td{Division or remainder by zero}
+    \td{Throws \tcode{std::overflow_error}}
+    \td{Throws \tcode{std::domain_error}}
+  }
+  \tr{
+    \td{Shift by a negative amount}
+    \td{Throws \tcode{std::out_of_range}}
+    \td{Throws \tcode{std::domain_error}}
+  }
+  \tr{
+    \td{Conversion from infinity or NaN}
+    \td{Throws \tcode{std::runtime_error}}
+    \td{Throws \tcode{std::domain_error}}
+  }
+  \tr{
+    \td{Conversion of a negative value to an unsigned type}
+    \td{Throws \tcode{std::range_error}}
+    \td{Well-defined (modular)}
+  }
+  \tr{
+    \td{Hexadecimal or octal output of a negative value}
+    \td{Throws \tcode{std::runtime_error}}
+    \td{Well-defined, e.g. \tcode{std::format("{:x}", -255n)} is \tcode{"-ff"}}
+  }
+  \tr{
+    \td{Parsing invalid text}
+    \td{The string constructor throws \tcode{std::runtime_error}}
+    \td{\tcode{from_chars} reports \tcode{errc::invalid_argument}}
+  }
+  \tr{
+    \td{Result larger than the maximum size}
+    \td{No limit other than allocation failure}
+    \td{Throws \tcode{std::length_error}}
+  }
+  \tr{
+    \td{Allocation failure}
+    \td{The allocator's exception, typically \tcode{std::bad_alloc}}
+    \td{The allocator's exception, typically \tcode{std::bad_alloc}}
+  }
+}
+
+\tcode{cpp_int} also throws \tcode{std::domain_error}
+when \tcode{msb}, \tcode{lsb}, or \tcode{sqrt} is given a negative value,
+and when \tcode{msb} is given zero.
+These functions have no counterpart in this proposal (see \ref("#no-bit-support")).
+The checked fixed-width types additionally throw \tcode{std::overflow_error} on overflow,
+which cannot happen for \tcode{cpp_int} or \tcode{big_int}.
+\ref("#error-handling") explains why this proposal throws \tcode{std::domain_error}
+for division by zero, negative shifts, and non-finite floating-point input.
+
+\h3(id="cpp-int-constexpr", show_number=false){A.10. \tt{constexpr} support}
+
+\tcode{cpp_int} is not a literal type,
+so it cannot be used in constant expressions at all:
+
+\cppblock{
+constexpr boost::multiprecision::int128_t x = 5;  // OK: fixed width, no allocator
+constexpr boost::multiprecision::cpp_int y = 5;   // error: cpp_int is not a literal type
+}
+
+Boost's \tcode{constexpr} support (since C++14) is limited to
+fixed-width instantiations without an allocator,
+such as \tcode{int128_t} or \tcode{checked_int1024_t}.
+
+In the reference implementation,
+all operations of \tcode{basic_big_int} are \tcode{constexpr}, including those that allocate,
+and values that fit into the in-place storage can be stored in \tcode{constexpr} variables
+(see \ref("#constexpr-support")):
+
+\cppblock{
+constexpr big_int c = 12345;  // OK: fits in place
+static_assert((big_int(1) << 300) % 1'000'000'007
+              == 322050759);  // OK: transient allocation
+}
+
+\Bnote{
+Beyond this proposal,
+the reference implementation provides a \tcode{BEMAN_BIG_INT_COPY_TO_RUNTIME(expr)} macro,
+which evaluates a \tcode{big_int} expression during constant evaluation
+and returns its value as a \tcode{basic_big_int} specialization
+whose in-place storage is just large enough to hold it.
+This is a workaround for the lack of non-transient \tcode{constexpr} allocation
+(see \ref("#non-transient-allocations")).
+}
+
+\h3(id="cpp-int-text", show_number=false){A.11. Text conversion and literals}
+
+\tcode{cpp_int} provides
+\ul{
+  \li{a member function \tcode{str(digits, flags)} that takes \tcode{std::ios_base::fmtflags},}
+  \li{\tcode{operator<<} and \tcode{operator>>} for iostreams, which honor
+      \tcode{std::hex}, \tcode{std::oct}, and \tcode{std::showbase}, and}
+  \li{
+    an explicit constructor from strings,
+    which detects a \tt{0x} prefix as hexadecimal and a leading \tt{0} as octal,
+    rejects a leading \tt{+}, whitespace, and digit separators,
+    and treats the empty string as zero.
+  }
+}
+
+The reference implementation provides
+\ul{
+  \li{\tcode{to_chars} and \tcode{from_chars} for any base from 2 to 36,
+      with the same rules as for built-in integers,}
+  \li{a \tcode{std::formatter} that supports all format specifications for built-in integers,
+      including hexadecimal and octal output of negative values,}
+  \li{\tcode{to_string} and \tcode{to_wstring}, and}
+  \li{no \header{iostream} operators and no string constructor.}
+}
+
+Converting decimal text to \tcode{cpp_int} and back is quadratic in the number of digits;
+the reference implementation uses sub-quadratic divide-and-conquer algorithms.
+For power-of-two bases, the reference implementation is linear in both directions.
+\tcode{cpp_int} parses hexadecimal and octal text in linear time,
+but its hexadecimal and octal output shifts the whole value once per digit,
+which is quadratic.
+
+The literals differ more:
+
+\cppblock{
+using namespace boost::multiprecision::literals;
+auto a = 0xFFFFFFFFFFFFFFFFFFFF_cppi;
+// a is a number<cpp_int_backend<80, 80, signed_magnitude, unchecked, void>>
+auto b = 12345_cppi;        // error: literals must be hexadecimal
+auto c = 0xFFFF'FFFF_cppi;  // error: digit separators are not supported
+
+using namespace std::big_int_literals;
+auto d = 0xFFFF'FFFF'FFFF'FFFF'FFFFn;     // big_int
+auto e = 1'000'000'000'000'000'000'000n;  // big_int
+}
+
+Boost's literals only accept hexadecimal without digit separators,
+and they produce a fixed-width type whose width is four bits per hexadecimal digit,
+or a fixed width named by the suffix (\tt{_cppi128} through \tt{_cppi1024}).
+\tcode{std::big_int}'s literals accept every \gterm{integer-literal},
+always produce \tcode{big_int},
+and compute the limbs during constant evaluation
+(see \ref("#user-defined-literals-for-std::big_int")).
+
+\Bnote{
+The reference implementation also provides the suffixes \tt{_n} and \tt{_N}
+because Clang does not yet accept the reserved suffixes \tt{n} and \tt{N}
+outside the standard library
+(see \ref("https://github.com/llvm/llvm-project/issues/76394"){LLVM issue 76394}).
+}
+
+\h3(id="cpp-int-allocators", show_number=false){A.12. Allocators}
+
+\tcode{cpp_int_backend} takes an allocator type and stores the allocator using
+the empty base optimization,
+and stateful allocators such as \tcode{std::pmr::polymorphic_allocator} work.
+However, \tcode{number} has no allocator-extended constructors and no \tcode{get_allocator()},
+and copy, move, and swap do not consult \tcode{propagate_on_container_*} or
+\tcode{select_on_container_copy_construction};
+the allocator is simply copied or moved along with the value.
+\tcode{basic_big_int} follows the allocator model of the standard containers,
+including allocator-extended constructors and propagation traits,
+and the reference implementation provides \tcode{pmr::big_int}.
+
+\h3(id="cpp-int-functions", show_number=false){A.13. Library functions}
+
+Boost.Multiprecision provides a much larger library of integer functions,
+in part because it was never constrained to overloading existing standard library functions.
+This proposal deliberately limits itself to overloads of existing standard library functions;
+the rest are separate features that make equal sense for built-in integers
+(see \ref("#integer-numeric-functions")).
+
+\table(class="striped cmp"){
+  \tr{
+    \th{Facility}
+    \th{\tcode{cpp_int}}
+    \th{\tcode{std::big_int}}
+  }
+  \tr{\td{\tcode{abs}}\td{Yes}\td{Yes; the rvalue overload reuses storage}}
+  \tr{\td{\tcode{gcd}, \tcode{lcm}}\td{Yes}\td{Yes; forwarding references for storage reuse}}
+  \tr{\td{\tcode{midpoint}}\td{No}\td{Yes}}
+  \tr{\td{\tcode{saturating_cast}, \tcode{in_range}}\td{No}\td{Yes}}
+  \tr{\td{Integer \tcode{sqrt} (optionally with remainder)}\td{Yes}\td{No}}
+  \tr{\td{\tcode{pow}, \tcode{powm}}\td{Yes}\td{No}}
+  \tr{\td{\tcode{divide_qr}, \tcode{integer_modulus}}\td{Yes}\td{No; use \tcode{/} and \tcode{%}}}
+  \tr{\td{\tcode{msb}, \tcode{lsb}, \tcode{bit_test}, \tcode{bit_set}, \tcode{bit_unset}, \tcode{bit_flip}}
+      \td{Yes}\td{No (see \ref("#no-bit-support"))}}
+  \tr{\td{\tcode{miller_rabin_test}}\td{Yes}\td{No}}
+  \tr{\td{\tcode{import_bits}, \tcode{export_bits}}\td{Yes}\td{\tcode{from_range} constructor, \tcode{representation()}}}
+  \tr{\td{\tcode{std::numeric_limits}}\td{Yes}\td{Yes}}
+  \tr{\td{\tcode{std::hash}}\td{Yes; combines the limbs and the sign}
+      \td{Yes; consistent with \tcode{std::hash} for \tcode{_BitInt} (see \ref("#hash-support-for-std::big_int"))}}
+  \tr{\td{\tcode{std::format}}\td{No}\td{Yes}}
+  \tr{\td{Random number generation}\td{Yes, with Boost.Random}\td{No (see \ref("#random-number-generation"))}}
+  \tr{\td{Serialization}\td{Yes, with Boost.Serialization}\td{No}}
+  \tr{\td{Rational numbers}\td{\tcode{cpp_rational}}\td{No}}
+  \tr{\td{Conversion to and from other number types}
+      \td{Floating-point, rational, and third-party back ends}\td{\tcode{_BitInt}}}
+}
+
+\h3(id="cpp-int-algorithms", show_number=false){A.14. Algorithms}
+
+\table(class="striped cmp"){
+  \tr{
+    \th{Operation}
+    \th{\tcode{cpp_int}}
+    \th{Reference implementation}
+  }
+  \tr{
+    \td{Addition and subtraction}
+    \td{Carry-propagating loops, using \tcode{_addcarry_u64}-style intrinsics on x86}
+    \td{Carry-propagating loops, using carry intrinsics where available}
+  }
+  \tr{
+    \td{Multiplication}
+    \td{
+      Schoolbook,
+      and Karatsuba from 40 limbs (configurable with \tcode{BOOST_MP_KARATSUBA_CUTOFF});
+      Comba schoolbook if \tcode{BOOST_MP_COMBA} is defined
+    }
+    \td{
+      Schoolbook with hand-written assembly kernels
+      (x86-64 baseline, BMI2/ADX, AVX-512 IFMA, and AArch64),
+      Karatsuba, Toom-Cook 3, 4, 6.5, and 8.5,
+      and an FFT tier: a number-theoretic transform,
+      or optionally a SIMD floating-point FFT;
+      unbalanced operands are sliced into balanced pieces;
+      dedicated squaring routines;
+      cutoffs tuned per architecture
+    }
+  }
+  \tr{
+    \td{Division}
+    \td{Schoolbook long division that estimates each quotient limb
+        from the leading limbs, without normalization}
+    \td{Knuth long division, Burnikel–Ziegler from a divisor of 40 (AArch64)
+        or 160 (x86-64) limbs, and Barrett for long dividends}
+  }
+  \tr{
+    \td{Base conversion}
+    \td{Repeated division or multiplication by the largest power of ten that fits in a limb;
+        hexadecimal and octal output shifts the whole value once per digit}
+    \td{Divide-and-conquer conversion (Brent and Zimmermann);
+        linear for power-of-two bases}
+  }
+  \tr{
+    \td{GCD}
+    \td{Lehmer, in Jebelean's double-digit form}
+    \td{Lehmer, in Jebelean's double-digit form, with binary GCD for single limbs}
+  }
+  \tr{
+    \td{Constant evaluation}
+    \td{The same algorithms, avoiding intrinsics (fixed-width types only)}
+    \td{Portable algorithms in the headers, without the assembly kernels}
+  }
+}
+
+The run-time multiplication and division tiers of the reference implementation
+are compiled into a static library, together with the assembly kernels,
+which is close to how a standard library would ship \tcode{std::big_int}
+(see \ref("#header-bloat")).
+\tcode{cpp_int} is header-only.
+
+\h3(id="cpp-int-performance", show_number=false){A.15. Performance}
+
+The reference implementation's \ref("Reference-Impl-Benchmarks") compare it with \tcode{cpp_int}
+and with GMP, using Boost's \tcode{gmp_int} wrapper.
+The following excerpt was measured in September 2026
+on an Intel Core i9-11900K with GCC 13 at \tt{-O2},
+against Boost 1.91 and GMP 6.3.0.
+The reference implementation was built with its AVX-512 IFMA kernels and SIMD FFT,
+which is the fastest configuration on that machine but not the default.
+Times are in microseconds per operation;
+each multiplication has two operands of the stated width,
+and each division divides an operand of the stated width by one half as wide.
+
+\table(class="center striped cmp-num"){
+  \tr{
+    \th{Operation}
+    \th{64-bit limbs}
+    \th{\tcode{big_int}}
+    \th{\tcode{cpp_int}}
+    \th{\tcode{gmp_int}}
+  }
+  \tr{\td{\tcode{*}}\td{128}\td{1.85}\td{7.21}\td{2.84}}
+  \tr{\td{\tcode{*}}\td{1,024}\td{62.6}\td{196}\td{56.8}}
+  \tr{\td{\tcode{*}}\td{8,192}\td{1,590}\td{5,280}\td{872}}
+  \tr{\td{\tcode{*}}\td{131,072}\td{72,300}\td{426,000}\td{21,500}}
+  \tr{\td{\tcode{/}}\td{128}\td{3.70}\td{6.72}\td{1.25}}
+  \tr{\td{\tcode{/}}\td{1,024}\td{66.5}\td{303}\td{38.6}}
+  \tr{\td{\tcode{/}}\td{8,192}\td{1,210}\td{18,300}\td{736}}
+  \tr{\td{\tcode{/}}\td{131,072}\td{67,200}\td{4,990,000}\td{20,600}}
+}
+
+A few observations:
+\ul{
+  \li{
+    For large operands, the gap grows with the operand size
+    because \tcode{cpp_int}'s multiplication stops at Karatsuba,
+    and its division and base conversion are quadratic.
+    At 131,072 limbs, \tcode{big_int} is about 6 times faster at multiplication
+    and about 74 times faster at division.
+  }
+  \li{
+    For moderate sizes, much of the lead comes from the AVX-512 IFMA kernels.
+    With the generic x86-64 assembly kernels instead,
+    a 128-limb multiplication with \tcode{big_int} takes 5.5 µs and a 1,024-limb one 153 µs,
+    compared to 7.21 µs and 196 µs with \tcode{cpp_int}.
+  }
+  \li{
+    For small operands, \tcode{cpp_int} is competitive or faster.
+    In an end-to-end ECDSA benchmark over secp256k1 (256-bit, i.e. four-limb operands),
+    \tcode{cpp_int} took 0.59 s, \tcode{big_int} 0.66 s, and \tcode{gmp_int} 0.50 s.
+    Values between 65 and 128 bits wide also avoid allocation in \tcode{cpp_int},
+    but not in \tcode{big_int} (see \ref("#cpp-int-layout")).
+  }
+}
+
+\h3(id="cpp-int-distribution", show_number=false){A.16. Distribution}
+
+\ul{
+  \li{
+    Boost.Multiprecision is header-only and requires C++14 (since Boost 1.82).
+    It is part of Boost,
+    and can also be used standalone, without the rest of Boost, since Boost 1.79.
+    It is distributed under the Boost Software License.
+  }
+  \li{
+    The reference implementation consists of headers and a compiled static library,
+    requires C++23,
+    and optionally provides a C++20 named module.
+    It is packaged for vcpkg and Conan,
+    ships debugger visualizers for Visual Studio, LLDB, and GDB,
+    and is distributed under both the Boost Software License
+    and the Apache License 2.0 with LLVM Exceptions.
+  }
+}
