@@ -1908,7 +1908,7 @@ with elastic operations.
 <div class=toc-num data-level=3>11.11</div>
 <a href=#cpp-int-text><h3>A.11. Text conversion and literals</h3></a>
 <div class=toc-num data-level=3>11.12</div>
-<a href=#cpp-int-allocators><h3>A.12. Allocators and <tt->noexcept</tt-></h3></a>
+<a href=#cpp-int-allocators><h3>A.12. Allocators</h3></a>
 <div class=toc-num data-level=3>11.13</div>
 <a href=#cpp-int-functions><h3>A.13. Library functions</h3></a>
 <div class=toc-num data-level=3>11.14</div>
@@ -1935,6 +1935,9 @@ with elastic operations.
     and conversion of non-finite floating-point values throw <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>domain_error</h-></code>
     (see <a href=#error-handling>§4.15. Error handling</a>)
   </li>
+  <li>
+    Added <a href=#appendix-cpp-int>§ Appendix A — Comparison with <tt->boost::multiprecision::cpp_int</tt-></a>
+  </li>
 </ul>
 
 <h3 id=changes-since-r0><a class=para href=#changes-since-r0></a>1.2. Changes since R0</h3>
@@ -1946,9 +1949,6 @@ with elastic operations.
   <li>
     Aligned wording for move assignment and for <code><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>::</h-><h- data-h=name>swap</h-></code>
     in <a href=#big.int.modifiers>§ [big.int.modifiers]</a> with other containers
-  </li>
-  <li>
-    Added <a href=#appendix-cpp-int>§ Appendix A — Comparison with <tt->boost::multiprecision::cpp_int</tt-></a>
   </li>
 </ul>
 
@@ -5849,9 +5849,9 @@ since nothing is allocated.
   <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw>class</h-> <h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <i><h- data-h=name>signed-or-unsigned</h-></i> <h- data-h=name>S</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>constexpr</h-> <h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=kw>operator</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-><h- data-h=sym_op>&amp;&amp;</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>S</h-> <h- data-h=name>s</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->
 
   <h- data-h=kw>namespace</h-> <h- data-h=name>pmr</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>L</h-><h- data-h=sym_op>&gt;</h->
+    <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>L</h-> <h- data-h=sym_op>=</h-> <h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;</h->
       <h- data-h=kw>using</h-> <h- data-h=name>basic_big_int</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>polymorphic_allocator</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>L</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_punc>;</h->
-    <h- data-h=kw>using</h-> <h- data-h=name>big_int</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-><h- data-h=sym_op>::</h-><h- data-h=name>inplace_bits</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw>using</h-> <h- data-h=name>big_int</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-><h- data-h=sym_op>::</h-><h- data-h=name>inplace_capacity</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>;</h->
   <h- data-h=sym_brac>}</h->
 
   <h- data-h=cmt_dlim>//</h-><f-serif><h- data-h=cmt> swap</h-></f-serif>
@@ -6107,7 +6107,7 @@ leaves the corresponding argument in a valid but unspecified state.
 <p>6
 During constant evaluation,
 if the effective width of the integer value of a <code><h- data-h=name>basic_big_int</h-></code>
-is less than or equal to its <code><h- data-h=name>inplace_bits</h-></code> member,
+is less than or equal to its <code><h- data-h=name>inplace_capacity</h-></code> member,
 the object holds no allocation following any operation.
 <br/>[<i>Note</i>: 
 The behavior is as if <code><h- data-h=name>shrink_to_fit</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>)</h-></code> were called
@@ -6233,7 +6233,7 @@ let <code><h- data-h=name>RT</h-></code> be <code><h- data-h=name_type>remove_cv
 <i>Effects</i>:
 <code><i><h- data-h=name>no-alloc-constructible-from</h-></i></code> is <code><h- data-h=bool>true</h-></code> if
 <code><h- data-h=name_type>remove_cvref_t</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h-></code> is a signed or unsigned integer type
-whose width is less than or equal to <code><h- data-h=name>inplace_bits</h-></code>,
+whose width is less than or equal to <code><h- data-h=name>inplace_capacity</h-></code>,
 and <code><h- data-h=bool>false</h-></code> otherwise.
 </p></div>
 
@@ -6367,7 +6367,7 @@ imposed in <a href=https://eel.is/c++draft/container.requirements>[container.req
 <p>6
 <i>Throws</i>:
 Nothing if the effective width of the integer value of <code><h- data-h=name>x</h-></code>
-is less than or equal to <code><h- data-h=name>inplace_bits</h-></code>;
+is less than or equal to <code><h- data-h=name>inplace_capacity</h-></code>;
 otherwise, exceptions thrown during allocation.
 </p>
 <p>7
@@ -6439,7 +6439,7 @@ by discarding the fractional part of <code><h- data-h=name>x</h-></code>.
 and the value of <code><h- data-h=name>x</h-></code> is not finite.
 Otherwise, nothing if the effective width of the integer value
 this object is initialized with
-is less than or equal to <code><h- data-h=name>inplace_bits</h-></code>;
+is less than or equal to <code><h- data-h=name>inplace_capacity</h-></code>;
 otherwise, exceptions thrown during allocation.
 </p>
 <p>15
@@ -6478,7 +6478,7 @@ Initializes the allocator to <code><h- data-h=name>a</h-></code>.
 and the value of <code><h- data-h=name>x</h-></code> is not finite.
 Otherwise, nothing if the effective width of the integer value
 this object is initialized with
-is less than or equal to <code><h- data-h=name>inplace_bits</h-></code>;
+is less than or equal to <code><h- data-h=name>inplace_capacity</h-></code>;
 otherwise, exceptions thrown during allocation.
 </p></div>
 
@@ -6502,7 +6502,7 @@ Initializes the allocator to <code><h- data-h=name>a</h-></code>.
 <p>19
 <i>Throws</i>:
 Nothing if the effective width of the combined integer value
-is less than or equal to <code><h- data-h=name>inplace_bits</h-></code>;
+is less than or equal to <code><h- data-h=name>inplace_capacity</h-></code>;
 otherwise, exceptions thrown during allocation.
 </p>
 <p>20
@@ -6730,7 +6730,7 @@ Equivalent to:
 <p>21
 <i>Effects</i>:
 If the effective width of the integer value is
-less than or equal to <code><h- data-h=name>inplace_bits</h-></code>,
+less than or equal to <code><h- data-h=name>inplace_capacity</h-></code>,
 <code><h- data-h=name>shrink_to_fit</h-></code> frees the allocation and stores the integer value
 within the <code><h- data-h=name>basic_big_int</h-></code> object.
 Otherwise, <code><h- data-h=name>shrink_to_fit</h-></code> is a non-binding request
@@ -7089,7 +7089,7 @@ A specialization of <code><h- data-h=name>basic_big_int</h-></code> with an impl
 argument <math display=inline><mi>B</mi></math> for the <code><h- data-h=name>min_inplace_capacity</h-></code> constant template parameter,
 chosen so that
 <math display=inline><mi>B</mi></math> is greater than or equal to <code><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>digits</h-></code> and
-<math display=inline><mi>B</mi></math> equals <code><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><math display=inline><mi>B</mi></math><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>inplace_</h->­bits</code>.
+<math display=inline><mi>B</mi></math> equals <code><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><math display=inline><mi>B</mi></math><h- data-h=sym_op>&gt;</h-><h- data-h=sym_op>::</h-><h- data-h=name>inplace_</h->­capacity</code>.
 </p>
 <p>2
 <i>Recommended practice</i>:
@@ -7099,7 +7099,7 @@ may represent the value of all commonly used integer types without allocating.
 </ins-block>
 
 <note-block class=edit><p><intro-></intro-> 
-<code><h- data-h=name>big_int</h-><h- data-h=sym_op>::</h-><h- data-h=name>min_inplace_bits</h-></code> is typically <code><h- data-h=num>64</h-></code> on a 64-bit architecture,
+<code><h- data-h=name>big_int</h-><h- data-h=sym_op>::</h-><h- data-h=name>inplace_capacity</h-></code> is typically <code><h- data-h=num>64</h-></code> on a 64-bit architecture,
 and it cannot be any less because it needs to be at least one limb width.
 However, an implementation could also decide to choose <code><h- data-h=num>128</h-></code>, <code><h- data-h=num>192</h-></code>, etc.
 </p>
@@ -7355,7 +7355,7 @@ of <math display=inline><mi>s</mi></math> interpreted as an <g-term>integer-lite
 <i>Remarks</i>:
 The function specialization has a non-throwing exception specification
 if the effective width of the integer value returned by a function call expression
-is less than or equal to <code><h- data-h=name>big_int</h-><h- data-h=sym_op>::</h-><h- data-h=name>inplace_bits</h-></code>.
+is less than or equal to <code><h- data-h=name>big_int</h-><h- data-h=sym_op>::</h-><h- data-h=name>inplace_capacity</h-></code>.
 </p></div>
 </ins-block>
 
@@ -7700,18 +7700,11 @@ Unless stated otherwise,
 this comparison refers to the <tt->develop</tt-> branch of Boost.Multiprecision
 at commit <tt->14ba2728</tt-> (2026-08-05),
 which differs from the Boost 1.92 release in no way relevant here,
-and to <tt->bemanproject/big_int</tt-> at commit <tt->013267d</tt-> (2026-10-26).
+and to <tt->bemanproject/big_int</tt-> at commit <tt->7edd29e</tt-> (2026-11-11).
 Statements about run-time behavior were verified with test programs
 compiled against both libraries with Apple Clang 21 on AArch64 macOS;
 performance figures in <a href=#cpp-int-performance>§ A.15. Performance</a> were measured separately
 and come with their own environment.
-</p>
-<p>Names are spelled as in the reference implementation,
-which lives in <code><h- data-h=kw>namespace</h-> <h- data-h=name>beman</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
-There, the first template parameter of <code><h- data-h=name>basic_big_int</h-></code>
-is named <code><h- data-h=name>min_inplace_bits</h-></code>,
-and the literal suffix <tt->n</tt-> is also available as <tt->_n</tt->
-because Clang does not yet accept the reserved suffix.
 </p></note-block>
 
 <h3 id=cpp-int-summary><a class=para href=#cpp-int-summary></a>A.1. Summary</h3>
@@ -7731,7 +7724,7 @@ because Clang does not yet accept the reserved suffix.
     <td>Template parameters</td>
     <td><code><h- data-h=name>MinBits</h-></code>, <code><h- data-h=name>MaxBits</h-></code>, <code><h- data-h=name>SignType</h-></code>, <code><h- data-h=name>Checked</h-></code>, <code><h- data-h=name>Allocator</h-></code>,
         plus <code><h- data-h=name>ExpressionTemplates</h-></code> on <code><h- data-h=name>number</h-></code></td>
-    <td><code><h- data-h=name>min_inplace_bits</h-></code>, <code><h- data-h=name>Limb</h-></code>, <code><h- data-h=name>Allocator</h-></code></td>
+    <td><code><h- data-h=name>min_inplace_capacity</h-></code>, <code><h- data-h=name>Limb</h-></code>, <code><h- data-h=name>Allocator</h-></code></td>
   </tr>
   <tr>
     <td>Fixed-width, unsigned, and checked variants</td>
@@ -7741,7 +7734,7 @@ because Clang does not yet accept the reserved suffix.
   <tr>
     <td>Representation</td>
     <td>Sign and magnitude, little-endian limb array</td>
-    <td>Same</td>
+    <td>Sign and magnitude, little-endian limb array</td>
   </tr>
   <tr>
     <td>Limb type</td>
@@ -7801,8 +7794,8 @@ because Clang does not yet accept the reserved suffix.
   </tr>
   <tr>
     <td>Division by zero, negative shifts, non-finite floating-point input</td>
-    <td>Exceptions</td>
-    <td>Undefined behavior</td>
+    <td>Exceptions of various types</td>
+    <td>Throws <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>domain_error</h-></code></td>
   </tr>
   <tr>
     <td>Text conversion</td>
@@ -7842,7 +7835,7 @@ because Clang does not yet accept the reserved suffix.
   <tr>
     <td>GCD</td>
     <td>Lehmer, in Jebelean's double-digit form</td>
-    <td>Same</td>
+    <td>Lehmer, in Jebelean's double-digit form</td>
   </tr>
   <tr>
     <td>Distribution</td>
@@ -7863,7 +7856,7 @@ because Clang does not yet accept the reserved suffix.
   <li>
     A union of in-place limbs and a (pointer, capacity) pair,
     with the in-place size chosen by the first template parameter:
-    <code><h- data-h=name>MinBits</h-></code> in Boost, <code><h- data-h=name>min_inplace_bits</h-></code> in the reference implementation
+    <code><h- data-h=name>MinBits</h-></code> in Boost, <code><h- data-h=name>min_inplace_capacity</h-></code> in <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>basic_big_int</h-></code>
     (see <a href=#soo-customization>§4.2.3.1. SOO customization</a>).
   </li>
   <li>
@@ -7883,6 +7876,12 @@ because Clang does not yet accept the reserved suffix.
   <li>
     Implicit conversion from integers, explicit conversion from floating-point types,
     and explicit conversion to arithmetic types.
+  </li>
+  <li>
+    Exceptions for division by zero, negative shifts, and non-finite floating-point input,
+    although <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> throws <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>domain_error</h-></code> in all three cases,
+    whereas <code><h- data-h=name>cpp_int</h-></code> throws a different exception type for each
+    (see <a href=#cpp-int-errors>§ A.9. Error handling</a>).
   </li>
   <li>
     Access to the limbs:
@@ -7930,18 +7929,13 @@ for reasons explained in the main body of this paper:
     (see <a href=#std::saturating_cast>§4.12.6. <tt->std::saturating_cast</tt-></a>).
   </li>
   <li>
-    Preconditions instead of exceptions for division by zero, negative shifts,
-    and non-finite floating-point input
-    (see <a href=#error-handling>§4.15. Error handling</a>).
-  </li>
-  <li>
     Text conversion through <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>charconv</h-><h- data-h=sym_op>&gt;</h-></code> and <code><h- data-h=sym_op>&lt;</h-><h- data-h=name>format</h-><h- data-h=sym_op>&gt;</h-></code>
     instead of iostreams and string constructors,
     and a user-defined literal for any base
     (see <a href=#user-defined-literals-vs.-string-constructors>§4.11.2. User-defined literals vs. string constructors</a>).
   </li>
   <li>
-    Allocator-aware container semantics (see <a href=#cpp-int-allocators>§ A.12. Allocators and <tt->noexcept</tt-></a>).
+    Allocator-aware container semantics (see <a href=#cpp-int-allocators>§ A.12. Allocators</a>).
   </li>
   <li>
     Asymptotically faster algorithms for large operands (see <a href=#cpp-int-algorithms>§ A.14. Algorithms</a>).
@@ -7978,20 +7972,24 @@ rather than member functions.
 </p>
 <p><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code> has no front end and no back end:
 </p>
-<code-block><h- data-h=kw>namespace</h-> <h- data-h=name>beman</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-> <h- data-h=sym_brac>{</h->
-  <h- data-h=kw>template</h-> <h- data-h=sym_op>&lt;</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>min_inplace_bits</h-><h- data-h=sym_punc>,</h->
-            <h- data-h=kw>class</h-> <h- data-h=name>Limb</h-> <h- data-h=sym_op>=</h-> <h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_punc>,</h->
-            <h- data-h=kw>class</h-> <h- data-h=name>Allocator</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>allocator</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>Limb</h-><h- data-h=sym_op>&gt;&gt;</h->
+<code-block><h- data-h=kw>namespace</h-> <h- data-h=name>std</h-> <h- data-h=sym_brac>{</h->
+  <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>min_inplace_capacity</h-><h- data-h=sym_punc>,</h->
+           <h- data-h=kw>class</h-> <h- data-h=name>Limb</h-> <h- data-h=sym_op>=</h-> <h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_punc>,</h->
+           <h- data-h=kw>class</h-> <h- data-h=name>Allocator</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>allocator</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>Limb</h-><h- data-h=sym_op>&gt;&gt;</h->
     <h- data-h=kw>class</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_punc>;</h->
 
-  <h- data-h=kw>using</h-> <h- data-h=name>big_int</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>64</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>;</h->
+  <h- data-h=kw>using</h-> <h- data-h=name>big_int</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><i><h- data-h=name>implementation-defined</h-></i><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>;</h->
+
   <h- data-h=kw>namespace</h-> <h- data-h=name>pmr</h-> <h- data-h=sym_brac>{</h->
-    <h- data-h=kw>using</h-> <h- data-h=name>big_int</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>64</h-><h- data-h=sym_punc>,</h-> <h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_punc>,</h->
-                                  <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>pmr</h-><h- data-h=sym_op>::</h-><h- data-h=name>polymorphic_allocator</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw>class</h-> <h- data-h=name>L</h-> <h- data-h=sym_op>=</h-> <h- data-h=name_type>uint_multiprecision_t</h-><h- data-h=sym_op>&gt;</h->
+      <h- data-h=kw>using</h-> <h- data-h=name>basic_big_int</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>b</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>L</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>polymorphic_allocator</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>L</h-><h- data-h=sym_op>&gt;&gt;</h-><h- data-h=sym_punc>;</h->
+    <h- data-h=kw>using</h-> <h- data-h=name>big_int</h-> <h- data-h=sym_op>=</h-> <h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-><h- data-h=sym_op>::</h-><h- data-h=name>inplace_capacity</h-><h- data-h=sym_op>&gt;</h-><h- data-h=sym_punc>;</h->
   <h- data-h=sym_brac>}</h->
 <h- data-h=sym_brac>}</h-></code-block>
 
-<p><code><h- data-h=name>MinBits</h-></code> and <code><h- data-h=name>min_inplace_bits</h-></code> have the same meaning:
+<p>In the reference implementation, <code><h- data-h=name>big_int</h-></code> is <code><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>64</h-><h- data-h=sym_op>&gt;</h-></code>.
+</p>
+<p><code><h- data-h=name>MinBits</h-></code> and <code><h- data-h=name>min_inplace_capacity</h-></code> have the same meaning:
 the minimum number of value bits that the in-place storage must hold,
 rounded up to whole limbs.
 <code><h- data-h=name>MaxBits</h-></code> and <code><h- data-h=name>SignType</h-></code> have no counterpart
@@ -8012,8 +8010,9 @@ but leaves room for future extension (see <a href=#limb-type-parameter>§4.8.4. 
 </p>
 <code-block><h- data-h=kw>union</h-> <h- data-h=sym_brac>{</h->
   <h- data-h=kw>struct</h-> <h- data-h=sym_brac>{</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>capacity</h-><h- data-h=sym_punc>;</h-> <h- data-h=name>limb_type</h-><h- data-h=sym_op>*</h-> <h- data-h=name>data</h-><h- data-h=sym_punc>;</h-> <h- data-h=sym_brac>}</h-> <h- data-h=name>ld</h-><h- data-h=sym_punc>;</h->  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> dynamic storage</h->
-  <h- data-h=name>limb_type</h-> <h- data-h=name>la</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>internal_limb_count</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>;</h->                    <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> in-place storage</h->
-  <h- data-h=name>double_limb_type</h-> <h- data-h=name>double_first</h-><h- data-h=sym_punc>;</h->                        <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> in-place storage, as one double-width integer</h->
+  <h- data-h=name>limb_type</h-> <h- data-h=name>la</h-><h- data-h=sym_sqr>[</h-><h- data-h=name>internal_limb_count</h-><h- data-h=sym_sqr>]</h-><h- data-h=sym_punc>;</h->                     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> in-place storage</h->
+  <h- data-h=name>double_limb_type</h-> <h- data-h=name>double_first</h-><h- data-h=sym_punc>;</h->                         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> in-place storage, as one</h->
+                                                         <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> double-width integer</h->
 <h- data-h=sym_brac>}</h-><h- data-h=sym_punc>;</h->
 <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>size_t</h-> <h- data-h=name>m_limbs</h-><h- data-h=sym_punc>;</h->   <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> number of limbs in use</h->
 <h- data-h=kw_type>bool</h-> <h- data-h=name>m_sign</h-><h- data-h=sym_punc>;</h->           <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> true if negative</h->
@@ -8217,17 +8216,17 @@ reuse storage of rvalue operands in all eight operand forms.
   <tr>
     <td>From integers (including <code><h- data-h=kw_type>__int128</h-></code>)</td>
     <td>Implicit</td>
-    <td>Implicit; <code><h- data-h=kw>noexcept</h-></code> if the type fits in place</td>
+    <td>Implicit</td>
   </tr>
   <tr>
     <td>From floating-point types</td>
     <td>Explicit; truncates toward zero; throws <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>runtime_error</h-></code> for infinity and NaN</td>
-    <td>Explicit; truncates toward zero; undefined behavior for infinity and NaN</td>
+    <td>Explicit; truncates toward zero; throws <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>domain_error</h-></code> for infinity and NaN</td>
   </tr>
   <tr>
     <td>To floating-point types</td>
     <td>Explicit; rounded to nearest, ties to even</td>
-    <td>Same</td>
+    <td>Explicit; rounded to nearest, ties to even</td>
   </tr>
   <tr>
     <td>To a signed integer that cannot represent the value</td>
@@ -8271,17 +8270,17 @@ when it is wanted
   <tr>
     <td>Division or remainder by zero</td>
     <td>Throws <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>overflow_error</h-></code></td>
-    <td>Undefined behavior</td>
+    <td>Throws <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>domain_error</h-></code></td>
   </tr>
   <tr>
     <td>Shift by a negative amount</td>
     <td>Throws <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>out_of_range</h-></code></td>
-    <td>Undefined behavior</td>
+    <td>Throws <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>domain_error</h-></code></td>
   </tr>
   <tr>
     <td>Conversion from infinity or NaN</td>
     <td>Throws <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>runtime_error</h-></code></td>
-    <td>Undefined behavior</td>
+    <td>Throws <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>domain_error</h-></code></td>
   </tr>
   <tr>
     <td>Conversion of a negative value to an unsigned type</td>
@@ -8306,7 +8305,7 @@ when it is wanted
   <tr>
     <td>Allocation failure</td>
     <td>The allocator's exception, typically <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bad_alloc</h-></code></td>
-    <td>Same</td>
+    <td>The allocator's exception, typically <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bad_alloc</h-></code></td>
   </tr>
 </table>
 
@@ -8316,8 +8315,8 @@ and when <code><h- data-h=name>msb</h-></code> is given zero.
 These functions have no counterpart in this proposal (see <a href=#no-bit-support>§4.12.10. No <tt->&lt;bit&gt;</tt-> support</a>).
 The checked fixed-width types additionally throw <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>overflow_error</h-></code> on overflow,
 which cannot happen for <code><h- data-h=name>cpp_int</h-></code> or <code><h- data-h=name>big_int</h-></code>.
-<a href=#error-handling>§4.15. Error handling</a> explains why this proposal uses undefined behavior for now,
-which can later be replaced with something better.
+<a href=#error-handling>§4.15. Error handling</a> explains why this proposal throws <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>domain_error</h-></code>
+for division by zero, negative shifts, and non-finite floating-point input.
 </p>
 <h3 id=cpp-int-constexpr><a class=para href=#cpp-int-constexpr></a>A.10. <tt->constexpr</tt-> support</h3>
 
@@ -8336,8 +8335,9 @@ all operations of <code><h- data-h=name>basic_big_int</h-></code> are <code><h- 
 and values that fit into the in-place storage can be stored in <code><h- data-h=kw>constexpr</h-></code> variables
 (see <a href=#constexpr-support>§4.3. <tt->constexpr</tt-> support</a>):
 </p>
-<code-block><h- data-h=kw>constexpr</h-> <h- data-h=name>big_int</h-> <h- data-h=name>c</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>12345</h-><h- data-h=sym_punc>;</h->                                <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK: fits in place</h->
-<h- data-h=kw>static_assert</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>(</h-><h- data-h=name>big_int</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>300</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>%</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>007</h-> <h- data-h=sym_op>==</h-> <h- data-h=num>322050759</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK: transient allocation</h-></code-block>
+<code-block><h- data-h=kw>constexpr</h-> <h- data-h=name>big_int</h-> <h- data-h=name>c</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>12345</h-><h- data-h=sym_punc>;</h->  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK: fits in place</h->
+<h- data-h=kw>static_assert</h-><h- data-h=sym_par>(</h-><h- data-h=sym_par>(</h-><h- data-h=name>big_int</h-><h- data-h=sym_par>(</h-><h- data-h=num>1</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>300</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_op>%</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>007</h->
+              <h- data-h=sym_op>==</h-> <h- data-h=num>322050759</h-><h- data-h=sym_par>)</h-><h- data-h=sym_punc>;</h->  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> OK: transient allocation</h-></code-block>
 
 <note-block><p><intro-></intro-> 
 Beyond this proposal,
@@ -8371,7 +8371,7 @@ This is a workaround for the lack of non-transient <code><h- data-h=kw>constexpr
   <li>a <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>formatter</h-></code> that supports all format specifications for built-in integers,
       including hexadecimal and octal output of negative values,</li>
   <li><code><h- data-h=name>to_string</h-></code> and <code><h- data-h=name>to_wstring</h-></code>, and</li>
-  <li>no iostream operators and no string constructor.</li>
+  <li>no <code><h- data-h=str>&lt;iostream&gt;</h-></code> operators and no string constructor.</li>
 </ul>
 
 <p>Converting decimal text to <code><h- data-h=name>cpp_int</h-></code> and back is quadratic in the number of digits;
@@ -8384,13 +8384,14 @@ which is quadratic.
 <p>The literals differ more:
 </p>
 <code-block><h- data-h=kw>using</h-> <h- data-h=kw>namespace</h-> <h- data-h=name>boost</h-><h- data-h=sym_op>::</h-><h- data-h=name>multiprecision</h-><h- data-h=sym_op>::</h-><h- data-h=name>literals</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>auto</h-> <h- data-h=name>a</h-> <h- data-h=sym_op>=</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>FFFFFFFFFFFFFFFFFFFF</h-><h- data-h=num_deco>_cppi</h-><h- data-h=sym_punc>;</h->     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> number&lt;cpp_int_backend&lt;80, 80, signed_magnitude, unchecked, void&gt;&gt;</h->
-<h- data-h=kw>auto</h-> <h- data-h=name>b</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>12345</h-><h- data-h=num_deco>_cppi</h-><h- data-h=sym_punc>;</h->                     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> error: literals must be hexadecimal</h->
-<h- data-h=kw>auto</h-> <h- data-h=name>e</h-> <h- data-h=sym_op>=</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>FFFF</h-><h- data-h=num_dlim>'</h-><h- data-h=num>FFFF</h-><h- data-h=num_deco>_cppi</h-><h- data-h=sym_punc>;</h->               <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> error: digit separators are not supported</h->
+<h- data-h=kw>auto</h-> <h- data-h=name>a</h-> <h- data-h=sym_op>=</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>FFFFFFFFFFFFFFFFFFFF</h-><h- data-h=num_deco>_cppi</h-><h- data-h=sym_punc>;</h->
+<h- data-h=cmt_dlim>//</h-><h- data-h=cmt> a is a number&lt;cpp_int_backend&lt;80, 80, signed_magnitude, unchecked, void&gt;&gt;</h->
+<h- data-h=kw>auto</h-> <h- data-h=name>b</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>12345</h-><h- data-h=num_deco>_cppi</h-><h- data-h=sym_punc>;</h->        <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> error: literals must be hexadecimal</h->
+<h- data-h=kw>auto</h-> <h- data-h=name>c</h-> <h- data-h=sym_op>=</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>FFFF</h-><h- data-h=num_dlim>'</h-><h- data-h=num>FFFF</h-><h- data-h=num_deco>_cppi</h-><h- data-h=sym_punc>;</h->  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> error: digit separators are not supported</h->
 
-<h- data-h=kw>using</h-> <h- data-h=kw>namespace</h-> <h- data-h=name>beman</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-><h- data-h=sym_op>::</h-><h- data-h=name>literals</h-><h- data-h=sym_punc>;</h->
-<h- data-h=kw>auto</h-> <h- data-h=name>c</h-> <h- data-h=sym_op>=</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>FFFF</h-><h- data-h=num_dlim>'</h-><h- data-h=num>FFFF</h-><h- data-h=num_dlim>'</h-><h- data-h=num>FFFF</h-><h- data-h=num_dlim>'</h-><h- data-h=num>FFFF</h-><h- data-h=num_dlim>'</h-><h- data-h=num>FFFF</h-><h- data-h=num_deco>_n</h-><h- data-h=sym_punc>;</h->     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> big_int</h->
-<h- data-h=kw>auto</h-> <h- data-h=name>d</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_deco>_n</h-><h- data-h=sym_punc>;</h->  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> big_int</h-></code-block>
+<h- data-h=kw>using</h-> <h- data-h=kw>namespace</h-> <h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int_literals</h-><h- data-h=sym_punc>;</h->
+<h- data-h=kw>auto</h-> <h- data-h=name>d</h-> <h- data-h=sym_op>=</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>FFFF</h-><h- data-h=num_dlim>'</h-><h- data-h=num>FFFF</h-><h- data-h=num_dlim>'</h-><h- data-h=num>FFFF</h-><h- data-h=num_dlim>'</h-><h- data-h=num>FFFF</h-><h- data-h=num_dlim>'</h-><h- data-h=num>FFFF</h-><h- data-h=num_deco>n</h-><h- data-h=sym_punc>;</h->     <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> big_int</h->
+<h- data-h=kw>auto</h-> <h- data-h=name>e</h-> <h- data-h=sym_op>=</h-> <h- data-h=num>1</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_dlim>'</h-><h- data-h=num>000</h-><h- data-h=num_deco>n</h-><h- data-h=sym_punc>;</h->  <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> big_int</h-></code-block>
 
 <p>Boost's literals only accept hexadecimal without digit separators,
 and they produce a fixed-width type whose width is four bits per hexadecimal digit,
@@ -8400,7 +8401,14 @@ always produce <code><h- data-h=name>big_int</h-></code>,
 and compute the limbs during constant evaluation
 (see <a href=#user-defined-literals-for-std::big_int>§4.11. User-defined literals for <tt->std::big_int</tt-></a>).
 </p>
-<h3 id=cpp-int-allocators><a class=para href=#cpp-int-allocators></a>A.12. Allocators and <tt->noexcept</tt-></h3>
+<note-block><p><intro-></intro-> 
+The reference implementation also provides the suffixes <tt->_n</tt-> and <tt->_N</tt->
+because Clang does not yet accept the reserved suffixes <tt->n</tt-> and <tt->N</tt->
+outside the standard library
+(see <a href=https://github.com/llvm/llvm-project/issues/76394>LLVM issue 76394</a>).
+</p></note-block>
+
+<h3 id=cpp-int-allocators><a class=para href=#cpp-int-allocators></a>A.12. Allocators</h3>
 
 <p><code><h- data-h=name>cpp_int_backend</h-></code> takes an allocator type and stores the allocator using
 the empty base optimization,
@@ -8413,26 +8421,6 @@ the allocator is simply copied or moved along with the value.
 including allocator-extended constructors and propagation traits,
 and the reference implementation provides <code><h- data-h=name>pmr</h-><h- data-h=sym_op>::</h-><h- data-h=name>big_int</h-></code>.
 </p>
-<table class="center striped">
-  <tr>
-    <th>Type trait</th>
-    <th><code><h- data-h=name>cpp_int</h-></code></th>
-    <th><code><h- data-h=name>big_int</h-></code></th>
-  </tr>
-  <tr><td><code><h- data-h=name>is_nothrow_default_constructible</h-></code></td><td>Yes</td><td>Yes</td></tr>
-  <tr><td><code><h- data-h=name>is_nothrow_move_constructible</h-></code></td><td>Yes</td><td>Yes</td></tr>
-  <tr><td><code><h- data-h=name>is_nothrow_move_assignable</h-></code></td><td>Yes</td><td>Yes</td></tr>
-  <tr><td><code><h- data-h=name>is_nothrow_swappable</h-></code></td><td>No</td><td>Yes</td></tr>
-  <tr><td><code><h- data-h=name>is_nothrow_constructible</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>long</h-> <h- data-h=kw_type>long</h-><h- data-h=sym_op>&gt;</h-></code></td><td>Yes</td><td>Yes</td></tr>
-  <tr><td><code><h- data-h=name>is_nothrow_constructible</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>T</h-><h- data-h=sym_punc>,</h-> <h- data-h=kw_type>__int128</h-><h- data-h=sym_op>&gt;</h-></code></td><td>Yes</td><td>No (yes for <code><h- data-h=name>basic_big_int</h-><h- data-h=sym_op>&lt;</h-><h- data-h=num>128</h-><h- data-h=sym_op>&gt;</h-></code>)</td></tr>
-</table>
-
-<note-block><p><intro-></intro-> 
-<code><h- data-h=name>big_int</h-></code>'s move assignment and <code><h- data-h=name>swap</h-></code> are <code><h- data-h=kw>noexcept</h-></code>
-for allocators that propagate or are always equal,
-which includes <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>allocator</h-></code>.
-</p></note-block>
-
 <h3 id=cpp-int-functions><a class=para href=#cpp-int-functions></a>A.13. Library functions</h3>
 
 <p>Boost.Multiprecision provides a much larger library of integer functions,

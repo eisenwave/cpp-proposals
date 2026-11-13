@@ -63,6 +63,9 @@ with elastic operations.
     and conversion of non-finite floating-point values throw \tcode{std::domain_error}
     (see \ref("#error-handling"))
   }
+  \li{
+    Added \ref("#appendix-cpp-int")
+  }
 }
 
 \h3{Changes since R0}
@@ -74,9 +77,6 @@ with elastic operations.
   \li{
     Aligned wording for move assignment and for \tcode{basic_big_int::swap}
     in \ref("#big.int.modifiers") with other containers
-  }
-  \li{
-    Added \ref("#appendix-cpp-int")
   }
 }
 
@@ -4125,9 +4125,9 @@ namespace std {
   template<class T, \exposid{signed-or-unsigned} S> constexpr remove_cvref_t<T> operator>>(T&& x, S s);
 
   namespace pmr {
-    template<size_t b, class L>
+    template<size_t b, class L = uint_multiprecision_t>
       using basic_big_int = std::basic_big_int<b, L, polymorphic_allocator<L>>;
-    using big_int = basic_big_int<std::big_int::inplace_bits>;
+    using big_int = basic_big_int<std::big_int::inplace_capacity>;
   }
 
   //\serif{ swap}
@@ -4386,7 +4386,7 @@ leaves the corresponding argument in a valid but unspecified state.
 \pnum
 During constant evaluation,
 if the effective width of the integer value of a \tcode{basic_big_int}
-is less than or equal to its \tcode{inplace_bits} member,
+is less than or equal to its \tcode{inplace_capacity} member,
 the object holds no allocation following any operation.
 \br\note{
 The behavior is as if \tcode{shrink_to_fit()} were called
@@ -4526,7 +4526,7 @@ template<class T>
 \effects
 \tcode{\exposid{no-alloc-constructible-from}} is \tcode{true} if
 \tcode{remove_cvref_t<T>} is a signed or unsigned integer type
-whose width is less than or equal to \tcode{inplace_bits},
+whose width is less than or equal to \tcode{inplace_capacity},
 and \tcode{false} otherwise.
 }
 
@@ -4668,7 +4668,7 @@ imposed in \eelis{container.requirements}.
 \pnum
 \throws
 Nothing if the effective width of the integer value of \tcode{x}
-is less than or equal to \tcode{inplace_bits};
+is less than or equal to \tcode{inplace_capacity};
 otherwise, exceptions thrown during allocation.
 
 \pnum
@@ -4746,7 +4746,7 @@ by discarding the fractional part of \tcode{x}.
 and the value of \tcode{x} is not finite.
 Otherwise, nothing if the effective width of the integer value
 this object is initialized with
-is less than or equal to \tcode{inplace_bits};
+is less than or equal to \tcode{inplace_capacity};
 otherwise, exceptions thrown during allocation.
 
 \pnum
@@ -4787,7 +4787,7 @@ Initializes the allocator to \tcode{a}.
 and the value of \tcode{x} is not finite.
 Otherwise, nothing if the effective width of the integer value
 this object is initialized with
-is less than or equal to \tcode{inplace_bits};
+is less than or equal to \tcode{inplace_capacity};
 otherwise, exceptions thrown during allocation.
 }
 
@@ -4813,7 +4813,7 @@ Initializes the allocator to \tcode{a}.
 \pnum
 \throws
 Nothing if the effective width of the combined integer value
-is less than or equal to \tcode{inplace_bits};
+is less than or equal to \tcode{inplace_capacity};
 otherwise, exceptions thrown during allocation.
 
 \pnum
@@ -5065,7 +5065,7 @@ constexpr void shrink_to_fit();
 \pnum
 \effects
 If the effective width of the integer value is
-less than or equal to \tcode{inplace_bits},
+less than or equal to \tcode{inplace_capacity},
 \tcode{shrink_to_fit} frees the allocation and stores the integer value
 within the \tcode{basic_big_int} object.
 Otherwise, \tcode{shrink_to_fit} is a non-binding request
@@ -5458,7 +5458,7 @@ A specialization of \tcode{basic_big_int} with an implementation-defined
 argument \math{\mi{B}} for the \tcode{min_inplace_capacity} constant template parameter,
 chosen so that
 \math{\mi{B}} is greater than or equal to \tcode{numeric_limits<uint_multiprecision_t>::digits} and
-\math{\mi{B}} equals \tcode{basic_big_int<\math{\mi{B}}>::inplace_\'SOFT HYPHEN'bits}.
+\math{\mi{B}} equals \tcode{basic_big_int<\math{\mi{B}}>::inplace_\'SOFT HYPHEN'capacity}.
 
 \pnum
 \recommended
@@ -5468,7 +5468,7 @@ may represent the value of all commonly used integer types without allocating.
 }
 
 \editnote{
-\tcode{big_int::min_inplace_bits} is typically \tcode{64} on a 64-bit architecture,
+\tcode{big_int::inplace_capacity} is typically \tcode{64} on a 64-bit architecture,
 and it cannot be any less because it needs to be at least one limb width.
 However, an implementation could also decide to choose \tcode{128}, \tcode{192}, etc.
 
@@ -5742,7 +5742,7 @@ of \math{\mi{s}} interpreted as an \grammarterm{integer-literal}.
 \remarks
 The function specialization has a non-throwing exception specification
 if the effective width of the integer value returned by a function call expression
-is less than or equal to \tcode{big_int::inplace_bits}.
+is less than or equal to \tcode{big_int::inplace_capacity}.
 }
 }
 
@@ -6151,18 +6151,11 @@ Unless stated otherwise,
 this comparison refers to the \tt{develop} branch of Boost.Multiprecision
 at commit \tt{14ba2728} (2026-08-05),
 which differs from the Boost 1.92 release in no way relevant here,
-and to \tt{bemanproject/big_int} at commit \tt{013267d} (2026-10-26).
+and to \tt{bemanproject/big_int} at commit \tt{7edd29e} (2026-11-11).
 Statements about run-time behavior were verified with test programs
 compiled against both libraries with Apple Clang 21 on AArch64 macOS;
 performance figures in \ref("#cpp-int-performance") were measured separately
 and come with their own environment.
-
-Names are spelled as in the reference implementation,
-which lives in \tcode{namespace beman::big_int}.
-There, the first template parameter of \tcode{basic_big_int}
-is named \tcode{min_inplace_bits},
-and the literal suffix \tt{n} is also available as \tt{_n}
-because Clang does not yet accept the reserved suffix.
 }
 
 \h3(id="cpp-int-summary", show_number=false){A.1. Summary}
@@ -6182,7 +6175,7 @@ because Clang does not yet accept the reserved suffix.
     \td{Template parameters}
     \td{\tcode{MinBits}, \tcode{MaxBits}, \tcode{SignType}, \tcode{Checked}, \tcode{Allocator},
         plus \tcode{ExpressionTemplates} on \tcode{number}}
-    \td{\tcode{min_inplace_bits}, \tcode{Limb}, \tcode{Allocator}}
+    \td{\tcode{min_inplace_capacity}, \tcode{Limb}, \tcode{Allocator}}
   }
   \tr{
     \td{Fixed-width, unsigned, and checked variants}
@@ -6192,7 +6185,7 @@ because Clang does not yet accept the reserved suffix.
   \tr{
     \td{Representation}
     \td{Sign and magnitude, little-endian limb array}
-    \td{Same}
+    \td{Sign and magnitude, little-endian limb array}
   }
   \tr{
     \td{Limb type}
@@ -6252,8 +6245,8 @@ because Clang does not yet accept the reserved suffix.
   }
   \tr{
     \td{Division by zero, negative shifts, non-finite floating-point input}
-    \td{Exceptions}
-    \td{Undefined behavior}
+    \td{Exceptions of various types}
+    \td{Throws \tcode{std::domain_error}}
   }
   \tr{
     \td{Text conversion}
@@ -6293,7 +6286,7 @@ because Clang does not yet accept the reserved suffix.
   \tr{
     \td{GCD}
     \td{Lehmer, in Jebelean's double-digit form}
-    \td{Same}
+    \td{Lehmer, in Jebelean's double-digit form}
   }
   \tr{
     \td{Distribution}
@@ -6314,7 +6307,7 @@ The following parts of the design are shared with \tcode{cpp_int}:
   \li{
     A union of in-place limbs and a (pointer, capacity) pair,
     with the in-place size chosen by the first template parameter:
-    \tcode{MinBits} in Boost, \tcode{min_inplace_bits} in the reference implementation
+    \tcode{MinBits} in Boost, \tcode{min_inplace_capacity} in \tcode{std::basic_big_int}
     (see \ref("#soo-customization")).
   }
   \li{
@@ -6334,6 +6327,12 @@ The following parts of the design are shared with \tcode{cpp_int}:
   \li{
     Implicit conversion from integers, explicit conversion from floating-point types,
     and explicit conversion to arithmetic types.
+  }
+  \li{
+    Exceptions for division by zero, negative shifts, and non-finite floating-point input,
+    although \tcode{std::big_int} throws \tcode{std::domain_error} in all three cases,
+    whereas \tcode{cpp_int} throws a different exception type for each
+    (see \ref("#cpp-int-errors")).
   }
   \li{
     Access to the limbs:
@@ -6379,11 +6378,6 @@ for reasons explained in the main body of this paper:
     Conversions to built-in integers are modular,
     with saturation available through \tcode{std::saturating_cast}
     (see \ref("#std::saturating_cast")).
-  }
-  \li{
-    Preconditions instead of exceptions for division by zero, negative shifts,
-    and non-finite floating-point input
-    (see \ref("#error-handling")).
   }
   \li{
     Text conversion through \tcode{<charconv>} and \tcode{<format>}
@@ -6432,21 +6426,25 @@ rather than member functions.
 \tcode{std::big_int} has no front end and no back end:
 
 \cppblock{
-namespace beman::big_int {
-  template <std::size_t min_inplace_bits,
-            class Limb = uint_multiprecision_t,
-            class Allocator = std::allocator<Limb>>
+namespace std {
+  template<size_t min_inplace_capacity,
+           class Limb = uint_multiprecision_t,
+           class Allocator = allocator<Limb>>
     class basic_big_int;
 
-  using big_int = basic_big_int<64>;
+  using big_int = basic_big_int<\exposid{implementation-defined}>;
+
   namespace pmr {
-    using big_int = basic_big_int<64, uint_multiprecision_t,
-                                  std::pmr::polymorphic_allocator<uint_multiprecision_t>>;
+    template<size_t b, class L = uint_multiprecision_t>
+      using basic_big_int = std::basic_big_int<b, L, polymorphic_allocator<L>>;
+    using big_int = basic_big_int<std::big_int::inplace_capacity>;
   }
 }
 }
 
-\tcode{MinBits} and \tcode{min_inplace_bits} have the same meaning:
+In the reference implementation, \tcode{big_int} is \tcode{basic_big_int<64>}.
+
+\tcode{MinBits} and \tcode{min_inplace_capacity} have the same meaning:
 the minimum number of value bits that the in-place storage must hold,
 rounded up to whole limbs.
 \tcode{MaxBits} and \tcode{SignType} have no counterpart
@@ -6468,8 +6466,9 @@ Simplified, the data members of \tcode{cpp_int_backend<>} are:
 \cppblock{
 union {
   struct { std::size_t capacity; limb_type* data; } ld;  // dynamic storage
-  limb_type la[internal_limb_count];                    // in-place storage
-  double_limb_type double_first;                        // in-place storage, as one double-width integer
+  limb_type la[internal_limb_count];                     // in-place storage
+  double_limb_type double_first;                         // in-place storage, as one
+                                                         // double-width integer
 };
 std::size_t m_limbs;   // number of limbs in use
 bool m_sign;           // true if negative
@@ -6676,17 +6675,17 @@ Further differences:
   \tr{
     \td{From integers (including \tcode{__int128})}
     \td{Implicit}
-    \td{Implicit; \tcode{noexcept} if the type fits in place}
+    \td{Implicit}
   }
   \tr{
     \td{From floating-point types}
     \td{Explicit; truncates toward zero; throws \tcode{std::runtime_error} for infinity and NaN}
-    \td{Explicit; truncates toward zero; undefined behavior for infinity and NaN}
+    \td{Explicit; truncates toward zero; throws \tcode{std::domain_error} for infinity and NaN}
   }
   \tr{
     \td{To floating-point types}
     \td{Explicit; rounded to nearest, ties to even}
-    \td{Same}
+    \td{Explicit; rounded to nearest, ties to even}
   }
   \tr{
     \td{To a signed integer that cannot represent the value}
@@ -6730,17 +6729,17 @@ when it is wanted
   \tr{
     \td{Division or remainder by zero}
     \td{Throws \tcode{std::overflow_error}}
-    \td{Undefined behavior}
+    \td{Throws \tcode{std::domain_error}}
   }
   \tr{
     \td{Shift by a negative amount}
     \td{Throws \tcode{std::out_of_range}}
-    \td{Undefined behavior}
+    \td{Throws \tcode{std::domain_error}}
   }
   \tr{
     \td{Conversion from infinity or NaN}
     \td{Throws \tcode{std::runtime_error}}
-    \td{Undefined behavior}
+    \td{Throws \tcode{std::domain_error}}
   }
   \tr{
     \td{Conversion of a negative value to an unsigned type}
@@ -6765,7 +6764,7 @@ when it is wanted
   \tr{
     \td{Allocation failure}
     \td{The allocator's exception, typically \tcode{std::bad_alloc}}
-    \td{Same}
+    \td{The allocator's exception, typically \tcode{std::bad_alloc}}
   }
 }
 
@@ -6775,8 +6774,8 @@ and when \tcode{msb} is given zero.
 These functions have no counterpart in this proposal (see \ref("#no-bit-support")).
 The checked fixed-width types additionally throw \tcode{std::overflow_error} on overflow,
 which cannot happen for \tcode{cpp_int} or \tcode{big_int}.
-\ref("#error-handling") explains why this proposal uses undefined behavior for now,
-which can later be replaced with something better.
+\ref("#error-handling") explains why this proposal throws \tcode{std::domain_error}
+for division by zero, negative shifts, and non-finite floating-point input.
 
 \h3(id="cpp-int-constexpr", show_number=false){A.10. \tt{constexpr} support}
 
@@ -6798,8 +6797,9 @@ and values that fit into the in-place storage can be stored in \tcode{constexpr}
 (see \ref("#constexpr-support")):
 
 \cppblock{
-constexpr big_int c = 12345;                                // OK: fits in place
-static_assert((big_int(1) << 300) % 1'000'000'007 == 322050759);  // OK: transient allocation
+constexpr big_int c = 12345;  // OK: fits in place
+static_assert((big_int(1) << 300) % 1'000'000'007
+              == 322050759);  // OK: transient allocation
 }
 
 \Bnote{
@@ -6834,7 +6834,7 @@ The reference implementation provides
   \li{a \tcode{std::formatter} that supports all format specifications for built-in integers,
       including hexadecimal and octal output of negative values,}
   \li{\tcode{to_string} and \tcode{to_wstring}, and}
-  \li{no iostream operators and no string constructor.}
+  \li{no \header{iostream} operators and no string constructor.}
 }
 
 Converting decimal text to \tcode{cpp_int} and back is quadratic in the number of digits;
@@ -6848,13 +6848,14 @@ The literals differ more:
 
 \cppblock{
 using namespace boost::multiprecision::literals;
-auto a = 0xFFFFFFFFFFFFFFFFFFFF_cppi;     // number<cpp_int_backend<80, 80, signed_magnitude, unchecked, void>>
-auto b = 12345_cppi;                     // error: literals must be hexadecimal
-auto e = 0xFFFF'FFFF_cppi;               // error: digit separators are not supported
+auto a = 0xFFFFFFFFFFFFFFFFFFFF_cppi;
+// a is a number<cpp_int_backend<80, 80, signed_magnitude, unchecked, void>>
+auto b = 12345_cppi;        // error: literals must be hexadecimal
+auto c = 0xFFFF'FFFF_cppi;  // error: digit separators are not supported
 
-using namespace beman::big_int::literals;
-auto c = 0xFFFF'FFFF'FFFF'FFFF'FFFF_n;     // big_int
-auto d = 1'000'000'000'000'000'000'000_n;  // big_int
+using namespace std::big_int_literals;
+auto d = 0xFFFF'FFFF'FFFF'FFFF'FFFFn;     // big_int
+auto e = 1'000'000'000'000'000'000'000n;  // big_int
 }
 
 Boost's literals only accept hexadecimal without digit separators,
@@ -6865,7 +6866,14 @@ always produce \tcode{big_int},
 and compute the limbs during constant evaluation
 (see \ref("#user-defined-literals-for-std::big_int")).
 
-\h3(id="cpp-int-allocators", show_number=false){A.12. Allocators and \tt{noexcept}}
+\Bnote{
+The reference implementation also provides the suffixes \tt{_n} and \tt{_N}
+because Clang does not yet accept the reserved suffixes \tt{n} and \tt{N}
+outside the standard library
+(see \ref("https://github.com/llvm/llvm-project/issues/76394"){LLVM issue 76394}).
+}
+
+\h3(id="cpp-int-allocators", show_number=false){A.12. Allocators}
 
 \tcode{cpp_int_backend} takes an allocator type and stores the allocator using
 the empty base optimization,
@@ -6877,26 +6885,6 @@ the allocator is simply copied or moved along with the value.
 \tcode{basic_big_int} follows the allocator model of the standard containers,
 including allocator-extended constructors and propagation traits,
 and the reference implementation provides \tcode{pmr::big_int}.
-
-\table(class="center striped"){
-  \tr{
-    \th{Type trait}
-    \th{\tcode{cpp_int}}
-    \th{\tcode{big_int}}
-  }
-  \tr{\td{\tcode{is_nothrow_default_constructible}}\td{Yes}\td{Yes}}
-  \tr{\td{\tcode{is_nothrow_move_constructible}}\td{Yes}\td{Yes}}
-  \tr{\td{\tcode{is_nothrow_move_assignable}}\td{Yes}\td{Yes}}
-  \tr{\td{\tcode{is_nothrow_swappable}}\td{No}\td{Yes}}
-  \tr{\td{\tcode{is_nothrow_constructible<T, long long>}}\td{Yes}\td{Yes}}
-  \tr{\td{\tcode{is_nothrow_constructible<T, __int128>}}\td{Yes}\td{No (yes for \tcode{basic_big_int<128>})}}
-}
-
-\Bnote{
-\tcode{big_int}'s move assignment and \tcode{swap} are \tcode{noexcept}
-for allocators that propagate or are always equal,
-which includes \tcode{std::allocator}.
-}
 
 \h3(id="cpp-int-functions", show_number=false){A.13. Library functions}
 
