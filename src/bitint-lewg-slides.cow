@@ -7,11 +7,11 @@
 \cowel_macro("slidefoot"){
 Jan Schultke
 \footsep
-LEWG Slides for P3666R4
+LEWG Slides for P3666R5
 \'EM DASH'
 Bit-precise integers
 \footsep
-Brno 2026
+Búzios 2026
 \footsep
 Slide \(slidenum)
 }
@@ -38,12 +38,12 @@ li>ul {
     title = {Slides for P3666R4 \br Bit-precise integers}
 ){
 \dl{
-    \dt{Document number:} \dd{\docnum{P4157R1}}
-    \dt{Date:}            \dd{\tt{2026-06-11}}
+    \dt{Document number:} \dd{\docnum{P4157R2}}
+    \dt{Date:}            \dd{\tt{2026-11-18}}
     \dt{Audience:}        \dd{LEWG}
     \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
     \dt{Reply-To:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
-    \dt{Source:}          \dd{\ref("https://github.com/Eisenwave/cpp-proposals/blob/master/src/bitint-lewg-slides.cow")}
+    \dt{Source:}          \dd{\ref("https://github.com/eisenwave/cpp-proposals/blob/master/src/bitint-lewg-slides.cow")}
 }
 \hr
 \slide_controls
@@ -51,116 +51,27 @@ li>ul {
 
 \slide{
 \cowel_html_element("h1", (style="font-size: 350%")){Bit-precise integers\br
-\span(id="docnum"){P3666R4}}
+\span(id="docnum"){P3666R5}}
 }
 
 \slide{
 \slideh{Introduction}
-C23 now has \tcode{_BitInt} type for N-bit integers (WG14 N2763, N2775):
+C23 now has \tcode{_BitInt} type for N-bit integers:
 \cppblock{
 // 8-bit unsigned integer initialized with value 255.
 // The literal suffix wb is unnecessary in this case.
 unsigned _BitInt(8) x = 0xFFwb;
 }
 \ul{
-  \li{implemented by GCC and Clang; max: \tcode{_BitInt(8'388'608)}}
+  \li{implemented by GCC (C) and Clang (C & C++); max: \tcode{_BitInt(8'388'608)}}
   \li{forwarded by EWG to LEWG/CWG for C++29}
+  \li{extensive and ever-increasing support in libc++}
+  \li{open GCC (C++) and libstdc++ patches to add \tcode{_BitInt} support}
 }
 }
 
 \slide{
-\slideh{P3666R3 LEWG in Croydon 2026}
-
-\style{
-  .quad {
-    font-size: 70%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 5rem;
-  }
-}
-
-\Bquote{
-\div(class="quad"){
-  \div{
-    \b{POLL}: We should prevent library support for \tcode{_BitInt}
-    \five_way_poll(5, 9, 2, 3, 1)
-    \b{Outcome}: Consensus in favor
-  }
-  \div{
-    \b{POLL}: \tcode{std::is_integral_v<_BitInt(N)>} should be false
-    \five_way_poll(7, 4, 5, 2, 0)
-    \b{Outcome}: Consensus in favor
-  }
-  \div{
-    \b{POLL}: We should provide alias templates for \tcode{_BitInt} \etc
-    \five_way_poll(0, 3, 8, 3, 5)
-    \b{Outcome}: Consensus against
-  }
-  \div{
-    \b{POLL}: We should provide \tcode{std::bit_int} and \tcode{std::bit_uint} as class templates \etc
-    \five_way_poll(2, 4, 8, 4, 0)
-    \b{Outcome}: No consensus
-  }
-}
-}
-}
-
-\slide{
-\slideh{\tt{std::is_integral_v<_BitInt(N)>}}
-
-\Bquote{
-\b{POLL}: \tcode{std::is_integral_v<_BitInt(N)>} should be false
-\five_way_poll(7, 4, 5, 2, 0)
-\b{Outcome}: Consensus in favor
-}
-
-\ul{
-  \li{other poll outcomes are implemented, \em{but not this one}}
-  \li{LEWG voted with incomplete information}
-  \li{here is why \'HORIZONTAL ELLIPSIS'}
-}
-}
-
-\slide{
-\slideh{Intuition}
-
-\Bquote(style="font-size: 150%"){
-A bit-precise integer is an integer.
-}
-
-\ul{
-  \li{LEWG disagrees}
-  \li{\q{integer type} is an alias for \q{integral type}\iref{basic.fundamental}}
-  \li{no clear way to avoid obvious teachability problems}
-}
-}
-
-\slide{
-\slideh{Procedural issues}
-
-\cowel_html_element("h3"){Two schools of thought}
-\ol{
-  \li{
-    The type trait simply reports what is an integer type in the core language.
-    \ul{
-      \li{LEWG has no design freedom; EWG decides}
-      \li{poll outcome is procedurally invalid}
-    }
-  }
-  \li{
-    The type trait is observable behavior, anything else is wording strategy.
-    \ul{
-      \li{LEWG gets to decide}
-      \li{\q{integer type} can be redefined if use sites are updated}
-      \li{e.g. \tcode{std::is_class_v} is false for unions (but unions are class types)}
-    }
-  }
-}
-}
-
-\slide{
-\slideh{P3666R4 type taxonomy \'EM DASH' C compatibility}
+\slideh{Reminder \'EM DASH' P3666 type taxonomy}
 
 \pre{
 integral types
@@ -173,137 +84,227 @@ integral types
 }
 
 \ul{
-  \li{P3666R4 mostly matches C2y taxonomy}
+  \li{P3666R5 mostly matches C2y taxonomy}
   \li{e.g. \q{character types} are different}
-  \li{two \em{radically} different taxonomies are harder to learn}
 }
 }
 
 \slide{
-\slideh{\tcode{std::is_integral} is underconstraining}
+\slideh{P3666 consensus decisions in recent history}
 
 \ul{
-  \li{rationale for poll: existing \tcode{std::is_integral} constraints would change}
-  \li{
-    surprisingly, \tcode{std::is_integral_v} also matches:
-    \ul{
-      \li{\tcode{char}}
-      \li{\tcode{char32_t}}
-      \li{\tcode{const volatile bool}}
-      \li{\etc}
+  \li{\b{P3666R3}: Seen briefly in Croydon 2026\ul{
+    \li{\q{We should prevent library support for \tcode{_BitInt}}}
+    \li{\q{\tcode{std::is_integral_v<_BitInt(N)>} should be \tcode{false}}}
+  }}
+  \li{\b{P3666R4}: Discussed in Brno 2026 EWG/LEWG joint session\ul{
+    \li{\q{\tcode{std::is_integral_v<_BitInt(N)>} should be \tcode{true}}}
+    \li{\q{We agree with the design direction of section 5 in P3666R4}}
+  }
+  }
+}
+
+\style{
+  .quad {
+    font-size: 70%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5rem;
+  }
+}
+}
+
+\slide{
+\slideh{Key question}
+
+\style{
+  #key-question {
+    font-size: 175%;
+    margin: 10rem 4rem 0 4rem;
+    text-align: center;
+  }
+}
+
+\div(id="key-question"){
+Do we want to support \tcode{_BitInt(N)} \em{fully} in the standard library,
+same as other signed or unsigned integer types?
+}
+}
+
+\slide{
+\slideh{Arguments in favor of support}
+
+\ul{
+  \li{Consistency with other integer types}
+  \li{Respect for what \tcode{std::is_integral_v} implies}
+  \li{Support is simply useful for math stuff}
+  \li{Exposing numeric intrinsics\ul{
+    \li{e.g. \tcode{std::popcount} → \tcode{__builtin_popcountg} → \tcode{@llvm.ctpop.i128}}
+    \li{zero-overhead principle}
+    \li{don't leave room for lower-level features}
+  }}
+  \li{not breaking existing libc++ support}
+}
+}
+
+\slide{
+\slideh{libc++ support for \tcode{_BitInt(N)}}
+
+\style{
+  #libcxx {
+    font-size: 75%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  #libcxx td {
+    vertical-align: top;
+    border-bottom: 1px solid var(--border-color);
+  }
+}
+
+\table(id="libcxx"){
+  \tr{
+    \th{Header}
+    \th{Supported features}
+  }
+  \tr{
+    \td{\header{limits}}
+    \td{
+      \tcode{std::numeric_limits<_BitInt(N)>}
     }
   }
-  \li{users likely expect \tcode{int}, \tcode{unsigned long}, etc. instead}
-  \li{\tcode{std::is_integral_v} by itself is not a suitable constraint anyway}
+  \tr{
+    \td{\header{concepts}}
+    \td{
+      \tcode{std::integral<_BitInt(N)> etc.}
+    }
+  }
+  \tr{
+    \td{\header{type_traits}}
+    \td{
+      \tcode{std::is_integral<_BitInt(N)>}, \tcode{std::make_signed<_BitInt(N)>}, etc.
+    }
+  }
+  \tr{
+    \td{\header{utility}}
+    \td{
+      \tcode{std::byte{} << 0wb},
+      \tcode{std::to_integer<_BitInt(N)>},
+      \tcode{std::integer_sequence<_BitInt(N)>},
+      \tcode{std::cmp_*},
+      \tcode{std::hash<_BitInt(N)>}
+    }
+  }
+  \tr{
+    \td{\header{bit}}
+    \td{
+      bit manipulation functions
+    }
+  }
+  \tr{
+    \td{\header{mdspan}}
+    \td{
+      \tcode{std::mdspan::extents<_BitInt(N)>} etc.
+    }
+  }
+  \tr{
+    \td{\header{random}}
+    \td{
+      \tcode{std::seed_seq} operations
+    }
+  }
+  \tr{
+    \td{\header{numeric}}
+    \td{
+      \tcode{std::gcd} and \tcode{std::lcm},
+      \tcode{std::saturating_*},
+      \tcode{std::midpoint}
+    }
+  }
+  \tr{
+    \td{\header{charconv}}
+    \td{
+      \tcode{std::to_chars} and \tcode{std::from_chars}
+    }
+  }
+  \tr{
+    \td{\header{cstdlib}}
+    \td{
+      \tcode{std::abs}
+    }
+  }
+  \tr{
+    \td{\header{cmath}}
+    \td{
+      \tcode{_BitInt} is treated as \tcode{double} when used as an argument.
+      \tcode{std::abs}.
+    }
+  }
+  \tr{
+    \td{\header{chrono}}
+    \td{
+      \tcode{_BitInt} as representation type of \tcode{std::chrono::duration}
+    }
+  }
 }
 }
 
 \slide{
-\slideh{\tt{std::is_integral_v<_BitInt(N)>}\br is \em{already} true in libc++}
+\slideh{Other support for \tcode{_BitInt(N)}}
+
+\style{
+  #c23-compat {
+    margin-left: auto;
+    margin-right: auto;
+  }
+  #c23-compat td {
+    vertical-align: top;
+    border-bottom: 1px solid var(--border-color);
+  }
+}
+
+\table(id="c23-compat"){
+  \tr{
+    \th{Header}
+    \th{Support}
+  }
+  \tr{
+    \td{\header{version}}
+    \td{\tcode{__cpp_lib_bitint}}
+  }
+  \tr{
+    \td{\header{stdbit.h}}
+    \td{C bit manipulation functions}
+  }
+  \tr{
+    \td{\header{climits}}
+    \td{\tcode{#define BITINT_MAXWIDTH}}
+  }
+}
+}
+
+\slide{
+\slideh{Arguments against support}
 
 \ul{
-  \li{(but false in libstdc++)}
-  \li{this was \em{not} mentioned in LEWG}
-  \li{\em{total} reframing of the poll:\ul{
-    \li{\del{What should the behavior be in the future?}}
-    \li{\ins{Do we want to change the existing libc++ behavior?}}
+  \li{General implementation effort\ul{
+    \li{including testing effort}
   }}
-  \li{if LLVM is fine with shipping this behavior, why are we not?}
-  \li{do we know better?}
+  \li{Supporting an \q{ugly} C compatibility feature}
+  \li{Cannibalizing space in standard for future \q{proper C++ integers}}
 }
 }
 
 \slide{
-\slideh{Most code handles the change fine}
-
-\cppblock{
-template<std::integral T>
-T mul(T x, T y) {
-  return x * y;
-}
-}
+\slideh{What if we do nothing?}
 
 \ul{
-  \li{no innate problem with \tcode{T = _BitInt(N)}}
-  \li{edge case: promotion to \tcode{int} can prevent some UB}
-  \li{\'HORIZONTAL ELLIPSIS' but also introduce UB (e.g. \tcode{T = unsigned short})}
-  \li{problems usually arise only for \em{huge} widths}
-}
-}
-
-\slide{
-\slideh{Extended integer types}
-
-\ul{
-  \li{\q{integral type} has always been arbitrarily extendable}
-  \li{
-    implementation can add \tcode{_ExtInt(N)} as extended integer type
-    with same properties as \tcode{_BitInt(N)}
-  }
-  \li{\tcode{std::is_integral_v<_ExtInt(N)>} is \tcode{true} then}
-}
-
-\cowel_html_element("h3"){Key question:}
-
-\Bquote(style="font-size:115%"){
-If the implementation can arbitrarily extend \q{integral type},
-why can't we extend it with \tcode{_BitInt}?
-}
-}
-
-\slide{
-\slideh{\tt{std::is_integral_v<_BitInt(N)>}\br is eternal}
-
-\cowel_html_element("h3"){Key question:}
-
-\Bquote(style="font-size:115%"){
-If \tcode{std::is_integral_v<_BitInt(N)>} is false now,
-can we suddenly make it \tcode{true} later?
-}
-
-\cowel_html_element("h3"){Likely answer:}
-
-This is our \em{only} chance to make it true.
-}
-
-\slide{
-\slideh{Extending categories of fundamental types}
-
-\cowel_html_element("h3"){Past:}
-
-\ul{
-  \li{
-    character type: \tcode{char}, \tcode{wchar_t},
-    \ins{\tcode{char8_t}, \tcode{char16_t}, \tcode{char32_t}}
-  }
-  \li{
-    floating-point type:
-    \tcode{float}, \tcode{double}, \tcode{long double},
-    \ins{\tcode{std::bfloat16_t}, \etc, \tcode{std::float128_t}}
-  }
-}
-
-\cowel_html_element("h3"){Future:}
-
-\ul{
-  \li{
-    integral type:
-    \tcode{int}, \tcode{unsigned long}, \etc
-    \ins{\tcode{_BitInt(N)}}
-  }
-  \li{
-    floating-point type:
-    \tcode{float}, \etc, \tcode{std::float128_t},
-    \ins{\tcode{std::decimal32_t}, \tcode{std::decimal64_t}, \tcode{std::decimal128_t}}
-  }
-}
-}
-
-\slide{
-\slideh{The end}
-
-\ul{
-  \li{Let's get \tcode{std::is_integral_v<_BitInt(N)>} right!}
-  \li{Most of remaining of design/wording is obvious consequence.}
+  \li{GCC and Clang will move on without us\ul{
+    \li{\tcode{_BitInt(N)} keeps living as a compiler extension}
+  }}
+  \li{Users and implementers are deprived of a standard form of feature\ul{
+    \li{Ever-increasing pressure to standardize existing practice}
+  }}
+  \li{Remaining C23 ABI incompatibility}
 }
 }

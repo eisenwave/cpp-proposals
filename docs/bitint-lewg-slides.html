@@ -1692,12 +1692,12 @@ li>ul {
 <div class=wg21-head><h1>Slides for P3666R4 <br/> Bit-precise integers</h1>
 
 <dl>
-    <dt>Document number:</dt> <dd><a href=https://wg21.link/P4157R1>P4157R1</a></dd>
-    <dt>Date:</dt>            <dd><tt->2026-06-11</tt-></dd>
+    <dt>Document number:</dt> <dd><a href=https://wg21.link/P4157R2>P4157R2</a></dd>
+    <dt>Date:</dt>            <dd><tt->2026-11-18</tt-></dd>
     <dt>Audience:</dt>        <dd>LEWG</dd>
     <dt>Project:</dt>         <dd>ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21</dd>
     <dt>Reply-To:</dt>        <dd>Jan Schultke &lt;<a href=mailto:janschultke@gmail.com class=sans>janschultke@gmail.com</a>&gt;</dd>
-    <dt>Source:</dt>          <dd><a href=https://github.com/Eisenwave/cpp-proposals/blob/master/src/bitint-lewg-slides.cow class=sans>github.com/Eisenwave/cpp-proposals/blob/master/src/bitint-lewg-slides.cow</a></dd>
+    <dt>Source:</dt>          <dd><a href=https://github.com/eisenwave/cpp-proposals/blob/master/src/bitint-lewg-slides.cow class=sans>github.com/eisenwave/cpp-proposals/blob/master/src/bitint-lewg-slides.cow</a></dd>
 </dl>
 <hr/>
 <important-block><p><intro-></intro-> 
@@ -1722,16 +1722,16 @@ This document has custom controls<span><noscript> <b>which require JavaScript</b
 <section id=slide-1>
 
 <h1 style="font-size: 350%">Bit-precise integers<br/>
-<span id=docnum>P3666R4</span></h1>
+<span id=docnum>P3666R5</span></h1>
 
 <div class=slide-foot>
 Jan Schultke
  | 
-LEWG Slides for P3666R4
+LEWG Slides for P3666R5
 —
 Bit-precise integers
  | 
-Brno 2026
+Búzios 2026
  | 
 Slide 1
 </div>
@@ -1740,23 +1740,25 @@ Slide 1
 <section id=slide-2>
 
 <h2 id=slide-h-2>Introduction</h2>
-<p>C23 now has <code><h- data-h=kw_type>_BitInt</h-></code> type for N-bit integers (WG14 N2763, N2775):
+<p>C23 now has <code><h- data-h=kw_type>_BitInt</h-></code> type for N-bit integers:
 </p><code-block><h- data-h=cmt_dlim>//</h-><h- data-h=cmt> 8-bit unsigned integer initialized with value 255.</h->
 <h- data-h=cmt_dlim>//</h-><h- data-h=cmt> The literal suffix wb is unnecessary in this case.</h->
 <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>8</h-><h- data-h=sym_par>)</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>=</h-> <h- data-h=num_deco>0x</h-><h- data-h=num>FF</h-><h- data-h=num_deco>wb</h-><h- data-h=sym_punc>;</h-></code-block>
 <ul>
-  <li>implemented by GCC and Clang; max: <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>8</h-><h- data-h=num_dlim>'</h-><h- data-h=num>388</h-><h- data-h=num_dlim>'</h-><h- data-h=num>608</h-><h- data-h=sym_par>)</h-></code></li>
+  <li>implemented by GCC (C) and Clang (C &amp; C++); max: <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=num>8</h-><h- data-h=num_dlim>'</h-><h- data-h=num>388</h-><h- data-h=num_dlim>'</h-><h- data-h=num>608</h-><h- data-h=sym_par>)</h-></code></li>
   <li>forwarded by EWG to LEWG/CWG for C++29</li>
+  <li>extensive and ever-increasing support in libc++</li>
+  <li>open GCC (C++) and libstdc++ patches to add <code><h- data-h=kw_type>_BitInt</h-></code> support</li>
 </ul>
 
 <div class=slide-foot>
 Jan Schultke
  | 
-LEWG Slides for P3666R4
+LEWG Slides for P3666R5
 —
 Bit-precise integers
  | 
-Brno 2026
+Búzios 2026
  | 
 Slide 2
 </div>
@@ -1764,165 +1766,7 @@ Slide 2
 
 <section id=slide-3>
 
-<h2 id=slide-h-3>P3666R3 LEWG in Croydon 2026</h2>
-
-<style>
-  .quad {
-    font-size: 70%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 5rem;
-  }
-</style>
-
-<blockquote>
-<div class=quad>
-  <div>
-    <b>POLL</b>: We should prevent library support for <code><h- data-h=kw_type>_BitInt</h-></code>
-    <table class=five-way-poll>
-<tr><th>SF</th><th>F</th><th>N</th><th>A</th><th>SA</th></tr>
-<tr><td>5</td><td>9</td><td>2</td><td>3</td><td>1</td></tr>
-</table>
-    <b>Outcome</b>: Consensus in favor
-  </div>
-  <div>
-    <b>POLL</b>: <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_integral_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-></code> should be false
-    <table class=five-way-poll>
-<tr><th>SF</th><th>F</th><th>N</th><th>A</th><th>SA</th></tr>
-<tr><td>7</td><td>4</td><td>5</td><td>2</td><td>0</td></tr>
-</table>
-    <b>Outcome</b>: Consensus in favor
-  </div>
-  <div>
-    <b>POLL</b>: We should provide alias templates for <code><h- data-h=kw_type>_BitInt</h-></code> […]
-    <table class=five-way-poll>
-<tr><th>SF</th><th>F</th><th>N</th><th>A</th><th>SA</th></tr>
-<tr><td>0</td><td>3</td><td>8</td><td>3</td><td>5</td></tr>
-</table>
-    <b>Outcome</b>: Consensus against
-  </div>
-  <div>
-    <b>POLL</b>: We should provide <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_int</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>bit_uint</h-></code> as class templates […]
-    <table class=five-way-poll>
-<tr><th>SF</th><th>F</th><th>N</th><th>A</th><th>SA</th></tr>
-<tr><td>2</td><td>4</td><td>8</td><td>4</td><td>0</td></tr>
-</table>
-    <b>Outcome</b>: No consensus
-  </div>
-</div>
-</blockquote>
-
-<div class=slide-foot>
-Jan Schultke
- | 
-LEWG Slides for P3666R4
-—
-Bit-precise integers
- | 
-Brno 2026
- | 
-Slide 3
-</div>
-</section>
-
-<section id=slide-4>
-
-<h2 id=slide-h-4><tt->std::is_integral_v&lt;_BitInt(N)&gt;</tt-></h2>
-
-<blockquote>
-<p><b>POLL</b>: <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_integral_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-></code> should be false
-</p><table class=five-way-poll>
-<tr><th>SF</th><th>F</th><th>N</th><th>A</th><th>SA</th></tr>
-<tr><td>7</td><td>4</td><td>5</td><td>2</td><td>0</td></tr>
-</table>
-<p><b>Outcome</b>: Consensus in favor
-</p></blockquote>
-
-<ul>
-  <li>other poll outcomes are implemented, <em>but not this one</em></li>
-  <li>LEWG voted with incomplete information</li>
-  <li>here is why …</li>
-</ul>
-
-<div class=slide-foot>
-Jan Schultke
- | 
-LEWG Slides for P3666R4
-—
-Bit-precise integers
- | 
-Brno 2026
- | 
-Slide 4
-</div>
-</section>
-
-<section id=slide-5>
-
-<h2 id=slide-h-5>Intuition</h2>
-
-<blockquote style="font-size: 150%">
-<p>A bit-precise integer is an integer.
-</p></blockquote>
-
-<ul>
-  <li>LEWG disagrees</li>
-  <li><q>integer type</q> is an alias for <q>integral type</q> (<a href=https://eel.is/c++draft/basic.fundamental>[basic.fundamental]</a>)</li>
-  <li>no clear way to avoid obvious teachability problems</li>
-</ul>
-
-<div class=slide-foot>
-Jan Schultke
- | 
-LEWG Slides for P3666R4
-—
-Bit-precise integers
- | 
-Brno 2026
- | 
-Slide 5
-</div>
-</section>
-
-<section id=slide-6>
-
-<h2 id=slide-h-6>Procedural issues</h2>
-
-<h3>Two schools of thought</h3>
-<ol>
-  <li>
-    The type trait simply reports what is an integer type in the core language.
-    <ul>
-      <li>LEWG has no design freedom; EWG decides</li>
-      <li>poll outcome is procedurally invalid</li>
-    </ul>
-  </li>
-  <li>
-    The type trait is observable behavior, anything else is wording strategy.
-    <ul>
-      <li>LEWG gets to decide</li>
-      <li><q>integer type</q> can be redefined if use sites are updated</li>
-      <li>e.g. <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_class_v</h-></code> is false for unions (but unions are class types)</li>
-    </ul>
-  </li>
-</ol>
-
-<div class=slide-foot>
-Jan Schultke
- | 
-LEWG Slides for P3666R4
-—
-Bit-precise integers
- | 
-Brno 2026
- | 
-Slide 6
-</div>
-</section>
-
-<section id=slide-7>
-
-<h2 id=slide-h-7>P3666R4 type taxonomy — C compatibility</h2>
+<h2 id=slide-h-3>Reminder — P3666 type taxonomy</h2>
 
 <pre>
 integral types
@@ -1935,19 +1779,230 @@ integral types
 </pre>
 
 <ul>
-  <li>P3666R4 mostly matches C2y taxonomy</li>
+  <li>P3666R5 mostly matches C2y taxonomy</li>
   <li>e.g. <q>character types</q> are different</li>
-  <li>two <em>radically</em> different taxonomies are harder to learn</li>
 </ul>
 
 <div class=slide-foot>
 Jan Schultke
  | 
-LEWG Slides for P3666R4
+LEWG Slides for P3666R5
 —
 Bit-precise integers
  | 
-Brno 2026
+Búzios 2026
+ | 
+Slide 3
+</div>
+</section>
+
+<section id=slide-4>
+
+<h2 id=slide-h-4>P3666 consensus decisions in recent history</h2>
+
+<ul>
+  <li><b>P3666R3</b>: Seen briefly in Croydon 2026<ul>
+    <li><q>We should prevent library support for <code><h- data-h=kw_type>_BitInt</h-></code></q></li>
+    <li><q><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_integral_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-></code> should be <code><h- data-h=bool>false</h-></code></q></li>
+  </ul></li>
+  <li><b>P3666R4</b>: Discussed in Brno 2026 EWG/LEWG joint session<ul>
+    <li><q><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_integral_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-></code> should be <code><h- data-h=bool>true</h-></code></q></li>
+    <li><q>We agree with the design direction of section 5 in P3666R4</q></li>
+  </ul>
+  </li>
+</ul>
+
+<style>
+  .quad {
+    font-size: 70%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5rem;
+  }
+</style>
+
+<div class=slide-foot>
+Jan Schultke
+ | 
+LEWG Slides for P3666R5
+—
+Bit-precise integers
+ | 
+Búzios 2026
+ | 
+Slide 4
+</div>
+</section>
+
+<section id=slide-5>
+
+<h2 id=slide-h-5>Key question</h2>
+
+<style>
+  #key-question {
+    font-size: 175%;
+    margin: 10rem 4rem 0 4rem;
+    text-align: center;
+  }
+</style>
+
+<div id=key-question>
+Do we want to support <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-></code> <em>fully</em> in the standard library,
+same as other signed or unsigned integer types?
+</div>
+
+<div class=slide-foot>
+Jan Schultke
+ | 
+LEWG Slides for P3666R5
+—
+Bit-precise integers
+ | 
+Búzios 2026
+ | 
+Slide 5
+</div>
+</section>
+
+<section id=slide-6>
+
+<h2 id=slide-h-6>Arguments in favor of support</h2>
+
+<ul>
+  <li>Consistency with other integer types</li>
+  <li>Respect for what <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_integral_v</h-></code> implies</li>
+  <li>Support is simply useful for math stuff</li>
+  <li>Exposing numeric intrinsics<ul>
+    <li>e.g. <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>popcount</h-></code> → <code><h- data-h=name>__builtin_popcountg</h-></code> → <code>@llvm.ctpop.i128</code></li>
+    <li>zero-overhead principle</li>
+    <li>don't leave room for lower-level features</li>
+  </ul></li>
+  <li>not breaking existing libc++ support</li>
+</ul>
+
+<div class=slide-foot>
+Jan Schultke
+ | 
+LEWG Slides for P3666R5
+—
+Bit-precise integers
+ | 
+Búzios 2026
+ | 
+Slide 6
+</div>
+</section>
+
+<section id=slide-7>
+
+<h2 id=slide-h-7>libc++ support for <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-></code></h2>
+
+<style>
+  #libcxx {
+    font-size: 75%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  #libcxx td {
+    vertical-align: top;
+    border-bottom: 1px solid var(--border-color);
+  }
+</style>
+
+<table id=libcxx>
+  <tr>
+    <th>Header</th>
+    <th>Supported features</th>
+  </tr>
+  <tr>
+    <td><code><h- data-h=str>&lt;limits&gt;</h-></code></td>
+    <td>
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>numeric_limits</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-></code>
+    </td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=str>&lt;concepts&gt;</h-></code></td>
+    <td>
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>integral</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-> <h- data-h=name>etc</h-><h- data-h=sym_op>.</h-></code>
+    </td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=str>&lt;type_traits&gt;</h-></code></td>
+    <td>
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_integral</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-></code>, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>make_signed</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-></code>, etc.
+    </td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=str>&lt;utility&gt;</h-></code></td>
+    <td>
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>byte</h-><h- data-h=sym_brac>{</h-><h- data-h=sym_brac>}</h-> <h- data-h=sym_op>&lt;&lt;</h-> <h- data-h=num>0</h-><h- data-h=num_deco>wb</h-></code>,
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_integer</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-></code>,
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>integer_sequence</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-></code>,
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>cmp_</h-><h- data-h=sym_op>*</h-></code>,
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>hash</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-></code>
+    </td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=str>&lt;bit&gt;</h-></code></td>
+    <td>
+      bit manipulation functions
+    </td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=str>&lt;mdspan&gt;</h-></code></td>
+    <td>
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>mdspan</h-><h- data-h=sym_op>::</h-><h- data-h=name>extents</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-></code> etc.
+    </td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=str>&lt;random&gt;</h-></code></td>
+    <td>
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>seed_seq</h-></code> operations
+    </td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=str>&lt;numeric&gt;</h-></code></td>
+    <td>
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>gcd</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>lcm</h-></code>,
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>saturating_</h-><h- data-h=sym_op>*</h-></code>,
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>midpoint</h-></code>
+    </td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=str>&lt;charconv&gt;</h-></code></td>
+    <td>
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>to_chars</h-></code> and <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>from_chars</h-></code>
+    </td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=str>&lt;cstdlib&gt;</h-></code></td>
+    <td>
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code>
+    </td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=str>&lt;cmath&gt;</h-></code></td>
+    <td>
+      <code><h- data-h=kw_type>_BitInt</h-></code> is treated as <code><h- data-h=kw_type>double</h-></code> when used as an argument.
+      <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>abs</h-></code>.
+    </td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=str>&lt;chrono&gt;</h-></code></td>
+    <td>
+      <code><h- data-h=kw_type>_BitInt</h-></code> as representation type of <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>chrono</h-><h- data-h=sym_op>::</h-><h- data-h=name>duration</h-></code>
+    </td>
+  </tr>
+</table>
+
+<div class=slide-foot>
+Jan Schultke
+ | 
+LEWG Slides for P3666R5
+—
+Bit-precise integers
+ | 
+Búzios 2026
  | 
 Slide 7
 </div>
@@ -1955,31 +2010,46 @@ Slide 7
 
 <section id=slide-8>
 
-<h2 id=slide-h-8><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_integral</h-></code> is underconstraining</h2>
+<h2 id=slide-h-8>Other support for <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-></code></h2>
 
-<ul>
-  <li>rationale for poll: existing <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_integral</h-></code> constraints would change</li>
-  <li>
-    surprisingly, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_integral_v</h-></code> also matches:
-    <ul>
-      <li><code><h- data-h=kw_type>char</h-></code></li>
-      <li><code><h- data-h=kw_type>char32_t</h-></code></li>
-      <li><code><h- data-h=kw>const</h-> <h- data-h=kw>volatile</h-> <h- data-h=kw_type>bool</h-></code></li>
-      <li>[…]</li>
-    </ul>
-  </li>
-  <li>users likely expect <code><h- data-h=kw_type>int</h-></code>, <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-></code>, etc. instead</li>
-  <li><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_integral_v</h-></code> by itself is not a suitable constraint anyway</li>
-</ul>
+<style>
+  #c23-compat {
+    margin-left: auto;
+    margin-right: auto;
+  }
+  #c23-compat td {
+    vertical-align: top;
+    border-bottom: 1px solid var(--border-color);
+  }
+</style>
+
+<table id=c23-compat>
+  <tr>
+    <th>Header</th>
+    <th>Support</th>
+  </tr>
+  <tr>
+    <td><code><h- data-h=str>&lt;version&gt;</h-></code></td>
+    <td><code><h- data-h=name>__cpp_lib_bitint</h-></code></td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=str>&lt;stdbit.h&gt;</h-></code></td>
+    <td>C bit manipulation functions</td>
+  </tr>
+  <tr>
+    <td><code><h- data-h=str>&lt;climits&gt;</h-></code></td>
+    <td><code><h- data-h=name_mac>#define BITINT_MAXWIDTH</h-></code></td>
+  </tr>
+</table>
 
 <div class=slide-foot>
 Jan Schultke
  | 
-LEWG Slides for P3666R4
+LEWG Slides for P3666R5
 —
 Bit-precise integers
  | 
-Brno 2026
+Búzios 2026
  | 
 Slide 8
 </div>
@@ -1987,27 +2057,24 @@ Slide 8
 
 <section id=slide-9>
 
-<h2 id=slide-h-9><tt->std::is_integral_v&lt;_BitInt(N)&gt;</tt-><br/> is <em>already</em> true in libc++</h2>
+<h2 id=slide-h-9>Arguments against support</h2>
 
 <ul>
-  <li>(but false in libstdc++)</li>
-  <li>this was <em>not</em> mentioned in LEWG</li>
-  <li><em>total</em> reframing of the poll:<ul>
-    <li><del>What should the behavior be in the future?</del></li>
-    <li><ins>Do we want to change the existing libc++ behavior?</ins></li>
+  <li>General implementation effort<ul>
+    <li>including testing effort</li>
   </ul></li>
-  <li>if LLVM is fine with shipping this behavior, why are we not?</li>
-  <li>do we know better?</li>
+  <li>Supporting an <q>ugly</q> C compatibility feature</li>
+  <li>Cannibalizing space in standard for future <q>proper C++ integers</q></li>
 </ul>
 
 <div class=slide-foot>
 Jan Schultke
  | 
-LEWG Slides for P3666R4
+LEWG Slides for P3666R5
 —
 Bit-precise integers
  | 
-Brno 2026
+Búzios 2026
  | 
 Slide 9
 </div>
@@ -2015,159 +2082,28 @@ Slide 9
 
 <section id=slide-10>
 
-<h2 id=slide-h-10>Most code handles the change fine</h2>
-
-<code-block><h- data-h=kw>template</h-><h- data-h=sym_op>&lt;</h-><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>integral</h-> <h- data-h=name>T</h-><h- data-h=sym_op>&gt;</h->
-<h- data-h=name>T</h-> <h- data-h=name>mul</h-><h- data-h=sym_par>(</h-><h- data-h=name>T</h-> <h- data-h=name>x</h-><h- data-h=sym_punc>,</h-> <h- data-h=name>T</h-> <h- data-h=name>y</h-><h- data-h=sym_par>)</h-> <h- data-h=sym_brac>{</h->
-  <h- data-h=kw_ctrl>return</h-> <h- data-h=name>x</h-> <h- data-h=sym_op>*</h-> <h- data-h=name>y</h-><h- data-h=sym_punc>;</h->
-<h- data-h=sym_brac>}</h-></code-block>
+<h2 id=slide-h-10>What if we do nothing?</h2>
 
 <ul>
-  <li>no innate problem with <code><h- data-h=name>T</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-></code></li>
-  <li>edge case: promotion to <code><h- data-h=kw_type>int</h-></code> can prevent some UB</li>
-  <li>… but also introduce UB (e.g. <code><h- data-h=name>T</h-> <h- data-h=sym_op>=</h-> <h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>short</h-></code>)</li>
-  <li>problems usually arise only for <em>huge</em> widths</li>
+  <li>GCC and Clang will move on without us<ul>
+    <li><code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-></code> keeps living as a compiler extension</li>
+  </ul></li>
+  <li>Users and implementers are deprived of a standard form of feature<ul>
+    <li>Ever-increasing pressure to standardize existing practice</li>
+  </ul></li>
+  <li>Remaining C23 ABI incompatibility</li>
 </ul>
 
 <div class=slide-foot>
 Jan Schultke
  | 
-LEWG Slides for P3666R4
+LEWG Slides for P3666R5
 —
 Bit-precise integers
  | 
-Brno 2026
+Búzios 2026
  | 
 Slide 10
-</div>
-</section>
-
-<section id=slide-11>
-
-<h2 id=slide-h-11>Extended integer types</h2>
-
-<ul>
-  <li><q>integral type</q> has always been arbitrarily extendable</li>
-  <li>
-    implementation can add <code><h- data-h=kw_type>_ExtInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-></code> as extended integer type
-    with same properties as <code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-></code>
-  </li>
-  <li><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_integral_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_ExtInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-></code> is <code><h- data-h=bool>true</h-></code> then</li>
-</ul>
-
-<h3>Key question:</h3>
-
-<blockquote style=font-size:115%>
-<p>If the implementation can arbitrarily extend <q>integral type</q>,
-why can't we extend it with <code><h- data-h=kw_type>_BitInt</h-></code>?
-</p></blockquote>
-
-<div class=slide-foot>
-Jan Schultke
- | 
-LEWG Slides for P3666R4
-—
-Bit-precise integers
- | 
-Brno 2026
- | 
-Slide 11
-</div>
-</section>
-
-<section id=slide-12>
-
-<h2 id=slide-h-12><tt->std::is_integral_v&lt;_BitInt(N)&gt;</tt-><br/> is eternal</h2>
-
-<h3>Key question:</h3>
-
-<blockquote style=font-size:115%>
-<p>If <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_integral_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-></code> is false now,
-can we suddenly make it <code><h- data-h=bool>true</h-></code> later?
-</p></blockquote>
-
-<h3>Likely answer:</h3>
-
-<p>This is our <em>only</em> chance to make it true.
-</p>
-<div class=slide-foot>
-Jan Schultke
- | 
-LEWG Slides for P3666R4
-—
-Bit-precise integers
- | 
-Brno 2026
- | 
-Slide 12
-</div>
-</section>
-
-<section id=slide-13>
-
-<h2 id=slide-h-13>Extending categories of fundamental types</h2>
-
-<h3>Past:</h3>
-
-<ul>
-  <li>
-    character type: <code><h- data-h=kw_type>char</h-></code>, <code><h- data-h=kw_type>wchar_t</h-></code>,
-    <ins><code><h- data-h=kw_type>char8_t</h-></code>, <code><h- data-h=kw_type>char16_t</h-></code>, <code><h- data-h=kw_type>char32_t</h-></code></ins>
-  </li>
-  <li>
-    floating-point type:
-    <code><h- data-h=kw_type>float</h-></code>, <code><h- data-h=kw_type>double</h-></code>, <code><h- data-h=kw_type>long</h-> <h- data-h=kw_type>double</h-></code>,
-    <ins><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>bfloat16_t</h-></code>, […], <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>float128_t</h-></code></ins>
-  </li>
-</ul>
-
-<h3>Future:</h3>
-
-<ul>
-  <li>
-    integral type:
-    <code><h- data-h=kw_type>int</h-></code>, <code><h- data-h=kw_type>unsigned</h-> <h- data-h=kw_type>long</h-></code>, […]
-    <ins><code><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-></code></ins>
-  </li>
-  <li>
-    floating-point type:
-    <code><h- data-h=kw_type>float</h-></code>, […], <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>float128_t</h-></code>,
-    <ins><code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>decimal32_t</h-></code>, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>decimal64_t</h-></code>, <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name_type>decimal128_t</h-></code></ins>
-  </li>
-</ul>
-
-<div class=slide-foot>
-Jan Schultke
- | 
-LEWG Slides for P3666R4
-—
-Bit-precise integers
- | 
-Brno 2026
- | 
-Slide 13
-</div>
-</section>
-
-<section id=slide-14>
-
-<h2 id=slide-h-14>The end</h2>
-
-<ul>
-  <li>Let's get <code><h- data-h=name>std</h-><h- data-h=sym_op>::</h-><h- data-h=name>is_integral_v</h-><h- data-h=sym_op>&lt;</h-><h- data-h=kw_type>_BitInt</h-><h- data-h=sym_par>(</h-><h- data-h=name>N</h-><h- data-h=sym_par>)</h-><h- data-h=sym_op>&gt;</h-></code> right!</li>
-  <li>Most of remaining of design/wording is obvious consequence.</li>
-</ul>
-
-<div class=slide-foot>
-Jan Schultke
- | 
-LEWG Slides for P3666R4
-—
-Bit-precise integers
- | 
-Brno 2026
- | 
-Slide 14
 </div>
 </section>
 </main></body>
