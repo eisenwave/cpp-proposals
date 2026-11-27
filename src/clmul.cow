@@ -3,8 +3,8 @@
 
 \wg21_head(title={Carry-less product: \tt{std::clmul}}){
 \dl{
-  \dt{Document number:} \dd{\docnum{P3642R7}}
-  \dt{Date:}            \dd{\tt{2026-09-21}}
+  \dt{Document number:} \dd{\docnum{P3642R8}}
+  \dt{Date:}            \dd{\tt{2026-11-19}}
   \dt{Audience:}        \dd{LWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>}
@@ -23,6 +23,24 @@ Add widening and non-widening carry-less multiplication functions.
 \make_contents
 
 \h2{Revision history}
+
+\h3{Changes since R7}
+
+\Bnote{
+The following changes were made during LWG review at the 2026 Búzios meeting.
+}
+
+\ul{
+  \li{
+    Fix missing mixed scalar-vector \tcode{simd::clmul} overloads
+    (this was inconsistent with other SIMD math numeric functions)
+  }
+  \li{
+    Change the wording of \tcode{operator<=>} for \tcode{wide_result}
+    to be defaulted
+  }
+  \li{Fix various other minor wording issues}
+}
 
 \h3{Changes since R6}
 
@@ -580,7 +598,7 @@ public:
 
   friend constexpr bool operator==(const wide_result&, const wide_result&) = default;
   friend constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
-    noexcept;
+    = default;
 private:
   T \exposid{high-bits}, \exposid{low-bits}; // \serif{exposition-only}
 };
@@ -727,6 +745,10 @@ with the following signature:
 \cppblock{
 template<\exposid{simd-integral} V>
   constexpr V clmul(const V& a, const V& b) noexcept;
+template<\exposid{simd-integral} V>
+  constexpr V clmul(const \exposid{deduced-vec-t}<V>& a, const V& b) noexcept;
+template<\exposid{simd-integral} V>
+  constexpr V clmul(const V& a, const \exposid{deduced-vec-t}<V>& b) noexcept;
 }
 
 \h4{SIMD widening operations are out of scope}
@@ -788,7 +810,7 @@ public:
 
   friend constexpr bool operator==(const wide_result&, const wide_result&) = default;
   friend constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
-    noexcept;
+    = default;
 private:
   T \exposid{high-bits}, \exposid{low-bits}; // \serif{exposition-only}
 };
@@ -808,25 +830,13 @@ append a subclause immediately following \eelis{numeric.sat}:
 \cowel_var_set("pnum", 0)
 
 \pnum
-A specialization \tcode{wide_result<T>} is ill-formed
-unless \tcode{T} is an unsigned integer type\iref{basic.fundamental}.
+If a specialization of \tcode{wide_result} is instantiated
+with a type \tcode{T} that is not an unsigned integer type\iref{basic.fundamental},
+the program is ill-formed.
 
 \pnum
-A specialization \tcode{wide_result<T>} is a standard-layout,
+A specialization of \tcode{wide_result} is a standard-layout,
 trivially copyable class type.
-The members \tcode{\exposid{high-bits}} and \tcode{\exposid{low-bits}}
-of any specialization of \tcode{wide_result} may be reordered.
-
-\itemdecl{
-constexpr strong_ordering operator<=>(const wide_result& x, const wide_result& y)
-  noexcept;
-}
-
-\itemdescr{
-\pnum
-\returns
-\tcode{tie(x.\exposid{high-bits}, x.\exposid{low-bits}) <=> tie(y.\exposid{high-bits}, y.\exposid{low-bits})}.
-}
 
 \itemdecl{
 template<class T>
@@ -942,7 +952,7 @@ is not deliberately supported.
 }
 
 \editnote{
-See \eelis{iterator.concept.wine}
+See \eelis{iterator.concept.winc}
 for precedent on using \mathvar{N} to denote the width of a type.
 
 See \eelis{bit.permute} for precedent for the
@@ -978,7 +988,9 @@ namespace std::simd {
   \etc
 
 \ins{  // \serif{[simd.clmul], carry-less product}
-  template<\exposid{simd-integral} V> constexpr V clmul(const V& a, const V& b) noexcept;}
+  template<\exposid{simd-integral} V> constexpr V clmul(const V& a, const V& b) noexcept;
+  template<\exposid{simd-integral} V> constexpr V clmul(const \exposid{deduced-vec-t}<V>& a, const V& b) noexcept;
+  template<\exposid{simd-integral} V> constexpr V clmul(const V& a, const \exposid{deduced-vec-t}<V>& b) noexcept;}
 
   // \serif{[simd.math], mathematical functions}
   template<\exposid{math-floating-point} V> constexpr \exposid{deduced-simd-t}<V> acos(const V& x);
@@ -996,6 +1008,8 @@ append a subclause immediately preceding \eelis{simd.math}:
 
 \itemdecl{
 template<\exposid{simd-integral} V> constexpr V clmul(const V& a, const V& b) noexcept;
+template<\exposid{simd-integral} V> constexpr V clmul(const \exposid{deduced-vec-t}<V>& a, const V& b) noexcept;
+template<\exposid{simd-integral} V> constexpr V clmul(const V& a, const \exposid{deduced-vec-t}<V>& b) noexcept;
 }
 
 \itemdescr{
