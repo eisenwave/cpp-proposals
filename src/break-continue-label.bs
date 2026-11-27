@@ -1,9 +1,9 @@
 <pre class='metadata'>
 Title: <code>break label;</code> and <code>continue label;</code>
-Shortname: D3568
+Shortname: P3568
 Revision: 4
-Status: D
-Date: 2026-11-12
+Status: P
+Date: 2026-11-20
 Group: WG21
 Audience: CWG
 Editor: Jan Schultke, janschultke@gmail.com
@@ -20,9 +20,11 @@ Abstract: Introduce `break label` and `continue label` to `break` and `continue`
 ## Since R3 ## {#history-since-r3}
 
 - Made minor editorial improvements to [[#proposed-wording]]
+- Clarified that `a: a: f(); goto a;` is ill-formed in discussion
 - Fixed a wording bug that would prevent `label: while ...`
     from being used in *expansion-statement*s,
     in coordination with CWG reflector feedback
+- Fixed various other wording problems during CWG review
 
 ## Since R2 ## {#history-since-r2}
 
@@ -851,6 +853,20 @@ then the macro effectively expands to `outer: outer:`.
 This forces the user to come up with a new label now,
 for no apparent reason.
 
+However, `goto` with duplicated label sequences should be ill-formed
+because this perpetuates the historical restriction.
+
+```cpp
+[[a]] l: l: l: [[b]] l: f();
+goto l;  // error
+```
+
+Even if `goto` can only effectively jump to one place in that scenario,
+it may be surprising and confusing to allow such `goto`s,
+especially considering that labels can have attributes,
+and it would be unclear whether `goto` jumps to the label with `[[a]]` or the label with `[[b]]`,
+or to one without an attribute.
+
 ### `break label` for loops with more than one label ### {#new-labels-break-label-multiple}
 
 Another case to consider is this:
@@ -938,6 +954,24 @@ The wording is relative to [[!N5054]]
 with changes from the 2026-03 Croydon meeting applied.
 
 Update
+<a href="https://eel.is/c++draft/basic.pre">[basic.pre]</a>
+paragraph 3 as follows:
+
+<blockquote>
+A *name* is
+<ul>
+    <li>an *identifier* token ([lex.token], [lex.name]) other than<ul>
+        <li>the *identifier* of a *label* ([stmt.label]) or *literal-operator-id* ([over.literal]),</li>
+        <li>the *identifier* <ins>(if any)</ins> following a `goto`<ins>, `break`, or `continue`</ins> in a *jump-statement* ([stmt.jump.general])</li>
+        <li>any *identifier* in a *module-name* ([module.unit]) or *attribute-token* ([dcl.attr.grammar]), or</li>
+    </ul></li>
+    <li>a *conversion-function-id* ([class.conv.fct]),</li>
+    <li>an *operator-function-id* ([over.oper]), or</li>
+    <li>a *literal-operator-id* ([over.literal]).</li>
+</ul>
+</blockquote>
+
+Update
 <a href="https://eel.is/c++draft/stmt.label">[stmt.label]</a>
 paragraph 1 as follows:
 
@@ -960,7 +994,7 @@ The optional *attribute-specifier-seq* appertains to the label.
 No two labels in a function shall have the same identifier.</del><br><br>
 <ins>[*Note*:</ins>
 A label can be used in a `goto` statement <ins>([stmt.goto])</ins> before its introduction.
-<ins>Multiple identical labels within the same function are permitted,
+<ins>A function can contain multiple labels with the same *identifier*,
     but such duplicate labels cannot be used in a `goto` statement. &mdash; *end note* ]
 </ins>
 </blockquote>
@@ -969,18 +1003,18 @@ In
 <a href="https://eel.is/c++draft/stmt.label">[stmt.label]</a>
 insert a new paragraph after paragraph 1:
 <blockquote>
-<ins>A label <math><mi>L</mi></math> of the form *attribute-specifier-seq*<sub>opt</sub> *identifier* `:`
-*labels* the *statement* <math><mi>S</mi></math> of a *labeled-statement* <math><mi>X</mi></math> if
+<ins>An *identifier* <math><mi>J</mi></math> *labels* a *statement* <math><mi>S</mi></math>
+if <math><mi>S</mi></math> is the *statement* of a *labeled-statement* <math><mi>X</mi></math> and
 <ul>
-    <li><math><mi>L</mi></math> is the *label* of <math><mi>X</mi></math>, or</li>
-    <li><math><mi>L</mi></math> labels <math><mi>X</mi></math> (recursively).</li>
+    <li><math><mi>J</mi></math> is the *identifier* (if any) of the *label* of <math><mi>X</mi></math>, or</li>
+    <li><math><mi>J</mi></math> labels <math><mi>X</mi></math>.</li>
 </ul></ins>
 <div class="ins-block">
 [ *Example*:
 <pre>
-a: b: while (0) { }            // both a: and b: label the loop
-c: { d: switch (0) {           // unlike c:, d: labels the switch statement
-    default: while (0) { }     // default: labels nothing
+a: b: while (0) { }               // both a and b label the loop
+c: { d: switch (0) {              // unlike c, d labels the switch statement
+    e: default: f: while (0) { }  // both e and f label the loop
 } }
 </pre>&mdash; *end example* ]
 </div>
@@ -1058,27 +1092,30 @@ paragraph 1 as follows:
 
 <blockquote>
 <ins>A *breakable statement* is
-an *iteration-statement* ([stmt.iter]), an *expansion-statement*, or a `switch` statement ([stmt.switch]).</ins>
-A `break` statement shall be enclosed by ([stmt.pre])
-<del>an *iteration-statement* ([stmt.iter]), an *expansion-statement*, or a `switch` statement ([stmt.switch])</del>
-<ins>a breakable statement</ins>.
-<ins>If present, the *identifier* shall be part of a label <math><mi>L</mi></math> which labels ([stmt.label]) an enclosing breakable statement.</ins>
-The `break` statement causes termination of<ins>:</ins>
-<del>the smallest such enclosing statement;</del>
+an *iteration-statement* ([stmt.iter]), an *expansion-statement* ([stmt.expand]), or a `switch` statement ([stmt.switch]).</ins>
+<del>A `break` statement shall be enclosed by ([stmt.pre])
+an *iteration-statement* ([stmt.iter]), an *expansion-statement*, or a `switch` statement ([stmt.switch]).</del>
+The `break` statement
+<del>causes termination of the innermost such enclosing statement;</del>
+<ins>selects an enclosing *statement* <math><mi>S</mi></math> as follows:</ins>
 <ul>
     <li>
-        <ins>if an *identifier* is present, the smallest enclosing breakable statement labeled by <math><mi>L</mi></math>,</ins>
+        <ins>If an *identifier* <math><mi>J</mi></math> is present,
+        <math><mi>S</mi></math> is the innermost enclosing statement labeled by <math><mi>J</mi></math>.</ins>
     </li>
     <li>
-        <ins>otherwise, the smallest enclosing breakable statement.</ins>
+        <ins>Otherwise, <math><mi>S</mi></math> is the innermost enclosing breakable statement.</ins>
     </li>
 </ul>
-<del>control</del><ins>Control</ins> passes to the statement following the terminated statement, if any.
+<ins><math><mi>S</mi></math> shall exist and shall be a breakable statement.</ins>
+<del>control</del><ins>Control</ins> passes to the statement following
+<del>the terminated statement</del><ins>
+<math><mi>S</mi></math></ins>, if any.
 <br><br>
 <div class="ins-block">
 [ *Example*:
 <pre>
-a: b: while (/* ... */) {
+y: a: b: while (/* ... */) {
     a: a: c: for (/* ... */) {
         break;              // OK, terminates enclosing for loop
         break a;            // OK, same
@@ -1100,22 +1137,21 @@ paragraph 1 as follows:
 
 <blockquote>
 <ins>A *continuable statement* is
-an *iteration-statement* ([stmt.iter]) or an *expansion-statement*.</ins>
-A `continue` statement shall be enclosed by ([stmt.pre])
-<del>an *iteration-statement* or *expansion-statement*</del>
-<ins>a continuable statement</ins>.
-<ins>If present, the *identifier* shall be part of a label <math><mi>L</mi></math> which labels ([stmt.label]) an enclosing continuable statement.
-The `continue` statement applies to a statement <math><mi>X</mi></math>,
-which is:</ins>
+an *iteration-statement* ([stmt.iter]) or an *expansion-statement* ([stmt.expand]).</ins>
+<del>A `continue` statement shall be enclosed by ([stmt.pre])
+an *iteration-statement* or *expansion-statement*</del>
+<ins>The `continue` statement selects an enclosing statement <math><mi>X</mi></math> as follows:</ins>
 <ul>
     <li>
-        <ins>if an *identifier* is present, the smallest enclosing continuable statement labeled by <math><mi>L</mi></math>,</ins>
+        <ins>If an *identifier* <math><mi>J</mi></math> is present,
+        <math><mi>X</mi></math> is the innermost enclosing statement labeled by <math><mi>J</mi></math>.</ins>
     </li>
     <li>
-        <ins>otherwise, the smallest enclosing continuable statement.</ins>
+        <ins>Otherwise, <math><mi>X</mi></math> is the innermost enclosing continuable statement.</ins>
     </li>
 </ul>
-If the innermost enclosing such statement <math><mi>X</mi></math> is an *iteration-statement* ([stmt.iter]),
+<ins><math><mi>X</mi></math> shall exist and shall be a continuable statement.</ins>
+If <del>the innermost enclosing such statement</del> <math><mi>X</mi></math> is an *iteration-statement* ([stmt.iter]),
 the `continue` statement causes control to pass to the end of the *statement* of <math><mi>X</mi></math>.
 Otherwise, control passes to the end of the *compound-statement*
 of the current <math><msub><mi>S</mi><mi>i</mi></msub></math> ([stmt.expand]).
@@ -1128,21 +1164,16 @@ Update
 paragraph 1 as follows:
 
 <blockquote>
-The `goto` statement unconditionally transfers control to <del>the</del><ins>a</ins> statement
-labeled <ins>([stmt.label])</ins> by <del>the identifier</del>
-<ins>a *label* in the current function containing *identifier*</ins>.
-<del>The identifier shall be a label ([stmt.label]) located in the current function.</del>
-<ins>There shall be exactly one such label,
-and such a label shall not be enclosed by an <i>expansion-statement</i>.</ins>
+<del>The</del> <ins>A</ins> `goto` statement
+<ins>with an *identifier* <math><mi>J</mi></math></ins>
+unconditionally transfers control to
+<del>the statement labeled by the identifier</del>
+<ins>a *labeled-statement* where the *identifier* of the *label* is <math><mi>J</mi></math>,</ins>
+<del>The identifier shall be a label ([stmt.label]) located</del>
+in the current function.
+<ins>There shall be exactly one such statement,
+and such a statement shall not be enclosed by an <i>expansion-statement</i>.</ins>
 </blockquote>
-
-<div class=note>
-<span class=marker>Note:</span>
-This wording has always been defective and our proposal fixes this.
-The verb "(to) label (something)" was never defined,
-and the requirement that an identifier shall be a label is impossible to satisfy because
-a *label* ends with a `:`, and an *identifier* in itself would never match the *label* rule.
-</div>
 
 ---
 
@@ -1157,7 +1188,7 @@ as follows:
 </tr>
 <tr>
     <td><ins><code>__cpp_break_label</code></ins></td>
-    <td><ins><code>20????L</code></ins></td>
+    <td><ins><code>202611L</code></ins></td>
 </tr>
 </table>
 </blockquote>
@@ -1167,7 +1198,7 @@ as follows:
 I thank Sebastian Wittmeier for providing a list of languages that support both
 `goto` and `break`/`last` with the same label syntax.
 
-I think Arthur O'Dwyer and Jens Maurer for providing wording feedback and improvement suggestions.
+I thank Arthur O'Dwyer and Jens Maurer for providing wording feedback and improvement suggestions.
 
 I especially thank Arthur O'Dwyer for helping me expand the list in
 [[#how-common-is-break-continue-label]].
