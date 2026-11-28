@@ -5,9 +5,9 @@
   title = {Floating-point \tt{std::saturating_cast}}
 ){
 \dl{
-  \dt{Document number:} \dd{\docnum{P4355R1}}
-  \dt{Date:}            \dd{\tt{2026-10-08}}
-  \dt{Audience:}        \dd{SG6}
+  \dt{Document number:} \dd{\docnum{D4355R2}}
+  \dt{Date:}            \dd{\tt{2026-11-28}}
+  \dt{Audience:}        \dd{LEWG}
   \dt{Project:}         \dd{ISO/IEC 14882 Programming Languages — C++, ISO/IEC JTC1/SC22/WG21}
   \dt{Reply-to:}        \dd{Jan Schultke <\mail{janschultke@gmail.com}>\br
                             Matt Borland <\mail{matt@mattborland.com}>}
@@ -24,6 +24,20 @@
 \h2(listed=false){Contents}
 
 \make_contents
+
+\h2{Changes since R1}
+
+The paper was seen by SG6 during the 2026-11 meeting in Búzios and forwarded to LEWG.
+The following changes were requested and made:
+
+\ul{
+  \li{Removed requirement to modify \tcode{errno}}
+  \li{Made floating-point exceptions unspecified}
+  \li{
+    Relaxed requirements so that quiet NaN inputs are accepted in constant expressions
+    (but not signaling NaNs)
+  }
+}
 
 \h2{Changes since R0}
 
@@ -390,40 +404,19 @@ the result of the saturating cast also provides information about which
 non-finite value was passed in
 (\math{\mrow{\mo{−}\mi{∞}}}, \math{\mi{+}\mi{∞}}, or \math{\mi{NaN}}).
 
-\h3{Floating-point exceptions and constant expressions}
+\h3{Floating-point exceptions and \tt{errno}}
 
-The handling of floating-point exceptions should be
-consistent with the rest of the standard library,
-such as any functions in \header{cmath},
-and should try to be consistent with the
-\ref("https://support.arm.com/documentation/ddi0487/mc/-Part-C-The-AArch64-Instruction-Set/-Chapter-C7-A64-Advanced-SIMD-and-Floating-point-Instruction-Descriptions/-C7-2-Alphabetical-list-of-A64-Advanced-SIMD-and-floating-point-instructions/-C7-2-106-FCVTZS--scalar--integer-?lang=en"){\tt{FCVTZS} instruction}.
-That is, if \tcode{math_errhandling} is \tcode{MATH_ERREXCEPT},
-the underlying instruction should raise all the appropriate exceptions so
-error handling has minimal overhead.
+Since the goal is to emit a single instruction when possible,
+interaction with \tcode{errno} would be counter-productive,
+meaning that \tcode{std::saturating_cast} ignores \tcode{math_errhandling}.
+This is fine because it is not defined in \header{cmath},
+so there is no expectation of consistency.
 
-The Arm Architecture Reference Manual Armv8 \ref("ARM DDI 0487") specifies in
-§J1.4.3.206 \tt{FPToFixed} that
-\ul{
-  \li{NaN, infinities, and overly large inputs result in an invalid operation exception, and}
-  \li{any fractional part getting truncated results in an inexact exception.}
-}
-The handling of invalid operations is the same across all major architectures,
-which means that if \tcode{MATH_ERREXCEPT} is active,
-range checks to prevent raising exceptions may actually be necessary.
-
-Curiously, C's Annex F leaves it unspecified whether a \tcode{float → int}
-conversion raises the \q{inexact} exception,
-so out of caution and to grant some implementation freedom,
-we should not mandate it either.
-
-A domain error should only take place if the input is NaN.
-Otherwise, \tcode{std::saturating_cast} is quasi-useless during constant evaluation.
-\tcode{static_cast} and \tcode{std::saturating_cast} would be equivalent in that case
-because everything that is UB in \tcode{static_cast}
-turns into a domain error in \tcode{std::saturating_cast},
-and domain errors disqualify expressions from being constant expressions in the standard library.
-It also doesn't make any design sense for an operation that is explicitly saturating
-to report a domain error when it saturates.
+Floating-point exceptions are unspecified because the C and C++ standards
+typically base the raised exceptions on the operation in the ISO/IEC 60559 standard,
+but there is no such such saturating conversion specified there.
+The \ref("https://llvm.org/docs/LangRef.html#llvm-fptoui-sat-intrinsic"){\tt{@llvm.fptoui.sat.*}} intrinsic
+has no specified floating-point exceptions either.
 
 \Bnote{
 Regardless of the design here,
@@ -439,6 +432,16 @@ On x86 and RISC-V,
 there is no saturating instruction,
 so runtime cost is inevitable.
 }
+
+\h3{Constant expressions}
+
+Since \tcode{std::saturating_cast} always has a defined result
+(including for NaN inputs)
+and since it does not interact with \tcode{errno}
+(unlike \header{cmath} functions),
+all calls to \tcode{std::saturating_cast} are constant expressions,
+except for signaling NaN inputs.
+Silently ignoring signaling NaNs would simply be wrong.
 
 \h3{Other saturating operations}
 
@@ -486,6 +489,10 @@ for a number of reasons:
     from \tcode{static_cast} to \tcode{std::saturating_cast}
     without sacrificing portability.
   }
+  \li{
+    There is no interaction with \tcode{errno},
+    unlike for \header{cmath} functions.
+  }
 }
 
 \h2{Impact on existing code}
@@ -497,8 +504,8 @@ Existing uses with integer operands are not affected.
 \h2{Implementation experience}
 
 The proposed behavior is available in LLVM as the
-\ref("https://llvm.org/docs/LangRef.html#llvm-fptoui-sat-intrinsic"){\tt{llvm.fptoui.sat.*}} and
-\ref("https://llvm.org/docs/LangRef.html#llvm-fptosi-sat-intrinsic"){\tt{llvm.fptosi.sat.*}}
+\ref("https://llvm.org/docs/LangRef.html#llvm-fptoui-sat-intrinsic"){\tt{@llvm.fptoui.sat.*}} and
+\ref("https://llvm.org/docs/LangRef.html#llvm-fptosi-sat-intrinsic"){\tt{@llvm.fptosi.sat.*}}
 family of intrinsics.
 However, these are not yet exposed as a standalone Clang intrinsic.
 To emit them, one must specify
@@ -567,6 +574,9 @@ signed or unsigned integer type\del{s}\iref{basic.fundamental}.
 \ins{\tcode{T} is a signed or unsigned integer type or
 a cv-unqualified floating-point type.}
 
+\ins{\constantwhen
+\tcode{x} is not a signaling NaN.}
+
 \returns
 \ins{If \tcode{x} is NaN, zero.
 Otherwise, let \math{\mi{t}} be the value of \tcode{x}
@@ -577,10 +587,13 @@ is representable as a value of type \tcode{R},
 otherwise, \ins{returns} either the largest or smallest representable value of type \tcode{R},
 whichever is closer to
 \del{the value of \tcode{x}} \ins{\math{\mi{t}}}.
-
+}
 }
 
-\ins{SEE ALSO: \ref("https://cstd.eisie.net/c23#7.12.1"){ISO/IEC 9899:2024 7.12.1}}
+\editnote{
+Even if \tcode{std::issignaling} from \ref("P3935R3") were available,
+it could not be used for \tcode{std::saturating_cast}
+because it is not available in freestanding mode.
 }
 
 \h3(show_number=false){[simd]}
@@ -640,6 +653,14 @@ for all \math{\mi{i}} in the range [\tcode{0}, \tcode{V::size()}).
   author = "Daniel Towner, Ruslan Arutyunyan",
   link = "https://wg21.link/p2956r3",
   long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p2956r3.html",
+)\
+\bib(
+  id = "P3935R3",
+  title = "Rebasing <cmath> on C23",
+  date = "2026-10-10",
+  author = "Jan Schultke",
+  link = "https://wg21.link/p3935r3",
+  long_link = "https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2026/p3935r3.html",
 )\
 \bib(
   id = "LWG4601",

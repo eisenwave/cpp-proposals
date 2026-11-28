@@ -6,10 +6,11 @@ template<class R, class F>
 constexpr R saturating_cast(F x) noexcept {
   if (std::isnan(x)) {
     if consteval {
-      return R(x); // Make the call not a constant expression.
-    } else {
-      return R(0);
+      if (std::issignaling(x)) { // Assuming P3935
+        return R(x); // Not a constant expression
+      }
     }
+    return R(0);
   }
 
   if constexpr (std::numeric_limits<R>::digits >= std::numeric_limits<F>::max_exponent) {
